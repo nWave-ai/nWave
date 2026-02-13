@@ -1,0 +1,191 @@
+# Pre-commit hooks configuration for nWave Framework
+# Install: pip install pre-commit && pre-commit install --hook-type commit-msg
+# Manual run: pre-commit run --all-files
+# Testing Framework: 5-Layer (Unit, Integration, Adversarial, Peer Review, Mutation Testing)
+#
+# IMPORTANT: Run `pre-commit install --hook-type commit-msg` to enable gitlint
+
+repos:
+  # Local hooks for nWave framework
+  - repo: local
+    hooks:
+      # Phase 0: Prevent shell scripts (cross-platform policy)
+      - id: prevent-shell-scripts
+        name: Prevent Shell/PowerShell/Batch Scripts
+        entry: python3 scripts/hooks/prevent_shell_scripts.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        always_run: true
+
+      # Phase 1: Run pytest test suite (pre-commit to block failing tests)
+      - id: pytest-validation
+        name: Pytest Test Validation
+        entry: python3 scripts/hooks/validate_tests.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Phase 2: Documentation version validation
+      - id: docs-version-validation
+        name: Documentation Version Validation
+        entry: python3 scripts/hooks/validate_docs.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        always_run: true
+
+      # Phase 3a: Integration & e2e tests (enforced at push, not commit)
+      - id: pytest-slow-validation
+        name: Pytest Integration & E2E Validation
+        entry: python3 scripts/hooks/validate_tests_slow.py
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        always_run: true
+
+      # Phase 3b: Documentation freshness check (enforced at push, not commit)
+      - id: docs-freshness-check
+        name: Documentation Freshness Check
+        entry: python3 scripts/hooks/check_documentation_freshness.py
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        always_run: true
+
+      # Phase 4: Conflict detection between related files
+      - id: conflict-detection
+        name: Conflict Detection - Related Files
+        entry: python3 scripts/hooks/detect_conflicts.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Phase 4: Code formatter availability check
+      - id: formatter-availability
+        name: Code Formatter Availability Check
+        entry: python3 scripts/hooks/check_formatter_available.py
+        language: system
+        files: ^(scripts/|tests/).*\.py$
+        exclude: \.json$
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # Phase 5: YAML validation (mirrors CI/CD validation)
+      - id: yaml-validation
+        name: YAML File Validation
+        entry: python3 scripts/validation/validate_yaml_files.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+  # File quality hooks - scan ALL tracked files (matches CI file-quality job)
+  - repo: local
+    hooks:
+      - id: trailing-whitespace
+        name: Check trailing whitespace (all files)
+        entry: python3 scripts/hooks/check_trailing_whitespace.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: end-of-file-fixer
+        name: Check end-of-file newlines (all files)
+        entry: python3 scripts/hooks/check_end_of_file.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: check-json
+        name: Check JSON syntax (all files)
+        entry: python3 scripts/hooks/check_json_syntax.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+  # Security hooks - scan ALL tracked files (matches CI security-checks job)
+  - repo: local
+    hooks:
+      - id: check-merge-conflict
+        name: Check merge conflict markers (all files)
+        entry: python3 scripts/hooks/check_merge_conflicts.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: detect-private-key
+        name: Detect private keys (all files)
+        entry: python3 scripts/hooks/detect_private_keys.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+  # Python linting and formatting with Ruff (replaces black, flake8, isort)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        args: [--no-fix, "--exit-non-zero-on-fix", "src/", "scripts/", "tests/"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: ruff-format
+        args: [--check, --diff, "src/", "scripts/", "tests/"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# nWave TDD Hooks - Auto-installed by /nw:develop
+# Version: 1.2.26
+# ═══════════════════════════════════════════════════════════════════════════
+  - repo: local
+    hooks:
+      - id: nwave-step-structure-validation
+        name: nWave Step Structure Validation
+        entry: python scripts/hooks/nwave-step-structure-validator.py
+        language: python
+        stages: [pre-commit]
+        files: (^|/)steps/\d+-\d+\.json$
+        description: Validates step files have phase_execution_log structure
+
+      - id: nwave-tdd-phase-validation
+        name: nWave TDD Phase Validation
+        entry: python scripts/hooks/nwave-tdd-validator.py
+        language: python
+        stages: [pre-commit]
+        always_run: true
+        pass_filenames: false
+        description: Validates TDD phase completion before allowing commits
+
+      - id: nwave-bypass-detector
+        name: nWave Bypass Detector
+        entry: python scripts/hooks/nwave-bypass-detector.py
+        language: python
+        stages: [post-commit]
+        always_run: true
+        pass_filenames: false
+        description: Logs any bypass attempts for audit purposes
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Gitlint - Conventional Commits Validation (Python-based)
+# Matches CI: commitlint subject-case rule
+# ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+        name: Gitlint (Conventional Commits)
+        stages: [commit-msg]
+
+# Configuration
+default_stages: [pre-commit]
+fail_fast: false

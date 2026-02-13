@@ -1,0 +1,305 @@
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nwave-ai"
+version = "1.1.0"
+description = "CLI installer for the nWave AI methodology framework"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    { name = "Michele Brissoni", email = "michele.brissoni@brix.consulting" },
+    { name = "Alessandro Digioia", email = "alessandro.digioia@brix.consulting" },
+    { name = "nWave AI", email = "info@nwave.ai" }
+]
+keywords = [
+    "cli",
+    "installer",
+    "ai",
+    "developer-tools",
+    "automation"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Installation/Setup",
+    "Typing :: Typed"
+]
+
+dependencies = [
+    "rich>=13.7.0",
+    "typer>=0.12.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "httpx>=0.27.0",
+    "platformdirs>=4.2.0",
+    "pyyaml>=6.0",
+    "packaging>=21.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-bdd>=7.0.0",
+    "pytest-describe-it>=0.1.0",
+    "pytest-html>=4.0.0",
+    "pytest-pspec>=0.0.4",
+    "pytest-mock>=3.12.0",
+    "pytest-describe>=2.1.0",
+    "pytest-watch>=4.2.0",
+    "allure-pytest>=2.13.0",
+    "respx>=0.20.0",
+    # Mutation testing
+    "cosmic-ray>=8.4.0",
+    "mutmut>=2.4.0",
+    # Linting & formatting
+    "mypy>=1.8.0",
+    "ruff==0.15.0",
+    "bandit[toml]>=1.7.0",
+    "detect-secrets>=1.4.0",
+    # Git & release
+    "pre-commit>=3.6.0",
+    "python-semantic-release>=9.0.0",
+    "commitizen>=3.12.0",
+    "gitlint>=0.19.0",
+    # Utilities
+    "fpdf2>=2.7.0",
+    "click>=8.0.0",
+    "colorama>=0.4.0",
+    "tqdm>=4.64.0"
+]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-bdd>=7.0.0",
+    "respx>=0.20.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/nwave-ai/nwave"
+Documentation = "https://github.com/nwave-ai/nwave#readme"
+Repository = "https://github.com/nwave-ai/nwave"
+Issues = "https://github.com/nwave-ai/nwave/issues"
+
+[project.scripts]
+nwave-ai = "nwave_ai.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["nwave_ai"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"scripts" = "scripts"
+"nWave" = "nWave"
+"src/des" = "src/des"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/pyproject.toml",
+    "/nwave_ai",
+    "/scripts",
+    "/nWave",
+    "/src/des",
+    "/README.md",
+    "/LICENSE"
+]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--strict-config",
+    "--import-mode=importlib",
+]
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (may use external resources)",
+    "acceptance: Acceptance tests (BDD scenarios, may be slow)",
+    "e2e: End-to-end acceptance tests",
+    "slow: Tests that take longer to run",
+]
+norecursedirs = [
+    ".venv",
+    ".venv-mutation",
+    "node_modules",
+    ".git",
+    "__pycache__",
+    "reports",
+    "docs",
+    ".nwave",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src/des", "scripts/install"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "scripts/install/install_nwave_target_hooks.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:"
+]
+fail_under = 60
+show_missing = true
+
+[tool.mutmut]
+paths_to_mutate = "src/des,scripts/install"
+tests_dir = "tests/"
+runner = "python -m pytest -x -q"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "silent"
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+src = ["src", "tests"]
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "PTH",    # flake8-use-pathlib
+    "PL",     # Pylint
+    "RUF"     # Ruff-specific rules
+]
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "PLR0913", # too many arguments
+    "PLR2004", # magic value in comparison (too noisy)
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0915", # too many statements
+    "PLC0415", # import not at top of file (intentional lazy loading)
+    "ARG001",  # unused function argument (common in callbacks/fixtures)
+    "ARG002",  # unused method argument (common in overrides)
+    "ARG005",  # unused lambda argument
+    "PTH123",  # open() vs Path.open() (stylistic)
+    "B904",    # raise from err (stylistic in some cases)
+    "SIM102",  # nested if (sometimes clearer)
+    "SIM105",  # try-except-pass (sometimes intentional)
+    "SIM117",  # multiple with statements (stylistic)
+    "SIM115",  # open without context manager (sometimes necessary)
+    "RUF012",  # mutable class attributes (too noisy)
+    "RUF001",  # ambiguous unicode (false positives)
+    "PTH118",  # os.path.join (stylistic)
+    "PTH119",  # os.path.basename (stylistic)
+    "PTH207",  # glob.glob vs Path.glob (stylistic)
+    "PTH109",  # os.getcwd (stylistic)
+    "PTH110",  # os.path.exists (stylistic)
+    "PTH112",  # os.path.isdir (stylistic)
+    "PTH113",  # os.path.isfile (stylistic)
+    "PTH122",  # os.path.splitext (stylistic)
+    "PLW1510", # subprocess.run without check (handled separately)
+    "PLR0124", # name compared to itself (edge case in tests)
+    "SIM112",  # use env.get instead of ternary (stylistic)
+    "RUF043",  # unused async (can be intentional)
+    "PLW0603", # global statement (singleton pattern)
+    "PLW2901", # loop variable overwritten (common pattern)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can have more relaxed rules
+"tests/**/*.py" = [
+    "PLW1510",  # subprocess.run without check
+    "B007",     # unused loop variable
+    "B008",     # function call in default argument (fixtures)
+    "RUF001",   # ambiguous unicode
+]
+# Hook scripts may need inline imports
+"scripts/hooks/**/*.py" = [
+    "PLW1510",  # subprocess.run without check
+]
+# Legacy DES test files referencing pre-hexagonal classes (ScopeValidationResult, RealSubagentStopHook, SubagentStopHook)
+# These tests are skipped pending redesign - see DES hexagonal architecture migration
+"tests/des/unit/adapters/drivers/hooks/test_audit_logging_integration.py" = ["F821"]
+"tests/des/unit/adapters/drivers/hooks/test_clean_execution_silence.py" = ["F821"]
+"tests/des/unit/adapters/drivers/hooks/test_scope_validation_integration.py" = ["F821"]
+"tests/des/unit/application/test_orchestrator_recovery_integration.py" = ["F821"]
+"tests/des/acceptance/test_us003_post_execution_validation.py" = ["F821"]
+"tests/des/acceptance/test_post_execution_validation.py" = ["F821"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["crafter_ai", "des", "scripts"]
+force-single-line = false
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.semantic_release.branches.main]
+match = "master"
+prerelease = false
+
+[tool.semantic_release.changelog]
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+exclude_commit_patterns = [
+    "^chore",
+    "^ci",
+    "^docs",
+    "^style",
+    "^test",
+    "^build",
+]
+
+[tool.semantic_release.remote]
+type = "github"
+token = { env = "GH_TOKEN" }
+
+[tool.semantic_release.publish]
+upload_to_vcs_release = false

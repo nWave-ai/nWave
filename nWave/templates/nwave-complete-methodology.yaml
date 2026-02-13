@@ -1,0 +1,472 @@
+---
+template_name: "nWave Complete Methodology Template"
+template_version: "1.0.0"
+methodology: "nWave ATDD"
+orchestration_level: "comprehensive"
+interactivity: "high"
+complexity_support: ["basic", "intermediate", "advanced"]
+description: "Comprehensive orchestration template for complete nWave methodology execution with full ATDD integration"
+
+metadata:
+  purpose: "End-to-end methodology orchestration for complex projects requiring full nWave approach"
+  target_audience:
+    ["Solution Architect", "Technical Lead", "Agile Coach", "Product Owner"]
+  prerequisites:
+    ["Team formation", "Stakeholder identification", "Project scope definition"]
+  duration: "2-12 weeks depending on project complexity"
+  deliverables:
+    [
+      "Production-ready feature",
+      "Comprehensive documentation",
+      "Quality validation",
+    ]
+
+methodology_overview:
+  description: "Complete nWave execution from evidence-based discovery through production deployment"
+  phases:
+    - phase: "DISCOVER"
+      duration: "10% of total timeline"
+      focus: "Evidence-based product discovery and market validation"
+      deliverable: "Validated problem statement and opportunity analysis"
+    - phase: "DISCUSS"
+      duration: "15% of total timeline"
+      focus: "Requirements clarification and stakeholder alignment"
+      deliverable: "Validated business requirements with acceptance criteria"
+    - phase: "DESIGN"
+      duration: "25% of total timeline"
+      focus: "Architectural design with visual stakeholder communication"
+      deliverable: "Hexagonal architecture with visual documentation"
+    - phase: "DISTILL"
+      duration: "15% of total timeline"
+      focus: "Acceptance test creation with production service patterns"
+      deliverable: "Executable acceptance tests with real system integration"
+    - phase: "DEVOP"
+      duration: "5% of total timeline"
+      focus: "Platform readiness, CI/CD, infrastructure, and deployment design"
+      deliverable: "Infrastructure design and deployment strategy"
+    - phase: "DELIVER"
+      duration: "30% of total timeline"
+      focus: "Outside-In TDD implementation with systematic refactoring"
+      deliverable: "Production-ready implementation with quality validation"
+
+team_composition:
+  core_team:
+    - role: "Product Owner"
+      responsibility: "Business requirements and stakeholder communication"
+      engagement: "All phases"
+    - role: "Solution Architect"
+      responsibility: "Architecture design and technical guidance"
+      engagement: "DESIGN, DELIVER phases"
+    - role: "Test-First Developer"
+      responsibility: "Outside-In TDD implementation"
+      engagement: "DISTILL, DELIVER phases"
+    - role: "Quality Advocate"
+      responsibility: "Quality gates and validation"
+      engagement: "All phases"
+
+  specialist_integration:
+    - specialist: "Product Discovery Guide"
+      activation: "DISCOVER phase for market research"
+      purpose: "Facilitate evidence-based product discovery and validation"
+    - specialist: "Visual Architecture Manager"
+      activation: "DESIGN phase for stakeholder communication"
+      purpose: "Maintain architecture-implementation synchronization"
+    - specialist: "Production Service Integrator"
+      activation: "DISTILL, DELIVER phases"
+      purpose: "Ensure step methods call production services"
+    - specialist: "Systematic Refactorer"
+      activation: "DELIVER phase for code quality"
+      purpose: "Progressive six-level refactoring implementation"
+
+interactive_sections:
+  project_initialization:
+    interactive_elements:
+      - type: "project_scope_workshop"
+        description: "Collaborative project definition session"
+        participants:
+          ["Product Owner", "Solution Architect", "Key Stakeholders"]
+        duration: "2-4 hours"
+        deliverables: ["Project charter", "Success criteria", "Risk assessment"]
+
+      - type: "team_formation_session"
+        description: "nWave team composition and role definition"
+        participants: ["Solution Architect", "Team Members", "Agile Coach"]
+        duration: "1-2 hours"
+        deliverables:
+          ["Team structure", "Communication protocols", "Quality standards"]
+
+  wave_orchestration:
+    interactive_elements:
+      - type: "wave_planning_session"
+        description: "Detailed planning for each wave execution"
+        participants: ["Core Team", "Relevant Specialists"]
+        duration: "1 hour per wave"
+        template: |
+          ## Wave Planning: {wave_name}
+
+          ### Objectives
+          - Primary Objective: {primary_objective}
+          - Success Criteria: {success_criteria}
+          - Quality Gates: {quality_gates}
+
+          ### Team Composition
+          - Core Team Members: {core_members}
+          - Activated Specialists: {specialists}
+          - External Stakeholders: {stakeholders}
+
+          ### Execution Strategy
+          - Approach: {execution_approach}
+          - Timeline: {timeline}
+          - Dependencies: {dependencies}
+          - Risk Mitigation: {risk_mitigation}
+
+          ### Deliverables
+          - Primary Deliverable: {primary_deliverable}
+          - Supporting Artifacts: {supporting_artifacts}
+          - Quality Evidence: {quality_evidence}
+
+  stakeholder_collaboration:
+    interactive_elements:
+      - type: "three_amigos_session"
+        description: "Customer-Developer-Tester collaboration throughout methodology"
+        participants: ["Product Owner", "Developer", "Quality Advocate"]
+        frequency: "Each wave transition"
+        template: |
+          ## Three Amigos Session: {wave_transition}
+
+          ### Business Context Review
+          - User Story: {user_story}
+          - Business Value: {business_value}
+          - Acceptance Criteria: {acceptance_criteria}
+
+          ### Technical Implementation Discussion
+          - Architecture Approach: {architecture_approach}
+          - Technology Choices: {technology_choices}
+          - Integration Points: {integration_points}
+
+          ### Quality Strategy
+          - Testing Approach: {testing_approach}
+          - Quality Gates: {quality_gates}
+          - Acceptance Tests: {acceptance_tests}
+
+          ### Decisions and Actions
+          - Key Decisions: {key_decisions}
+          - Action Items: {action_items}
+          - Next Review: {next_review}
+
+  architecture_synchronization:
+    interactive_elements:
+      - type: "architecture_review_session"
+        description: "Visual architecture validation with stakeholders"
+        participants:
+          ["Solution Architect", "Visual Architecture Manager", "Stakeholders"]
+        frequency: "DESIGN wave and implementation milestones"
+        template: |
+          ## Architecture Review Session
+
+          ### Current Architecture State
+          - Visual Diagrams: {visual_diagrams}
+          - Implementation Progress: {implementation_progress}
+          - Synchronization Status: {sync_status}
+
+          ### Stakeholder Feedback
+          - Business Alignment: {business_alignment}
+          - Technical Concerns: {technical_concerns}
+          - Change Requests: {change_requests}
+
+          ### Architecture Updates
+          - Diagram Updates: {diagram_updates}
+          - Implementation Adjustments: {implementation_adjustments}
+          - Communication Plan: {communication_plan}
+
+  production_readiness:
+    interactive_elements:
+      - type: "production_readiness_review"
+        description: "Comprehensive production deployment validation"
+        participants: ["Core Team", "DevOps", "Business Stakeholders"]
+        duration: "2-3 hours"
+        template: |
+          ## Production Readiness Review
+
+          ### Quality Validation
+          - Test Coverage: {test_coverage}%
+          - Quality Gates Status: {quality_gates_status}
+          - Performance Metrics: {performance_metrics}
+
+          ### Security Assessment
+          - Security Scan Results: {security_scan_results}
+          - Vulnerability Assessment: {vulnerability_assessment}
+          - Compliance Status: {compliance_status}
+
+          ### Deployment Strategy
+          - Deployment Plan: {deployment_plan}
+          - Rollback Strategy: {rollback_strategy}
+          - Monitoring Setup: {monitoring_setup}
+
+          ### Business Value Measurement
+          - Success Metrics: {success_metrics}
+          - Measurement Plan: {measurement_plan}
+          - Feedback Collection: {feedback_collection}
+
+quality_gates:
+  wave_transitions:
+    discover_to_discuss:
+      - criterion: "Product discovery completed with validated problems"
+        validation: "Discovery decision gates G1-G4 passed"
+        evidence: "Problem validation report and opportunity analysis"
+      - criterion: "Market context and assumptions documented"
+        validation: "Lean Canvas and decision documentation"
+        evidence: "Evidence-backed assumptions and market research"
+
+    discuss_to_design:
+      - criterion: "Business requirements validated by stakeholders"
+        validation: "Three amigos session completed"
+        evidence: "Signed acceptance criteria"
+      - criterion: "Success criteria defined and measurable"
+        validation: "Metrics framework established"
+        evidence: "Success measurement plan"
+
+    design_to_distill:
+      - criterion: "Architecture design approved by stakeholders"
+        validation: "Visual architecture review completed"
+        evidence: "Stakeholder sign-off on architecture diagrams"
+      - criterion: "Technical implementation strategy defined"
+        validation: "Hexagonal architecture patterns established"
+        evidence: "Architecture documentation with implementation guide"
+
+    distill_to_develop:
+      - criterion: "Acceptance tests created with production service integration"
+        validation: "Production service integration checklist completed"
+        evidence: "Executable acceptance tests calling real services"
+      - criterion: "Given-When-Then scenarios validated"
+        validation: "Three amigos acceptance test review"
+        evidence: "Approved executable specifications"
+
+    develop_to_deliver:
+      - criterion: "Outside-In TDD implementation completed"
+        validation: "Systematic refactoring levels 1-6 applied"
+        evidence: "Production-ready code with quality metrics"
+      - criterion: "All acceptance tests passing with real services"
+        validation: "No test infrastructure deception detected"
+        evidence: "Production service call validation"
+
+    deliver_completion:
+      - criterion: "Production deployment successful"
+        validation: "Production readiness checklist completed"
+        evidence: "Deployed feature with monitoring"
+      - criterion: "Business value demonstrated"
+        validation: "Stakeholder acceptance achieved"
+        evidence: "Business metrics showing value delivery"
+
+methodology_compliance:
+  atdd_integration:
+    - requirement: "Customer-developer-tester collaboration throughout"
+      implementation: "Three amigos sessions at each wave transition"
+      validation: "Collaboration evidence in session notes"
+
+    - requirement: "Outside-In TDD with double-loop architecture"
+      implementation: "Acceptance tests drive implementation"
+      validation: "Test-first evidence in development artifacts"
+
+    - requirement: "Production service integration"
+      implementation: "Step methods call production services via dependency injection"
+      validation: "Production service integration checklist"
+
+    - requirement: "One E2E test at a time"
+      implementation: "Sequential acceptance test implementation"
+      validation: "Test progression evidence in commit history"
+
+  visual_architecture:
+    - requirement: "Stakeholder-appropriate visual communication"
+      implementation: "Multi-audience architecture diagrams"
+      validation: "Stakeholder feedback on visual clarity"
+
+    - requirement: "Architecture-implementation synchronization"
+      implementation: "Automated diagram generation from implementation"
+      validation: "Synchronization validation reports"
+
+execution_templates:
+  wave_execution_template: |
+    # {Wave Name} Execution Plan
+
+    ## Preparation Phase
+    - [ ] Team composition confirmed
+    - [ ] Specialist activation completed
+    - [ ] Prerequisites validated
+    - [ ] Quality gates reviewed
+
+    ## Execution Phase
+    - [ ] Interactive sessions scheduled
+    - [ ] Stakeholder engagement confirmed
+    - [ ] Deliverable templates prepared
+    - [ ] Progress tracking initialized
+
+    ## Validation Phase
+    - [ ] Quality gates validation
+    - [ ] Deliverable review completed
+    - [ ] Stakeholder acceptance achieved
+    - [ ] Transition readiness confirmed
+
+    ## Completion Phase
+    - [ ] Wave retrospective conducted
+    - [ ] Lessons learned documented
+    - [ ] Next wave preparation initiated
+    - [ ] Continuous improvement applied
+
+  project_completion_template: |
+    # nWave Project Completion Validation
+
+    ## Methodology Compliance
+    - [ ] All six waves executed completely
+    - [ ] ATDD principles applied throughout
+    - [ ] Quality gates satisfied
+    - [ ] Visual architecture maintained
+
+    ## Business Value Achievement
+    - [ ] Success criteria met and measured
+    - [ ] Stakeholder acceptance achieved
+    - [ ] Production deployment successful
+    - [ ] Business metrics demonstrating value
+
+    ## Quality Evidence
+    - [ ] Comprehensive test coverage maintained
+    - [ ] Production service integration validated
+    - [ ] Security and performance requirements met
+    - [ ] Documentation and knowledge transfer completed
+
+    ## Continuous Improvement
+    - [ ] Project retrospective conducted
+    - [ ] Methodology improvements identified
+    - [ ] Knowledge base updated
+    - [ ] Best practices documented
+
+complexity_adaptation:
+  basic:
+    focus: "Core methodology execution with essential quality gates"
+    simplifications:
+      [
+        "Reduced documentation",
+        "Essential stakeholder sessions",
+        "Core quality validation",
+      ]
+
+  intermediate:
+    focus: "Enhanced methodology with comprehensive stakeholder collaboration"
+    enhancements:
+      [
+        "Extended quality gates",
+        "Additional specialist integration",
+        "Enhanced visual communication",
+      ]
+
+  advanced:
+    focus: "Full methodology with enterprise integration and governance"
+    extensions:
+      [
+        "Complete governance integration",
+        "Advanced quality metrics",
+        "Comprehensive stakeholder management",
+      ]
+
+success_patterns:
+  effective_collaboration:
+    - pattern: "Regular three amigos sessions"
+      benefit: "Continuous stakeholder alignment"
+      implementation: "Schedule sessions at each wave transition"
+
+    - pattern: "Visual architecture communication"
+      benefit: "Clear stakeholder understanding"
+      implementation: "Multi-audience diagram generation"
+
+    - pattern: "Production service integration from start"
+      benefit: "No test infrastructure deception"
+      implementation: "Real service calls in step methods"
+
+  quality_assurance:
+    - pattern: "Progressive quality gate validation"
+      benefit: "Early issue detection and resolution"
+      implementation: "Quality validation at each wave boundary"
+
+    - pattern: "Systematic refactoring integration"
+      benefit: "Continuous code quality improvement"
+      implementation: "Six-level refactoring during DELIVER wave"
+
+risk_mitigation:
+  common_risks:
+    - risk: "Stakeholder disengagement"
+      mitigation: "Regular interactive sessions with clear value demonstration"
+      early_warning: "Reduced session participation or feedback"
+
+    - risk: "Test infrastructure deception"
+      mitigation: "Production service integration checklist validation"
+      early_warning: "Tests passing without production service calls"
+
+    - risk: "Architecture drift"
+      mitigation: "Regular architecture synchronization validation"
+      early_warning: "Diagrams not reflecting implementation reality"
+
+    - risk: "Quality gate bypass"
+      mitigation: "Automated quality validation with evidence requirements"
+      early_warning: "Missing quality evidence or validation shortcuts"
+
+continuous_improvement:
+  measurement:
+    - metric: "Wave transition success rate"
+      target: ">95% quality gate compliance"
+      collection: "Automated quality gate validation"
+
+    - metric: "Stakeholder satisfaction"
+      target: ">4.5/5 rating on collaboration effectiveness"
+      collection: "Post-wave stakeholder surveys"
+
+    - metric: "Production deployment success"
+      target: "Zero critical issues in first 48 hours"
+      collection: "Production monitoring and incident tracking"
+
+  feedback_loops:
+    - loop: "Wave retrospectives"
+      frequency: "End of each wave"
+      participants: "Core team and activated specialists"
+      output: "Wave execution improvements"
+
+    - loop: "Methodology retrospective"
+      frequency: "Project completion"
+      participants: "All project participants"
+      output: "Methodology enhancement recommendations"
+
+documentation_requirements:
+  essential_artifacts:
+    - artifact: "Project charter with nWave execution plan"
+      owner: "Solution Architect"
+      audience: "All stakeholders"
+
+    - artifact: "Architecture documentation with visual representations"
+      owner: "Visual Architecture Manager"
+      audience: "Technical team and business stakeholders"
+
+    - artifact: "Acceptance test suite with production service integration"
+      owner: "Test-First Developer"
+      audience: "Development and quality teams"
+
+    - artifact: "Quality validation evidence"
+      owner: "Quality Advocate"
+      audience: "Stakeholders and compliance"
+
+    - artifact: "Production deployment and monitoring documentation"
+      owner: "DevOps and Core Team"
+      audience: "Operations and support teams"
+
+conclusion:
+  methodology_benefits:
+    - "Systematic approach ensuring all critical aspects addressed"
+    - "Strong stakeholder collaboration throughout development"
+    - "Production-ready implementation with quality assurance"
+    - "Visual communication enabling clear stakeholder understanding"
+    - "Continuous quality validation preventing technical debt"
+
+  success_indicators:
+    - "Stakeholders can clearly explain the implemented solution"
+    - "Production deployment proceeds without critical issues"
+    - "Business value is measurable and demonstrated"
+    - "Team confidence in solution quality and maintainability"
+    - "Knowledge transfer enables ongoing support and enhancement"

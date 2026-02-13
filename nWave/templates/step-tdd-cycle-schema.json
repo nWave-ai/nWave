@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TDD Cycle Extension for Step Files",
+  "description": "Template for TDD cycle extension in step files. This schema extends existing step files without overwriting their content.",
+  "version": "4.0.0",
+  "schema_version": "4.0",
+  "tdd_cycle": {
+    "acceptance_test": {
+      "scenario_name": "",
+      "test_file": "",
+      "test_file_format": "feature",
+      "scenario_index": 0,
+      "initially_ignored": true,
+      "is_walking_skeleton": false,
+      "is_walking_skeleton_behavior": "When true: at most one per feature. ONE E2E test proving wiring. Skip inner TDD loop. Thinnest slice. No business logic testing. E2E tests are slow/flaky — keep minimal.",
+      "mapped_scenario": {
+        "description": "The specific acceptance test scenario this step makes pass (RED \u2192 GREEN)",
+        "scenario_function": "",
+        "scenario_description": "",
+        "mapping_type": "feature",
+        "valid_mapping_types": [
+          "feature",
+          "infrastructure",
+          "refactoring"
+        ],
+        "notes": "If mapping_type is 'infrastructure' or 'refactoring', scenario_function may be empty"
+      }
+    },
+    "expected_unit_tests": [],
+    "expected_unit_tests_note": "Each entry is a BEHAVIOR tested from the driving port (application service / public API). Not per-class tests. Prefer fewer behavior-focused tests over many granular class-level tests.",
+    "mock_boundaries": {
+      "allowed_ports": [],
+      "forbidden_domain_classes": [],
+      "in_memory_adapters": []
+    },
+    "tdd_phase_tracking": {
+      "current_phase": "NOT_STARTED",
+      "active_e2e_test": "",
+      "inactive_e2e_tests": "All other @skip scenarios remain disabled",
+      "phases_completed": [],
+      "test_results": {
+        "total": null,
+        "passed": null,
+        "failed": null,
+        "skipped": null
+      }
+    },
+    "phase_execution_log": [
+      {
+        "phase_name": "PREPARE",
+        "phase_index": 0,
+        "status": "NOT_EXECUTED",
+        "started_at": null,
+        "ended_at": null,
+        "duration_minutes": null,
+        "duration_seconds": null,
+        "turn_count": 0,
+        "outcome": null,
+        "notes": null,
+        "blocked_by": null,
+        "extensions_granted": []
+      },
+      {
+        "phase_name": "RED_ACCEPTANCE",
+        "phase_index": 1,
+        "status": "NOT_EXECUTED",
+        "started_at": null,
+        "ended_at": null,
+        "duration_minutes": null,
+        "duration_seconds": null,
+        "turn_count": 0,
+        "outcome": null,
+        "notes": null,
+        "blocked_by": null,
+        "extensions_granted": [],
+        "decision_gates": {
+          "proceed_if_any": ["test_fails_expected", "test_skipped_fixture", "test_disabled"],
+          "block_if_any": ["test_passes_unexpected", "import_error", "syntax_error"],
+          "max_investigation_minutes": 5,
+          "efficiency_directive": "If test skipped/missing: log reason, mark PASS, proceed to RED_UNIT. Focus on implementation, not investigation."
+        }
+      },
+      {
+        "phase_name": "RED_UNIT",
+        "phase_index": 2,
+        "status": "NOT_EXECUTED",
+        "started_at": null,
+        "ended_at": null,
+        "duration_minutes": null,
+        "duration_seconds": null,
+        "turn_count": 0,
+        "outcome": null,
+        "notes": null,
+        "blocked_by": null,
+        "extensions_granted": [],
+        "decision_gates": {
+          "proceed_if_any": ["tests_created_failing"],
+          "block_if_any": ["no_tests_created", "tests_passing_immediately"],
+          "max_investigation_minutes": 2,
+          "efficiency_directive": "Create failing tests immediately. Do not read documentation."
+        }
+      },
+      {
+        "phase_name": "GREEN",
+        "phase_index": 3,
+        "status": "NOT_EXECUTED",
+        "started_at": null,
+        "ended_at": null,
+        "duration_minutes": null,
+        "duration_seconds": null,
+        "turn_count": 0,
+        "outcome": null,
+        "notes": "Combines implementation (GREEN_UNIT) + acceptance validation (GREEN_ACCEPTANCE). Green acceptance is consequence of green unit.",
+        "blocked_by": null,
+        "extensions_granted": [],
+        "decision_gates": {
+          "proceed_if_any": ["all_tests_passing"],
+          "block_if_any": ["tests_still_failing_after_3_attempts"],
+          "max_investigation_minutes": 10,
+          "efficiency_directive": "Implement minimum code to pass tests. Do not over-engineer."
+        }
+      },
+      {
+        "phase_name": "COMMIT",
+        "phase_index": 4,
+        "status": "NOT_EXECUTED",
+        "started_at": null,
+        "ended_at": null,
+        "duration_minutes": null,
+        "duration_seconds": null,
+        "turn_count": 0,
+        "outcome": null,
+        "notes": "Absorbs FINAL_VALIDATE (metadata checks only)",
+        "blocked_by": null,
+        "extensions_granted": []
+      }
+    ]
+  },
+  "quality_gates": {
+    "acceptance_test_must_fail_first": true,
+    "unit_tests_must_fail_first": true,
+    "no_mocks_inside_hexagon": true,
+    "business_language_required": true,
+    "refactor_level": 0,
+    "in_memory_test_ratio_target": 0.8,
+    "validation_after_each_phase": true,
+    "all_phases_mandatory": true,
+    "phase_documentation_required": true
+  },
+  "phase_validation_rules": {
+    "description": "Rules for validating phase execution status before commit",
+    "all_phases_required": true,
+    "total_phases": 5,
+    "valid_statuses": [
+      "NOT_EXECUTED",
+      "IN_PROGRESS",
+      "EXECUTED",
+      "SKIPPED"
+    ],
+    "commit_acceptance_matrix": {
+      "EXECUTED": {
+        "allows_commit": true,
+        "requires_outcome": true,
+        "description": "Phase completed successfully"
+      },
+      "SKIPPED": {
+        "allows_commit": "conditional",
+        "requires_blocked_by": true,
+        "valid_blocked_by_prefixes": [
+          "BLOCKED_BY_DEPENDENCY:",
+          "NOT_APPLICABLE:",
+          "APPROVED_SKIP:"
+        ],
+        "blocks_commit_prefixes": [
+          "DEFERRED:"
+        ],
+        "description": "Phase skipped with documented reason"
+      },
+      "IN_PROGRESS": {
+        "allows_commit": false,
+        "description": "Phase started but not completed - indicates interrupted execution"
+      },
+      "NOT_EXECUTED": {
+        "allows_commit": false,
+        "description": "Phase not started - indicates skipped without justification"
+      }
+    },
+    "skip_validation": {
+      "description": "Validation rules for SKIPPED phases",
+      "blocked_by_required": true,
+      "valid_prefixes": {
+        "BLOCKED_BY_DEPENDENCY:": {
+          "allows_commit": true,
+          "example": "BLOCKED_BY_DEPENDENCY: Redis server not running"
+        },
+        "NOT_APPLICABLE:": {
+          "allows_commit": true,
+          "example": "NOT_APPLICABLE: No unit tests for config-only change"
+        },
+        "APPROVED_SKIP:": {
+          "allows_commit": true,
+          "example": "APPROVED_SKIP: Tech Lead Alice approved"
+        },
+        "CHECKPOINT_PENDING:": {
+          "allows_commit": true,
+          "example": "CHECKPOINT_PENDING: Will complete in REFACTOR checkpoint",
+          "note": "Used for TDD checkpoint commits (GREEN, FINAL)",
+          "usage": "Allows intermediate commits during TDD cycle",
+          "checkpoints": [
+            "GREEN checkpoint (phases 0-3 complete, 4 pending)",
+            "FINAL checkpoint (all 5 phases complete)"
+          ]
+        },
+        "DEFERRED:": {
+          "allows_commit": false,
+          "example": "DEFERRED: Will address in follow-up PR",
+          "note": "DEFERRED indicates incomplete work - blocks commit"
+        }
+      }
+    },
+    "sequential_order_required": true,
+    "gaps_not_allowed": true,
+    "atomic_file_writes": true,
+    "terminal_phases": {
+      "description": "Phases that must complete with PASS outcome (cannot be FAIL)",
+      "phases": ["COMMIT"],
+      "rationale": "COMMIT is terminal - represents successful step completion. FAIL outcome indicates implementation incomplete."
+    }
+  },
+  "valid_tdd_phases": [
+    "NOT_STARTED",
+    "PREPARE",
+    "RED_ACCEPTANCE",
+    "RED_UNIT",
+    "GREEN",
+    "COMMIT",
+    "COMPLETED"
+  ],
+  "valid_transitions": {
+    "NOT_STARTED": [
+      "PREPARE"
+    ],
+    "PREPARE": [
+      "RED_ACCEPTANCE"
+    ],
+    "RED_ACCEPTANCE": [
+      "RED_UNIT",
+      "PREPARE"
+    ],
+    "RED_UNIT": [
+      "GREEN"
+    ],
+    "GREEN": [
+      "COMMIT"
+    ],
+    "COMMIT": [
+      "COMPLETED"
+    ]
+  },
+  "failure_classification": {
+    "valid_red": [
+      "ASSERTION_FAILED",
+      "EXPECTED_EXCEPTION_NOT_THROWN"
+    ],
+    "invalid_red": [
+      "COMPILATION_ERROR",
+      "RUNTIME_NULL_REFERENCE",
+      "MISSING_DEPENDENCY",
+      "TIMEOUT",
+      "TEST_FRAMEWORK_ERROR"
+    ],
+    "acceptance_valid_failures": [
+      "BUSINESS_LOGIC_NOT_IMPLEMENTED",
+      "MISSING_ENDPOINT",
+      "MISSING_UI_ELEMENT"
+    ],
+    "acceptance_invalid_failures": [
+      "DATABASE_CONNECTION_FAILED",
+      "TEST_DRIVER_TIMEOUT",
+      "EXTERNAL_SERVICE_UNREACHABLE"
+    ]
+  },
+  "test_file_formats": {
+    "feature": {
+      "ignore_syntax": "@ignore",
+      "file_extension": ".feature",
+      "framework": "Cucumber/SpecFlow/Behave"
+    },
+    "cs_nunit": {
+      "ignore_syntax": "[Ignore(\"...\")]",
+      "file_extension": ".cs",
+      "framework": "NUnit"
+    },
+    "cs_xunit": {
+      "ignore_syntax": "[Fact(Skip = \"...\")]",
+      "file_extension": ".cs",
+      "framework": "xUnit"
+    },
+    "py_pytest": {
+      "ignore_syntax": "@pytest.mark.skip",
+      "file_extension": ".py",
+      "framework": "pytest"
+    },
+    "js_jest": {
+      "ignore_syntax": "test.skip()",
+      "file_extension": ".js",
+      "framework": "Jest"
+    },
+    "java_junit5": {
+      "ignore_syntax": "@Disabled",
+      "file_extension": ".java",
+      "framework": "JUnit 5"
+    }
+  },
+  "task_specification": {
+    "commit_policy": "Commit ONLY after ALL 5 PHASES complete. AUTO-PUSH after commit.",
+    "mandatory_phases": [
+      "PREPARE - Remove @skip, verify only 1 scenario enabled",
+      "RED_ACCEPTANCE - Test must FAIL initially",
+      "RED_UNIT - Write failing unit tests",
+      "GREEN - Implement minimum code + verify acceptance (green acceptance is consequence of green unit)",
+      "COMMIT - Commit with detailed message (absorbs FINAL_VALIDATE metadata checks)"
+    ],
+    "refactoring_policy": "Moved to deliver-level Phase 3 (Complete Refactoring L1-L4) - runs ONCE after all steps complete, delegated to @software-crafter via /nw:refactor",
+    "review_policy": "Moved to deliver-level Phase 4 (Adversarial Review) - runs ONCE via /nw:review with @nw-software-crafter-reviewer"
+  }
+}

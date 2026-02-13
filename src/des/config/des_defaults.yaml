@@ -1,0 +1,28 @@
+# DES (Deterministic Execution System) Default Configuration
+# This file is the single source of truth for DES defaults
+
+# Turn limits control how many API round-trips an agent can make
+turn_limits:
+  # Default when no task type specified
+  default: 30
+
+  # Task-type specific limits
+  by_type:
+    quick: 15        # Quick edits, simple lookups
+    background: 25   # Background tasks (run_in_background=true)
+    standard: 30     # Normal tasks (DEFAULT)
+    research: 35     # Research and exploration
+    complex: 50      # Complex refactoring, multi-file changes
+
+# Timeout configuration
+timeout:
+  default_seconds: 600  # 10 minutes
+  warning_threshold: 0.8  # Warn at 80% of limit
+
+# Safety configuration
+safety:
+  # Maximum context compactions before auto-stop
+  max_compactions: 3
+
+  # Warn if agent reads same file more than N times
+  duplicate_read_warning: 3

@@ -1,0 +1,39 @@
+# Pre-commit hooks configuration for nWave projects with DES
+# Install: pip install pre-commit && pre-commit install
+# Manual run: pre-commit run --all-files
+
+repos:
+  - repo: local
+    hooks:
+      # DES: Stale phase detection
+      - id: check-stale-phases
+        name: DES Stale Phase Detection
+        entry: python ~/.claude/scripts/check_stale_phases.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # DES: Scope boundary validation
+      - id: scope-boundary-check
+        name: DES Scope Boundary Validation
+        entry: python ~/.claude/scripts/scope_boundary_check.py
+        language: system
+        pass_filenames: false
+        files: '.*'
+
+      # nWave: Step file validation - DEPRECATED (step JSON files no longer exist)
+      # Replaced by execution-log.yaml append-only event format
+      # - id: validate-step-file
+      #   name: nWave Step File Validation
+      #   entry: python ~/.claude/scripts/validate_step_file.py
+      #   language: system
+      #   files: 'steps/.*\.json$'
+
+  # Standard hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json

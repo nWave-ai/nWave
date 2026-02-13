@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""
+commit-msg hook - Wrapper that delegates to commit_msg.py
+
+This shim ensures cross-platform compatibility by using Python instead of bash.
+The actual validation logic is in commit_msg.py.
+"""
+
+import sys
+from pathlib import Path
+
+
+def main():
+    # Get the directory where this script is located
+    script_dir = Path(__file__).resolve().parent
+    python_hook = script_dir / "commit_msg.py"
+
+    if python_hook.exists():
+        # Import and run the Python hook directly
+        sys.path.insert(0, str(script_dir))
+        from commit_msg import main as hook_main
+        return hook_main()
+    else:
+        print(f"ERROR: commit_msg.py not found at {python_hook}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,845 @@
+---
+template_type: "simple-develop-outside-in-tdd"
+methodology: "nWave ATDD"
+wave: "DELIVER"
+interactivity_level: "simple"
+description: "Simple implementation-focused template for DELIVER wave with Outside-In TDD and systematic refactoring patterns"
+version: "1.0.0"
+
+# ==================================================================================
+# DELIVER WAVE: Outside-In TDD Implementation with Systematic Refactoring
+# ==================================================================================
+
+metadata:
+  template_name: "DELIVER Wave Outside-In TDD Template"
+  methodology_focus: "Double-Loop TDD with Production Service Integration and Systematic Refactoring"
+  complexity_support: "Progressive implementation with refactoring hierarchy"
+  integration_pattern: "Test-driven development with business validation"
+
+# ==================================================================================
+# OUTSIDE-IN TDD IMPLEMENTATION FRAMEWORK
+# ==================================================================================
+
+double_loop_tdd_architecture:
+  outer_loop_atdd:
+    purpose: "Business scenario validation through acceptance tests"
+    process_flow:
+      - step: "Start with Failing E2E Test"
+        description: "Begin with failing acceptance test representing business scenario"
+        validation: "Test fails for the right reason - missing implementation"
+        outcome: "Clear implementation target and business validation criteria"
+
+      - step: "Analyze E2E Failure"
+        description: "Determine what needs to be implemented to make E2E test pass"
+        analysis_approach: "Identify missing services, business logic, or integration points"
+        outcome: "Clear understanding of implementation requirements"
+
+      - step: "Step Down to Unit Tests"
+        description: "Create unit tests for missing implementation components"
+        guidance: "Write unit tests for the smallest implementable behavior"
+        outcome: "Failing unit tests that drive specific implementation"
+
+      - step: "Return to E2E Validation"
+        description: "Verify E2E test progress after unit implementation"
+        validation: "Check if E2E test passes or reveals next implementation need"
+        outcome: "Progress confirmation or identification of next implementation step"
+
+  inner_loop_utdd:
+    purpose: "Technical implementation through unit test driven development"
+    red_green_refactor_cycle:
+      red_phase:
+        objective: "Write failing unit test for smallest behavior"
+        requirements:
+          - "Test describes behavior in business language"
+          - "Test is focused on single responsibility"
+          - "Test validates business outcome or state change"
+          - "Test uses domain terminology and concepts"
+
+        test_naming_patterns: |
+          ```csharp
+          // Business-focused test names
+          public class OrderServiceShould
+          {
+              [Test]
+              public async Task CreateConfirmedOrder_WhenValidCustomerPlacesOrder()
+
+              [Test]
+              public async Task RejectOrder_WhenInventoryInsufficient()
+
+              [Test]
+              public async Task ApplyDiscount_WhenCustomerQualifiesForPromotion()
+
+              [Test]
+              public async Task CalculateShipping_WhenDeliveryAddressProvided()
+          }
+          ```
+
+      green_phase:
+        objective: "Write minimal code to make test pass"
+        implementation_guidelines:
+          - "Implement only enough code to make current test pass"
+          - "Use business language in method and variable names"
+          - "Avoid over-engineering or speculative features"
+          - "Focus on business logic rather than technical optimization"
+
+        scaffolding_patterns: |
+          ```csharp
+          // NotImplementedException scaffolding for interface discovery
+          public class OrderService : IOrderService
+          {
+              public async Task<OrderResult> ProcessOrderAsync(OrderRequest request)
+              {
+                  throw new NotImplementedException(
+                      "Order processing: validate customer, check inventory, calculate total, process payment");
+              }
+
+              public async Task<Order> GetOrderAsync(OrderId orderId)
+              {
+                  throw new NotImplementedException(
+                      "Order retrieval: load order with customer and item details");
+              }
+          }
+          ```
+
+      refactor_phase:
+        objective: "Improve design while keeping tests green"
+        systematic_refactoring_application:
+          level_1_readability:
+            timing: "After every GREEN test"
+            techniques:
+              - "Extract meaningful method names"
+              - "Remove how-comments, keep why-comments"
+              - "Eliminate magic strings and numbers"
+              - "Optimize variable scope"
+
+          level_2_complexity:
+            timing: "After every GREEN test"
+            techniques:
+              - "Extract methods with business-meaningful names"
+              - "Eliminate duplicated code"
+              - "Simplify complex conditionals"
+              - "Reduce cyclomatic complexity"
+
+          level_3_4_organization:
+            timing: "Sprint boundaries"
+            techniques:
+              - "Apply Single Responsibility Principle"
+              - "Move methods to appropriate classes"
+              - "Create parameter objects for related data"
+              - "Extract value objects for domain concepts"
+
+          level_5_6_patterns:
+            timing: "Release preparation"
+            techniques:
+              - "Apply Strategy pattern for varying behavior"
+              - "Implement State pattern for complex state management"
+              - "Resolve SOLID principle violations"
+              - "Apply appropriate design patterns"
+
+# ==================================================================================
+# PRODUCTION SERVICE INTEGRATION IMPLEMENTATION
+# ==================================================================================
+
+production_service_development:
+  service_layer_design:
+    business_service_implementation:
+      service_interface_pattern: |
+        ```csharp
+        // Business service interface using domain language
+        public interface IOrderService
+        {
+            // Business operations in domain terminology
+            Task<OrderResult> ProcessOrderAsync(OrderRequest request);
+            Task<ShippingCalculation> CalculateShippingCostAsync(ShippingRequest request);
+            Task<DiscountResult> ApplyPromotionalDiscountAsync(PromotionRequest request);
+
+            // Business queries
+            Task<Order> GetOrderAsync(OrderId orderId);
+            Task<OrderSummary> GetOrderSummaryAsync(OrderId orderId);
+            Task<List<Order>> GetCustomerOrderHistoryAsync(CustomerId customerId);
+        }
+        ```
+
+      service_implementation_pattern: |
+        ```csharp
+        public class OrderService : IOrderService
+        {
+            private readonly IOrderRepository _orderRepository;
+            private readonly ICustomerService _customerService;
+            private readonly IInventoryService _inventoryService;
+            private readonly IPaymentService _paymentService;
+
+            public OrderService(
+                IOrderRepository orderRepository,
+                ICustomerService customerService,
+                IInventoryService inventoryService,
+                IPaymentService paymentService)
+            {
+                _orderRepository = orderRepository;
+                _customerService = customerService;
+                _inventoryService = inventoryService;
+                _paymentService = paymentService;
+            }
+
+            public async Task<OrderResult> ProcessOrderAsync(OrderRequest request)
+            {
+                // Business validation
+                var customer = await ValidateCustomerAsync(request.CustomerId);
+                var inventoryResult = await ValidateInventoryAsync(request.Items);
+
+                if (!inventoryResult.IsValid)
+                {
+                    return OrderResult.Failed($"Inventory validation failed: {inventoryResult.ErrorMessage}");
+                }
+
+                // Business logic execution
+                var order = CreateOrderFromRequest(request, customer);
+                var total = await CalculateOrderTotalAsync(order);
+                var paymentResult = await ProcessPaymentAsync(customer, total);
+
+                if (!paymentResult.IsSuccessful)
+                {
+                    return OrderResult.Failed($"Payment processing failed: {paymentResult.ErrorMessage}");
+                }
+
+                // Order completion
+                order.ConfirmOrder(paymentResult.PaymentId);
+                await _orderRepository.SaveAsync(order);
+
+                return OrderResult.Success(order.Id);
+            }
+
+            // Private methods using business language
+            private async Task<Customer> ValidateCustomerAsync(CustomerId customerId) { /* implementation */ }
+            private async Task<InventoryValidationResult> ValidateInventoryAsync(IEnumerable<OrderItem> items) { /* implementation */ }
+            private Order CreateOrderFromRequest(OrderRequest request, Customer customer) { /* implementation */ }
+            private async Task<decimal> CalculateOrderTotalAsync(Order order) { /* implementation */ }
+            private async Task<PaymentResult> ProcessPaymentAsync(Customer customer, decimal total) { /* implementation */ }
+        }
+        ```
+
+  dependency_injection_setup:
+    service_registration: |
+      ```csharp
+      // Program.cs or Startup.cs
+      public void ConfigureServices(IServiceCollection services)
+      {
+          // Business services
+          services.AddScoped<IOrderService, OrderService>();
+          services.AddScoped<ICustomerService, CustomerService>();
+          services.AddScoped<IInventoryService, InventoryService>();
+          services.AddScoped<IPaymentService, PaymentService>();
+          services.AddScoped<INotificationService, NotificationService>();
+
+          // Repository layer
+          services.AddScoped<IOrderRepository, DatabaseOrderRepository>();
+          services.AddScoped<ICustomerRepository, DatabaseCustomerRepository>();
+          services.AddScoped<IInventoryRepository, DatabaseInventoryRepository>();
+
+          // Infrastructure adapters
+          services.AddScoped<IEmailService, SmtpEmailService>();
+          services.AddScoped<IPaymentGateway, StripePaymentGateway>();
+
+          // Database context
+          services.AddDbContext<BusinessDbContext>(options =>
+              options.UseSqlServer(connectionString));
+      }
+      ```
+
+    test_configuration_override: |
+      ```csharp
+      // Test configuration
+      public void ConfigureTestServices(IServiceCollection services)
+      {
+          // Use same business services as production
+          services.AddScoped<IOrderService, OrderService>();
+          services.AddScoped<ICustomerService, CustomerService>();
+          services.AddScoped<IInventoryService, InventoryService>();
+          services.AddScoped<IPaymentService, PaymentService>();
+
+          // Override only external service boundaries
+          services.AddScoped<IEmailService, TestEmailService>();
+          services.AddScoped<IPaymentGateway, TestPaymentGateway>();
+
+          // Use in-memory database for testing
+          services.AddDbContext<BusinessDbContext>(options =>
+              options.UseInMemoryDatabase("TestDatabase"));
+      }
+      ```
+
+# ==================================================================================
+# SYSTEMATIC REFACTORING INTEGRATION
+# ==================================================================================
+
+refactoring_timing_integration:
+  continuous_refactoring_schedule:
+    after_each_green_test:
+      level_1_readability_improvements:
+        - technique: "Method Name Improvement"
+          example: |
+            ```csharp
+            // Before
+            public async Task<bool> CheckStuff(OrderRequest req)
+
+            // After
+            public async Task<bool> ValidateOrderEligibility(OrderRequest request)
+            ```
+
+        - technique: "Magic Number Extraction"
+          example: |
+            ```csharp
+            // Before
+            if (customer.YearsActive >= 2 && orderTotal > 100)
+
+            // After
+            private const int LOYALTY_YEARS_THRESHOLD = 2;
+            private const decimal DISCOUNT_MINIMUM_ORDER = 100m;
+
+            if (customer.YearsActive >= LOYALTY_YEARS_THRESHOLD && orderTotal > DISCOUNT_MINIMUM_ORDER)
+            ```
+
+        - technique: "Comment Cleanup"
+          example: |
+            ```csharp
+            // Before
+            // Calculate the discount percentage
+            var discount = customer.Type == "Premium" ? 0.1 : 0.05;
+
+            // After (no comment needed - method name explains intent)
+            var discountPercentage = CalculateCustomerDiscountPercentage(customer);
+            ```
+
+      level_2_complexity_reduction:
+        - technique: "Long Method Extraction"
+          example: |
+            ```csharp
+            // Before: Long method
+            public async Task<OrderResult> ProcessOrderAsync(OrderRequest request)
+            {
+                // Validation logic (10+ lines)
+                // Calculation logic (15+ lines)
+                // Payment logic (8+ lines)
+                // Persistence logic (5+ lines)
+            }
+
+            // After: Extracted methods
+            public async Task<OrderResult> ProcessOrderAsync(OrderRequest request)
+            {
+                var validationResult = await ValidateOrderRequest(request);
+                if (!validationResult.IsValid) return OrderResult.Failed(validationResult.ErrorMessage);
+
+                var orderTotal = await CalculateOrderTotal(request);
+                var paymentResult = await ProcessOrderPayment(request.Customer, orderTotal);
+                if (!paymentResult.IsSuccessful) return OrderResult.Failed(paymentResult.ErrorMessage);
+
+                return await FinalizeOrderCreation(request, orderTotal, paymentResult);
+            }
+            ```
+
+        - technique: "Duplicated Code Elimination"
+          example: |
+            ```csharp
+            // Before: Duplicated validation
+            public async Task<bool> ValidateRegularCustomer(Customer customer) {
+                if (customer == null) return false;
+                if (string.IsNullOrEmpty(customer.Email)) return false;
+                if (!customer.IsActive) return false;
+                // Regular customer specific logic
+            }
+
+            public async Task<bool> ValidatePremiumCustomer(Customer customer) {
+                if (customer == null) return false;
+                if (string.IsNullOrEmpty(customer.Email)) return false;
+                if (!customer.IsActive) return false;
+                // Premium customer specific logic
+            }
+
+            // After: Common validation extracted
+            public async Task<bool> ValidateRegularCustomer(Customer customer) {
+                return ValidateBasicCustomerRequirements(customer) && ValidateRegularCustomerSpecificRequirements(customer);
+            }
+
+            public async Task<bool> ValidatePremiumCustomer(Customer customer) {
+                return ValidateBasicCustomerRequirements(customer) && ValidatePremiumCustomerSpecificRequirements(customer);
+            }
+
+            private bool ValidateBasicCustomerRequirements(Customer customer) {
+                return customer != null && !string.IsNullOrEmpty(customer.Email) && customer.IsActive;
+            }
+            ```
+
+    sprint_boundary_refactoring:
+      level_3_responsibility_organization:
+        - technique: "Single Responsibility Application"
+          example: |
+            ```csharp
+            // Before: Multiple responsibilities in one class
+            public class OrderService
+            {
+                // Order processing
+                public async Task<OrderResult> ProcessOrderAsync(OrderRequest request) { }
+
+                // Email notifications
+                public async Task SendOrderConfirmationAsync(Order order) { }
+                public async Task SendShippingNotificationAsync(Order order) { }
+
+                // Inventory management
+                public async Task ReserveInventoryAsync(OrderItems items) { }
+                public async Task ReleaseInventoryAsync(OrderItems items) { }
+            }
+
+            // After: Separated responsibilities
+            public class OrderService
+            {
+                private readonly IOrderNotificationService _notificationService;
+                private readonly IInventoryService _inventoryService;
+
+                public async Task<OrderResult> ProcessOrderAsync(OrderRequest request)
+                {
+                    // Focus only on order processing orchestration
+                    await _inventoryService.ReserveInventoryAsync(request.Items);
+                    var order = await CreateOrderAsync(request);
+                    await _notificationService.SendOrderConfirmationAsync(order);
+                    return OrderResult.Success(order.Id);
+                }
+            }
+
+            public class OrderNotificationService : IOrderNotificationService
+            {
+                // Email-specific logic
+            }
+
+            public class InventoryService : IInventoryService
+            {
+                // Inventory-specific logic
+            }
+            ```
+
+      level_4_abstraction_refinement:
+        - technique: "Parameter Object Creation"
+          example: |
+            ```csharp
+            // Before: Long parameter list
+            public async Task<ShippingCost> CalculateShippingAsync(
+                string streetAddress, string city, string state, string zipCode,
+                decimal weight, decimal dimensions, string shippingMethod,
+                bool isExpress, bool requiresSignature)
+
+            // After: Parameter object
+            public async Task<ShippingCost> CalculateShippingAsync(ShippingCalculationRequest request)
+
+            public class ShippingCalculationRequest
+            {
+                public Address DeliveryAddress { get; set; }
+                public PackageDetails Package { get; set; }
+                public ShippingOptions Options { get; set; }
+            }
+            ```
+
+    release_preparation_refactoring:
+      level_5_design_patterns:
+        - technique: "Strategy Pattern for Varying Behavior"
+          example: |
+            ```csharp
+            // Before: Switch statement for different customer types
+            public decimal CalculateDiscount(Customer customer, decimal orderTotal)
+            {
+                switch (customer.Type)
+                {
+                    case CustomerType.Regular:
+                        return orderTotal > 100 ? orderTotal * 0.05m : 0;
+                    case CustomerType.Premium:
+                        return orderTotal > 50 ? orderTotal * 0.10m : 0;
+                    case CustomerType.VIP:
+                        return orderTotal * 0.15m;
+                    default:
+                        return 0;
+                }
+            }
+
+            // After: Strategy pattern
+            public interface IDiscountStrategy
+            {
+                decimal CalculateDiscount(decimal orderTotal);
+            }
+
+            public class RegularCustomerDiscountStrategy : IDiscountStrategy
+            {
+                public decimal CalculateDiscount(decimal orderTotal) =>
+                    orderTotal > 100 ? orderTotal * 0.05m : 0;
+            }
+
+            public class PremiumCustomerDiscountStrategy : IDiscountStrategy
+            {
+                public decimal CalculateDiscount(decimal orderTotal) =>
+                    orderTotal > 50 ? orderTotal * 0.10m : 0;
+            }
+
+            public class VIPCustomerDiscountStrategy : IDiscountStrategy
+            {
+                public decimal CalculateDiscount(decimal orderTotal) =>
+                    orderTotal * 0.15m;
+            }
+            ```
+
+      level_6_solid_principles:
+        - technique: "Dependency Inversion Resolution"
+          example: |
+            ```csharp
+            // Before: High-level module depends on low-level module
+            public class OrderService
+            {
+                private readonly SqlOrderRepository _repository; // Concrete dependency
+
+                public OrderService()
+                {
+                    _repository = new SqlOrderRepository(); // Hard dependency
+                }
+            }
+
+            // After: Dependency inversion applied
+            public class OrderService
+            {
+                private readonly IOrderRepository _repository; // Abstract dependency
+
+                public OrderService(IOrderRepository repository) // Injected dependency
+                {
+                    _repository = repository;
+                }
+            }
+
+            public interface IOrderRepository // Abstraction owned by high-level module
+            {
+                Task<Order> GetOrderAsync(OrderId orderId);
+                Task SaveOrderAsync(Order order);
+            }
+            ```
+
+# ==================================================================================
+# BUSINESS-DRIVEN NAMING AND DOMAIN LANGUAGE
+# ==================================================================================
+
+domain_language_preservation:
+  naming_conventions:
+    business_entity_naming:
+      guidelines:
+        - "Use domain terminology from business glossary"
+        - "Avoid technical suffixes (Manager, Handler, Processor)"
+        - "Use business role and responsibility names"
+        - "Preserve business language evolution"
+
+      examples: |
+        ```csharp
+        // Business entities using domain language
+        public class Customer // Not CustomerEntity or CustomerDto
+        {
+            public CustomerId Id { get; set; }
+            public CustomerName Name { get; set; }
+            public Email EmailAddress { get; set; }
+            public MembershipLevel Membership { get; set; }
+        }
+
+        public class Order // Not OrderEntity or OrderAggregate
+        {
+            public OrderId Id { get; set; }
+            public CustomerId CustomerId { get; set; }
+            public OrderItems Items { get; set; }
+            public OrderStatus Status { get; set; }
+
+            // Business methods in domain language
+            public void ConfirmOrder(PaymentConfirmation payment) { }
+            public void CancelOrder(CancellationReason reason) { }
+            public void ShipOrder(ShippingDetails shipping) { }
+        }
+        ```
+
+    service_method_naming:
+      guidelines:
+        - "Use business verbs and actions"
+        - "Describe business outcome, not technical process"
+        - "Include business context and purpose"
+        - "Avoid generic terms like 'process' or 'handle'"
+
+      examples: |
+        ```csharp
+        // Business-focused method names
+        public interface IOrderService
+        {
+            // Business actions in domain language
+            Task<OrderConfirmation> PlaceOrderAsync(OrderRequest request);
+            Task<CancellationResult> CancelOrderAsync(OrderId orderId, CancellationReason reason);
+            Task<ShippingUpdate> ShipOrderAsync(OrderId orderId, ShippingMethod method);
+
+            // Business queries in domain language
+            Task<OrderDetails> GetOrderDetailsAsync(OrderId orderId);
+            Task<OrderHistory> GetCustomerOrderHistoryAsync(CustomerId customerId);
+            Task<OrderSummary> GetOrderSummaryAsync(OrderId orderId);
+        }
+
+        // Avoid generic technical names
+        // ❌ ProcessAsync, HandleAsync, ExecuteAsync, ManageAsync
+        // ✅ PlaceOrderAsync, CancelOrderAsync, ShipOrderAsync
+        ```
+
+    variable_and_parameter_naming:
+      guidelines:
+        - "Use business context in variable names"
+        - "Describe business purpose, not technical type"
+        - "Use domain terminology consistently"
+        - "Avoid abbreviations unless they're domain standard"
+
+      examples: |
+        ```csharp
+        // Business-focused variable naming
+        public async Task<OrderResult> ProcessOrderAsync(OrderRequest orderRequest)
+        {
+            var eligibleCustomer = await ValidateCustomerEligibilityAsync(orderRequest.CustomerId);
+            var availableInventory = await CheckInventoryAvailabilityAsync(orderRequest.Items);
+            var shippingCalculation = await CalculateShippingCostAsync(orderRequest.ShippingAddress);
+            var loyaltyDiscount = await CalculateLoyaltyDiscountAsync(eligibleCustomer, orderRequest.Items);
+
+            // Avoid technical variable names
+            // ❌ result, response, data, item, obj
+            // ✅ eligibleCustomer, availableInventory, shippingCalculation
+        }
+        ```
+
+  compose_method_pattern:
+    method_structure_guidelines:
+      - "Methods should read like well-written prose"
+      - "Single level of abstraction per method"
+      - "Intention-revealing method names eliminate need for comments"
+      - "Business workflow clearly visible in method structure"
+
+    implementation_example: |
+      ```csharp
+      // Compose Method pattern - business workflow clearly visible
+      public async Task<OrderResult> ProcessOrderAsync(OrderRequest orderRequest)
+      {
+          var customerEligibility = await ValidateCustomerEligibility(orderRequest.CustomerId);
+          if (!customerEligibility.IsEligible)
+              return OrderResult.Failed(customerEligibility.RejectionReason);
+
+          var inventoryReservation = await ReserveOrderInventory(orderRequest.Items);
+          if (!inventoryReservation.IsSuccessful)
+              return OrderResult.Failed(inventoryReservation.ErrorMessage);
+
+          var orderCalculation = await CalculateOrderPricing(orderRequest, customerEligibility.Customer);
+          var paymentProcessing = await ProcessOrderPayment(customerEligibility.Customer, orderCalculation.Total);
+
+          if (!paymentProcessing.IsSuccessful)
+          {
+              await ReleaseInventoryReservation(inventoryReservation);
+              return OrderResult.Failed(paymentProcessing.ErrorMessage);
+          }
+
+          var completedOrder = await FinalizeOrderCreation(orderRequest, orderCalculation, paymentProcessing);
+          await SendOrderConfirmationNotification(completedOrder);
+
+          return OrderResult.Success(completedOrder.Id);
+      }
+
+      // Each extracted method handles single business concern
+      private async Task<CustomerEligibilityResult> ValidateCustomerEligibility(CustomerId customerId) { }
+      private async Task<InventoryReservationResult> ReserveOrderInventory(OrderItems items) { }
+      private async Task<OrderCalculationResult> CalculateOrderPricing(OrderRequest request, Customer customer) { }
+      private async Task<PaymentProcessingResult> ProcessOrderPayment(Customer customer, decimal total) { }
+      private async Task<Order> FinalizeOrderCreation(OrderRequest request, OrderCalculationResult calculation, PaymentProcessingResult payment) { }
+      private async Task SendOrderConfirmationNotification(Order order) { }
+      ```
+
+# ==================================================================================
+# QUALITY GATES AND VALIDATION
+# ==================================================================================
+
+develop_wave_quality_gates:
+  tdd_process_validation:
+    double_loop_compliance:
+      criteria:
+        - gate: "Outside-In TDD Process"
+          validation: "Development follows proper double-loop TDD with E2E driving unit tests"
+          measurement: "Evidence of E2E test failures driving unit test creation"
+          evidence: "Git commit history showing E2E test → unit test → implementation progression"
+
+        - gate: "Production Service Integration"
+          validation: "Unit tests drive production service implementation"
+          measurement: "Unit tests validate production service behavior"
+          evidence: "Test coverage of production services through unit and integration tests"
+
+        - gate: "Business Logic Testing"
+          validation: "Business logic tested through behavior-focused unit tests"
+          measurement: "Unit tests validate business outcomes, not technical implementation"
+          evidence: "Test names and assertions use business language and domain concepts"
+
+  systematic_refactoring_validation:
+    refactoring_quality_compliance:
+      criteria:
+        - gate: "Continuous Refactoring Application"
+          validation: "Level 1-2 refactoring applied after each GREEN test"
+          measurement: "Code quality metrics improve continuously"
+          evidence: "Commit history shows refactoring commits following test implementation"
+
+        - gate: "Business Language Preservation"
+          validation: "Domain terminology maintained throughout refactoring"
+          measurement: "Code and test names use business glossary terminology"
+          evidence: "Static analysis confirms business terminology usage"
+
+        - gate: "Design Quality Improvement"
+          validation: "Progressive refactoring improves design quality"
+          measurement: "Complexity metrics, coupling, and cohesion improve over time"
+          evidence: "Quality metrics dashboard shows improvement trends"
+
+  production_readiness_validation:
+    implementation_quality_compliance:
+      criteria:
+        - gate: "Service Layer Implementation"
+          validation: "Business services implemented with proper dependency injection"
+          measurement: "Services accessible through DI container for both production and test"
+          evidence: "Service registration and test configuration validation"
+
+        - gate: "Hexagonal Architecture Compliance"
+          validation: "Business logic isolated from infrastructure concerns"
+          measurement: "Dependencies point inward toward business logic"
+          evidence: "Architecture compliance analysis and dependency direction validation"
+
+        - gate: "Test Coverage and Quality"
+          validation: "Comprehensive test coverage with business-focused tests"
+          measurement: "≥80% unit test coverage, ≥70% integration test coverage"
+          evidence: "Test coverage reports and test quality analysis"
+
+# ==================================================================================
+# DELIVERABLES AND OUTPUTS
+# ==================================================================================
+
+develop_wave_deliverables:
+  primary_deliverables:
+    - deliverable: "Production Service Implementation"
+      description: "Complete business service layer with dependency injection integration"
+      components:
+        - "Business service interfaces using domain language"
+        - "Service implementations with business logic and validation"
+        - "Dependency injection configuration for production and test environments"
+        - "Repository pattern implementation for data access"
+      stakeholder_approval: ["Technical Lead", "Development Team", "QA Lead"]
+
+    - deliverable: "Comprehensive Test Suite"
+      description: "Unit and integration tests following Outside-In TDD principles"
+      components:
+        - "Behavior-focused unit tests using business language"
+        - "Integration tests validating service interactions"
+        - "Test coverage meeting quality standards (≥80% unit, ≥70% integration)"
+        - "Test maintenance procedures and quality monitoring"
+      stakeholder_approval: ["QA Lead", "Development Team", "Technical Lead"]
+
+    - deliverable: "Systematically Refactored Codebase"
+      description: "Clean, maintainable code following refactoring hierarchy"
+      components:
+        - "Business-driven naming and domain language preservation"
+        - "Progressive refactoring applied at appropriate timing"
+        - "Code quality metrics meeting standards"
+        - "Design patterns applied where appropriate"
+      stakeholder_approval: ["Technical Lead", "Code Review Team", "Architect"]
+
+    - deliverable: "Working Software Increment"
+      description: "Functioning software implementing acceptance test scenarios"
+      components:
+        - "E2E acceptance tests passing with real system integration"
+        - "Business workflows operational through production services"
+        - "Error handling and edge cases implemented"
+        - "Performance and security requirements met"
+      stakeholder_approval: ["Product Owner", "QA Lead", "Development Team"]
+
+  transition_criteria:
+    ready_for_demo_wave:
+      - criterion: "All Acceptance Tests Passing"
+        validation: "Complete acceptance test suite passes with production service integration"
+
+      - criterion: "Production Service Layer Complete"
+        validation: "Business services implemented and operational"
+
+      - criterion: "Code Quality Standards Met"
+        validation: "Systematic refactoring applied and quality metrics achieved"
+
+      - criterion: "Working Software Delivered"
+        validation: "Software increment ready for stakeholder demonstration"
+
+      - criterion: "Documentation and Knowledge Transfer"
+        validation: "Technical documentation complete and team knowledge transfer ready"
+
+# ==================================================================================
+# IMPLEMENTATION GUIDANCE
+# ==================================================================================
+
+implementation_guidance:
+  getting_started_checklist:
+    environment_setup:
+      - "✓ Development environment configured with selected technology stack"
+      - "✓ Test framework installed and configured for Given-When-Then syntax"
+      - "✓ Dependency injection container configured for production and test services"
+      - "✓ Database and infrastructure services available for development"
+
+    first_implementation_cycle:
+      - "✓ Select first E2E acceptance test for implementation"
+      - "✓ Ensure E2E test fails for the right reason (missing implementation)"
+      - "✓ Identify first unit test needed to progress toward E2E test success"
+      - "✓ Write failing unit test using business language and domain concepts"
+      - "✓ Implement minimal production code to make unit test pass"
+      - "✓ Apply Level 1-2 refactoring while keeping tests green"
+      - "✓ Return to E2E test and verify progress"
+
+  common_implementation_patterns:
+    service_implementation_progression:
+      - stage: "Interface Definition"
+        description: "Define service interfaces using business language"
+        outcome: "Clear contract for business operations"
+
+      - stage: "Scaffolding Implementation"
+        description: "Create service implementations with NotImplementedException"
+        outcome: "Compilation success with clear implementation targets"
+
+      - stage: "Incremental Implementation"
+        description: "Implement one method at a time through unit tests"
+        outcome: "Growing functionality with continuous validation"
+
+      - stage: "Integration Validation"
+        description: "Validate service integration through acceptance tests"
+        outcome: "End-to-end business workflow validation"
+
+  quality_monitoring:
+    continuous_quality_assessment:
+      metrics_to_track:
+        - "Cyclomatic complexity (target: <10 per method)"
+        - "Test coverage (target: ≥80% unit, ≥70% integration)"
+        - "Code duplication (target: <5%)"
+        - "Dependency direction compliance (inward toward business logic)"
+        - "Business language usage in names and tests"
+
+      quality_improvement_triggers:
+        - "Complexity exceeds thresholds → Apply Level 2 refactoring"
+        - "Duplication detected → Extract common functionality"
+        - "Test coverage drops → Add missing tests"
+        - "Business language drift → Rename to domain terminology"
+
+usage_documentation: |
+  # Template Usage Instructions
+
+  This simple implementation-focused template supports Outside-In TDD development with systematic refactoring for the DELIVER wave of the nWave methodology.
+
+  ## Implementation Approach
+
+  1. **Start with failing E2E test** and use double-loop TDD to drive implementation
+  2. **Implement production services** with business language and domain concepts
+  3. **Apply systematic refactoring** progressively according to timing guidelines
+  4. **Maintain production service integration** throughout development process
+
+  ## Success Indicators
+
+  - ✅ Outside-In TDD process followed with double-loop architecture
+  - ✅ Production services implemented with dependency injection
+  - ✅ Systematic refactoring applied at appropriate timing
+  - ✅ Business language preserved throughout implementation
+  - ✅ All acceptance tests passing with real system integration
+
+  ## Next Wave Preparation
+
+  Prepare working software increment with comprehensive documentation for stakeholder demonstration and production deployment validation in the DELIVER wave.

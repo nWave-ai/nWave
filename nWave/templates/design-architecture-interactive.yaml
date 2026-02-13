@@ -1,0 +1,739 @@
+---
+template_type: "interactive-design-architecture"
+methodology: "nWave ATDD"
+wave: "DESIGN"
+interactivity_level: "high"
+description: "Highly interactive architectural design and visual communication template for DESIGN wave with comprehensive stakeholder-specific visualization"
+version: "1.0.0"
+
+# ==================================================================================
+# DESIGN WAVE: Interactive Architecture and Visual Communication Template
+# ==================================================================================
+
+metadata:
+  template_name: "DESIGN Wave Architecture Interactive Template"
+  methodology_focus: "Hexagonal Architecture with Visual Stakeholder Communication"
+  complexity_support: "Basic → Intermediate → Advanced architectural patterns"
+  stakeholder_engagement: "Multi-audience visual architecture lifecycle management"
+
+# ==================================================================================
+# ARCHITECTURAL DESIGN FRAMEWORK
+# ==================================================================================
+
+architectural_approach:
+  hexagonal_architecture_foundation:
+    core_principles:
+      - principle: "Business Logic Isolation"
+        description: "Core business logic independent of external concerns"
+        implementation_guidance: "Place business rules in the center hexagon"
+        validation_criteria: "Business logic can be tested without external dependencies"
+
+      - principle: "Dependency Inversion"
+        description: "Dependencies point inward toward business logic"
+        implementation_guidance: "External concerns depend on business interfaces"
+        validation_criteria: "Business logic does not reference external implementations"
+
+      - principle: "Port and Adapter Pattern"
+        description: "Clean interfaces between business logic and external systems"
+        implementation_guidance: "Define ports for business needs, adapters for external integration"
+        validation_criteria: "External systems can be replaced without changing business logic"
+
+    architecture_layers:
+      center_hexagon:
+        name: "Business Logic Core"
+        responsibilities:
+          - "Domain entities and value objects"
+          - "Business rules and policies"
+          - "Domain services and workflows"
+          - "Business event definitions"
+        design_constraints:
+          - "No dependencies on external frameworks"
+          - "Pure business logic without infrastructure concerns"
+          - "Testable through unit tests with minimal mocking"
+        stakeholder_communication: "Focus on business capabilities and value"
+
+      ports_layer:
+        name: "Application Ports"
+        responsibilities:
+          - "Define interfaces for external interactions"
+          - "Coordinate business operations"
+          - "Handle application-level concerns"
+          - "Orchestrate domain services"
+        design_constraints:
+          - "Interfaces defined by business needs"
+          - "Technology-agnostic specifications"
+          - "Clear separation of concerns"
+        stakeholder_communication: "Emphasize business service capabilities"
+
+      adapters_layer:
+        name: "Infrastructure Adapters"
+        responsibilities:
+          - "Implement port interfaces"
+          - "Handle external system integration"
+          - "Manage technical concerns"
+          - "Provide infrastructure services"
+        design_constraints:
+          - "Implement business-defined interfaces"
+          - "Handle technology-specific details"
+          - "Isolate external system changes"
+        stakeholder_communication: "Highlight technology choices and integration patterns"
+
+# ==================================================================================
+# VISUAL ARCHITECTURE LIFECYCLE MANAGEMENT
+# ==================================================================================
+
+visual_architecture_framework:
+  stakeholder_specific_views:
+    executive_stakeholder_views:
+      system_context_diagram:
+        purpose: "Strategic overview and business value visualization"
+        content_focus:
+          - "High-level system boundaries and scope"
+          - "External actors and systems"
+          - "Business value flows and outcomes"
+          - "Strategic alignment and investment view"
+        visual_design_principles:
+          - "Business language and terminology"
+          - "High-level abstraction without technical details"
+          - "Clear value proposition and ROI indicators"
+          - "Strategic roadmap integration"
+        interactive_elements:
+          - element: "Business Capability Drill-Down"
+            description: "Click on capabilities to see underlying system support"
+          - element: "Value Stream Visualization"
+            description: "Hover to see business value flow and metrics"
+          - element: "Investment Analysis View"
+            description: "Toggle between current and future state views"
+
+      investment_analysis_dashboard:
+        purpose: "Technology ROI and resource allocation presentation"
+        content_focus:
+          - "Technology investment breakdown"
+          - "Resource allocation and utilization"
+          - "Risk mitigation and compliance status"
+          - "Timeline and milestone tracking"
+        metrics_integration:
+          - "Development cost vs business value"
+          - "Risk reduction and compliance metrics"
+          - "Time to market and competitive advantage"
+          - "Operational efficiency improvements"
+
+    technical_stakeholder_views:
+      component_architecture_diagram:
+        purpose: "Implementation guidance and technical decision documentation"
+        content_focus:
+          - "Detailed component structure and relationships"
+          - "Technology choices and integration patterns"
+          - "API specifications and data flows"
+          - "Design patterns and architectural decisions"
+        technical_details:
+          - "Framework and library specifications"
+          - "Database design and data access patterns"
+          - "Security implementation and authentication"
+          - "Performance optimization and caching strategies"
+        interactive_elements:
+          - element: "Component Dependency Explorer"
+            description: "Navigate component relationships and dependencies"
+          - element: "API Documentation Integration"
+            description: "Link to API specs and contract documentation"
+          - element: "Code Mapping View"
+            description: "Connect architecture to actual implementation files"
+
+      sequence_diagrams:
+        purpose: "Interaction flows and API specifications"
+        content_focus:
+          - "Business workflow to system interaction mapping"
+          - "API call sequences and data exchange"
+          - "Error handling and exception flows"
+          - "Performance optimization opportunities"
+        design_patterns:
+          - "Command Query Responsibility Segregation (CQRS)"
+          - "Event sourcing and domain events"
+          - "Saga pattern for distributed transactions"
+          - "Circuit breaker for resilience"
+
+    operational_stakeholder_views:
+      deployment_architecture_diagram:
+        purpose: "Infrastructure topology and operational guidance"
+        content_focus:
+          - "Environment configuration and topology"
+          - "Deployment pipeline and automation"
+          - "Monitoring and observability integration"
+          - "Security controls and compliance measures"
+        operational_concerns:
+          - "Scalability and load balancing"
+          - "Disaster recovery and backup procedures"
+          - "Performance monitoring and alerting"
+          - "Security monitoring and incident response"
+        interactive_elements:
+          - element: "Environment Configuration Explorer"
+            description: "Compare dev, staging, and production configurations"
+          - element: "Monitoring Dashboard Integration"
+            description: "Live links to operational monitoring tools"
+          - element: "Deployment Pipeline Visualization"
+            description: "Interactive CI/CD pipeline with gate status"
+
+      monitoring_architecture_diagram:
+        purpose: "Observability and alerting systems"
+        content_focus:
+          - "Metrics collection and aggregation"
+          - "Log aggregation and analysis"
+          - "Distributed tracing implementation"
+          - "Alerting and escalation procedures"
+        observability_stack:
+          - "Application performance monitoring (APM)"
+          - "Infrastructure monitoring and metrics"
+          - "Business metrics and KPI tracking"
+          - "User experience and conversion monitoring"
+
+    business_stakeholder_views:
+      process_workflow_diagram:
+        purpose: "Business process understanding and capability mapping"
+        content_focus:
+          - "End-to-end business process flows"
+          - "System touchpoints and automation"
+          - "Business rules and decision points"
+          - "Value creation and customer impact"
+        business_integration:
+          - "Customer journey mapping"
+          - "Business capability to system mapping"
+          - "Process optimization opportunities"
+          - "Compliance and regulatory requirements"
+        interactive_elements:
+          - element: "Customer Journey Navigator"
+            description: "Follow customer interactions through system"
+          - element: "Business Rule Explorer"
+            description: "Drill down into business logic and validation"
+          - element: "Process Performance Dashboard"
+            description: "Real-time business process metrics and KPIs"
+
+# ==================================================================================
+# ATDD-COMPATIBLE ARCHITECTURE DESIGN
+# ==================================================================================
+
+atdd_architecture_integration:
+  test_driven_architecture:
+    acceptance_test_support:
+      architectural_requirements:
+        - requirement: "Testable Business Logic"
+          description: "Business logic accessible through clear interfaces"
+          design_implication: "Hexagonal architecture with dependency injection"
+          validation_method: "Acceptance tests can call business services directly"
+
+        - requirement: "Production Service Integration"
+          description: "Real service integration for acceptance tests"
+          design_implication: "Service layer designed for both production and test usage"
+          validation_method: "Step methods call actual production services"
+
+        - requirement: "Test Environment Support"
+          description: "Architecture supports test data and environment management"
+          design_implication: "Clear separation between business logic and infrastructure"
+          validation_method: "Test infrastructure can provide test data without affecting business logic"
+
+    service_design_patterns:
+      dependency_injection_architecture:
+        pattern_description: "Services injected through interfaces for testability"
+        implementation_approach: |
+          ```csharp
+          // Business service interface
+          public interface IOrderService
+          {
+              Task<OrderResult> ProcessOrderAsync(Order order);
+              Task<Order> GetOrderAsync(OrderId orderId);
+          }
+
+          // Production implementation
+          public class OrderService : IOrderService
+          {
+              private readonly IOrderRepository _repository;
+              private readonly IPaymentService _paymentService;
+              private readonly IInventoryService _inventoryService;
+
+              // Implementation with real business logic
+          }
+
+          // Test configuration
+          services.AddScoped<IOrderService, OrderService>();
+          services.AddScoped<IOrderRepository, DatabaseOrderRepository>();
+          // Real services for integration testing
+          ```
+        atdd_benefits:
+          - "Step methods can call real business services"
+          - "Business logic tested through actual implementation"
+          - "Test infrastructure remains minimal and focused"
+
+      hexagonal_test_integration:
+        pattern_description: "Test integration through business ports, not infrastructure"
+        architectural_guidance:
+          - "Acceptance tests interact with application layer"
+          - "Infrastructure adapters can be replaced for testing"
+          - "Business logic remains unchanged for testing"
+          - "Real business workflows validated end-to-end"
+
+# ==================================================================================
+# TECHNOLOGY SELECTION AND INTEGRATION
+# ==================================================================================
+
+technology_selection_framework:
+  atdd_compatibility_evaluation:
+    criteria:
+      - criterion: "Test Framework Integration"
+        description: "Technology supports acceptance test automation"
+        evaluation_questions:
+          - "Can acceptance tests be written in business language?"
+          - "Does the framework support Given-When-Then syntax?"
+          - "Is dependency injection available for service testing?"
+          - "Can tests run against production service implementations?"
+
+      - criterion: "Hexagonal Architecture Support"
+        description: "Technology enables clean architecture implementation"
+        evaluation_questions:
+          - "Does the framework support dependency inversion?"
+          - "Can business logic be isolated from infrastructure?"
+          - "Are interfaces and abstractions well-supported?"
+          - "Can the technology support ports and adapters pattern?"
+
+      - criterion: "Visual Architecture Generation"
+        description: "Technology supports automated diagram generation"
+        evaluation_questions:
+          - "Can component diagrams be generated from code?"
+          - "Are there tools for deployment topology visualization?"
+          - "Can API documentation be generated automatically?"
+          - "Does the technology support architecture compliance checking?"
+
+  technology_stack_specification:
+    backend_technology_choices:
+      application_framework:
+        selection_criteria:
+          - "Strong dependency injection support"
+          - "Excellent testing framework integration"
+          - "Mature ecosystem and community support"
+          - "Performance and scalability characteristics"
+        recommended_options:
+          - technology: "ASP.NET Core"
+            strengths:
+              [
+                "Built-in DI",
+                "Excellent testing support",
+                "Performance",
+                "Cloud integration",
+              ]
+            atdd_fit: "Excellent - native DI and testing framework support"
+
+          - technology: "Spring Boot"
+            strengths:
+              [
+                "Mature DI framework",
+                "Comprehensive testing",
+                "Enterprise features",
+                "Community",
+              ]
+            atdd_fit: "Excellent - comprehensive testing and dependency injection"
+
+          - technology: "Node.js with NestJS"
+            strengths:
+              [
+                "TypeScript support",
+                "Decorator-based DI",
+                "Modern patterns",
+                "Performance",
+              ]
+            atdd_fit: "Good - modern testing frameworks and DI support"
+
+      database_and_persistence:
+        selection_criteria:
+          - "Transaction support and data consistency"
+          - "Test data management capabilities"
+          - "Performance and scalability"
+          - "ORM and query optimization"
+        architectural_patterns:
+          - pattern: "Repository Pattern"
+            description: "Abstract data access for testability"
+            atdd_integration: "Enables service layer testing with real data access"
+
+          - pattern: "Unit of Work"
+            description: "Transaction management and consistency"
+            atdd_integration: "Supports complex business workflow testing"
+
+    frontend_technology_choices:
+      ui_framework:
+        selection_criteria:
+          - "Component-based architecture"
+          - "Testing framework maturity"
+          - "Performance and user experience"
+          - "Developer productivity and maintenance"
+        atdd_integration_requirements:
+          - "End-to-end testing support"
+          - "Component testing capabilities"
+          - "Business workflow automation"
+          - "Accessibility testing integration"
+
+# ==================================================================================
+# COMPONENT DESIGN AND INTEGRATION PATTERNS
+# ==================================================================================
+
+component_design_framework:
+  business_component_design:
+    domain_services:
+      design_principles:
+        - principle: "Single Responsibility"
+          description: "Each service has one clear business purpose"
+          example: "OrderService handles order lifecycle, PaymentService handles payment processing"
+
+        - principle: "Business Language"
+          description: "Service methods use domain terminology"
+          example: "ProcessOrder(), CalculateShipping(), ApplyDiscount()"
+
+        - principle: "Stateless Operations"
+          description: "Services don't maintain state between operations"
+          example: "All state passed as parameters or retrieved from repositories"
+
+      service_interface_design:
+        interface_specification: |
+          ```csharp
+          public interface IOrderService
+          {
+              // Business operations in domain language
+              Task<OrderResult> ProcessOrderAsync(OrderRequest request);
+              Task<ShippingCalculation> CalculateShippingAsync(ShippingAddress address, OrderItems items);
+              Task<DiscountResult> ApplyDiscountAsync(Customer customer, OrderTotal total);
+
+              // Query operations for business needs
+              Task<Order> GetOrderAsync(OrderId orderId);
+              Task<OrderSummary> GetOrderSummaryAsync(OrderId orderId);
+              Task<List<Order>> GetCustomerOrdersAsync(CustomerId customerId);
+          }
+          ```
+        design_guidelines:
+          - "Use business terminology in method names"
+          - "Return rich result objects, not primitives"
+          - "Include business validation in service operations"
+          - "Handle business exceptions with meaningful messages"
+
+  integration_component_design:
+    external_service_integration:
+      adapter_pattern_implementation:
+        pattern_description: "Isolate external service dependencies through adapters"
+        design_template: |
+          ```csharp
+          // Business port (defined by business needs)
+          public interface IPaymentGateway
+          {
+              Task<PaymentResult> ProcessPaymentAsync(PaymentRequest request);
+              Task<RefundResult> ProcessRefundAsync(RefundRequest request);
+          }
+
+          // External service adapter
+          public class StripePaymentAdapter : IPaymentGateway
+          {
+              private readonly StripePaymentService _stripeService;
+
+              public async Task<PaymentResult> ProcessPaymentAsync(PaymentRequest request)
+              {
+                  // Convert business request to Stripe format
+                  var stripeRequest = MapToStripeRequest(request);
+                  var stripeResponse = await _stripeService.ChargeAsync(stripeRequest);
+
+                  // Convert Stripe response to business result
+                  return MapToBusinessResult(stripeResponse);
+              }
+          }
+          ```
+
+      message_integration_patterns:
+        event_driven_architecture:
+          pattern_description: "Loose coupling through domain events"
+          business_events: |
+            ```csharp
+            // Business events in domain language
+            public record OrderPlaced(OrderId OrderId, CustomerId CustomerId, OrderTotal Total, DateTime PlacedAt);
+            public record PaymentProcessed(OrderId OrderId, PaymentId PaymentId, PaymentAmount Amount);
+            public record OrderShipped(OrderId OrderId, TrackingNumber TrackingNumber, ShippingAddress Address);
+            ```
+
+# ==================================================================================
+# AUTOMATED GENERATION AND SYNCHRONIZATION
+# ==================================================================================
+
+automated_architecture_management:
+  code_to_diagram_generation:
+    component_extraction:
+      analysis_process:
+        - step: "Source Code Analysis"
+          description: "Parse codebase for component structure and relationships"
+          tools: ["Roslyn for C#", "TypeScript Compiler API", "AST parsers"]
+          output: "Component dependency graph and interface definitions"
+
+        - step: "Architecture Pattern Recognition"
+          description: "Identify architectural patterns and design decisions"
+          patterns:
+            [
+              "Hexagonal Architecture",
+              "CQRS",
+              "Event Sourcing",
+              "Repository Pattern",
+            ]
+          output: "Pattern implementation documentation and compliance report"
+
+        - step: "Business Logic Mapping"
+          description: "Map technical components to business capabilities"
+          analysis:
+            [
+              "Service interface analysis",
+              "Domain model extraction",
+              "Business workflow identification",
+            ]
+          output: "Business capability to technical component mapping"
+
+    automated_diagram_generation:
+      generation_pipeline: |
+        ```yaml
+        diagram_generation:
+          component_diagrams:
+            - source: "Service interface definitions"
+              target: "Component architecture diagram"
+              stakeholder: "Technical team"
+
+          sequence_diagrams:
+            - source: "API call tracing and logging"
+              target: "Business workflow sequence diagrams"
+              stakeholder: "Business and technical teams"
+
+          deployment_diagrams:
+            - source: "Infrastructure as code definitions"
+              target: "Deployment topology diagrams"
+              stakeholder: "Operations team"
+        ```
+
+  implementation_synchronization:
+    continuous_validation:
+      validation_pipeline:
+        - validation: "Component Interface Compliance"
+          description: "Verify components implement designed interfaces"
+          automation: "Static analysis and interface validation"
+          frequency: "Every commit"
+
+        - validation: "Architecture Pattern Compliance"
+          description: "Ensure hexagonal architecture principles maintained"
+          automation: "Architecture fitness functions and dependency analysis"
+          frequency: "Daily build"
+
+        - validation: "Business Logic Isolation"
+          description: "Verify business logic doesn't depend on infrastructure"
+          automation: "Dependency direction analysis"
+          frequency: "Weekly architecture review"
+
+# ==================================================================================
+# QUALITY GATES AND VALIDATION
+# ==================================================================================
+
+design_wave_quality_gates:
+  architectural_quality_validation:
+    hexagonal_architecture_compliance:
+      criteria:
+        - gate: "Dependency Direction"
+          validation: "All dependencies point inward toward business logic"
+          measurement: "Dependency analysis shows no outward dependencies from core"
+          automation: "Architecture fitness functions"
+
+        - gate: "Business Logic Isolation"
+          validation: "Business logic independent of external frameworks"
+          measurement: "Business layer can be tested without external dependencies"
+          automation: "Unit test execution without infrastructure"
+
+        - gate: "Interface Segregation"
+          validation: "Interfaces designed for specific business needs"
+          measurement: "Interface cohesion metrics and usage analysis"
+          automation: "Interface analysis and usage tracking"
+
+    visual_architecture_validation:
+      stakeholder_comprehension:
+        criteria:
+          - gate: "Executive Understanding"
+            validation: "Executives can understand business value from diagrams"
+            measurement: "Stakeholder feedback and comprehension testing"
+            evidence: "Executive sign-off on system context and value diagrams"
+
+          - gate: "Technical Team Clarity"
+            validation: "Development team can implement from architectural diagrams"
+            measurement: "Implementation matches architectural design"
+            evidence: "Code review confirms architecture compliance"
+
+          - gate: "Operational Readiness"
+            validation: "Operations team understands deployment and monitoring"
+            measurement: "Operational procedures aligned with architecture"
+            evidence: "Operations team sign-off on deployment diagrams"
+
+  atdd_architecture_validation:
+    test_integration_readiness:
+      criteria:
+        - gate: "Service Testability"
+          validation: "Business services can be tested through dependency injection"
+          measurement: "Test configuration successfully injects real services"
+          evidence: "Sample acceptance tests execute with real business services"
+
+        - gate: "Production Service Integration"
+          validation: "Architecture supports acceptance tests calling production services"
+          measurement: "Test environment can access business services"
+          evidence: "Acceptance test framework configured with service access"
+
+        - gate: "Business Logic Accessibility"
+          validation: "Business workflows accessible through clear APIs"
+          measurement: "Business operations can be invoked from acceptance tests"
+          evidence: "API documentation shows business operation availability"
+
+# ==================================================================================
+# DELIVERABLES AND OUTPUTS
+# ==================================================================================
+
+design_wave_deliverables:
+  primary_deliverables:
+    - deliverable: "Hexagonal Architecture Specification"
+      description: "Comprehensive architectural design with hexagonal principles"
+      components:
+        - "Business logic core design and component specification"
+        - "Port interface definitions and contracts"
+        - "Adapter implementation specifications and integration patterns"
+        - "Dependency injection configuration and service registration"
+      stakeholder_approval:
+        ["Solution Architect", "Technical Lead", "Development Team"]
+
+    - deliverable: "Visual Architecture Documentation"
+      description: "Stakeholder-specific visual architecture representations"
+      components:
+        - "Executive system context and business value diagrams"
+        - "Technical component and sequence diagrams"
+        - "Operational deployment and monitoring architecture"
+        - "Business process and capability mapping diagrams"
+      stakeholder_approval: ["All stakeholder groups - role-specific approval"]
+
+    - deliverable: "Technology Stack Specification"
+      description: "Selected technologies with ATDD compatibility validation"
+      components:
+        - "Framework and library selections with rationale"
+        - "Database and persistence technology choices"
+        - "Testing framework and automation tool selection"
+        - "Development and deployment tool specifications"
+      stakeholder_approval:
+        ["Technical Lead", "DevOps Lead", "Quality Assurance"]
+
+    - deliverable: "ATDD Integration Architecture"
+      description: "Architecture designed for acceptance test driven development"
+      components:
+        - "Service layer design for test integration"
+        - "Dependency injection configuration for testing"
+        - "Test environment architecture and data management"
+        - "Production service integration patterns for acceptance tests"
+      stakeholder_approval:
+        ["QA Lead", "Test Automation Specialist", "Development Team"]
+
+  transition_criteria:
+    ready_for_distill_wave:
+      - criterion: "Architecture Design Complete"
+        validation: "All architectural components designed and documented"
+
+      - criterion: "Technology Stack Confirmed"
+        validation: "Technology choices validated for ATDD compatibility"
+
+      - criterion: "Visual Architecture Approved"
+        validation: "All stakeholder groups approve their respective architectural views"
+
+      - criterion: "Test Integration Ready"
+        validation: "Architecture supports acceptance test automation"
+
+      - criterion: "Implementation Ready"
+        validation: "Sufficient architectural detail for development team to begin implementation"
+
+# ==================================================================================
+# INTERACTIVE ELEMENTS FOR TEMPLATE USAGE
+# ==================================================================================
+
+interactive_guidance:
+  architecture_design_wizard:
+    step_by_step_guidance:
+      - step: "Business Logic Core Design"
+        questions:
+          - "What are the primary business entities in your domain?"
+          - "What business operations need to be supported?"
+          - "What business rules and constraints must be enforced?"
+        deliverable: "Domain model and business service interfaces"
+
+      - step: "Port Interface Definition"
+        questions:
+          - "What external systems does your application need to integrate with?"
+          - "What data persistence requirements do you have?"
+          - "What external services will your application consume?"
+        deliverable: "Port interface specifications and contracts"
+
+      - step: "Technology Selection"
+        questions:
+          - "What is your team's experience with different technology stacks?"
+          - "What are your performance and scalability requirements?"
+          - "What testing and automation capabilities do you need?"
+        deliverable: "Technology stack specification with rationale"
+
+  visual_architecture_customization:
+    diagram_templates:
+      - template: "System Context Diagram"
+        customization_points:
+          - "External actors and systems specific to your domain"
+          - "Business value flows relevant to your organization"
+          - "Compliance and regulatory requirements"
+        interactive_elements:
+          - "Drag-and-drop component positioning"
+          - "Editable text labels and descriptions"
+          - "Color coding for different stakeholder concerns"
+
+      - template: "Component Architecture Diagram"
+        customization_points:
+          - "Technology-specific component representations"
+          - "API and integration patterns"
+          - "Security and authentication boundaries"
+        interactive_elements:
+          - "Zoomable component details"
+          - "Linked API documentation"
+          - "Code mapping and traceability"
+
+  quality_assessment_tools:
+    architecture_quality_checklist:
+      hexagonal_compliance:
+        - "✓ Business logic isolated from external concerns"
+        - "✓ Dependencies point inward toward business core"
+        - "✓ External integrations through port/adapter pattern"
+        - "✓ Business interfaces defined by business needs, not technology"
+
+      atdd_readiness:
+        - "✓ Business services accessible through dependency injection"
+        - "✓ Service interfaces use business language and terminology"
+        - "✓ Architecture supports real service integration in tests"
+        - "✓ Test environment can be configured with production services"
+
+      visual_architecture_effectiveness:
+        - "✓ Stakeholders can understand their relevant architectural views"
+        - "✓ Diagrams accurately represent intended implementation"
+        - "✓ Visual documentation supports decision-making and communication"
+        - "✓ Architecture evolution can be tracked and communicated"
+
+usage_documentation: |
+  # Template Usage Instructions
+
+  This highly interactive template supports comprehensive architectural design and visual communication for the DESIGN wave of the nWave methodology.
+
+  ## Customization Guidelines
+
+  1. **Adapt architectural patterns** to match your technology choices and constraints
+  2. **Customize visual representations** for your stakeholder groups and communication needs
+  3. **Select technologies** that support both your business requirements and ATDD methodology
+  4. **Design service interfaces** using business language and domain terminology
+
+  ## Success Indicators
+
+  - ✅ Hexagonal architecture designed with clear business logic isolation
+  - ✅ Visual architecture documentation approved by all stakeholder groups
+  - ✅ Technology stack selected and validated for ATDD compatibility
+  - ✅ Service layer designed for acceptance test integration
+  - ✅ Architecture supports automated diagram generation and synchronization
+
+  ## Next Wave Preparation
+
+  Use the architectural design and technology specifications from this template as foundation for acceptance test creation in the DISTILL wave, ensuring seamless transition from design to test-driven implementation.

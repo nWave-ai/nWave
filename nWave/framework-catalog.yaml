@@ -1,0 +1,351 @@
+# ============================================================================
+# nWave Framework Catalog — Metadata Reference
+# ============================================================================
+#
+# This file is the central metadata reference for the nWave framework.
+# Command frontmatter (description, argument_hint) lives in source task
+# files (nWave/tasks/nw/*.md) as YAML frontmatter blocks.
+#
+# What this file contains:
+# - Agent→Wave assignments (which agents belong to which methodology phase)
+# - Command-to-agent mappings and output declarations
+# - Quality gates and validation rules
+# - Reference materials and template registry
+# ============================================================================
+
+name: "nWave"
+version: "2.14.9"
+description: "Comprehensive DISCOVER→DISCUSS→DESIGN→DEVOP→DISTILL→DELIVER methodology with visual architecture lifecycle management"
+author: "nWave Team"
+license: "MIT"
+documentation_url: "https://github.com/your-org/nwave/nWave"
+
+# Core methodology implementation
+methodology: "nWave"
+wave_phases:
+  - "DISCOVER"
+  - "DISCUSS"
+  - "DESIGN"
+  - "DEVOP"
+  - "DISTILL"
+  - "DELIVER"
+
+# Agent registry with wave assignments
+# NOTE: Agent names must match filenames in nWave/agents/ (using hyphens, not underscores)
+agents:
+  # nWave Core Agents (Wave-Specific)
+  product-discoverer:
+    wave: "DISCOVER"
+    priority: 1
+    role: "product_discovery"
+    description: "Evidence-based product discovery and market validation"
+
+  product-owner:
+    wave: "DISCUSS"
+    priority: 1
+    role: "requirements_and_ux_design"
+    description: "UX journey design, emotional arcs, requirements gathering, BDD acceptance criteria (Luna)"
+
+  solution-architect:
+    wave: "DESIGN"
+    priority: 1
+    role: "architecture_design"
+    description: "System architecture and technical design"
+
+  acceptance-designer:
+    wave: "DISTILL"
+    priority: 1
+    role: "test_scenarios"
+    description: "BDD scenarios and acceptance criteria"
+
+  software-crafter:
+    wave: "DELIVER"
+    priority: 1
+    role: "outside_in_tdd"
+    knowledge_preservation: "COMPLETE"
+    description: "Outside-in TDD implementation and refactoring"
+
+  platform-architect:
+    wave: "DEVOP"
+    priority: 1
+    role: "platform_and_delivery"
+    description: "Platform infrastructure design, CI/CD, deployment, and production readiness"
+
+  # Cross-Wave Specialist Agents
+  researcher:
+    wave: "CROSS_WAVE"
+    priority: 1
+    role: "evidence_driven_research"
+    methodology: "SOURCE_VERIFICATION"
+    knowledge_preservation: "COMPLETE"
+    description: "Evidence-based research with source verification"
+
+  troubleshooter:
+    wave: "CROSS_WAVE"
+    priority: 2
+    role: "problem_investigation"
+    methodology: "TOYOTA_5_WHYS"
+    description: "Root cause analysis and problem investigation"
+
+  documentarist:
+    wave: "CROSS_WAVE"
+    priority: 1
+    role: "documentation_quality"
+    methodology: "DIVIO_DIATAXIS"
+    collaboration_mode: "QUALITY_GUARDIAN"
+    description: "DIVIO-compliant documentation quality assurance"
+
+  visual-architect:
+    wave: "CROSS_WAVE"
+    priority: 1
+    role: "visual_architecture"
+    collaboration_scope: "ALL_WAVES"
+    description: "Architecture diagrams and visual documentation"
+
+  data-engineer:
+    wave: "CROSS_WAVE"
+    priority: 2
+    role: "data_architecture"
+    description: "Database design and data pipeline architecture"
+
+  agent-builder:
+    wave: "CROSS_WAVE"
+    priority: 3
+    role: "agent_development"
+    description: "Create and validate new specialized agents"
+
+  illustrator:
+    wave: "CROSS_WAVE"
+    priority: 2
+    role: "visual_design"
+    description: "Create 2D diagrams and visual artifacts"
+
+  product-owner-reviewer:
+    wave: "CROSS_WAVE"
+    priority: 2
+    role: "requirements_and_ux_review"
+    description: "Journey coherence, DoR validation, requirements quality review (Eclipse)"
+
+
+# Command mappings
+commands:
+  # nWave Core Commands
+  discover:
+    description: "Evidence-based product discovery and market validation"
+    argument_hint: "[product-concept] - Optional: --interview-depth=[overview|comprehensive] --output-format=[md|yaml]"
+    agents: ["product-discoverer"]
+    wave: "DISCOVER"
+    outputs: ["problem_validation", "opportunity_tree", "lean_canvas"]
+
+  discuss:
+    description: "UX journey design, requirements gathering, and business analysis"
+    argument_hint: "[feature-name] - Optional: --phase=[journey|requirements] --interactive=[high|moderate] --output-format=[md|yaml]"
+    agents: ["product-owner"]
+    wave: "DISCUSS"
+    outputs: ["journey_sketch", "emotional_arc", "shared_artifacts", "requirements_document", "user_stories"]
+
+  design:
+    description: "Architecture design with visual representation"
+    argument_hint: "[component-name] - Optional: --architecture=[hexagonal|layered|microservices] --diagram-format=[mermaid|plantuml]"
+    agents: ["solution-architect", "visual-architect"]
+    wave: "DESIGN"
+    outputs: ["architecture_document", "architecture_diagrams"]
+
+  distill:
+    description: "Acceptance test creation and business validation"
+    argument_hint: "[story-id] - Optional: --test-framework=[cucumber|specflow|pytest-bdd] --integration=[real-services|mocks]"
+    agents: ["acceptance-designer"]
+    wave: "DISTILL"
+    outputs: ["acceptance_tests", "test_scenarios"]
+
+  deliver:
+    description: "Execute complete DELIVER wave: roadmap → execute-all → finalize"
+    argument_hint: "[feature-description] - Example: \"Implement user authentication with JWT\""
+    agents: ["platform-architect"]
+    wave: "DELIVER"
+    outputs: ["complete_feature", "quality_gates_passed", "evolution_document"]
+
+  document:
+    description: "Create evidence-based DIVIO-compliant documentation"
+    argument_hint: "[topic/component] - Optional: --type=[tutorial|howto|reference|explanation] --research-depth=[overview|detailed|comprehensive|deep-dive]"
+    agents: ["researcher", "documentarist"]
+    wave: "CROSS_WAVE"
+    outputs: ["research_document", "divio_documentation", "validation_report"]
+
+  mutation_test:
+    description: "Mutation testing quality gate for test suite validation"
+    argument_hint: "[project-id] - Optional: --threshold=[75|80|85] --language=[auto|python|java|javascript]"
+    agents: ["software_crafter"]
+    wave: "DELIVER"
+    outputs: ["mutation_report"]
+
+  devops:
+    description: "Platform readiness, CI/CD, infrastructure, and deployment design"
+    argument_hint: "[deployment-target] - Optional: --environment=[staging|production] --validation=[full|smoke]"
+    agents: ["platform-architect"]
+    wave: "DEVOP"
+    outputs: ["infrastructure_design", "ci_cd_pipeline", "deployment_strategy"]
+
+  # Specialist Commands
+  mikado:
+    description: "[EXPERIMENTAL] Complex refactoring roadmaps with visual tracking"
+    argument_hint: "[refactoring-goal] - Optional: --complexity=[simple|moderate|complex] --visualization=[tree|graph]"
+    agents:
+      ["software-crafter", "visual-architect"]
+    outputs: ["refactoring_roadmap", "dependency_diagrams"]
+
+  # NOTE: skeleton command removed - Walking Skeleton functionality integrated into /nw:discuss
+  # See nWave/tasks/nw/discuss.md for greenfield project detection and WS suggestion logic
+
+  root_why:
+    description: "Root cause analysis and debugging"
+    argument_hint: "[problem-description] - Optional: --depth=[3|5|7-whys] --output=[text|diagram|report]"
+    agents: ["troubleshooter"]
+    outputs: ["root_cause_analysis", "investigation_report"]
+
+  diagram:
+    description: "Architecture diagram management"
+    argument_hint: "[diagram-type] - Optional: --format=[mermaid|plantuml|c4] --level=[context|container|component]"
+    agents: ["visual-architect"]
+    outputs: ["updated_diagrams", "visual_architecture"]
+
+  refactor:
+    description: "Systematic refactoring with Mikado Method"
+    argument_hint: "[target-class-or-module] - Optional: --level=[1-6] --method=[extract|inline|rename|move] --scope=[method|class|module]"
+    agents: ["systematic_refactorer"]
+    outputs: ["refactored_code", "refactoring_log"]
+
+  roadmap:
+    description: "Create comprehensive planning document"
+    argument_hint: "[agent] [goal-description] - Example: @solution-architect \"Migrate to microservices\""
+    outputs: ["roadmap_yaml"]
+
+  review:
+    description: "Expert critique and quality review - Types: roadmap, step, task, implementation"
+    argument_hint: "[agent] [artifact-type] [artifact-path] - Example: @software-crafter task \"roadmap.yaml\""
+    outputs: ["review_report"]
+
+  execute:
+    description: "Execute atomic task with state tracking"
+    argument_hint: "[agent] [step-id] - Example: @software-crafter \"01-01\""
+    outputs: ["task_results"]
+
+  finalize:
+    description: "Summarize achievements, archive to docs/evolution, clean up feature files"
+    argument_hint: "[agent] [project-id] - Example: @platform-architect \"auth-upgrade\""
+    outputs: ["evolution_document"]
+
+# ============================================================================
+# Workflow Configurations (DEPRECATED - Historical Reference Only)
+# ============================================================================
+# Workflow orchestrators are no longer generated from these YAML definitions.
+# This section is preserved for historical reference but is not actively used.
+# ============================================================================
+#
+# workflows:
+#   greenfield:
+#     name: "nWave-greenfield"
+#     description: "Complete greenfield development with visual architecture"
+#     phases: ["DISCUSS", "DESIGN", "DEVOP", "DISTILL", "DELIVER"]
+#
+#   brownfield:
+#     name: "nWave-brownfield"
+#     description: "Legacy system enhancement with visual refactoring"
+#     phases: ["DISCUSS", "DESIGN", "DEVOP", "DISTILL", "DELIVER"]
+#     special_agents:
+#       ["mikado_refactoring_specialist_enhanced", "walking_skeleton_helper"]
+#
+#   rapid_prototype:
+#     name: "5d-rapid-prototype"
+#     description: "Streamlined validation with essential visual architecture"
+#     phases: ["DISCUSS", "DESIGN", "DEVOP", "DELIVER"]
+
+# Quality gates and validation
+quality_gates:
+  knowledge_preservation:
+    software-crafter: "925_lines_methodology"
+    systematic_refactorer: "complete_refactoring_mechanics"
+    mikado_specialist: "enhanced_methodology_full"
+
+  visual_architecture:
+    diagram_synchronization: true
+    evolution_tracking: true
+    validation_integration: true
+
+  methodology_compliance:
+    atdd_integration: true
+    outside_in_tdd: true
+    toyota_5_whys: true
+    alistair_cockburn_skeleton: true
+
+# Knowledge base and reference materials
+# knowledge_base removed - content integrated into agent definitions
+# methodology_guide previously referenced data/bmad-kb.md (predecessor framework)
+reference_materials:
+  atdd_patterns:
+    file: "data/atdd-patterns.md"
+    description: "ATDD implementation patterns and anti-patterns"
+    focus: "production_service_integration_troubleshooting"
+
+  outside_in_tdd:
+    file: "data/outside-in-tdd-reference.md"
+    description: "Outside-In TDD with double-loop architecture guide"
+    methodology: "four_stage_atdd_technology_examples"
+
+  visual_architecture:
+    file: "data/visual-architecture-principles.md"
+    description: "Stakeholder communication and implementation synchronization"
+    approach: "multi_audience_visualization_automation"
+
+  systematic_refactoring:
+    file: "data/systematic-refactoring-guide.md"
+    description: "Six-level refactoring hierarchy with progressive implementation"
+    integration: "tdd_cycles_technology_examples"
+
+# Interactive workflow templates
+templates:
+  wave_templates:
+    discuss_interactive:
+      file: "templates/discuss-requirements-interactive.yaml"
+      description: "Highly interactive requirements elicitation for DISCUSS wave"
+      interactivity: "high"
+      framework: "stakeholder_collaboration_three_amigos"
+
+    design_interactive:
+      file: "templates/design-architecture-interactive.yaml"
+      description: "Highly interactive architectural design for DESIGN wave"
+      interactivity: "high"
+      focus: "hexagonal_architecture_visual_stakeholder_communication"
+
+    distill_moderate:
+      file: "templates/distill-acceptance-tests.yaml"
+      description: "Moderately interactive acceptance test creation for DISTILL wave"
+      interactivity: "moderate"
+      patterns: "production_service_integration_given_when_then"
+
+    devops_moderate:
+      file: "templates/devops-production-readiness.yaml"
+      description: "Moderately interactive platform readiness for DEVOP wave"
+      interactivity: "moderate"
+      validation: "deployment_infrastructure_design"
+
+    deliver_simple:
+      file: "templates/deliver-outside-in-tdd.yaml"
+      description: "Simple implementation-focused template for DELIVER wave"
+      interactivity: "simple"
+      methodology: "outside_in_tdd_systematic_refactoring"
+
+  comprehensive_template:
+    complete_methodology:
+      file: "templates/nWave-complete-methodology.yaml"
+      description: "Comprehensive orchestration for complete nWave methodology"
+      interactivity: "high"
+      scope: "end_to_end_methodology_execution"
+
+# Integration settings
+integration:
+  agent_collaboration_patterns: true
+  visual_architecture_lifecycle: true
+  cross_wave_coordination: true
+  knowledge_base_accessibility: true
+  template_orchestration_support: true

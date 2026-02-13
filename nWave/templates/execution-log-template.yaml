@@ -1,0 +1,90 @@
+# Execution Log Template - Schema v2.0 (Append-Only Event Log)
+# Token-minimal architecture: ~15 tokens per phase event vs ~500 tokens (nested format)
+# Total savings: 98% reduction (2.6k tokens vs 175k for 25 steps × 7 phases)
+
+# Header (written ONCE by orchestrator when initializing project)
+project_id: ""  # kebab-case project identifier (e.g., "audit-log-refactor")
+created_at: ""  # ISO 8601 timestamp when project started
+total_steps: 0  # Total number of steps in roadmap
+
+# Event log (APPEND-ONLY by agent - ONE LINE per phase)
+# Format: "step_id|phase|status|data|timestamp"
+# - step_id: Step identifier (e.g., "01-01")
+# - phase: Phase name (PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN, REVIEW, REFACTOR_CONTINUOUS, COMMIT)
+# - status: EXECUTED or SKIPPED
+# - data:
+#   - For EXECUTED: outcome (PASS, FAIL, UNEXPECTED_GREEN)
+#   - For SKIPPED: reason with prefix (NOT_APPLICABLE:reason, APPROVED_SKIP:reason, etc.)
+# - timestamp: ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ in UTC)
+
+events: []
+  # Example events (agent appends one line per phase):
+  # - "01-01|PREPARE|EXECUTED|PASS|2026-02-05T14:00:00Z"
+  # - "01-01|RED_ACCEPTANCE|EXECUTED|PASS|2026-02-05T14:05:00Z"
+  # - "01-01|RED_UNIT|SKIPPED|NOT_APPLICABLE:Acceptance tests provide complete coverage|2026-02-05T14:06:00Z"
+  # - "01-01|GREEN|EXECUTED|PASS|2026-02-05T14:15:00Z"
+  # - "01-01|REVIEW|EXECUTED|PASS|2026-02-05T14:20:00Z"
+  # - "01-01|REFACTOR_CONTINUOUS|SKIPPED|APPROVED_SKIP:Clean implementation <30 LOC|2026-02-05T14:21:00Z"
+  # - "01-01|COMMIT|EXECUTED|PASS|2026-02-05T14:25:00Z"
+  # - "01-02|PREPARE|EXECUTED|PASS|2026-02-05T14:30:00Z"
+
+# Usage Instructions for Agent:
+# 1. DO NOT read this file (orchestrator provides current state in prompt)
+# 2. After EACH phase completion, append ONE event line using Bash:
+#    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+#    echo '  - "01-01|PREPARE|EXECUTED|PASS|'$timestamp'"' >> execution-log.yaml
+# 3. Use Edit tool with careful string escaping if Bash unavailable
+# 4. NEVER re-read this file (append-only, no verification reads)
+# 5. SubagentStop hook validates completion at end
+
+# Valid SKIPPED Prefixes (allow commit):
+# - "NOT_APPLICABLE:" - Phase not applicable for this task type
+# - "APPROVED_SKIP:" - Explicitly approved by reviewer
+# - "BLOCKED_BY_DEPENDENCY:" - External dependency unavailable
+# - "CHECKPOINT_PENDING:" - Waiting at TDD checkpoint
+
+# Invalid SKIPPED Prefixes (block commit):
+# - "DEFERRED:" - Incomplete work that must be resolved
+
+# Valid Outcomes for EXECUTED:
+# - PASS - Phase completed successfully
+# - FAIL - Phase failed (implementation incomplete, tests failing, etc.)
+# - UNEXPECTED_GREEN - Tests passed when expected to fail (RED phase only)
+
+# Hook Verification Algorithm:
+# 1. Load YAML and extract events list
+# 2. Filter events for requested step_id
+# 3. Verify all 7 phases present (from step-tdd-cycle-schema.json)
+# 4. For EXECUTED: verify outcome is PASS/FAIL/UNEXPECTED_GREEN
+# 5. For SKIPPED: verify reason has valid prefix
+# 6. Block commit if any DEFERRED prefix found
+# 7. Verify COMMIT phase has outcome=PASS (terminal phase)
+
+# Token Comparison:
+# Schema v1.0 (nested): ~500 tokens per phase × 7 phases = 3,500 tokens/step
+# Schema v2.0 (append-only): ~15 tokens per event × 7 phases = 105 tokens/step
+# Savings: 97% reduction per step
+# For 25 steps: 87,500 tokens → 2,625 tokens (96.5k tokens saved!)
+
+# Benefits:
+# 1. Agent never re-reads file (pure append)
+# 2. Immediate visibility: grep "01-01" execution-log.yaml shows all phases
+# 3. Easy correction: insert missing event line if phase skipped
+# 4. Hook reads file once (~3KB), filters by step_id, validates
+# 5. Human-readable progress tracking
+# 6. Minimal token overhead
+
+# Integration with TDD Cycle (7 phases - Schema v3.0):
+# Phase 0 (PREPARE): Remove @skip, verify setup
+# Phase 1 (RED_ACCEPTANCE): Run test, expect FAIL
+# Phase 2 (RED_UNIT): Write failing unit tests
+# Phase 3 (GREEN): Implement to pass all tests
+# Phase 4 (REVIEW): Quality review + post-refactor validation
+# Phase 5 (REFACTOR_CONTINUOUS): L1-L3 progressive refactoring
+# Phase 6 (COMMIT): Final validate + commit + record files_modified
+
+# Files Modified Tracking (COMMIT phase):
+# After COMMIT phase passes, append metadata event:
+# - "01-01|FILES_MODIFIED|implementation|src/des/file.py|2026-02-05T14:25:00Z"
+# - "01-01|FILES_MODIFIED|tests|tests/des/test_file.py|2026-02-05T14:25:00Z"
+# Orchestrator extracts these for mutation testing scope discovery

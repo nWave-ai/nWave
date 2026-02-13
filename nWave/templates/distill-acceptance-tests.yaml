@@ -1,0 +1,795 @@
+---
+template_type: "moderate-distill-acceptance-tests"
+methodology: "nWave ATDD"
+wave: "DISTILL"
+interactivity_level: "moderate"
+description: "Moderately interactive acceptance test creation template for DISTILL wave with production service integration patterns and Given-When-Then automation"
+version: "1.0.0"
+
+# ==================================================================================
+# DISTILL WAVE: Acceptance Test Creation and Production Service Integration
+# ==================================================================================
+
+metadata:
+  template_name: "DISTILL Wave Acceptance Test Template"
+  methodology_focus: "Given-When-Then Acceptance Tests with Production Service Integration"
+  complexity_support: "Progressive test automation with business validation"
+  integration_pattern: "Real system integration with minimal mocking approach"
+
+# ==================================================================================
+# ACCEPTANCE TEST CREATION FRAMEWORK
+# ==================================================================================
+
+acceptance_test_structure:
+  given_when_then_specifications:
+    given_clause_guidelines:
+      purpose: "Establish business context and preconditions"
+      business_language_requirements:
+        - "Use domain terminology from business glossary"
+        - "Describe business state, not technical implementation"
+        - "Focus on business entities and their relationships"
+        - "Avoid technical infrastructure details"
+
+      specification_patterns:
+        business_entity_state: |
+          Given I am a [business role] with [business characteristics]
+          Given the [business entity] has [business state]
+          Given the [business process] is in [business condition]
+
+        business_context_setup: |
+          Given the following [business entities] exist:
+            | [business attribute] | [business value] |
+            | [business attribute] | [business value] |
+
+        business_preconditions: |
+          Given [business condition] is true
+          Given [business rule] is enforced
+          Given [business policy] is active
+
+      examples_by_domain:
+        e_commerce_domain: |
+          Given I am a premium customer with active membership
+          Given the product "Wireless Headphones" has 10 units in inventory
+          Given the payment gateway is operational
+          Given the shipping service supports my delivery address
+
+        financial_domain: |
+          Given I am an account holder with sufficient balance
+          Given the account "Checking-001" has $500.00 available
+          Given the transaction limit policy allows transfers up to $1000
+          Given the compliance system is operational for reporting
+
+        healthcare_domain: |
+          Given I am a registered patient with verified insurance
+          Given the appointment scheduling system has availability
+          Given my medical history is complete and accessible
+          Given the prescribing physician has active credentials
+
+    when_clause_guidelines:
+      purpose: "Define the business action or event that triggers behavior"
+      action_specification_requirements:
+        - "Single, specific business action or event"
+        - "User-centric perspective and language"
+        - "Business workflow step, not technical operation"
+        - "Measurable and observable business activity"
+
+      action_patterns:
+        user_initiated_actions: |
+          When I [business action] the [business entity]
+          When I submit [business information] for [business purpose]
+          When I request [business service] with [business parameters]
+
+        system_triggered_events: |
+          When the [business process] completes successfully
+          When the [business rule] is violated
+          When the [business event] occurs
+
+        business_workflow_steps: |
+          When I proceed through the [business process] workflow
+          When I complete the [business activity] with [business outcome]
+
+      examples_by_domain:
+        e_commerce_domain: |
+          When I place an order for 2 units of "Wireless Headphones"
+          When I apply the discount code "PREMIUM10"
+          When I select express shipping for next-day delivery
+          When I complete the checkout process with my saved payment method
+
+        financial_domain: |
+          When I transfer $200.00 from checking to savings account
+          When I submit a wire transfer request for $750.00
+          When I update my account contact information
+          When I request a monthly account statement
+
+        healthcare_domain: |
+          When I schedule an appointment with Dr. Smith for next week
+          When I submit my insurance information for verification
+          When I complete the patient intake questionnaire
+          When I request a prescription refill for my medication
+
+    then_clause_guidelines:
+      purpose: "Describe expected business outcomes and results"
+      outcome_specification_requirements:
+        - "Measurable business results and state changes"
+        - "Observable system behavior from business perspective"
+        - "Verifiable business value delivery"
+        - "Clear success criteria and business metrics"
+
+      outcome_patterns:
+        business_state_changes: |
+          Then the [business entity] should be [new business state]
+          Then my [business account/profile] should show [business information]
+          Then the [business process] should be [business status]
+
+        business_value_delivery: |
+          Then I should receive [business service] within [business timeframe]
+          Then the system should provide [business capability] for [business purpose]
+          Then [business stakeholder] should be notified of [business event]
+
+        business_validation: |
+          Then the [business rule] should be enforced
+          Then the [business policy] should be applied
+          Then [business compliance] should be maintained
+
+      examples_by_domain:
+        e_commerce_domain: |
+          Then my order should be confirmed with order number ORD-12345
+          Then the inventory should be reduced to 8 units for "Wireless Headphones"
+          Then I should receive order confirmation email within 5 minutes
+          Then my order status should show "Processing" in my account
+
+        financial_domain: |
+          Then my checking account balance should show $300.00
+          Then my savings account balance should show $200.00 increase
+          Then I should receive transfer confirmation via email and SMS
+          Then the transaction should appear in my account history
+
+        healthcare_domain: |
+          Then my appointment should be confirmed for [date] at [time]
+          Then Dr. Smith should receive notification of the new appointment
+          Then I should receive appointment reminder 24 hours before
+          Then the appointment should appear in my patient portal
+
+# ==================================================================================
+# PRODUCTION SERVICE INTEGRATION PATTERNS
+# ==================================================================================
+
+production_service_integration:
+  step_method_implementation_pattern:
+    mandatory_production_service_calls:
+      pattern_enforcement: "All step methods MUST call production services via dependency injection"
+      anti_pattern_prevention: "Step methods MUST NOT implement business logic directly"
+
+      correct_implementation_template: |
+        ```csharp
+        [Given("I am a premium customer with active membership")]
+        public async Task GivenPremiumCustomerWithActiveMembership()
+        {
+            // Setup test data only - no business logic
+            _currentCustomer = TestDataBuilder.CreatePremiumCustomer();
+
+            // Use production service to create customer state
+            var customerService = _serviceProvider.GetRequiredService<ICustomerService>();
+            await customerService.CreateCustomerAsync(_currentCustomer);
+        }
+
+        [When("I place an order for {int} units of {string}")]
+        public async Task WhenPlaceOrderForUnits(int quantity, string productName)
+        {
+            var orderRequest = new OrderRequest
+            {
+                CustomerId = _currentCustomer.Id,
+                Items = new[] { new OrderItem(productName, quantity) }
+            };
+
+            // REQUIRED: Call production service
+            var orderService = _serviceProvider.GetRequiredService<IOrderService>();
+            _orderResult = await orderService.PlaceOrderAsync(orderRequest);
+        }
+
+        [Then("my order should be confirmed with order number {string}")]
+        public async Task ThenOrderShouldBeConfirmedWithOrderNumber(string expectedOrderNumber)
+        {
+            // Validate through production service
+            var orderService = _serviceProvider.GetRequiredService<IOrderService>();
+            var order = await orderService.GetOrderAsync(_orderResult.OrderId);
+
+            order.Should().NotBeNull();
+            order.OrderNumber.Should().Be(expectedOrderNumber);
+            order.Status.Should().Be(OrderStatus.Confirmed);
+        }
+        ```
+
+      forbidden_anti_patterns: |
+        ```csharp
+        // ❌ FORBIDDEN: Business logic in step method
+        [When("I place an order for {int} units of {string}")]
+        public async Task WhenPlaceOrderForUnits(int quantity, string productName)
+        {
+            // ❌ Direct test infrastructure business logic
+            var order = new Order
+            {
+                CustomerId = _currentCustomer.Id,
+                Items = new[] { new OrderItem(productName, quantity) }
+            };
+
+            _testDatabase.Orders.Add(order);
+            await _testDatabase.SaveChangesAsync();
+        }
+
+        // ❌ FORBIDDEN: Empty placeholder that always passes
+        [Then("my order should be confirmed")]
+        public async Task ThenOrderShouldBeConfirmed()
+        {
+            // ❌ Always passes regardless of system state
+            await Task.CompletedTask;
+        }
+        ```
+
+  dependency_injection_configuration:
+    service_registration_pattern:
+      production_services: |
+        ```csharp
+        // Startup.cs or DI configuration
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IInventoryService, InventoryService>();
+        services.AddScoped<INotificationService, EmailNotificationService>();
+
+        // Repository layer - real implementations
+        services.AddScoped<ICustomerRepository, DatabaseCustomerRepository>();
+        services.AddScoped<IOrderRepository, DatabaseOrderRepository>();
+
+        // Database context - test database instance
+        services.AddDbContext<BusinessDbContext>(options =>
+            options.UseInMemoryDatabase("TestDatabase"));
+        ```
+
+      test_configuration_exceptions: |
+        ```csharp
+        // Only external service boundaries should be mocked/stubbed
+        services.AddScoped<IEmailService, TestEmailService>();
+        services.AddScoped<IPaymentGateway, TestPaymentGateway>();
+        services.AddScoped<IExternalInventoryApi, StubInventoryApi>();
+
+        // Business services MUST use real implementations
+        // Domain logic MUST use real implementations
+        // Application services MUST use real implementations
+        ```
+
+  real_system_integration_validation:
+    integration_verification_checklist:
+      - validation: "Service Provider Access"
+        requirement: "All step methods access services through _serviceProvider.GetRequiredService<T>()"
+        verification: "Static analysis confirms GetRequiredService usage pattern"
+
+      - validation: "Production Service Calls"
+        requirement: "Step methods delegate business operations to production services"
+        verification: "Runtime validation shows production service method invocation"
+
+      - validation: "Business Logic Absence"
+        requirement: "No business logic implementation in step methods"
+        verification: "Code review confirms step methods contain only service calls and assertions"
+
+      - validation: "Real System Behavior"
+        requirement: "Acceptance tests validate actual business behavior"
+        verification: "Tests fail when production services are unavailable or broken"
+
+# ==================================================================================
+# ONE-E2E-AT-A-TIME STRATEGY
+# ==================================================================================
+
+test_implementation_strategy:
+  sequential_implementation_approach:
+    implementation_workflow:
+      - step: "Select Single E2E Scenario"
+        description: "Choose one high-value business scenario for implementation"
+        criteria:
+          ["Business value impact", "Risk reduction", "Learning opportunity"]
+        deliverable: "Single selected E2E test scenario"
+
+      - step: "Implement Through Outside-In TDD"
+        description: "Complete E2E scenario using double-loop TDD approach"
+        process:
+          [
+            "Write failing E2E test",
+            "Step down to unit tests",
+            "Implement production code",
+            "Return to E2E validation",
+          ]
+        deliverable: "Working E2E test with supporting unit tests"
+
+      - step: "Validate Production Integration"
+        description: "Ensure E2E test calls production services and validates real behavior"
+        validation:
+          [
+            "Service call verification",
+            "Business logic validation",
+            "Real system integration",
+          ]
+        deliverable: "Validated E2E test with production service integration"
+
+      - step: "Commit Working Implementation"
+        description: "Commit complete working implementation before next E2E test"
+        requirements:
+          [
+            "All tests passing",
+            "Code quality standards met",
+            "Production service integration validated",
+          ]
+        deliverable: "Committed working increment"
+
+      - step: "Enable Next E2E Scenario"
+        description: "Remove [Ignore] attribute from next E2E test and repeat process"
+        transition_criteria:
+          [
+            "Previous E2E test stable",
+            "Implementation complete",
+            "Quality gates passed",
+          ]
+        deliverable: "Next E2E test ready for implementation"
+
+  test_management_patterns:
+    ignore_attribute_usage: |
+      ```csharp
+      [Test]
+      public async Task CustomerPlacesOrderSuccessfully()
+      {
+          // Currently active E2E test - implementing now
+          await ExecuteOrderPlacementWorkflow();
+      }
+
+      [Test]
+      [Ignore("Temporarily disabled until order placement complete - will enable one at a time to avoid commit blocks")]
+      public async Task CustomerCancelsOrderBeforeShipping()
+      {
+          // Next E2E test - will enable after first one complete
+          await ExecuteOrderCancellationWorkflow();
+      }
+
+      [Test]
+      [Ignore("Temporarily disabled until order cancellation complete - sequential implementation strategy")]
+      public async Task CustomerReturnsOrderAfterDelivery()
+      {
+          // Future E2E test - will enable after cancellation complete
+          await ExecuteOrderReturnWorkflow();
+      }
+      ```
+
+    commit_readiness_validation:
+      mandatory_gates:
+        - gate: "Active E2E Test Passing"
+          description: "The single active E2E test must pass completely"
+          validation: "Test execution shows success, not ignored or skipped"
+
+        - gate: "All Supporting Tests Passing"
+          description: "All unit and integration tests must pass"
+          validation: "Full test suite execution with 100% pass rate"
+
+        - gate: "Production Service Integration"
+          description: "E2E test demonstrates real system integration"
+          validation: "Evidence of production service calls in test execution"
+
+        - gate: "Quality Standards Met"
+          description: "Code quality and standards compliance"
+          validation: "Static analysis and code review standards met"
+
+# ==================================================================================
+# BUSINESS VALIDATION CRITERIA
+# ==================================================================================
+
+business_validation_framework:
+  acceptance_criteria_validation:
+    business_outcome_verification:
+      validation_approach: "Verify business outcomes through production service execution"
+      measurement_patterns:
+        business_state_validation: |
+          ```csharp
+          // Validate business state through production services
+          [Then("the customer account should show the order in order history")]
+          public async Task ThenCustomerAccountShouldShowOrderInHistory()
+          {
+              var customerService = _serviceProvider.GetRequiredService<ICustomerService>();
+              var orderHistory = await customerService.GetOrderHistoryAsync(_currentCustomer.Id);
+
+              orderHistory.Should().ContainSingle(order =>
+                  order.OrderId == _orderResult.OrderId &&
+                  order.Status == OrderStatus.Confirmed);
+          }
+          ```
+
+        business_process_validation: |
+          ```csharp
+          // Validate business process execution
+          [Then("the inventory should be updated to reflect the order")]
+          public async Task ThenInventoryShouldBeUpdatedToReflectOrder()
+          {
+              var inventoryService = _serviceProvider.GetRequiredService<IInventoryService>();
+              var productInventory = await inventoryService.GetProductInventoryAsync(_orderedProduct.Id);
+
+              var expectedQuantity = _initialInventory - _orderedQuantity;
+              productInventory.AvailableQuantity.Should().Be(expectedQuantity);
+          }
+          ```
+
+        business_value_validation: |
+          ```csharp
+          // Validate business value delivery
+          [Then("the customer should receive order confirmation within {int} minutes")]
+          public async Task ThenCustomerShouldReceiveOrderConfirmation(int maxMinutes)
+          {
+              var notificationService = _serviceProvider.GetRequiredService<INotificationService>();
+              var notifications = await notificationService.GetCustomerNotificationsAsync(_currentCustomer.Id);
+
+              var confirmationNotification = notifications.Should().ContainSingle(n =>
+                  n.Type == NotificationType.OrderConfirmation &&
+                  n.OrderId == _orderResult.OrderId &&
+                  n.SentAt >= _orderPlacedAt &&
+                  n.SentAt <= _orderPlacedAt.AddMinutes(maxMinutes))
+                  .Subject;
+
+              confirmationNotification.DeliveryStatus.Should().Be(DeliveryStatus.Delivered);
+          }
+          ```
+
+  kpi_integration_patterns:
+    business_metrics_validation:
+      metric_categories:
+        customer_experience_metrics:
+          - metric: "Order Processing Time"
+            measurement: "Time from order submission to confirmation"
+            validation: "Measure actual processing time through service calls"
+            acceptance_criteria: "Order confirmed within 30 seconds"
+
+          - metric: "System Availability"
+            measurement: "Service availability during business operations"
+            validation: "Monitor service response and error rates"
+            acceptance_criteria: "99.9% availability during business hours"
+
+          - metric: "Data Accuracy"
+            measurement: "Accuracy of business data and calculations"
+            validation: "Verify calculations through multiple service calls"
+            acceptance_criteria: "100% accuracy in order totals and inventory updates"
+
+        business_process_metrics:
+          - metric: "Process Completion Rate"
+            measurement: "Percentage of business processes completing successfully"
+            validation: "Track business workflow success through service monitoring"
+            acceptance_criteria: "95% process completion rate"
+
+          - metric: "Business Rule Compliance"
+            measurement: "Adherence to business rules and policies"
+            validation: "Validate rule enforcement through service behavior"
+            acceptance_criteria: "100% business rule enforcement"
+
+# ==================================================================================
+# TEST AUTOMATION FRAMEWORK CONFIGURATION
+# ==================================================================================
+
+test_automation_setup:
+  framework_selection_criteria:
+    atdd_compatibility_requirements:
+      - requirement: "Given-When-Then Syntax Support"
+        frameworks: ["SpecFlow (.NET)", "Cucumber (Java/JS)", "Behave (Python)"]
+        evaluation: "Native support for Gherkin syntax and business language"
+
+      - requirement: "Dependency Injection Integration"
+        frameworks:
+          [
+            "SpecFlow with DI",
+            "Cucumber with Spring",
+            "Behave with DI containers",
+          ]
+        evaluation: "Seamless integration with production service DI configuration"
+
+      - requirement: "Production Service Access"
+        frameworks: ["Framework supports real service integration"]
+        evaluation: "Can configure and access production services from step methods"
+
+  test_environment_configuration:
+    service_integration_setup: |
+      ```csharp
+      // Test startup configuration
+      public class TestStartup
+      {
+          public void ConfigureServices(IServiceCollection services)
+          {
+              // Production services - REQUIRED
+              services.AddScoped<ICustomerService, CustomerService>();
+              services.AddScoped<IOrderService, OrderService>();
+              services.AddScoped<IPaymentService, PaymentService>();
+
+              // Infrastructure - test-appropriate implementations
+              services.AddDbContext<BusinessDbContext>(options =>
+                  options.UseInMemoryDatabase("AcceptanceTestDb"));
+
+              // External services - test doubles only at boundaries
+              services.AddScoped<IEmailService, TestEmailService>();
+              services.AddScoped<IPaymentGateway, TestPaymentGateway>();
+          }
+
+          public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+          {
+              // Configure for acceptance test execution
+              app.UseAuthentication();
+              app.UseAuthorization();
+              // Other middleware configuration
+          }
+      }
+      ```
+
+    test_data_management:
+      data_setup_patterns:
+        - pattern: "Test Data Builders"
+          description: "Create consistent test data for business scenarios"
+          implementation: |
+            ```csharp
+            public class TestDataBuilder
+            {
+                public static Customer CreatePremiumCustomer()
+                {
+                    return new Customer
+                    {
+                        Id = CustomerId.New(),
+                        Name = "John Premium",
+                        Email = "john.premium@example.com",
+                        MembershipType = MembershipType.Premium,
+                        MembershipStartDate = DateTime.UtcNow.AddYears(-2)
+                    };
+                }
+
+                public static Product CreateProductWithInventory(string name, int quantity)
+                {
+                    return new Product
+                    {
+                        Id = ProductId.New(),
+                        Name = name,
+                        Price = 99.99m,
+                        InventoryQuantity = quantity,
+                        IsActive = true
+                    };
+                }
+            }
+            ```
+
+        - pattern: "Database Seeding"
+          description: "Prepare consistent database state for tests"
+          implementation: |
+            ```csharp
+            public class DatabaseSeeder
+            {
+                public static async Task SeedAcceptanceTestData(IServiceProvider serviceProvider)
+                {
+                    var context = serviceProvider.GetRequiredService<BusinessDbContext>();
+
+                    // Ensure clean database state
+                    await context.Database.EnsureDeletedAsync();
+                    await context.Database.EnsureCreatedAsync();
+
+                    // Seed reference data needed for business operations
+                    await SeedProductCatalog(context);
+                    await SeedBusinessPolicies(context);
+                    await SeedPaymentMethods(context);
+                }
+            }
+            ```
+
+# ==================================================================================
+# QUALITY GATES AND VALIDATION
+# ==================================================================================
+
+distill_wave_quality_gates:
+  acceptance_test_quality_validation:
+    test_specification_quality:
+      criteria:
+        - gate: "Business Language Usage"
+          validation: "All tests written in domain terminology"
+          measurement: "Business stakeholder can understand test scenarios"
+          evidence: "Business stakeholder review and approval of test scenarios"
+
+        - gate: "Given-When-Then Structure"
+          validation: "All scenarios follow proper Given-When-Then format"
+          measurement: "Automated analysis of test structure compliance"
+          evidence: "Test framework validation reports"
+
+        - gate: "Production Service Integration"
+          validation: "All step methods call production services"
+          measurement: "Static analysis confirms GetRequiredService usage"
+          evidence: "Production service call verification report"
+
+        - gate: "Business Outcome Validation"
+          validation: "Tests verify business value delivery"
+          measurement: "Test assertions validate business outcomes, not technical implementation"
+          evidence: "Test review confirms business value validation"
+
+  production_integration_validation:
+    service_integration_compliance:
+      criteria:
+        - gate: "Mandatory Service Calls"
+          validation: "100% of step methods call production services via dependency injection"
+          measurement: "Automated code analysis and runtime verification"
+          evidence: "Service call audit trail and compliance report"
+
+        - gate: "Test Infrastructure Boundary"
+          validation: "Test infrastructure limited to setup/teardown only"
+          measurement: "No business logic found in test infrastructure classes"
+          evidence: "Code review and static analysis confirmation"
+
+        - gate: "Real System Integration"
+          validation: "Tests validate actual system behavior through production services"
+          measurement: "Test failures when production services unavailable"
+          evidence: "Service availability test and failure demonstration"
+
+  test_automation_validation:
+    automation_effectiveness:
+      criteria:
+        - gate: "One-E2E-at-a-Time Compliance"
+          validation: "Only one E2E test active at a time"
+          measurement: "Test execution shows single active E2E test"
+          evidence: "Test suite analysis and [Ignore] attribute usage report"
+
+        - gate: "Commit Readiness"
+          validation: "All active tests pass before commit"
+          measurement: "100% pass rate for active test suite"
+          evidence: "Continuous integration build success report"
+
+        - gate: "Business Scenario Coverage"
+          validation: "All critical business scenarios have acceptance tests"
+          measurement: "Traceability from business requirements to acceptance tests"
+          evidence: "Requirements coverage analysis and gap assessment"
+
+# ==================================================================================
+# DELIVERABLES AND OUTPUTS
+# ==================================================================================
+
+distill_wave_deliverables:
+  primary_deliverables:
+    - deliverable: "Acceptance Test Suite"
+      description: "Comprehensive Given-When-Then acceptance tests for all business scenarios"
+      components:
+        - "Business scenario specifications in Gherkin format"
+        - "Step method implementations with production service integration"
+        - "Test data builders and setup utilities"
+        - "Test execution configuration and environment setup"
+      stakeholder_approval: ["Product Owner", "QA Lead", "Development Team"]
+
+    - deliverable: "Production Service Integration Framework"
+      description: "Framework for real system integration in acceptance tests"
+      components:
+        - "Dependency injection configuration for test and production services"
+        - "Service integration patterns and anti-pattern prevention"
+        - "Test environment configuration with production service access"
+        - "Service call validation and audit trail implementation"
+      stakeholder_approval: ["Technical Lead", "QA Lead", "DevOps Engineer"]
+
+    - deliverable: "Business Validation Criteria"
+      description: "Measurable business success criteria and KPI integration"
+      components:
+        - "Business outcome validation patterns and examples"
+        - "KPI measurement integration with acceptance test execution"
+        - "Business value delivery verification procedures"
+        - "Customer satisfaction and business metric tracking"
+      stakeholder_approval: ["Product Owner", "Business Stakeholder", "QA Lead"]
+
+    - deliverable: "Test Automation Strategy"
+      description: "Strategy for sustainable acceptance test automation"
+      components:
+        - "One-E2E-at-a-time implementation approach"
+        - "Test maintenance and evolution procedures"
+        - "Quality gate integration with continuous integration"
+        - "Test execution monitoring and reporting framework"
+      stakeholder_approval: ["QA Lead", "DevOps Engineer", "Development Team"]
+
+  transition_criteria:
+    ready_for_develop_wave:
+      - criterion: "Acceptance Test Framework Operational"
+        validation: "Acceptance test framework configured and executing successfully"
+
+      - criterion: "Production Service Integration Validated"
+        validation: "Step methods successfully call production services"
+
+      - criterion: "Business Scenario Coverage Complete"
+        validation: "All critical business scenarios have corresponding acceptance tests"
+
+      - criterion: "One-E2E Strategy Implemented"
+        validation: "Test implementation strategy established with first E2E test ready"
+
+      - criterion: "Quality Gates Established"
+        validation: "Acceptance test quality gates integrated with development workflow"
+
+# ==================================================================================
+# INTERACTIVE GUIDANCE AND CUSTOMIZATION
+# ==================================================================================
+
+interactive_guidance:
+  scenario_creation_wizard:
+    step_by_step_scenario_development:
+      - step: "Business Scenario Identification"
+        questions:
+          - "What business value does this scenario deliver?"
+          - "Who are the key business actors involved?"
+          - "What business outcome should be achieved?"
+        deliverable: "Business scenario description with value statement"
+
+      - step: "Given Clause Development"
+        questions:
+          - "What business context needs to be established?"
+          - "What business entities need to exist?"
+          - "What business rules or policies are relevant?"
+        deliverable: "Given clauses in business language"
+
+      - step: "When Clause Development"
+        questions:
+          - "What specific business action triggers this scenario?"
+          - "Who performs this action and why?"
+          - "What business information is provided?"
+        deliverable: "When clause describing business action"
+
+      - step: "Then Clause Development"
+        questions:
+          - "What business outcomes should be achieved?"
+          - "How can these outcomes be measured and verified?"
+          - "What business value is delivered to stakeholders?"
+        deliverable: "Then clauses with measurable business outcomes"
+
+  production_integration_guidance:
+    service_integration_checklist:
+      setup_validation:
+        - "✓ Production services registered in dependency injection container"
+        - "✓ Test environment configured with access to business services"
+        - "✓ Database and infrastructure configured for test execution"
+        - "✓ External service boundaries identified and configured"
+
+      step_method_validation:
+        - "✓ All step methods access services through _serviceProvider.GetRequiredService<T>()"
+        - "✓ Step methods delegate business operations to production services"
+        - "✓ No business logic implementation in step methods"
+        - "✓ Step methods contain only service calls and assertions"
+
+      integration_testing:
+        - "✓ Tests fail when production services are unavailable"
+        - "✓ Tests validate actual business behavior through service execution"
+        - "✓ Business outcomes verified through production service state"
+        - "✓ Test execution demonstrates real system integration"
+
+  quality_assessment_tools:
+    acceptance_test_quality_metrics:
+      business_language_compliance:
+        - measurement: "Percentage of test scenarios understandable by business stakeholders"
+        - target: "100% business stakeholder comprehension"
+        - validation: "Business stakeholder review and feedback"
+
+      production_integration_coverage:
+        - measurement: "Percentage of step methods calling production services"
+        - target: "100% production service integration"
+        - validation: "Automated code analysis and runtime verification"
+
+      business_value_validation:
+        - measurement: "Percentage of test assertions validating business outcomes"
+        - target: "100% business outcome validation"
+        - validation: "Test review and business value assessment"
+
+usage_documentation: |
+  # Template Usage Instructions
+
+  This moderately interactive template supports comprehensive acceptance test creation and production service integration for the DISTILL wave of the nWave methodology.
+
+  ## Customization Guidelines
+
+  1. **Adapt scenario templates** to match your business domain and terminology
+  2. **Configure production service integration** based on your technology stack and architecture
+  3. **Customize test automation framework** to align with your development and deployment pipeline
+  4. **Implement business validation patterns** appropriate for your business metrics and KPIs
+
+  ## Success Indicators
+
+  - ✅ Acceptance tests written in business language understandable by stakeholders
+  - ✅ All step methods call production services via dependency injection
+  - ✅ One-E2E-at-a-time strategy implemented and operational
+  - ✅ Business outcomes validated through real system integration
+  - ✅ Test automation framework configured and executing successfully
+
+  ## Next Wave Preparation
+
+  Use the acceptance tests and production service integration framework from this template as the driving force for Outside-In TDD implementation in the DELIVER wave, ensuring test-driven development with real business validation.

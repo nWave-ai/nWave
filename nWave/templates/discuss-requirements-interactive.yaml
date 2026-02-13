@@ -1,0 +1,671 @@
+---
+template_type: "interactive-discuss-requirements"
+methodology: "nWave ATDD"
+wave: "DISCUSS"
+interactivity_level: "high"
+description: "Highly interactive requirements elicitation and stakeholder collaboration template for DISCUSS wave with comprehensive ATDD foundation establishment"
+version: "1.0.0"
+
+# ==================================================================================
+# DISCUSS WAVE: Interactive Requirements and Stakeholder Collaboration Template
+# ==================================================================================
+
+metadata:
+  template_name: "DISCUSS Wave Requirements Interactive Template"
+  methodology_focus: "Customer-Developer-Tester Collaboration with ATDD Foundation"
+  complexity_support: "Basic → Intermediate → Advanced progression"
+  stakeholder_engagement: "Three Amigos collaboration with business domain experts"
+
+# ==================================================================================
+# STAKEHOLDER COLLABORATION FRAMEWORK
+# ==================================================================================
+
+stakeholder_identification:
+  primary_stakeholders:
+    customer_representatives:
+      - role: "Product Owner"
+        responsibilities: "Business requirements, acceptance criteria approval, strategic direction"
+        engagement_level: "Daily collaboration"
+        decision_authority: "Business requirements and priorities"
+
+      - role: "Domain Expert"
+        responsibilities: "Business rules, process knowledge, terminology definition"
+        engagement_level: "Weekly three-amigos sessions"
+        decision_authority: "Business logic and domain rules"
+
+      - role: "End User Representative"
+        responsibilities: "User experience validation, workflow confirmation"
+        engagement_level: "Sprint reviews and feedback sessions"
+        decision_authority: "User acceptance and experience validation"
+
+    technical_stakeholders:
+      - role: "Lead Developer"
+        responsibilities: "Technical feasibility, architecture decisions, implementation planning"
+        engagement_level: "Daily collaboration"
+        decision_authority: "Technical approach and implementation strategy"
+
+      - role: "Quality Assurance"
+        responsibilities: "Test strategy, quality perspective, edge case identification"
+        engagement_level: "Daily collaboration"
+        decision_authority: "Testing approach and quality standards"
+
+      - role: "Systems Architect"
+        responsibilities: "System design, integration patterns, technology selection"
+        engagement_level: "Weekly architecture reviews"
+        decision_authority: "Architectural decisions and technology choices"
+
+  secondary_stakeholders:
+    business_stakeholders:
+      - role: "Business Analyst"
+        responsibilities: "Requirements documentation, business process analysis"
+        engagement_level: "Weekly requirements sessions"
+
+      - role: "Legal/Compliance"
+        responsibilities: "Regulatory requirements, compliance validation"
+        engagement_level: "As needed for compliance topics"
+
+    operational_stakeholders:
+      - role: "DevOps Engineer"
+        responsibilities: "Deployment requirements, operational constraints"
+        engagement_level: "Sprint planning and deployment discussions"
+
+      - role: "Security Specialist"
+        responsibilities: "Security requirements, threat assessment"
+        engagement_level: "Security review sessions"
+
+# ==================================================================================
+# INTERACTIVE REQUIREMENTS ELICITATION
+# ==================================================================================
+
+requirements_elicitation_sessions:
+  three_amigos_sessions:
+    session_structure:
+      duration: "90 minutes"
+      frequency: "Weekly"
+      participants: ["Product Owner", "Lead Developer", "QA Lead"]
+
+    agenda_template: |
+      1. Review previous session outcomes (10 min)
+      2. Business requirements presentation (20 min)
+      3. Technical feasibility discussion (20 min)
+      4. Quality perspective and edge cases (20 min)
+      5. Acceptance criteria definition (15 min)
+      6. Next steps and action items (5 min)
+
+    collaboration_techniques:
+      - name: "Example Mapping"
+        description: "Concrete examples to clarify abstract requirements"
+        when_to_use: "Requirements clarification and validation"
+        participants: ["Product Owner", "Developer", "Tester"]
+
+      - name: "Story Mapping"
+        description: "User journey visualization with system touchpoints"
+        when_to_use: "End-to-end workflow understanding"
+        participants: ["Product Owner", "UX Designer", "Developer"]
+
+      - name: "Impact Mapping"
+        description: "Business goal to feature mapping"
+        when_to_use: "Feature prioritization and business value alignment"
+        participants: ["Product Owner", "Business Stakeholder", "Architect"]
+
+  business_requirements_workshops:
+    workshop_types:
+      - name: "Domain Modeling Workshop"
+        objectives:
+          - "Establish ubiquitous language"
+          - "Identify core business entities"
+          - "Define business rules and constraints"
+          - "Map business processes"
+        deliverables:
+          - "Domain model diagram"
+          - "Business glossary"
+          - "Business rules specification"
+          - "Process flow documentation"
+        participants:
+          ["Domain Expert", "Business Analyst", "Architect", "Developer"]
+
+      - name: "User Journey Mapping"
+        objectives:
+          - "Map complete user workflows"
+          - "Identify system touchpoints"
+          - "Define user experience requirements"
+          - "Identify integration points"
+        deliverables:
+          - "User journey maps"
+          - "System interaction points"
+          - "UX requirements specification"
+          - "Integration requirements"
+        participants: ["Product Owner", "UX Designer", "End User", "Developer"]
+
+# ==================================================================================
+# REQUIREMENTS SPECIFICATION FRAMEWORK
+# ==================================================================================
+
+requirements_specification:
+  user_story_template:
+    story_format: |
+      As a [user role]
+      I want [goal/desire]
+      So that [business value/benefit]
+
+    acceptance_criteria_format: |
+      Given [initial context/preconditions]
+      When [action/event occurs]
+      Then [expected outcome/result]
+
+    story_quality_checklist:
+      - criterion: "Independent"
+        validation: "Story can be developed independently of other stories"
+
+      - criterion: "Negotiable"
+        validation: "Details can be discussed and refined with stakeholders"
+
+      - criterion: "Valuable"
+        validation: "Delivers clear business value to stakeholders"
+
+      - criterion: "Estimable"
+        validation: "Development effort can be estimated reasonably"
+
+      - criterion: "Small"
+        validation: "Can be completed within one sprint iteration"
+
+      - criterion: "Testable"
+        validation: "Has clear acceptance criteria for validation"
+
+  business_requirements_documentation:
+    functional_requirements:
+      template: |
+        # Functional Requirement: [Requirement ID]
+
+        ## Business Context
+        **Business Objective**: [Strategic goal this requirement supports]
+        **Business Process**: [Process this requirement is part of]
+        **Stakeholder Impact**: [Who is affected and how]
+
+        ## Requirement Specification
+        **Description**: [Clear description of required functionality]
+        **Input Conditions**: [What triggers this functionality]
+        **Processing Rules**: [Business logic and rules]
+        **Output Requirements**: [Expected results and outcomes]
+
+        ## Acceptance Criteria
+        [Given-When-Then scenarios in business language]
+
+        ## Business Rules
+        [Domain-specific rules and constraints]
+
+        ## Dependencies
+        **Upstream Dependencies**: [What must exist before this]
+        **Downstream Impact**: [What this requirement enables]
+
+      quality_attributes:
+        - attribute: "Clarity"
+          description: "Requirement is clearly understood by all stakeholders"
+          validation_method: "Stakeholder review and confirmation"
+
+        - attribute: "Completeness"
+          description: "All aspects of functionality are specified"
+          validation_method: "Three amigos review and gap analysis"
+
+        - attribute: "Consistency"
+          description: "No conflicts with other requirements"
+          validation_method: "Requirements traceability analysis"
+
+        - attribute: "Testability"
+          description: "Can be validated through acceptance tests"
+          validation_method: "Test scenario creation and review"
+
+    non_functional_requirements:
+      categories:
+        performance:
+          requirements: |
+            - Response time: [specific timing requirements]
+            - Throughput: [transaction volume requirements]
+            - Scalability: [growth and load requirements]
+            - Resource usage: [memory, CPU, storage limits]
+
+        reliability:
+          requirements: |
+            - Availability: [uptime requirements and SLA]
+            - Fault tolerance: [failure handling requirements]
+            - Recovery time: [disaster recovery requirements]
+            - Data integrity: [consistency and backup requirements]
+
+        security:
+          requirements: |
+            - Authentication: [user verification requirements]
+            - Authorization: [access control requirements]
+            - Data protection: [encryption and privacy requirements]
+            - Compliance: [regulatory and audit requirements]
+
+        usability:
+          requirements: |
+            - User experience: [interaction and interface requirements]
+            - Accessibility: [disability access requirements]
+            - Internationalization: [language and locale requirements]
+            - Training: [user education and support requirements]
+
+# ==================================================================================
+# ATDD FOUNDATION ESTABLISHMENT
+# ==================================================================================
+
+atdd_methodology_setup:
+  collaboration_framework:
+    customer_role_definition:
+      responsibilities:
+        - "Business requirement definition and validation"
+        - "Domain expertise and business rule clarification"
+        - "Acceptance criteria approval and business value confirmation"
+        - "User story prioritization and release planning"
+      engagement_patterns:
+        - "Daily availability for requirements clarification"
+        - "Weekly three-amigos collaboration sessions"
+        - "Sprint planning and review participation"
+        - "Acceptance test validation and approval"
+
+    developer_role_definition:
+      responsibilities:
+        - "Technical feasibility assessment and implementation planning"
+        - "Business requirement translation to technical solution"
+        - "Production service integration architecture design"
+        - "Acceptance test automation and implementation"
+      engagement_patterns:
+        - "Daily customer collaboration for clarification"
+        - "Technical spike investigation for feasibility"
+        - "Test-first development with acceptance criteria"
+        - "Continuous integration and deployment support"
+
+    tester_role_definition:
+      responsibilities:
+        - "Test scenario design and automation strategy"
+        - "Quality perspective and edge case identification"
+        - "Validation framework design and implementation"
+        - "Acceptance criteria verification and validation"
+      engagement_patterns:
+        - "Test strategy planning with business stakeholders"
+        - "Test automation design with development team"
+        - "Quality gate definition and enforcement"
+        - "Test execution and result validation"
+
+  acceptance_criteria_framework:
+    given_when_then_guidelines:
+      given_specification:
+        purpose: "Establish initial context and preconditions"
+        business_focus: "Use business language and domain terminology"
+        clarity_requirement: "Clear, unambiguous state description"
+        examples: |
+          - "Given I am a registered premium customer"
+          - "Given the inventory system shows 5 units available"
+          - "Given the payment gateway is operational"
+
+      when_specification:
+        purpose: "Define the action or event that triggers behavior"
+        business_focus: "Use user-centric action descriptions"
+        clarity_requirement: "Single, specific action or event"
+        examples: |
+          - "When I place an order for 3 units"
+          - "When the payment is processed successfully"
+          - "When I submit my shipping preferences"
+
+      then_specification:
+        purpose: "Describe expected outcomes and results"
+        business_focus: "Measurable business outcomes"
+        clarity_requirement: "Verifiable results and state changes"
+        examples: |
+          - "Then my order is confirmed and tracking number provided"
+          - "Then inventory is updated to show 2 units remaining"
+          - "Then I receive confirmation email within 5 minutes"
+
+# ==================================================================================
+# DOMAIN MODELING AND UBIQUITOUS LANGUAGE
+# ==================================================================================
+
+domain_modeling_framework:
+  ubiquitous_language_development:
+    language_capture_process:
+      - step: "Domain Expert Interviews"
+        description: "Systematic interviews with business domain experts"
+        deliverables:
+          ["Domain terminology list", "Business concept definitions"]
+
+      - step: "Terminology Validation"
+        description: "Cross-validation with multiple domain experts"
+        deliverables:
+          ["Validated glossary", "Conflict resolution documentation"]
+
+      - step: "Development Team Integration"
+        description: "Integration of domain language into technical vocabulary"
+        deliverables: ["Technical glossary mapping", "Code naming standards"]
+
+      - step: "Living Documentation"
+        description: "Continuous evolution and refinement of language"
+        deliverables: ["Updated glossary", "Language evolution tracking"]
+
+    glossary_template: |
+      # Domain Glossary
+
+      ## Business Concepts
+      **[Term]**: [Business definition from domain expert perspective]
+      - **Synonyms**: [Alternative terms used in organization]
+      - **Context**: [When and where this term is used]
+      - **Business Rules**: [Rules and constraints related to this concept]
+      - **Technical Mapping**: [How this maps to technical implementation]
+
+      ## Process Terminology
+      **[Process Term]**: [Process definition and scope]
+      - **Inputs**: [What triggers or starts this process]
+      - **Outputs**: [Results and outcomes of the process]
+      - **Stakeholders**: [Who is involved in this process]
+      - **Business Value**: [Why this process exists and its value]
+
+  conceptual_model_development:
+    model_components:
+      business_entities:
+        identification_criteria:
+          - "Core business concepts with independent identity"
+          - "Things that business stakeholders talk about"
+          - "Concepts with business rules and behavior"
+          - "Entities that persist and have lifecycle"
+        documentation_template: |
+          ## Business Entity: [Entity Name]
+          **Business Definition**: [What this entity represents in business terms]
+          **Key Attributes**: [Essential characteristics from business perspective]
+          **Business Rules**: [Rules that govern this entity's behavior]
+          **Lifecycle**: [How this entity is created, modified, and retired]
+          **Relationships**: [How this entity relates to other business entities]
+
+      value_objects:
+        identification_criteria:
+          - "Concepts defined by their attributes rather than identity"
+          - "Immutable business concepts"
+          - "Things that describe or measure other entities"
+          - "Concepts that can be easily replaced"
+        documentation_template: |
+          ## Value Object: [Value Object Name]
+          **Business Definition**: [What this value represents]
+          **Attributes**: [Component attributes and their business meaning]
+          **Validation Rules**: [Business constraints and validation]
+          **Usage Context**: [Where and how this value is used]
+
+      business_processes:
+        identification_criteria:
+          - "Sequences of business activities"
+          - "Workflows that create business value"
+          - "Processes involving multiple stakeholders or systems"
+          - "Activities with clear business outcomes"
+        documentation_template: |
+          ## Business Process: [Process Name]
+          **Business Objective**: [Why this process exists]
+          **Trigger Events**: [What starts this process]
+          **Process Steps**: [High-level steps in business language]
+          **Success Criteria**: [How success is measured]
+          **Failure Scenarios**: [What can go wrong and how to handle it]
+
+# ==================================================================================
+# RISK ASSESSMENT AND MITIGATION PLANNING
+# ==================================================================================
+
+risk_assessment_framework:
+  risk_identification:
+    categories:
+      business_risks:
+        - risk: "Requirements Change Frequency"
+          description: "High frequency of requirements changes during development"
+          impact: "Schedule delays, increased development costs"
+          mitigation: "Agile methodology with regular stakeholder feedback"
+
+        - risk: "Stakeholder Availability"
+          description: "Key stakeholders not available for collaboration"
+          impact: "Requirements ambiguity, delayed decisions"
+          mitigation: "Establish stakeholder engagement protocols and backup contacts"
+
+        - risk: "Domain Complexity"
+          description: "Business domain is complex and poorly understood"
+          impact: "Incorrect requirements, rework, user dissatisfaction"
+          mitigation: "Extended domain modeling workshops and expert involvement"
+
+      technical_risks:
+        - risk: "Technology Integration"
+          description: "Integration with existing systems is complex"
+          impact: "Technical delays, performance issues"
+          mitigation: "Early technical spikes and proof-of-concept development"
+
+        - risk: "Scalability Requirements"
+          description: "Performance and scalability requirements unclear"
+          impact: "Architecture rework, performance issues"
+          mitigation: "Early performance testing and architecture validation"
+
+        - risk: "Team Experience"
+          description: "Team lacks experience with chosen technology"
+          impact: "Development delays, quality issues"
+          mitigation: "Training programs and expert mentoring"
+
+      quality_risks:
+        - risk: "Test Automation Complexity"
+          description: "ATDD automation is challenging with current technology"
+          impact: "Manual testing overhead, delayed feedback"
+          mitigation: "Investment in test automation framework and training"
+
+        - risk: "Production Service Integration"
+          description: "Testing with production services is complex"
+          impact: "Test reliability issues, debugging difficulties"
+          mitigation: "Service virtualization and test environment management"
+
+  mitigation_planning:
+    risk_response_strategies:
+      - strategy: "Avoid"
+        description: "Change approach to eliminate risk"
+        when_appropriate: "High impact risks that can be avoided through design"
+        example: "Choose simpler technology to avoid integration complexity"
+
+      - strategy: "Mitigate"
+        description: "Reduce probability or impact of risk"
+        when_appropriate: "Risks that cannot be avoided but can be managed"
+        example: "Implement extensive testing to reduce quality risks"
+
+      - strategy: "Transfer"
+        description: "Share or transfer risk to another party"
+        when_appropriate: "Risks that external parties can better manage"
+        example: "Use cloud services to transfer infrastructure risks"
+
+      - strategy: "Accept"
+        description: "Acknowledge risk and prepare contingency plans"
+        when_appropriate: "Low impact risks or risks that cannot be cost-effectively addressed"
+        example: "Accept minor performance variations with monitoring"
+
+# ==================================================================================
+# QUALITY GATES AND VALIDATION
+# ==================================================================================
+
+discuss_wave_quality_gates:
+  stakeholder_alignment_validation:
+    criteria:
+      - gate: "Stakeholder Consensus"
+        validation: "All primary stakeholders agree on business requirements"
+        evidence: "Signed-off requirements document and stakeholder confirmation"
+
+      - gate: "Requirements Clarity"
+        validation: "Requirements are unambiguous and testable"
+        evidence: "Acceptance criteria in Given-When-Then format for all stories"
+
+      - gate: "Domain Understanding"
+        validation: "Development team understands business domain"
+        evidence: "Domain model validated by business experts"
+
+      - gate: "ATDD Foundation"
+        validation: "Customer-developer-tester collaboration established"
+        evidence: "Three amigos sessions scheduled and operating effectively"
+
+  requirements_quality_validation:
+    completeness_check:
+      - requirement: "Functional Coverage"
+        validation: "All business functions have corresponding requirements"
+        method: "Business process to requirement traceability matrix"
+
+      - requirement: "Non-Functional Coverage"
+        validation: "Performance, security, and usability requirements defined"
+        method: "NFR checklist validation with stakeholders"
+
+      - requirement: "Integration Requirements"
+        validation: "All system integration points identified and specified"
+        method: "System context diagram and integration specification"
+
+    testability_validation:
+      - aspect: "Acceptance Criteria"
+        validation: "All requirements have testable acceptance criteria"
+        method: "Given-When-Then scenario validation"
+
+      - aspect: "Business Value"
+        validation: "Each requirement has clear business value statement"
+        method: "Business value articulation and stakeholder confirmation"
+
+      - aspect: "Success Metrics"
+        validation: "Measurable success criteria defined for each requirement"
+        method: "KPI and success metric specification"
+
+# ==================================================================================
+# DELIVERABLES AND OUTPUTS
+# ==================================================================================
+
+discuss_wave_deliverables:
+  primary_deliverables:
+    - deliverable: "Business Requirements Specification"
+      description: "Comprehensive documentation of business requirements"
+      components:
+        - "User stories with acceptance criteria"
+        - "Functional and non-functional requirements"
+        - "Business rules and constraints"
+        - "Success metrics and KPIs"
+      stakeholder_approval: ["Product Owner", "Business Stakeholder"]
+
+    - deliverable: "Domain Model and Glossary"
+      description: "Visual and textual representation of business domain"
+      components:
+        - "Domain entity relationship diagram"
+        - "Business process flow diagrams"
+        - "Ubiquitous language glossary"
+        - "Business rules specification"
+      stakeholder_approval: ["Domain Expert", "Business Analyst"]
+
+    - deliverable: "ATDD Collaboration Framework"
+      description: "Framework for customer-developer-tester collaboration"
+      components:
+        - "Three amigos session structure"
+        - "Stakeholder roles and responsibilities"
+        - "Communication protocols and schedules"
+        - "Decision-making authority matrix"
+      stakeholder_approval: ["Product Owner", "Lead Developer", "QA Lead"]
+
+    - deliverable: "Risk Assessment and Mitigation Plan"
+      description: "Identified risks with mitigation strategies"
+      components:
+        - "Risk register with impact and probability"
+        - "Mitigation strategies and action plans"
+        - "Contingency plans for high-impact risks"
+        - "Risk monitoring and review procedures"
+      stakeholder_approval: ["Project Manager", "Technical Lead"]
+
+  transition_criteria:
+    ready_for_design_wave:
+      - criterion: "Requirements Stability"
+        validation: "Core requirements stable with minimal expected changes"
+
+      - criterion: "Stakeholder Commitment"
+        validation: "Stakeholders committed to collaboration throughout development"
+
+      - criterion: "Domain Understanding"
+        validation: "Team demonstrates understanding of business domain"
+
+      - criterion: "Technical Feasibility"
+        validation: "High-level technical approach validated"
+
+      - criterion: "ATDD Foundation"
+        validation: "ATDD collaboration framework operational"
+
+# ==================================================================================
+# INTERACTIVE ELEMENTS FOR TEMPLATE USAGE
+# ==================================================================================
+
+interactive_guidance:
+  template_customization:
+    organization_adaptation:
+      - customization: "Stakeholder Roles"
+        instruction: "Adapt stakeholder roles to match your organization structure"
+        considerations:
+          [
+            "Organizational hierarchy",
+            "Decision-making authority",
+            "Communication patterns",
+          ]
+
+      - customization: "Collaboration Techniques"
+        instruction: "Select techniques that match your team's experience and culture"
+        considerations:
+          ["Team size", "Geographic distribution", "Experience level"]
+
+      - customization: "Requirements Documentation"
+        instruction: "Adjust documentation level to match project complexity"
+        considerations:
+          ["Project size", "Regulatory requirements", "Team expertise"]
+
+  facilitation_guidance:
+    session_facilitation_tips:
+      - tip: "Three Amigos Sessions"
+        guidance: "Keep sessions focused on one user story at a time"
+        common_pitfalls:
+          ["Scope creep", "Technical rabbit holes", "Decision paralysis"]
+
+      - tip: "Requirements Workshops"
+        guidance: "Prepare visual aids and examples to support discussion"
+        common_pitfalls:
+          [
+            "Abstract discussions",
+            "Stakeholder disengagement",
+            "Unclear outcomes",
+          ]
+
+      - tip: "Risk Assessment"
+        guidance: "Focus on actionable risks with clear mitigation strategies"
+        common_pitfalls:
+          ["Over-analysis", "Risk paralysis", "Vague mitigation plans"]
+
+  quality_checkpoints:
+    self_assessment_questions:
+      stakeholder_engagement:
+        - "Are all key stakeholders actively participating in requirements sessions?"
+        - "Do stakeholders understand their roles and responsibilities in ATDD?"
+        - "Is there clear agreement on business requirements and priorities?"
+
+      requirements_quality:
+        - "Can each requirement be validated through acceptance tests?"
+        - "Are requirements written in business language that stakeholders understand?"
+        - "Is there traceability from business objectives to specific requirements?"
+
+      atdd_readiness:
+        - "Is the three amigos collaboration working effectively?"
+        - "Do acceptance criteria follow Given-When-Then format consistently?"
+        - "Is the domain model understood and validated by business experts?"
+
+usage_documentation: |
+  # Template Usage Instructions
+
+  This highly interactive template supports comprehensive requirements elicitation and stakeholder collaboration for the DISCUSS wave of the nWave methodology.
+
+  ## Customization Guidelines
+
+  1. **Adapt stakeholder roles** to match your organizational structure
+  2. **Select collaboration techniques** appropriate for your team size and distribution
+  3. **Adjust documentation depth** based on project complexity and regulatory requirements
+  4. **Customize quality gates** to align with your quality standards and practices
+
+  ## Success Indicators
+
+  - ✅ All stakeholders actively engaged in requirements sessions
+  - ✅ Business requirements documented with testable acceptance criteria
+  - ✅ Domain model validated by business experts
+  - ✅ ATDD collaboration framework operational
+  - ✅ Risk assessment completed with mitigation strategies
+
+  ## Next Wave Preparation
+
+  Use the deliverables from this template as input for the DESIGN wave, ensuring smooth transition to architectural design with comprehensive business understanding and stakeholder alignment.

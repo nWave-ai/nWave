@@ -1,0 +1,38 @@
+# nWave Roadmap Schema v1.0
+# Defines canonical structure and validation rules for roadmap.yaml files.
+# Used by: des.cli.roadmap validate, des.domain.roadmap_validator
+schema_version: "1.0"
+
+required_fields:
+  roadmap: [project_id, created_at, total_steps, phases]
+  phase: [id, name, steps]
+  step: [id, name, criteria]
+
+optional_fields:
+  phase: [description, default_agent, default_deps_strategy, depends_on]
+  step: [agent, deps, scenario, files_to_modify, implementation_notes]
+
+id_patterns:
+  phase_id: "^\\d{2}$"
+  step_id: "^\\d{2}-\\d{2}$"
+
+constraints:
+  max_criteria_words: 30
+  max_criteria_per_step: 5
+  max_step_name_words: 10
+  max_description_words: 50
+  max_decomposition_ratio: 2.5
+
+valid_agents:
+  - nw-software-crafter
+  - nw-solution-architect
+  - nw-platform-architect
+  - nw-data-engineer
+  - nw-acceptance-designer
+  - nw-researcher
+  - nw-troubleshooter
+  - nw-documentarist
+  - nw-agent-builder
+
+valid_deps_strategies: [sequential, parallel]
+valid_validation_statuses: [pending, approved, rejected]
