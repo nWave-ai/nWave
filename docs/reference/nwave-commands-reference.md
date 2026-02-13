@@ -26,16 +26,14 @@ Quick reference for all nWave commands, agents, and file locations.
 
 ---
 
-## Execution Loop Commands
+## Execution Commands
 
 | Command | Agent | Purpose |
 |---------|-------|---------|
-| `/nw:roadmap` | solution-architect | Create comprehensive planning document (reads acceptance tests for scenario mapping) |
 | `/nw:execute` | varies | Execute atomic task with state tracking |
 | `/nw:refactor` | software-crafter | Systematic code refactoring (Level 1-6) |
 | `/nw:review` | *-reviewer | Expert critique and quality assurance |
 | `/nw:finalize` | platform-architect | Archive project and clean up workflow |
-| `/nw:deliver` | platform-architect | Complete DELIVER wave: roadmap → execute-all → finalize |
 
 ---
 
@@ -121,9 +119,9 @@ Every agent has a corresponding `*-reviewer` variant using the Haiku model:
 
 | Job | You Know What? | Sequence |
 |-----|---------------|----------|
-| **Greenfield** | No | [research] → discuss → design → [devops] → [diagram] → distill → roadmap → execute → [refactor] → review |
-| **Brownfield** | Yes | [research] → roadmap → execute → [refactor] → review |
-| **Refactoring** | Partially | [research] → mikado/roadmap → execute → [refactor] → review |
+| **Greenfield** | No | [discover] → discuss → design → devops → distill → deliver |
+| **Brownfield** | Yes | [research] → deliver |
+| **Refactoring** | Partially | [research] → mikado → deliver |
 | **Bug Fix** | Yes (symptom) | [research] → root-why → execute → review |
 | **Research** | No | research → (output informs next job) |
 
@@ -157,17 +155,14 @@ Every agent has a corresponding `*-reviewer` variant using the Haiku model:
 # Create diagram
 /nw:diagram --format=mermaid --level=container
 
-# Create roadmap
-/nw:roadmap @solution-architect "goal description"
-
 # Execute task
-/nw:execute @software-crafter "path/to/step.json"
+/nw:execute @software-crafter "implement login endpoint"
 
 # Refactor after execute
 /nw:refactor --target="ServiceName" --level=3
 
 # Review task
-/nw:review @software-crafter task "path/to/step.json"
+/nw:review @software-crafter task "implement login endpoint"
 
 # Research with embedding
 /nw:research "topic" --embed-for=solution-architect
@@ -187,7 +182,7 @@ Every agent has a corresponding `*-reviewer` variant using the Haiku model:
 
 ## DELIVER Wave: Step-to-Scenario Mapping Constraint
 
-**Applies to**: `/nw:roadmap`, `/nw:execute` when creating feature steps.
+**Applies to**: `/nw:deliver` and `/nw:execute` when creating feature steps.
 
 ### The Rule
 
@@ -212,7 +207,7 @@ VALIDATION: num_roadmap_steps == num_acceptance_scenarios ✅ REQUIRED
 - **Prevents architectural thinking in DELIVER**: Focus on behavioral implementation, not technical layers
 - **Maintains test granularity**: Can't batch multiple features into one step
 
-### For solution-architect (/nw:roadmap)
+### For solution-architect (within /nw:deliver)
 
 **BEFORE creating roadmap**:
 1. Read acceptance test file: `tests/acceptance/test_us00X_*.py`

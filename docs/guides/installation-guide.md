@@ -203,7 +203,7 @@ nwave-ai version
 # You should see: @product-discoverer, @product-owner, @solution-architect, etc.
 
 # List slash commands by typing / in any project
-# You should see: /nw:discover, /nw:discuss, /nw:design, /nw:distill, etc.
+# You should see: /nw:discover, /nw:discuss, /nw:design, /nw:devops, /nw:distill, /nw:deliver, etc.
 ```
 
 ## Troubleshooting
@@ -319,15 +319,12 @@ After installation, navigate to any project and start your first workflow:
 /nw:discover "feature market research"
 /nw:discuss "feature requirements"
 /nw:design
+/nw:devops
 /nw:distill "acceptance tests"
-/nw:roadmap
-/nw:execute
-/nw:review
+/nw:deliver
 
 # Or for existing code (brownfield)
-/nw:roadmap
-/nw:execute
-/nw:review
+/nw:deliver
 ```
 
 For workflow guidance, see [Jobs To Be Done Guide](jobs-to-be-done-guide.md).

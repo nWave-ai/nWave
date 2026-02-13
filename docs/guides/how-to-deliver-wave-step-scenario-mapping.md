@@ -43,13 +43,13 @@ Before proceeding, review the mapping rule:
 - 4 acceptance test scenarios = 4 roadmap steps = 4 step files (01-01, 01-02, 01-03, 01-04)
 - Each step makes exactly 1 scenario pass (RED → GREEN)
 
-## Step 3: Create the Roadmap with Scenario Mapping
+## Step 3: Start DELIVER Wave (Creates Roadmap with Scenario Mapping)
 
-Create a comprehensive roadmap where each step explicitly maps to one acceptance scenario.
+Start the DELIVER wave, which creates a comprehensive roadmap where each step explicitly maps to one acceptance scenario.
 
 **Command**:
 ```
-/nw:roadmap "{project_id}" "{feature_description}"
+/nw:deliver
 ```
 
 **Pre-Check** (Agent will verify this):

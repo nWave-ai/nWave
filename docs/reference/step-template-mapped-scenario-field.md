@@ -128,7 +128,7 @@ This reference documents the `mapped_scenario` field added to step template JSON
 
 ### For Feature Steps
 ```javascript
-// Validation rules enforced by /nw:roadmap and /nw:execute
+// Validation rules enforced by /nw:deliver and /nw:execute
 if (step.mapped_scenario.mapping_type === "feature") {
   assert(step.mapped_scenario.scenario_function !== null,
          "Feature steps MUST have scenario_function");
@@ -238,13 +238,13 @@ assert(num_feature_steps === num_acceptance_scenarios,
 
 ## Integration Points
 
-### `/nw:roadmap` Command (step generation)
+### `/nw:deliver` Command (roadmap and step generation)
 - Injects `mapped_scenario` when generating step files from roadmap
 - Reads `acceptance_test_scenario` from roadmap step
 - Validates scenario function exists in acceptance test file
 - Sets `mapping_type` to `feature` by default
 
-### `/nw:roadmap` Command (solution-architect)
+### `/nw:deliver` Command (solution-architect)
 - Must include `acceptance_test_scenario` in each step definition
 - Must match exactly to test function names
 - Agent reads acceptance tests BEFORE creating roadmap
