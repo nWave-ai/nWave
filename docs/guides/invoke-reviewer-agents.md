@@ -10,7 +10,7 @@ Step-by-step guide to requesting peer reviews from Layer 4 reviewer agents.
 
 **Related Docs**:
 - [Reviewer Agents Reference](../reference/reviewer-agents-reference.md) (lookup)
-- [Layer 4 Implementation Summary](5-layer-testing-implementation.md) (concepts)
+- [5-Layer Testing API](../reference/5-layer-testing-api.md) (reference)
 
 ---
 
@@ -129,7 +129,7 @@ After test creation:
 ```
 1. Create acceptance tests (acceptance-designer)
 2. REVIEW tests (acceptance-designer-reviewer) <- Add this
-3. Handoff to DEVELOP wave
+3. Handoff to DELIVER wave
 ```
 
 ---
@@ -277,7 +277,7 @@ Review my architecture design for feasibility.
 
     Read: nWave/agents/solution-architect-reviewer.md
 
-    Review: docs/architecture/system-architecture.md
+    Review: docs/feature/{feature-name}/design/architecture-design.md
 
     Focus on:
     1. Architectural bias (premature technology choices)

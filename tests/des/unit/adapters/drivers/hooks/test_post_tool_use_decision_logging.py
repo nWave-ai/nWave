@@ -76,7 +76,7 @@ def test_injected_event_emitted_for_continuation_context(monkeypatch):
         "DES STEP COMPLETED [des-observability/04-01]\n"
         "Status: PASSED\n"
         "\n"
-        "Continue the DEVELOP workflow."
+        "Continue the DELIVER workflow."
     )
 
     monkeypatch.setattr(

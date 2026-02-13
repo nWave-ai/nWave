@@ -50,11 +50,11 @@ Analyzed all 21 agents (9 primary + 12 reviewers) for knowledge architecture nee
 
 ## Research Gaps - Priority Implementation Plan
 
-### HIGH PRIORITY: Core DEVELOP Wave Agents
+### HIGH PRIORITY: Core DELIVER Wave Agents
 
 #### 4. **software-crafter** (CRITICAL)
 - **Need**: TDD methodology, Outside-In TDD, Mikado Method, refactoring patterns (Level 1-6), code smells (22 types)
-- **Rationale**: Core DEVELOP wave agent - implements all features through TDD
+- **Rationale**: Core DELIVER wave agent - implements all features through TDD
 - **Estimated Scope**: 20K-30K tokens
 - **Research Topics**:
   - Outside-In TDD / ATDD / Double-Loop TDD
@@ -64,7 +64,7 @@ Analyzed all 21 agents (9 primary + 12 reviewers) for knowledge architecture nee
   - 5 atomic transformations (rename, extract, move, inline, safe-delete)
   - Hexagonal architecture / Ports & Adapters
   - Golden master testing with production data
-- **Priority**: **HIGHEST** - Essential for DEVELOP wave
+- **Priority**: **HIGHEST** - Essential for DELIVER wave
 
 #### 5. **solution-architect** (CRITICAL)
 - **Need**: Architecture patterns, technology selection frameworks, C4 model, hexagonal architecture
@@ -240,7 +240,7 @@ Follow same pattern as Phase 1 with focused research queries.
 
 ### For User
 
-1. **Prioritize software-crafter and solution-architect**: These are core DEVELOP and DESIGN wave agents used frequently
+1. **Prioritize software-crafter and solution-architect**: These are core DELIVER and DESIGN wave agents used frequently
 2. **Use knowledge-researcher agent for gap research**: Leverage the existing agent to create comprehensive research documents
 3. **Validate build system after data-engineer**: Test that injection markers work correctly with the updated agent
 4. **Consider token budgets**: Each embed file should stay under 30K tokens; split large topics if needed

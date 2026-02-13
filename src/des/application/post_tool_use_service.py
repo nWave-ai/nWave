@@ -79,7 +79,7 @@ class PostToolUseService:
             f"DES STEP COMPLETED [{feature_name}/{step_id}]\n"
             f"Status: PASSED\n"
             f"\n"
-            f"Continue the DEVELOP workflow. Dispatch the next step.\n"
+            f"Continue the DELIVER workflow. Dispatch the next step.\n"
             + DES_MARKER_REMINDER
         )
 

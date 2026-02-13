@@ -17,7 +17,7 @@ echo "Commands: $(ls ~/.claude/commands/nw/ 2>/dev/null | wc -l) found"
 
 **Symptoms**:
 
-- Commands like `/nw:start` not recognized
+- Commands like `/nw:discuss` not recognized
 - No agents directory found
 - Missing framework files
 
@@ -83,7 +83,7 @@ cat ~/.claude/nwave-install.log
 
 **Symptoms**:
 
-- `/nw:start` command not recognized
+- `/nw:discuss` command not recognized
 - Commands not available in Claude Code
 - Command completion not working
 

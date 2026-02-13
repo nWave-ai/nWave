@@ -128,7 +128,7 @@ This reference documents the `mapped_scenario` field added to step template JSON
 
 ### For Feature Steps
 ```javascript
-// Validation rules enforced by /nw:split and /nw:execute
+// Validation rules enforced by /nw:roadmap and /nw:execute
 if (step.mapped_scenario.mapping_type === "feature") {
   assert(step.mapped_scenario.scenario_function !== null,
          "Feature steps MUST have scenario_function");
@@ -151,7 +151,7 @@ if (["infrastructure", "refactoring"].includes(step.mapped_scenario.mapping_type
 
 ### Master Validation: Step-to-Scenario Mapping
 ```javascript
-// Enforced by /nw:develop command before COMMIT phase
+// Enforced by /nw:deliver command before COMMIT phase
 const num_acceptance_scenarios = count_test_functions(acceptance_test_file);
 const num_feature_steps = steps.filter(s => s.mapped_scenario.mapping_type === "feature").length;
 
@@ -238,7 +238,7 @@ assert(num_feature_steps === num_acceptance_scenarios,
 
 ## Integration Points
 
-### `/nw:split` Command
+### `/nw:roadmap` Command (step generation)
 - Injects `mapped_scenario` when generating step files from roadmap
 - Reads `acceptance_test_scenario` from roadmap step
 - Validates scenario function exists in acceptance test file
@@ -249,10 +249,10 @@ assert(num_feature_steps === num_acceptance_scenarios,
 - Must match exactly to test function names
 - Agent reads acceptance tests BEFORE creating roadmap
 
-### `/nw:develop` Wave Orchestrator
+### `/nw:deliver` Wave Orchestrator
 - Counts feature steps vs. acceptance scenarios
 - Blocks roadmap creation if count mismatch detected
-- Validation enforced at STEP 7 (Split phase)
+- Validation enforced during roadmap generation
 
 ### `/nw:execute` Command (software-crafter)
 - Uses `mapped_scenario` to determine which test to run in Phase 2 (RED)
@@ -302,7 +302,7 @@ assert(num_feature_steps === num_acceptance_scenarios,
    2. Add 7 more acceptance test scenarios
    3. Re-classify extra steps as "infrastructure" type
 
-   Reference: docs/principles/outside-in-tdd-step-mapping.md
+   Reference: docs/reference/step-template-mapped-scenario-field.md
 ```
 
 ## Best Practices
@@ -315,7 +315,7 @@ assert(num_feature_steps === num_acceptance_scenarios,
 
 ## Related Documentation
 
-- **How-to Guide**: [Execute DEVELOP Wave with Step-to-Scenario Mapping](../guides/how-to-develop-wave-step-scenario-mapping.md)
+- **How-to Guide**: [Execute DELIVER Wave with Step-to-Scenario Mapping](../guides/how-to-deliver-wave-step-scenario-mapping.md)
 - **Template File**: `~/.claude/templates/step-tdd-cycle-schema.json` (installed via `nwave-ai install`)
 - **Command Reference**: [nWave Commands Reference](./nwave-commands-reference.md)
 

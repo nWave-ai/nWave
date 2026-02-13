@@ -1,6 +1,6 @@
 # nWave: Acceptance Test Driven Development with AI
 
-A framework for systematic software development using ATDD (Acceptance Test Driven Development) with intelligent AI agent orchestration. nWave guides you through a 6-wave workflow (DISCOVER, DISCUSS, DESIGN, DISTILL, DEVELOP, DELIVER) with 22 specialized agents providing evidence-based decision making, architecture design, test-driven implementation, and production readiness validation.
+A framework for systematic software development using ATDD (Acceptance Test Driven Development) with intelligent AI agent orchestration. nWave guides you through a 6-wave workflow (DISCOVER, DISCUSS, DESIGN, DEVOP, DISTILL, DELIVER) with 22 specialized agents providing evidence-based decision making, architecture design, test-driven implementation, and production readiness validation.
 
 ## Install
 
@@ -45,7 +45,7 @@ Each wave produces validated artifacts with input from specialized agents:
 - **DISCUSS** - Requirements gathering and business analysis
 - **DESIGN** - Architecture design with technology selection
 - **DISTILL** - BDD acceptance tests that define "done"
-- **DEVELOP** - Outside-in TDD implementation with atomic tasks
+- **DELIVER** - Outside-in TDD implementation with atomic tasks
 - **DELIVER** - Production readiness validation
 
 ### 22 Specialized Agents

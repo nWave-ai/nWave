@@ -152,7 +152,7 @@
   And pre-commit hook testing passes
   And CI/CD reports clear success status
 
-## Scenario: All quality gates pass before DEVELOP wave handoff
+## Scenario: All quality gates pass before DELIVER wave handoff
   @skip
   Given all Phase 0-6 validations have completed successfully
   And all acceptance criteria from all phases are satisfied
@@ -161,7 +161,7 @@
   When the quality gate validator aggregates all results
   Then all 6 phases show PASSED status
   And no critical violations remain
-  And DEVELOP wave handoff is authorized
+  And DELIVER wave handoff is authorized
   And framework is ready for outside-in TDD development
 
 ---
@@ -256,11 +256,11 @@
 ## Scenario: Complete wave workflow execution
   @skip
   Given the nWave framework is configured for cross-phase integration
-  When the DEVELOP wave execution workflow is triggered
+  When the DELIVER wave execution workflow is triggered
   Then DISCUSS phase outputs are discoverable and documented
   And DESIGN wave references DISCUSS outputs
   And DISTILL wave references DESIGN outputs
-  And DEVELOP wave references DISTILL outputs
+  And DELIVER wave references DISTILL outputs
   And pre-commit hook validates wave handoff integrity
 
 ## Scenario: Complete release workflow from commit to installation

@@ -15,7 +15,7 @@ BUSINESS VALUE:
 
 SCOPE: Covers US-004 Acceptance Criteria (AC-004.1 through AC-004.6)
 WAVE: DISTILL (Acceptance Test Creation)
-STATUS: RED (Outside-In TDD - awaiting DEVELOP wave implementation)
+STATUS: RED (Outside-In TDD - awaiting DELIVER wave implementation)
 
 DOMAIN EXAMPLES FROM USER STORY:
 1. Complete Execution Audit: Marcus runs /nw:execute, audit log captures all phases
@@ -24,7 +24,7 @@ DOMAIN EXAMPLES FROM USER STORY:
 
 SCENARIO COUNT: 12 scenarios (Scenario 003 split into 3a, 3b, 3c per Outside-In TDD principle)
 
-DEVELOP WAVE MAPPING:
+DELIVER WAVE MAPPING:
 - Scenario 001: Implement ISO timestamp formatting
 - Scenario 002: Implement append-only immutability
 - Scenario 003a: Implement TASK_INVOCATION_* event logging
@@ -266,7 +266,7 @@ class TestAuditTrailForComplianceVerification:
         Business Value: Priya can see when task execution began and whether it
                        passed pre-invocation validation, enabling timeline tracing.
 
-        DEVELOP STEP MAPPING: Implement TASK_INVOCATION event logging
+        DELIVER STEP MAPPING: Implement TASK_INVOCATION event logging
         """
         # Arrange: Set up step execution
         # step_file = "steps/01-01.json"
@@ -298,7 +298,7 @@ class TestAuditTrailForComplianceVerification:
 
         Expected: 14 PHASE_STARTED + 14 PHASE_COMPLETED = 28 phase events total
 
-        DEVELOP STEP MAPPING: Implement PHASE_* event logging
+        DELIVER STEP MAPPING: Implement PHASE_* event logging
         """
         # Arrange: Set up step with all phases to execute
         # step_file = "steps/01-01.json"
@@ -328,7 +328,7 @@ class TestAuditTrailForComplianceVerification:
         Business Value: Priya can verify that agent completion was validated
                        and commit passed quality gates, completing audit trail.
 
-        DEVELOP STEP MAPPING: Implement SUBAGENT_STOP_* and COMMIT_* event logging
+        DELIVER STEP MAPPING: Implement SUBAGENT_STOP_* and COMMIT_* event logging
         """
         # Arrange: Set up complete step execution
         # step_file = "steps/01-01.json"

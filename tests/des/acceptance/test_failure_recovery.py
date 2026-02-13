@@ -21,7 +21,7 @@ ACCEPTANCE CRITERIA:
 
 SCOPE: Covers US-005 Acceptance Criteria (AC-005.1 through AC-005.5)
 WAVE: DISTILL (Acceptance Test Creation)
-STATUS: RED (Outside-In TDD - awaiting DEVELOP wave implementation)
+STATUS: RED (Outside-In TDD - awaiting DELIVER wave implementation)
 
 SOURCE:
 - docs/feature/des/discuss/user-stories.md (US-005)

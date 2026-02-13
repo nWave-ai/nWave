@@ -596,7 +596,7 @@ def show_help():
     python install_nwave.py --restore          # Restore from latest backup
 
 {B}WHAT GETS INSTALLED:{N}
-    - nWave specialized agents (DISCOVER\u2192DISCUSS\u2192DESIGN\u2192DISTILL\u2192DEVELOP\u2192DELIVER methodology)
+    - nWave specialized agents (DISCOVER\u2192DISCUSS\u2192DESIGN\u2192DEVOP\u2192DISTILL\u2192DELIVER methodology)
     - nWave command interface for workflow orchestration
     - ATDD (Acceptance Test Driven Development) integration
     - Outside-In TDD with double-loop architecture

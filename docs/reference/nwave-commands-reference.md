@@ -1,16 +1,15 @@
 # nWave Commands Reference
 
-**Version**: 1.6.0
-**Date**: 2026-01-24
+**Version**: 2.0.0
+**Date**: 2026-02-13
 **Status**: Production Ready
 
 Quick reference for all nWave commands, agents, and file locations.
 
 **Related Docs**:
 - [Jobs To Be Done Guide](../guides/jobs-to-be-done-guide.md) (explanation)
-- [How to Invoke Reviewers](../guides/how-to-invoke-reviewers.md) (how-to)
-- [How To: Execute DEVELOP Wave with Step-to-Scenario Mapping](../guides/how-to-develop-wave-step-scenario-mapping.md) (how-to)
-- [Outside-In TDD: Step-to-Scenario Mapping Principle](../principles/outside-in-tdd-step-mapping.md) (explanation)
+- [How to Invoke Reviewers](../guides/invoke-reviewer-agents.md) (how-to)
+- [How To: Execute DELIVER Wave with Step-to-Scenario Mapping](../guides/how-to-deliver-wave-step-scenario-mapping.md) (how-to)
 - [Step Template: mapped_scenario Field Reference](./step-template-mapped-scenario-field.md) (reference)
 
 ---
@@ -19,9 +18,10 @@ Quick reference for all nWave commands, agents, and file locations.
 
 | Command | Agent | Purpose |
 |---------|-------|---------|
-| `/nw:start` | product-owner | Initialize nWave workflow with project brief |
+| `/nw:discover` | product-discoverer | Evidence-based product discovery and market validation |
 | `/nw:discuss` | product-owner | Requirements gathering and business analysis |
 | `/nw:design` | solution-architect | Architecture design with technology selection |
+| `/nw:devops` | platform-architect | Platform readiness, CI/CD, infrastructure |
 | `/nw:distill` | acceptance-designer | Acceptance test creation (Given-When-Then) |
 
 ---
@@ -30,13 +30,12 @@ Quick reference for all nWave commands, agents, and file locations.
 
 | Command | Agent | Purpose |
 |---------|-------|---------|
-| `/nw:baseline` | researcher | Establish measurement baseline (BLOCKS roadmap) |
 | `/nw:roadmap` | solution-architect | Create comprehensive planning document (reads acceptance tests for scenario mapping) |
-| `/nw:split` | software-crafter | Generate atomic task files from roadmap (enforces 1:1 step-to-scenario mapping) |
 | `/nw:execute` | varies | Execute atomic task with state tracking |
+| `/nw:refactor` | software-crafter | Systematic code refactoring (Level 1-6) |
 | `/nw:review` | *-reviewer | Expert critique and quality assurance |
-| `/nw:finalize` | devop | Archive project and clean up workflow |
-| `/nw:deliver` | devop | Production readiness validation |
+| `/nw:finalize` | platform-architect | Archive project and clean up workflow |
+| `/nw:deliver` | platform-architect | Complete DELIVER wave: roadmap → execute-all → finalize |
 
 ---
 
@@ -48,10 +47,8 @@ Quick reference for all nWave commands, agents, and file locations.
 | `/nw:document` | researcher + documentarist | DIVIO-compliant documentation with Layer 4 peer review |
 | `/nw:root-why` | troubleshooter | Toyota 5 Whys root cause analysis |
 | `/nw:mikado` | software-crafter | Complex refactoring roadmaps (Mikado Method) |
-| `/nw:refactor` | software-crafter | Systematic code refactoring (Level 1-6) |
 | `/nw:mutation-test` | software-crafter | Layer 5 mutation testing for test suite effectiveness |
-| `/nw:develop` | software-crafter | Outside-In TDD implementation |
-| `/nw:diagram` | visual-architect | Architecture diagram lifecycle management |
+| `/nw:diagram` | solution-architect | Architecture diagram lifecycle management |
 
 ---
 
@@ -59,7 +56,6 @@ Quick reference for all nWave commands, agents, and file locations.
 
 | Command | Agent | Purpose |
 |---------|-------|---------|
-| `/nw:git` | devop | Git workflow operations (commit, branch, merge) |
 | `/nw:forge` | agent-builder | Create new agents from templates |
 
 ---
@@ -70,11 +66,12 @@ Quick reference for all nWave commands, agents, and file locations.
 
 | Agent | Use For |
 |-------|---------|
+| `@product-discoverer` | Evidence-based product discovery and market validation |
 | `@product-owner` | Requirements, business analysis, stakeholder alignment |
 | `@solution-architect` | Architecture design, technology selection, planning |
+| `@platform-architect` | Deployment, CI/CD, infrastructure, lifecycle management |
 | `@acceptance-designer` | BDD scenarios, acceptance tests, test completeness |
 | `@software-crafter` | Implementation, TDD, refactoring, code quality |
-| `@devop` | Deployment, operations, lifecycle management, git workflow |
 
 ### Cross-Wave Specialist Agents
 
@@ -82,18 +79,9 @@ Quick reference for all nWave commands, agents, and file locations.
 |-------|---------|
 | `@researcher` | Information gathering, evidence collection, analysis |
 | `@troubleshooter` | Root cause analysis, failure investigation (Toyota 5 Whys) |
-| `@visual-architect` | Architecture diagrams, visual documentation |
 | `@data-engineer` | Database systems, data pipelines, query optimization, data governance |
-| `@product-discoverer` | Evidence-based product discovery and validation |
-| `@agent-builder` | Create and validate new specialized agents |
-| `@illustrator` | Visual 2D diagrams, design artifacts, workflow visualizations |
 | `@documentarist` | DIVIO-compliant documentation quality assurance |
-
-### Utility Agents
-
-| Agent | Use For |
-|-------|---------|
-| `@agent-builder` | Create new agents using validated patterns and templates |
+| `@agent-builder` | Create and validate new specialized agents |
 
 ### Reviewer Agents (Cost-Optimized)
 
@@ -105,9 +93,13 @@ Every agent has a corresponding `*-reviewer` variant using the Haiku model:
 | `@solution-architect-reviewer` | Architecture |
 | `@product-owner-reviewer` | Requirements |
 | `@acceptance-designer-reviewer` | Test completeness |
-| `@devop-reviewer` | Deployment readiness |
+| `@platform-architect-reviewer` | Deployment readiness |
 | `@researcher-reviewer` | Research quality |
 | `@troubleshooter-reviewer` | RCA quality |
+| `@data-engineer-reviewer` | Data architecture quality |
+| `@documentarist-reviewer` | Documentation quality |
+| `@product-discoverer-reviewer` | Discovery quality |
+| `@agent-builder-reviewer` | Agent design quality |
 
 **Note**: `/nw:review` automatically routes to the reviewer variant.
 
@@ -117,16 +109,11 @@ Every agent has a corresponding `*-reviewer` variant using the Haiku model:
 
 | Artifact | Location |
 |----------|----------|
+| Feature Docs | `docs/feature/{feature-name}/{wave}/` |
 | Research | `docs/research/{category}/{topic}.md` |
-| Skills | `nWave/skills/{agent}/{topic}.md` |
-| Baseline | `docs/workflow/{project-id}/baseline.yaml` |
-| Roadmap | `docs/workflow/{project-id}/roadmap.yaml` |
-| Tasks | `docs/workflow/{project-id}/steps/*.json` |
-| Reviews | Embedded in task files |
-| Architecture | `docs/architecture/` |
-| Architecture Diagrams | `docs/architecture/diagrams/` |
-| Requirements | `docs/requirements/` |
-| Agents | `nWave/agents/` |
+| Roadmap | `docs/feature/{feature-name}/roadmap.yaml` |
+| Execution Log | `docs/feature/{feature-name}/execution-log.yaml` |
+| Reviews | Embedded in execution log |
 
 ---
 
@@ -134,11 +121,11 @@ Every agent has a corresponding `*-reviewer` variant using the Haiku model:
 
 | Job | You Know What? | Sequence |
 |-----|---------------|----------|
-| **Greenfield** | No | [research] -> discuss -> design -> [diagram] -> distill -> baseline -> roadmap -> split -> execute -> review |
-| **Brownfield** | Yes | [research] -> baseline -> roadmap -> split -> execute -> review |
-| **Refactoring** | Partially | [research] -> baseline -> mikado/roadmap -> split -> execute -> review |
-| **Bug Fix** | Yes (symptom) | [research] -> root-why -> develop -> deliver |
-| **Research** | No | research -> (output informs next job) |
+| **Greenfield** | No | [research] → discuss → design → [devops] → [diagram] → distill → roadmap → execute → [refactor] → review |
+| **Brownfield** | Yes | [research] → roadmap → execute → [refactor] → review |
+| **Refactoring** | Partially | [research] → mikado/roadmap → execute → [refactor] → review |
+| **Bug Fix** | Yes (symptom) | [research] → root-why → execute → review |
+| **Research** | No | research → (output informs next job) |
 
 *Items in `[brackets]` are optional.*
 
@@ -158,29 +145,26 @@ Every agent has a corresponding `*-reviewer` variant using the Haiku model:
 ### Command Syntax Examples
 
 ```bash
-# Start new project
-/nw:start "Project name"
-
 # Requirements gathering
 /nw:discuss "feature requirements"
 
 # Architecture design
 /nw:design --architecture=hexagonal
 
+# Platform readiness
+/nw:devops
+
 # Create diagram
 /nw:diagram --format=mermaid --level=container
-
-# Baseline before roadmap
-/nw:baseline "goal description"
 
 # Create roadmap
 /nw:roadmap @solution-architect "goal description"
 
-# Split into tasks
-/nw:split @devop "project-id"
-
 # Execute task
 /nw:execute @software-crafter "path/to/step.json"
+
+# Refactor after execute
+/nw:refactor --target="ServiceName" --level=3
 
 # Review task
 /nw:review @software-crafter task "path/to/step.json"
@@ -197,18 +181,13 @@ Every agent has a corresponding `*-reviewer` variant using the Haiku model:
 
 # Root cause analysis
 /nw:root-why "problem description"
-
-# Git operations
-/nw:git commit
-/nw:git branch "feature/name"
-/nw:git push
 ```
 
 ---
 
-## DEVELOP Wave: Step-to-Scenario Mapping Constraint
+## DELIVER Wave: Step-to-Scenario Mapping Constraint
 
-**Applies to**: `/nw:roadmap`, `/nw:split`, `/nw:execute` when creating feature steps.
+**Applies to**: `/nw:roadmap`, `/nw:execute` when creating feature steps.
 
 ### The Rule
 
@@ -219,9 +198,9 @@ This is a hard constraint for Outside-In TDD, not a suggestion.
 ```
 Acceptance Tests (from DISTILL):          Roadmap Steps (from solution-architect):
 ├─ test_scenario_001_execute              ├─ 01-01: Make scenario_001 pass
-├─ test_scenario_002_ad_hoc                ├─ 01-02: Make scenario_002 pass
-├─ test_scenario_003_research              ├─ 01-03: Make scenario_003 pass
-└─ test_scenario_004_develop               └─ 01-04: Make scenario_004 pass
+├─ test_scenario_002_ad_hoc               ├─ 01-02: Make scenario_002 pass
+├─ test_scenario_003_research             ├─ 01-03: Make scenario_003 pass
+└─ test_scenario_004_deliver              └─ 01-04: Make scenario_004 pass
 
 VALIDATION: num_roadmap_steps == num_acceptance_scenarios ✅ REQUIRED
 ```
@@ -230,7 +209,7 @@ VALIDATION: num_roadmap_steps == num_acceptance_scenarios ✅ REQUIRED
 
 - **Preserves TDD discipline**: Each step has clear RED → GREEN progression
 - **Enables traceability**: Scenario → Step → Commit (business requirement to code)
-- **Prevents architectural thinking in DEVELOP**: Focus on behavioral implementation, not technical layers
+- **Prevents architectural thinking in DELIVER**: Focus on behavioral implementation, not technical layers
 - **Maintains test granularity**: Can't batch multiple features into one step
 
 ### For solution-architect (/nw:roadmap)
@@ -249,15 +228,6 @@ VALIDATION: num_roadmap_steps == num_acceptance_scenarios ✅ REQUIRED
   description: "Make test_scenario_001 pass (RED → GREEN)"
 ```
 
-### For software-crafter (/nw:split)
-
-**Before generating step files**:
-1. Count roadmap steps
-2. Count acceptance test scenarios
-3. **ENFORCE**: `assert num_steps == num_acceptance_scenarios`
-
-If mismatch detected, the split command FAILS with error message directing to [principle documentation](../principles/outside-in-tdd-step-mapping.md).
-
 ### Exceptions: Infrastructure & Refactoring Steps
 
 Steps that don't map to acceptance tests CAN exist, but only as:
@@ -268,13 +238,11 @@ These steps have NO acceptance test scenario and do NOT count toward the 1:1 map
 
 ### Related Documentation
 
-- **Detailed Principle**: [Outside-In TDD: Step-to-Scenario Mapping Principle](../principles/outside-in-tdd-step-mapping.md)
-- **How-to Guide**: [How To: Execute DEVELOP Wave](../guides/how-to-develop-wave-step-scenario-mapping.md)
+- **How-to Guide**: [How To: Execute DELIVER Wave](../guides/how-to-deliver-wave-step-scenario-mapping.md)
 - **Template Reference**: [Step Template: mapped_scenario Field](./step-template-mapped-scenario-field.md)
-- **Agent Spec**: [solution-architect - Step-to-Scenario Mapping core principle](../../nWave/agents/solution-architect.md)
 
 ---
 
-**Last Updated**: 2026-01-24
+**Last Updated**: 2026-02-13
 **Type**: Reference
 **Purity**: 98%+

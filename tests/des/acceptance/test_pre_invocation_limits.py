@@ -14,7 +14,7 @@ BUSINESS VALUE:
 
 SCOPE: Covers step 07-02 acceptance criteria
 WAVE: DISTILL (Acceptance Test Creation)
-STATUS: RED (Outside-In TDD - awaiting DEVELOP wave implementation)
+STATUS: RED (Outside-In TDD - awaiting DELIVER wave implementation)
 """
 
 

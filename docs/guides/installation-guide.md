@@ -320,16 +320,12 @@ After installation, navigate to any project and start your first workflow:
 /nw:discuss "feature requirements"
 /nw:design
 /nw:distill "acceptance tests"
-/nw:baseline "measure starting state"
 /nw:roadmap
-/nw:split
 /nw:execute
 /nw:review
 
 # Or for existing code (brownfield)
-/nw:baseline "current state"
 /nw:roadmap
-/nw:split
 /nw:execute
 /nw:review
 ```

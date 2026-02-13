@@ -103,7 +103,7 @@ nwave review --interactive
 ```
 ? Select artifact to review:
   > docs/requirements/requirements.md
-    docs/architecture/architecture.md
+    docs/feature/{feature-name}/design/architecture-design.md
     tests/acceptance/checkout.feature
 
 ? Select reviewer:
@@ -256,7 +256,7 @@ Fast check for common biases:
 
 ```bash
 nwave review \
-  --artifact docs/architecture/architecture.md \
+  --artifact docs/feature/{feature-name}/design/architecture-design.md \
   --reviewer solution-architect-reviewer \
   --dimensions bias \
   --quick

@@ -69,7 +69,7 @@ agent-activation:
 # VARIABLE SUBSTITUTION GUIDE:
 #
 # Wave Variables:
-#   {WAVE} → DISCUSS | DESIGN | DISTILL | DEVELOP | DEMO | CROSS_WAVE
+#   {WAVE} → DISCUSS | DESIGN | DEVOP | DISTILL | DELIVER | CROSS_WAVE
 #   {PREVIOUS_WAVE} → Previous wave in sequence (or "None" for DISCUSS)
 #
 # Agent Variables:

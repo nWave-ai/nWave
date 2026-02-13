@@ -37,7 +37,7 @@ Documentation is organized into exactly four types:
 - `docs/guides/5-layer-testing-developers.md` - Programmatic review API
 - `docs/guides/5-layer-testing-users.md` - Manual review workflows
 - `docs/guides/5-layer-testing-cicd.md` - CI/CD integration
-- `docs/guides/how-to-develop-wave-step-scenario-mapping.md` - Execute DEVELOP wave with step-to-scenario mapping
+- `docs/guides/how-to-deliver-wave-step-scenario-mapping.md` - Execute DELIVER wave with step-to-scenario mapping
 - `docs/guides/troubleshooting-guide.md` - Solve common issues
 
 ### 3. **Reference** (Information Orientation)
@@ -52,8 +52,8 @@ Documentation is organized into exactly four types:
 - `docs/reference/reviewer-agents-reference.md` - Reviewer specifications
 - `docs/reference/5-layer-testing-api.md` - API contracts
 - `docs/reference/step-template-mapped-scenario-field.md` - Step template schema with scenario mapping field
-- `docs/guides/QUICK_REFERENCE_VALIDATION.md` - Quick lookup tables
-- `docs/templates/STEP_EXECUTION_TEMPLATE.md` - Template specification
+- `docs/reference/des-orchestrator-api.md` - DES execution coordination API
+- `docs/reference/wave-command-output-paths.md` - Output path specifications
 
 ### 4. **Explanation** (Understanding Orientation)
 - **User Need**: "Why is X?" / "How does Y work?"
@@ -65,7 +65,7 @@ Documentation is organized into exactly four types:
 **nWave Explanations**:
 - `docs/guides/knowledge-architecture-analysis.md` - Why the architecture works
 - `docs/guides/knowledge-architecture-analysis.md` - Architecture decisions
-- `docs/guides/how-to-develop-wave-step-scenario-mapping.md` - Step-to-scenario mapping in DEVELOP wave
+- `docs/guides/how-to-deliver-wave-step-scenario-mapping.md` - Step-to-scenario mapping in DELIVER wave
 - `README.md` (partial) - Project vision and philosophy
 
 ---
@@ -74,42 +74,30 @@ Documentation is organized into exactly four types:
 
 ```
 docs/
-├── README.md                              # Entry point for new users
-│
-├── guides/                                # HOW-TO & EXPLANATION docs
+├── guides/                                # HOW-TO guides & explanations
 │   ├── jobs-to-be-done-guide.md          # When to use each workflow
-│   ├── how-to-invoke-reviewers.md         # How to request reviews
-│   ├── 5-layer-testing-developers.md          # Programmatic API usage
-│   ├── 5-layer-testing-users.md               # Manual workflows
-│   ├── 5-layer-testing-cicd.md                # CI/CD integration
+│   ├── installation-guide.md             # Setup instructions
+│   ├── invoke-reviewer-agents.md         # How to request reviews
+│   ├── how-to-deliver-wave-step-scenario-mapping.md  # Outside-in TDD execution
+│   ├── des-audit-trail-guide.md          # DES audit tracking
+│   ├── 5-layer-testing-users.md          # Manual review workflows
+│   ├── 5-layer-testing-developers.md     # Programmatic review integration
+│   ├── 5-layer-testing-cicd.md           # CI/CD review automation
 │   ├── knowledge-architecture-analysis.md # Architecture design rationale
-│   ├── knowledge-architecture-analysis.md # Architecture rationale
-│   └── [other guides...]
+│   └── troubleshooting-guide.md          # Common issues & solutions
 │
-├── reference/                             # REFERENCE docs (lookup)
-│   ├── nwave-commands-reference.md        # All commands, agents, files
-│   ├── reviewer-agents-reference.md       # Reviewer specifications
-│   ├── 5-layer-testing-api.md           # API contracts & types
-│   └── [other references...]
-│
-├── installation/                          # INSTALLATION (Tutorial/How-to)
-│   ├── INSTALL.md                         # Setup instructions
-│   └── UNINSTALL.md                       # Removal instructions
-│
-├── troubleshooting/                       # TROUBLESHOOTING (How-to)
-│   └── TROUBLESHOOTING.md                 # Common issues & solutions
-│
-├── analysis/                              # Analysis & Audits
-│   └── divio-audit/
-│       ├── DIVIO_CLASSIFICATION_SUMMARY.md          # Full audit
-│       ├── DOCUMENTATION_RESTRUCTURING_ACTION_PLAN.md # Restructuring
-│       └── DOCUMENTATION_CONSOLIDATION_COMPLETE.md   # Completion report
-│
-├── principles/                            # Design Principles & Explanations
-│   └── outside-in-tdd-step-mapping.md     # Step-to-scenario mapping principle
-│
-└── research/                              # Background & Research
-    └── [research topics...]
+└── reference/                             # REFERENCE docs (lookup)
+    ├── nwave-commands-reference.md        # All commands, agents, files
+    ├── reviewer-agents-reference.md       # Reviewer specifications
+    ├── 5-layer-testing-api.md             # Review API contracts & types
+    ├── des-orchestrator-api.md            # DES execution coordination API
+    ├── audit-log-refactor.md              # Audit event schema and writers
+    ├── audit-trail-compliance-verification.md  # Compliance verification
+    ├── recovery-guidance-handler-api.md   # Recovery handler interface
+    ├── nwave-plugin-architecture.md       # Plugin system API
+    ├── step-template-mapped-scenario-field.md  # mapped_scenario field spec
+    ├── wave-command-output-paths.md       # Output path specifications
+    └── DOCUMENTATION_STRUCTURE.md         # This file (DIVIO organization)
 ```
 
 ---

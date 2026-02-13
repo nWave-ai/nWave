@@ -1,4 +1,4 @@
-# How To: Execute DEVELOP Wave with Step-to-Scenario Mapping
+# How To: Execute DELIVER Wave with Step-to-Scenario Mapping
 
 **Document Type**: How-to Guide
 **Last Updated**: 2026-01-24
@@ -6,7 +6,7 @@
 
 ## Goal
 
-Successfully execute a DEVELOP wave where each roadmap step implements exactly one acceptance test scenario following Outside-In TDD discipline.
+Successfully execute a DELIVER wave where each roadmap step implements exactly one acceptance test scenario following Outside-In TDD discipline.
 
 ## Before You Start
 
@@ -43,28 +43,7 @@ Before proceeding, review the mapping rule:
 - 4 acceptance test scenarios = 4 roadmap steps = 4 step files (01-01, 01-02, 01-03, 01-04)
 - Each step makes exactly 1 scenario pass (RED → GREEN)
 
-## Step 3: Create a Measurement Baseline
-
-Initialize the DEVELOP wave with quantitative baseline data (this is mandatory).
-
-**Command**:
-```
-/nw:baseline "{project_id}" "{feature_description}"
-```
-
-**Example**:
-```
-/nw:baseline "des" "Add DES validation markers to commands"
-```
-
-**Output Location**: `docs/feature/{project_id}/baseline.yaml`
-
-**Deliverables**:
-- Current state metrics (performance, complexity, coverage)
-- Measurement methodology documentation
-- Target improvement thresholds
-
-## Step 4: Create the Roadmap with Scenario Mapping
+## Step 3: Create the Roadmap with Scenario Mapping
 
 Create a comprehensive roadmap where each step explicitly maps to one acceptance scenario.
 
@@ -103,16 +82,11 @@ steps:
 
 **Output Location**: `docs/feature/{project_id}/roadmap.yaml`
 
-## Step 5: Split Roadmap into Atomic Step Files
+## Step 4: Verify Step Files
 
-Generate individual step files that will be executed in sequence.
+The roadmap command generates individual step files. Verify them before execution.
 
-**Command**:
-```
-/nw:split "{project_id}" "{feature_description}"
-```
-
-**Validation** (Agent will verify):
+**Validation**:
 - `assert num_steps == num_acceptance_scenarios`
 - Each step file contains exactly one acceptance test scenario reference
 - Each step maps to roadmap via `step_id`
@@ -132,7 +106,7 @@ Generate individual step files that will be executed in sequence.
 
 **Output Location**: `docs/feature/{project_id}/steps/01-01.json` through `01-0N.json`
 
-## Step 6: Execute Each Step with RED → GREEN Discipline
+## Step 5: Execute Each Step with RED → GREEN Discipline
 
 Execute steps sequentially, with each step focusing on a single acceptance scenario.
 
@@ -167,7 +141,7 @@ pytest tests/acceptance/ -v
 ```
 **Expected**: All previously passing tests still pass, new test now passes
 
-## Step 7: Finalize the Wave
+## Step 6: Finalize the Wave
 
 After all steps complete successfully, finalize the wave (archival and reporting).
 
@@ -183,9 +157,8 @@ After all steps complete successfully, finalize the wave (archival and reporting
 
 ## Validation Checklist
 
-Before declaring DEVELOP wave complete:
+Before declaring DELIVER wave complete:
 
-- [ ] Baseline created: `docs/feature/{project_id}/baseline.yaml` exists
 - [ ] Roadmap created: `docs/feature/{project_id}/roadmap.yaml` exists
 - [ ] Step count matches: `num_steps == num_acceptance_scenarios`
 - [ ] Each step has `acceptance_test_scenario` field

@@ -13,7 +13,7 @@ BUSINESS VALUE:
 
 SCOPE: Covers US-008 Acceptance Criteria (AC-008.1 through AC-008.5)
 WAVE: DISTILL (Acceptance Test Creation)
-STATUS: RED (Outside-In TDD - awaiting DEVELOP wave implementation)
+STATUS: RED (Outside-In TDD - awaiting DELIVER wave implementation)
 """
 
 import json

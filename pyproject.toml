@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nwave-ai"
-version = "1.1.0"
+version = "1.1.1"
 description = "CLI installer for the nWave AI methodology framework"
 readme = "README.md"
 license = {text = "MIT"}

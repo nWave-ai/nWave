@@ -160,7 +160,7 @@ pytest tests/acceptance/ -v
 └─────────────────────────────────────────┘
                   ↓
 ┌─────────────────────────────────────────┐
-│ DEVELOP Wave                            │
+│ DELIVER Wave                            │
 │ - Implement via Outside-In TDD          │
 │ - Unit tests drive implementation       │
 │ - Acceptance test turns GREEN naturally │

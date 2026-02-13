@@ -23,7 +23,7 @@ Add to your pipeline:
 - name: Layer 4 Review
   run: |
     nwave review \
-      --artifact docs/requirements/requirements.md \
+      --artifact docs/feature/*/discuss/requirements.md \
       --reviewer business-analyst-reviewer \
       --fail-on-critical \
       --output-format json
@@ -43,8 +43,8 @@ name: Layer 4 Adversarial Verification
 on:
   pull_request:
     paths:
-      - 'docs/requirements/**'
-      - 'docs/architecture/**'
+      - 'docs/feature/*/discuss/**'
+      - 'docs/feature/*/design/**'
       - 'tests/acceptance/**'
       - 'src/**'
 
@@ -67,19 +67,19 @@ jobs:
           echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
 
       - name: Run Layer 4 Review (Requirements)
-        if: contains(steps.detect.outputs.changed_files, 'docs/requirements/')
+        if: contains(steps.detect.outputs.changed_files, 'docs/feature/*/discuss/')
         run: |
           nwave review \
-            --artifact docs/requirements/requirements.md \
+            --artifact docs/feature/*/discuss/requirements.md \
             --reviewer business-analyst-reviewer \
             --fail-on-critical \
             --output-format json > review_requirements.json
 
       - name: Run Layer 4 Review (Architecture)
-        if: contains(steps.detect.outputs.changed_files, 'docs/architecture/')
+        if: contains(steps.detect.outputs.changed_files, 'docs/feature/*/design/')
         run: |
           nwave review \
-            --artifact docs/architecture/architecture.md \
+            --artifact docs/feature/*/design/architecture.md \
             --reviewer solution-architect-reviewer \
             --fail-on-critical \
             --output-format json > review_architecture.json
@@ -157,9 +157,9 @@ layer4_peer_review:
 
     # Review changed artifacts
     - |
-      if [ -f "docs/requirements/requirements.md" ]; then
+      if [ -f "docs/feature/*/discuss/requirements.md" ]; then
         nwave review \
-          --artifact docs/requirements/requirements.md \
+          --artifact docs/feature/*/discuss/requirements.md \
           --reviewer business-analyst-reviewer \
           --fail-on-critical \
           --output-format json > review_requirements.json
@@ -182,8 +182,8 @@ layer4_peer_review:
 
   only:
     changes:
-      - docs/requirements/**
-      - docs/architecture/**
+      - docs/feature/*/discuss/**
+      - docs/feature/*/design/**
       - tests/acceptance/**
 ```
 
@@ -216,7 +216,7 @@ pipeline {
           def reviewResult = sh(
             script: '''
               nwave review \
-                --artifact docs/requirements/requirements.md \
+                --artifact docs/feature/*/discuss/requirements.md \
                 --reviewer business-analyst-reviewer \
                 --output-format json
             ''',
@@ -282,7 +282,7 @@ Pass pipeline with warnings:
 
 ```bash
 nwave review \
-  --artifact docs/requirements/requirements.md \
+  --artifact docs/feature/*/discuss/requirements.md \
   --reviewer business-analyst-reviewer \
   --warn-on-critical   # Don't fail, just warn
 ```
@@ -332,12 +332,12 @@ layer4:
 ```yaml
 # GitHub Actions
 - name: Review Requirements
-  if: contains(steps.detect.outputs.changed_files, 'docs/requirements/')
-  run: nwave review --artifact docs/requirements/ --reviewer business-analyst-reviewer
+  if: contains(steps.detect.outputs.changed_files, 'docs/feature/*/discuss/')
+  run: nwave review --artifact docs/feature/*/discuss/ --reviewer business-analyst-reviewer
 
 - name: Review Architecture
-  if: contains(steps.detect.outputs.changed_files, 'docs/architecture/')
-  run: nwave review --artifact docs/architecture/ --reviewer solution-architect-reviewer
+  if: contains(steps.detect.outputs.changed_files, 'docs/feature/*/design/')
+  run: nwave review --artifact docs/feature/*/design/ --reviewer solution-architect-reviewer
 
 - name: Review Tests
   if: contains(steps.detect.outputs.changed_files, 'tests/acceptance/')
@@ -361,9 +361,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - artifact: docs/requirements/
+          - artifact: docs/feature/*/discuss/
             reviewer: business-analyst-reviewer
-          - artifact: docs/architecture/
+          - artifact: docs/feature/*/design/
             reviewer: solution-architect-reviewer
           - artifact: tests/acceptance/
             reviewer: acceptance-designer-reviewer
@@ -512,7 +512,7 @@ jobs:
       - uses: actions/checkout@v3
       - run: |
           nwave review \
-            --artifact docs/requirements/ \
+            --artifact docs/feature/*/discuss/ \
             --reviewer business-analyst-reviewer \
             --fail-on-critical
 

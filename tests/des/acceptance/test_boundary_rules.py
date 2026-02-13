@@ -24,7 +24,7 @@ SOURCE:
 - Acceptance Criteria AC-007.1 through AC-007.5
 
 WAVE: DISTILL (Acceptance Test Creation)
-STATUS: RED (Outside-In TDD - awaiting DEVELOP wave implementation)
+STATUS: RED (Outside-In TDD - awaiting DELIVER wave implementation)
 """
 
 import json
@@ -66,7 +66,7 @@ class TestBoundaryRulesInclusion:
         step_file_path = str(minimal_step_file.relative_to(tmp_project_root))
 
         # WHEN: Orchestrator renders full Task prompt
-        # NOTE: This will fail until DEVELOP wave implements full prompt rendering
+        # NOTE: This will fail until DELIVER wave implements full prompt rendering
         prompt = des_orchestrator.render_full_prompt(
             command=command,
             agent=agent,

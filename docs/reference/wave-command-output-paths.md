@@ -221,9 +221,9 @@ docs/feature/
 
 **Resolution**: Reference shared component in `design/component-boundaries.md` with cross-feature link; maintain separate DISCUSS outputs per feature
 
-### DEVELOP Wave Implementation Code
+### DELIVER Wave Implementation Code
 
-**Condition**: DEVELOP wave outputs
+**Condition**: DELIVER wave outputs
 
 **Resolution**: Implementation code goes to `src/{feature-path}/` not `docs/feature/{feature-name}/develop/`; reference location in DELIVER context files
 
@@ -297,6 +297,5 @@ The DESIGN wave reads requirements and user stories from the DISCUSS wave:
 
 ## See Also
 
-- How-to: [Create Documentation for a New Feature](./how-to-create-feature-documentation.md) - Step-by-step guide for setting up feature documentation structure
 - Reference: [nWave Commands Reference](./nwave-commands-reference.md) - Complete command specifications and usage
-- Tutorial: [Installation and Setup](../installation/INSTALL.md) - Get nWave installed and configured
+- How-to: [Installation Guide](../guides/installation-guide.md) - Get nWave installed and configured
