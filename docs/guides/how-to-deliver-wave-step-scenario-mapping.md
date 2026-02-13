@@ -208,6 +208,6 @@ Before declaring DELIVER wave complete:
 
 ---
 
-**Document Owner**: AI-Craft Team
+**Document Owner**: nWave Team
 **Last Review**: 2026-01-24
 **Next Review**: After DES US-002 completion

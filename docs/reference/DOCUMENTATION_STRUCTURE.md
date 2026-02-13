@@ -22,6 +22,7 @@ Documentation is organized into exactly four types:
 - **Example**: Installation guide for a new user
 
 **nWave Tutorials**:
+- `docs/guides/tutorial-first-feature.md` - Build a feature end-to-end
 - `docs/guides/installation-guide.md` - Installation instructions
 - `docs/guides/jobs-to-be-done-guide.md` - Workflow orientation
 
@@ -60,7 +61,7 @@ Documentation is organized into exactly four types:
 
 **nWave Explanations**:
 - `docs/guides/how-to-deliver-wave-step-scenario-mapping.md` - Step-to-scenario mapping in DELIVER wave
-- `README.md` (partial) - Project vision and philosophy
+- `README.md` - Project entry point and quick start
 
 ---
 
@@ -68,7 +69,8 @@ Documentation is organized into exactly four types:
 
 ```
 docs/
-├── guides/                                # HOW-TO guides & explanations
+├── guides/                                # Tutorials, HOW-TO guides & explanations
+│   ├── tutorial-first-feature.md         # Build a feature end-to-end (tutorial)
 │   ├── jobs-to-be-done-guide.md          # When to use each workflow
 │   ├── installation-guide.md             # Setup instructions
 │   ├── invoke-reviewer-agents.md         # How to request reviews
@@ -96,8 +98,8 @@ docs/
 All documentation files follow **kebab-case** naming:
 
 ✅ **Correct**:
-- `how-to-invoke-reviewers.md`
 - `invoke-reviewer-agents.md`
+- `how-to-deliver-wave-step-scenario-mapping.md`
 - `nwave-commands-reference.md`
 
 ❌ **Avoid**:
@@ -157,7 +159,7 @@ To understand why this approach works, see the relevant explanation document.
 
 ### Reference → How-to
 ```markdown
-For usage examples, see [How to Invoke Reviewers](./how-to-invoke-reviewers.md).
+For usage examples, see [How to Invoke Reviewers](../guides/invoke-reviewer-agents.md).
 ```
 
 ### Explanation → How-to

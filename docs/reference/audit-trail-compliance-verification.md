@@ -36,8 +36,8 @@ The `AuditLogger` class manages append-only audit logs with the following charac
 #### Key Methods
 
 ```python
-# Initialize logger (creates .des/audit directory)
-logger = AuditLogger(log_dir=".des/audit")
+# Initialize logger (creates .nwave/des/logs directory)
+logger = AuditLogger(log_dir=".nwave/des/logs")
 
 # Append entry (creates file on first append)
 logger.append({
@@ -231,20 +231,20 @@ log_audit_event(
 
 ```bash
 # Find all events for a specific feature
-jq -c 'select(.feature_name == "audit-log-refactor")' .des/audit/audit-2026-01-27.log
+jq -c 'select(.feature_name == "audit-log-refactor")' .nwave/des/logs/audit-2026-01-27.log
 
 # Find all events for a specific step within a feature
-jq -c 'select(.feature_name == "audit-log-refactor" and .step_id == "01-01")' .des/audit/audit-2026-01-27.log
+jq -c 'select(.feature_name == "audit-log-refactor" and .step_id == "01-01")' .nwave/des/logs/audit-2026-01-27.log
 ```
 
 ### By Event Type
 
 ```bash
 # Find all phase failures
-jq -c 'select(.event == "PHASE_FAILED")' .des/audit/audit-2026-01-27.log
+jq -c 'select(.event == "PHASE_FAILED")' .nwave/des/logs/audit-2026-01-27.log
 
 # Find all events for a step with phase details
-jq -c 'select(.step_id == "01-01") | {event, phase: .phase_name, outcome}' .des/audit/audit-2026-01-27.log
+jq -c 'select(.step_id == "01-01") | {event, phase: .phase_name, outcome}' .nwave/des/logs/audit-2026-01-27.log
 ```
 
 ## Compliance Features

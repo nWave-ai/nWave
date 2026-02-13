@@ -1,321 +1,138 @@
-# nWave Framework Troubleshooting Guide
+# nWave Troubleshooting Guide
+
+**Version**: 2.0.0
+**Date**: 2026-02-13
+**Status**: Production Ready
+
+---
 
 ## Quick Diagnostic
 
-If you're experiencing issues with nWave, run this quick diagnostic first:
-
 ```bash
-# Quick system check
-echo "=== nWave Quick Diagnostic ==="
-echo "Installation: $(ls ~/.claude/agents/nw/ 2>/dev/null && echo 'OK' || echo 'MISSING')"
-echo "Commands: $(ls ~/.claude/commands/nw/ 2>/dev/null | wc -l) found"
+echo "Agents: $(ls ~/.claude/agents/nw/ 2>/dev/null | wc -l) files"
+echo "Commands: $(ls ~/.claude/commands/nw/ 2>/dev/null | wc -l) files"
+python3 --version
 ```
 
-## Installation Issues
+If agents or commands show 0, reinstall: `nwave-ai install`
 
-### Framework Not Found
+---
 
-**Symptoms**:
+## Installation
 
-- Commands like `/nw:discuss` not recognized
-- No agents directory found
-- Missing framework files
+### Commands not recognized (`/nw:discuss` not found)
 
-**Solutions**:
+**Cause**: Framework not installed or Claude Code not restarted after install.
 
+**Fix**:
 ```bash
-# Check installation
-ls ~/.claude/agents/nw/ ~/.claude/commands/nw/
-
-# If missing, reinstall
 nwave-ai install
-
-# If install fails, check source
-ls ~/.claude/agents/nw/
 ```
+Then close and reopen Claude Code.
 
-### Installation Fails
+### Installation fails
 
-**Common Causes**:
+**Cause**: Missing Python 3, permission issues, or corrupted state.
 
-1. **Missing source files**
-2. **Permission issues**
-3. **Python not available for settings merge**
-
-**Debug Steps**:
-
+**Fix**:
 ```bash
-# Check source framework
-ls ~/.claude/agents/nw/
+# Check Python
+python3 --version
 
 # Check permissions
 ls -la ~/.claude/
 
-# Test with backup
-nwave-ai install --backup-only
-
-# Check Python availability
-python3 --version
-```
-
-### Partial Installation
-
-**Symptoms**:
-
-- Some components missing
-- Validation errors during install
-- Incomplete functionality
-
-**Solutions**:
-
-```bash
-# Uninstall and reinstall
+# Clean reinstall
 nwave-ai uninstall --backup --force
 nwave-ai install
-
-# Check validation logs
-cat ~/.claude/nwave-install.log
 ```
 
-## Command Issues
+### Partial installation (some agents missing)
 
-### DW Commands Not Found
+**Cause**: Interrupted install or file permission mismatch.
 
-**Symptoms**:
-
-- `/nw:discuss` command not recognized
-- Commands not available in Claude Code
-- Command completion not working
-
-**Solutions**:
-
+**Fix**:
 ```bash
-# Check command installation
-ls ~/.claude/commands/nw/
-
-# Expected commands
-cat ~/.claude/commands/nw/discuss.md
-
-# Reinstall commands
+nwave-ai uninstall --backup --force
 nwave-ai install
 ```
 
-### Command Execution Errors
-
-**Debug Steps**:
-
-```bash
-# Check command files
-ls -la ~/.claude/commands/nw/
-
-# Check permissions
-find ~/.claude/commands/nw/ -name "*.md" -ls
-
-# Verify command structure
-head -20 ~/.claude/commands/nw/discuss.md
-```
+---
 
 ## Agent Issues
 
-### Agents Not Responding
+### Agent gives generic responses (no persona)
 
-**Symptoms**:
+**Cause**: Agent specification file missing or not loaded.
 
-- Agent selection not working
-- No agent-specific behavior
-- Generic responses only
-
-**Solutions**:
-
+**Fix**: Verify agent files exist:
 ```bash
-# Check agent installation
-ls ~/.claude/agents/nw/
-
-# Verify agent files
-head -20 ~/.claude/agents/nw/solution-architect.md
+ls ~/.claude/agents/nw/nw-*.md | wc -l
+# Expected: 22 files (11 primary + 11 reviewers)
 ```
 
-### Agent Context Issues
+If missing, reinstall: `nwave-ai install`
 
-**Debug Steps**:
+---
 
+## Platform-Specific
+
+### WSL: Path or permission errors
+
+**Fix**:
 ```bash
-# Check agent specifications
-ls ~/.claude/agents/nw/
-
-# Verify agent organization
-find ~/.claude/agents/nw/ -name "*.md" | wc -l
-```
-
-## Environment Issues
-
-### WSL/Linux Issues
-
-**Common Problems**:
-
-- Path issues between Windows and WSL
-- Permission mismatches
-- Tool installation conflicts
-
-**Solutions**:
-
-```bash
-# Check environment
-echo $PATH
-which python3 pip3
-
-# Fix WSL permissions
-sudo chmod -R 755 ~/.claude/agents/nw/
-sudo chmod -R 755 ~/.claude/commands/nw/
-```
-
-### macOS Issues
-
-**Common Problems**:
-
-- Homebrew tool conflicts
-- Python version issues
-- Permission restrictions
-
-**Solutions**:
-
-```bash
-# Check Python version
-python3 --version
-which python3
-
-# Fix permissions
 chmod -R 755 ~/.claude/agents/nw/
 chmod -R 755 ~/.claude/commands/nw/
 ```
 
-### Windows Issues
+### macOS: Python version conflicts
 
-**Note**: Use WSL for Windows environments.
+**Fix**: Ensure `python3` points to 3.10+:
+```bash
+python3 --version
+which python3
+```
 
-**Setup WSL**:
+### Windows
+
+Use WSL. Native Windows is not supported.
 
 ```bash
-# Enable WSL in Windows
 wsl --install
-
-# Install nWave in WSL
-cd /mnt/c/path/to/nwave
-nwave-ai install
+# Then install nWave inside WSL
 ```
 
-## Comprehensive Diagnostics
+---
 
-### Full System Check
+## Recovery
 
-```bash
-#!/bin/bash
-echo "=== nWave Comprehensive Diagnostic ==="
-echo "Date: $(date)"
-echo "User: $(whoami)"
-echo "System: $(uname -a)"
-echo ""
-
-echo "=== Environment ==="
-echo "PATH: $PATH"
-echo "Shell: $SHELL"
-echo ""
-
-echo "=== Installation Check ==="
-echo "Agents: $(ls ~/.claude/agents/nw/ 2>/dev/null | wc -l) agent files"
-echo "Commands: $(ls ~/.claude/commands/nw/ 2>/dev/null | wc -l) commands"
-echo ""
-
-echo "=== Tool Availability ==="
-for tool in python3 pip3; do
-    if command -v "$tool" >/dev/null 2>&1; then
-        echo "$tool: $(which $tool)"
-    else
-        echo "$tool: NOT FOUND"
-    fi
-done
-echo ""
-
-echo "=== Recent Logs ==="
-tail -5 ~/.claude/nwave-install.log 2>/dev/null || echo "No install log found"
-```
-
-### Log Collection
+### Complete reset
 
 ```bash
-# Collect comprehensive logs for support
-{
-    echo "=== nWave Support Information ==="
-    echo "Generated: $(date)"
-    echo "Version: $(head -5 ~/.claude/nwave-manifest.txt 2>/dev/null)"
-    echo ""
-
-    # Run full diagnostic
-    bash comprehensive_diagnostic.sh
-
-    echo ""
-    echo "=== Recent Error Logs ==="
-    find ~/.claude/ -name "*.log" -mtime -1 -exec echo "=== {} ===" \; -exec tail -10 {} \; 2>/dev/null
-
-} > nwave-support-$(date +%Y%m%d-%H%M%S).log
-
-echo "Support information collected in: nwave-support-$(date +%Y%m%d-%H%M%S).log"
-```
-
-## Getting Help
-
-### Before Reporting Issues
-
-1. **Run Quick Diagnostic**: Use the quick diagnostic at the top of this document
-2. **Try Reinstallation**: Often fixes configuration issues
-3. **Check Documentation**: Review `README.md`
-
-### Reporting Issues
-
-Include this information:
-
-1. **Output of quick diagnostic**
-2. **Complete error messages**
-3. **Steps to reproduce the issue**
-4. **Your environment details (OS, shell, Python version)**
-5. **Recent changes to your system**
-
-### Support Resources
-
-- **Discord Community**: [Join the nWave Discord](https://discord.gg/DeYdSNk6) - Get help, share success stories, and connect with other users
-- **Documentation**: `README.md`
-- **GitHub Issues**: [https://github.com/nWave-ai/nWave/issues](https://github.com/nWave-ai/nWave/issues)
-- **Installation Logs**: `~/.claude/nwave-install.log`
-- **Backup Recovery**: `nwave-ai install --restore`
-
-## Recovery Procedures
-
-### Complete Reset
-
-If all else fails, perform a complete reset:
-
-```bash
-# 1. Backup current state
 nwave-ai uninstall --backup
-
-# 2. Clean installation
 nwave-ai install
-
-# 3. Test functionality
-ls ~/.claude/agents/nw/
-ls ~/.claude/commands/nw/
 ```
 
-### Restore from Backup
+### Restore from backup
 
 ```bash
-# List available backups
 ls ~/.claude/backups/
-
-# Restore from backup
 nwave-ai install --restore
 ```
 
 ---
 
-**Remember**: Most issues can be resolved by reinstallation if needed.
+## Getting Help
+
+1. Run the quick diagnostic at the top of this page
+2. Try reinstalling (`nwave-ai install`)
+3. If the issue persists:
+   - **Discord**: [nWave Community](https://discord.gg/DeYdSNk6)
+   - **GitHub Issues**: [github.com/nWave-ai/nWave/issues](https://github.com/nWave-ai/nWave/issues)
+
+Include in your report: diagnostic output, error messages, OS, and Python version.
+
+---
+
+**Last Updated**: 2026-02-13
+**Type**: How-to Guide

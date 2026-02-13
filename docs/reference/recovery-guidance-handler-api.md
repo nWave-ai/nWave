@@ -154,7 +154,7 @@ suggestions = handler.generate_recovery_suggestions(
     context={
         "phase": "GREEN_UNIT",
         "step_file": "docs/feature/auth/steps/01-01.json",
-        "transcript_path": ".des/transcripts/agent-01-01-green-unit.log"
+        "transcript_path": ".nwave/des/logs/agent-01-01-green-unit.log"
     }
 )
 
@@ -175,7 +175,7 @@ updated_step = handler.handle_failure(
     context={
         "phase": "RED_ACCEPTANCE",
         "step_file": "docs/feature/auth/steps/01-01.json",
-        "transcript_path": ".des/transcripts/agent-01-01-red-acceptance.log"
+        "transcript_path": ".nwave/des/logs/agent-01-01-red-acceptance.log"
     }
 )
 
@@ -247,7 +247,7 @@ if result.abandoned_phases:
             context={
                 "phase": phase_name,
                 "step_file": step_file_path,
-                "transcript_path": ".des/transcripts/..."
+                "transcript_path": ".nwave/des/logs/..."
             }
         )
 ```

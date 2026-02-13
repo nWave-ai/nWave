@@ -1,6 +1,6 @@
 # Reviewer Agents Reference
 
-**Version**: 2.0.0
+**Version**: 2.1.0
 **Date**: 2026-02-13
 **Status**: Production Ready
 
@@ -93,62 +93,6 @@ Quick reference for peer review agents - specifications, configuration, and look
 
 ---
 
-## Configuration Reference
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NWAVE_REVIEW_ENABLED` | Enable peer reviews | `true` |
-| `NWAVE_MAX_ITERATIONS` | Maximum review iterations | `2` |
-| `NWAVE_AUTO_TRIGGER` | Auto-trigger after wave completion | `true` |
-| `NWAVE_BLOCK_HANDOFF` | Block handoff without approval | `true` |
-
-### Configuration File
-
-**Location**: `.nwave/review.yaml`
-
-```yaml
-review_config:
-  enabled: true
-
-  automation:
-    auto_trigger_after_wave: true
-    auto_iterate: true
-    max_iterations: 2
-
-  quality_gates:
-    block_handoff_without_approval: true
-    escalate_after_max_iterations: true
-
-  reviewers:
-    product-owner-reviewer:
-      enabled: true
-      auto_invoke_on: ["DISCUSS wave completion"]
-
-    solution-architect-reviewer:
-      enabled: true
-      auto_invoke_on: ["DESIGN wave completion"]
-
-    acceptance-designer-reviewer:
-      enabled: true
-      auto_invoke_on: ["DISTILL wave completion"]
-
-    software-crafter-reviewer:
-      enabled: true
-      auto_invoke_on: ["DELIVER wave completion"]
-
-  metrics:
-    collect_review_metrics: true
-    export_to: ["prometheus", "datadog"]
-
-  escalation:
-    human_facilitator_email: "team-lead@example.com"
-    escalation_timeout: "5 minutes"
-```
-
----
-
 ## Review Feedback Format
 
 Reviewers output structured YAML feedback:
@@ -201,68 +145,6 @@ max_iterations: 2
 | `high` | Significant impact, should fix | Fix before resubmission |
 | `medium` | Moderate impact | Fix if time permits |
 | `low` | Minor improvement | Optional |
-
----
-
-## Handoff Triggers
-
-### Wave Completion Triggers
-
-| Transition | Reviewer Required |
-|------------|-------------------|
-| DISCUSS -> DESIGN | product-owner-reviewer |
-| DESIGN -> DISTILL | solution-architect-reviewer |
-| DISTILL -> DELIVER | acceptance-designer-reviewer |
-| DELIVER -> (done) | software-crafter-reviewer |
-
-### Quality Gate Configuration
-
-```yaml
-handoff_quality_gate:
-  condition: reviewer_approval_obtained == true
-  on_failure:
-    action: block_handoff
-    message: "Artifact requires peer review approval before handoff"
-    next_step: invoke_reviewer
-```
-
----
-
-## Metrics Reference
-
-### Review Effectiveness
-
-| Metric | Target | Description |
-|--------|--------|-------------|
-| Issues per review | > 3 | Reviewer finding value |
-| First iteration approval | 40-60% | Balanced difficulty |
-| Critical issues caught | > 0.5 per review | Preventing defects |
-
-### Revision Cycle
-
-| Metric | Target | Alert |
-|--------|--------|-------|
-| Iterations to approval | <= 1.5 | > 1.8 indicates problems |
-| Revision cycle time | < 2 days | > 5 days is bottleneck |
-| Issue resolution rate | > 90% | < 80% indicates quality problems |
-
-### Quality Impact
-
-| Metric | Target | Baseline |
-|--------|--------|----------|
-| Handoff rejection post-review | < 10% | 30-40% without review |
-| Defect escape rate | < 5% | Issues missed by reviewer |
-
----
-
-## Troubleshooting Quick Reference
-
-| Symptom | Cause | Solution |
-|---------|-------|----------|
-| "Reviewer not found" | Reviewers not in build | Use Task tool manual invocation |
-| Review not triggered | Reviews disabled | Check `NWAVE_REVIEW_ENABLED` |
-| Infinite loop | Max iterations not set | Set `max_iterations: 2` |
-| No feedback | Wrong output format | Check YAML structure |
 
 ---
 

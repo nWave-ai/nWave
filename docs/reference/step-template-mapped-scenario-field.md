@@ -321,6 +321,6 @@ assert(num_feature_steps === num_acceptance_scenarios,
 
 ---
 
-**Document Owner**: AI-Craft Team
+**Document Owner**: nWave Team
 **Last Review**: 2026-01-24
 **Schema Version**: 2.0.0
