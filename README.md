@@ -2,7 +2,7 @@
 
 AI agents that guide you from idea to working code — with you in control at every step.
 
-nWave runs inside [Claude Code](https://claude.ai/claude-code). You describe what to build. Specialized agents handle requirements, architecture, test design, and implementation. You review and approve at each stage.
+nWave runs inside [Claude Code](https://claude.com/product/claude-code). You describe what to build. Specialized agents handle requirements, architecture, test design, and implementation. You review and approve at each stage.
 
 ## Quick Start
 
