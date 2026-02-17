@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.13] - 2026-02-17
+
+### Fixed
+- **Deliver Phase 3 not using /nw:refactor**: The Complete Refactoring phase
+  was described as a generic dispatch to @nw-software-crafter. Now explicitly
+  invokes `/nw:refactor` to ensure the systematic Mikado Method flow with
+  L1-L4 refactoring levels is used.
+
 ## [1.1.12] - 2026-02-16
 
 ### Fixed

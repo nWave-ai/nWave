@@ -80,8 +80,10 @@ INPUT: "{feature-description}"
      a. Orchestrator collects modified files:
         git diff --name-only {base-commit}..HEAD -- '*.py' | sort -u
         Split into PRODUCTION_FILES (src/) and TEST_FILES (tests/)
-     b. Orchestrator dispatches @nw-software-crafter via Task tool with DES
-        orchestrator markers to enable source file writes:
+     b. Orchestrator invokes /nw:refactor to apply systematic refactoring:
+        /nw:refactor {production-files} {test-files} --levels L1-L4
+        The refactor command dispatches @nw-software-crafter via Task tool
+        with DES orchestrator markers to enable source file writes:
         ```
         <!-- DES-VALIDATION : required -->
         <!-- DES-PROJECT-ID : {project-id} -->

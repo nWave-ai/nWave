@@ -1,3 +1,3 @@
 """nwave-ai: CLI installer for the nWave methodology framework."""
 
-__version__ = "1.1.12"
+__version__ = "1.1.13"
