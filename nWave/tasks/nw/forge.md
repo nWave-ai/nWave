@@ -1,5 +1,6 @@
 ---
-description: "Create and validate new specialized agents"
+description: "Creates new specialized agents using the 5-phase workflow (ANALYZE > DESIGN > CREATE > VALIDATE > REFINE). Use when building a new AI agent or validating an existing agent specification."
+argument-hint: '[agent-name] - Optional: --type=[specialist|reviewer|orchestrator] --pattern=[react|reflection|router]'
 ---
 
 # NW-FORGE: Create Agent (V2)

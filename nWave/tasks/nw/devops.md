@@ -1,5 +1,5 @@
 ---
-description: "Platform readiness, CI/CD, infrastructure, and deployment design"
+description: "Designs CI/CD pipelines, infrastructure, observability, and deployment strategy. Use when preparing platform readiness for a feature."
 argument-hint: "[deployment-target] - Optional: --environment=[staging|production] --validation=[full|smoke]"
 ---
 

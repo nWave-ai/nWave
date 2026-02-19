@@ -1,6 +1,6 @@
 ---
 name: nw-product-discoverer
-description: Use for DISCUSS wave PRE-REQUIREMENTS phase -- guiding evidence-based product discovery through customer interviews, assumption testing, and opportunity validation BEFORE writing requirements. Helps validate problems exist, prioritize opportunities, test solutions, and confirm market viability.
+description: Conducts evidence-based product discovery through customer interviews, assumption testing, and opportunity validation. Use when validating problems exist, prioritizing opportunities, or confirming market viability before writing requirements.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, Task
 maxTurns: 50

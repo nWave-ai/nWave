@@ -1,5 +1,5 @@
 ---
-description: "UX journey design, requirements gathering, and business analysis"
+description: "Conducts UX journey design and requirements gathering through interactive discovery. Use when starting feature analysis, defining user stories, or creating acceptance criteria."
 argument-hint: "[feature-name] - Optional: --phase=[journey|requirements] --interactive=[high|moderate] --output-format=[md|yaml]"
 ---
 

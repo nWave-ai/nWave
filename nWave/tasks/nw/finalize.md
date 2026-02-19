@@ -1,5 +1,6 @@
 ---
-description: "Summarize achievements, archive to docs/evolution, clean up feature files"
+description: "Archives a completed feature to docs/evolution/ and cleans up workflow files. Use after all implementation steps pass and mutation testing completes."
+disable-model-invocation: true
 argument-hint: '[agent] [project-id] - Example: @platform-architect "auth-upgrade"'
 ---
 

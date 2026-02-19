@@ -14,7 +14,7 @@
 # ============================================================================
 
 name: "nWave"
-version: "2.17.0"
+version: "2.17.1"
 description: "Comprehensive DISCOVER→DISCUSS→DESIGN→DEVOP→DISTILL→DELIVER methodology with visual architecture lifecycle management"
 author: "nWave Team"
 license: "MIT"
@@ -131,56 +131,56 @@ agents:
 commands:
   # nWave Core Commands
   discover:
-    description: "Evidence-based product discovery and market validation"
+    description: "Conducts evidence-based product discovery through customer interviews and assumption testing. Use at project start to validate problem-solution fit."
     argument_hint: "[product-concept] - Optional: --interview-depth=[overview|comprehensive] --output-format=[md|yaml]"
     agents: ["product-discoverer"]
     wave: "DISCOVER"
     outputs: ["problem_validation", "opportunity_tree", "lean_canvas"]
 
   discuss:
-    description: "UX journey design, requirements gathering, and business analysis"
+    description: "Conducts UX journey design and requirements gathering through interactive discovery. Use when starting feature analysis, defining user stories, or creating acceptance criteria."
     argument_hint: "[feature-name] - Optional: --phase=[journey|requirements] --interactive=[high|moderate] --output-format=[md|yaml]"
     agents: ["product-owner"]
     wave: "DISCUSS"
     outputs: ["journey_sketch", "emotional_arc", "shared_artifacts", "requirements_document", "user_stories"]
 
   design:
-    description: "Architecture design with visual representation"
-    argument_hint: "[component-name] - Optional: --architecture=[hexagonal|layered|microservices] --diagram-format=[mermaid|plantuml]"
+    description: "Designs system architecture with C4 diagrams and technology selection. Use when defining component boundaries, choosing tech stacks, or creating architecture documents."
+    argument_hint: "[component-name] - Optional: --residuality (enable residuality analysis for complex/critical systems)"
     agents: ["solution-architect", "visual-architect"]
     wave: "DESIGN"
     outputs: ["architecture_document", "architecture_diagrams"]
 
   distill:
-    description: "Acceptance test creation and business validation"
+    description: "Creates E2E acceptance tests in Given-When-Then format from requirements and architecture. Use when preparing executable specifications before implementation."
     argument_hint: "[story-id] - Optional: --test-framework=[cucumber|specflow|pytest-bdd] --integration=[real-services|mocks]"
     agents: ["acceptance-designer"]
     wave: "DISTILL"
     outputs: ["acceptance_tests", "test_scenarios"]
 
   deliver:
-    description: "Execute complete DELIVER wave: roadmap → execute-all → finalize"
+    description: "Orchestrates the full DELIVER wave end-to-end (roadmap > execute-all > finalize). Use when all prior waves are complete and the feature is ready for implementation."
     argument_hint: "[feature-description] - Example: \"Implement user authentication with JWT\""
     agents: ["platform-architect"]
     wave: "DELIVER"
     outputs: ["complete_feature", "quality_gates_passed", "evolution_document"]
 
   document:
-    description: "Create evidence-based DIVIO-compliant documentation"
+    description: "Creates evidence-based documentation following DIVIO/Diataxis principles. Use when writing tutorials, how-to guides, reference docs, or explanations."
     argument_hint: "[topic/component] - Optional: --type=[tutorial|howto|reference|explanation] --research-depth=[overview|detailed|comprehensive|deep-dive]"
     agents: ["researcher", "documentarist"]
     wave: "CROSS_WAVE"
     outputs: ["research_document", "divio_documentation", "validation_report"]
 
   mutation_test:
-    description: "Mutation testing quality gate for test suite validation"
+    description: "Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%)."
     argument_hint: "[project-id] - Optional: --threshold=[75|80|85] --language=[auto|python|java|javascript]"
     agents: ["software_crafter"]
     wave: "DELIVER"
     outputs: ["mutation_report"]
 
   devops:
-    description: "Platform readiness, CI/CD, infrastructure, and deployment design"
+    description: "Designs CI/CD pipelines, infrastructure, observability, and deployment strategy. Use when preparing platform readiness for a feature."
     argument_hint: "[deployment-target] - Optional: --environment=[staging|production] --validation=[full|smoke]"
     agents: ["platform-architect"]
     wave: "DEVOP"
@@ -204,34 +204,34 @@ commands:
     outputs: ["root_cause_analysis", "investigation_report"]
 
   diagram:
-    description: "Architecture diagram management"
+    description: "Generates C4 architecture diagrams (context, container, component) in Mermaid or PlantUML. Use when creating or updating architecture visualizations."
     argument_hint: "[diagram-type] - Optional: --format=[mermaid|plantuml|c4] --level=[context|container|component]"
     agents: ["visual-architect"]
     outputs: ["updated_diagrams", "visual_architecture"]
 
   refactor:
-    description: "Systematic refactoring with Mikado Method"
+    description: "Applies the Refactoring Priority Premise (RPP) levels L1-L6 for systematic code refactoring. Use when improving code quality through structured refactoring passes."
     argument_hint: "[target-class-or-module] - Optional: --level=[1-6] --method=[extract|inline|rename|move] --scope=[method|class|module]"
     agents: ["systematic_refactorer"]
     outputs: ["refactored_code", "refactoring_log"]
 
   roadmap:
-    description: "Create comprehensive planning document"
+    description: "Creates a phased roadmap.yaml for a feature goal with acceptance criteria and TDD steps. Use when planning implementation steps before execution."
     argument_hint: "[agent] [goal-description] - Example: @solution-architect \"Migrate to microservices\""
     outputs: ["roadmap_yaml"]
 
   review:
-    description: "Expert critique and quality review - Types: roadmap, step, task, implementation"
+    description: "Dispatches an expert reviewer agent to critique workflow artifacts. Use when a roadmap, implementation, or step needs quality review before proceeding."
     argument_hint: "[agent] [artifact-type] [artifact-path] - Example: @software-crafter task \"roadmap.yaml\""
     outputs: ["review_report"]
 
   execute:
-    description: "Execute atomic task with state tracking"
-    argument_hint: "[agent] [step-id] - Example: @software-crafter \"01-01\""
+    description: "Dispatches a single roadmap step to a specialized agent for TDD execution. Use when implementing a specific step from a roadmap.yaml plan."
+    argument_hint: "[agent] [project-id] [step-id] - Example: @nw-software-crafter \"auth-upgrade\" \"01-01\""
     outputs: ["task_results"]
 
   finalize:
-    description: "Summarize achievements, archive to docs/evolution, clean up feature files"
+    description: "Archives a completed feature to docs/evolution/ and cleans up workflow files. Use after all implementation steps pass and mutation testing completes."
     argument_hint: "[agent] [project-id] - Example: @platform-architect \"auth-upgrade\""
     outputs: ["evolution_document"]
 

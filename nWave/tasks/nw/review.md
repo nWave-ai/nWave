@@ -1,5 +1,5 @@
 ---
-description: "Expert critique and quality review - Types: roadmap, step, task, implementation"
+description: "Dispatches an expert reviewer agent to critique workflow artifacts. Use when a roadmap, implementation, or step needs quality review before proceeding."
 argument-hint: '[agent] [artifact-type] [artifact-path] - Example: @software-crafter task "roadmap.yaml"'
 ---
 
@@ -11,6 +11,39 @@ argument-hint: '[agent] [artifact-type] [artifact-path] - Example: @software-cra
 ## Overview
 
 Dispatches an expert reviewer agent to critique workflow artifacts. Takes a base agent name, appends `-reviewer` to derive the reviewer agent, and invokes it with the artifact. The reviewer agent owns all review methodology, criteria, and output format.
+
+## Review Philosophy: Radical Candor
+
+Every review MUST embody Radical Candor -- kind AND clear, specific AND sincere:
+
+- **Care personally**: Acknowledge what works. Understand the author's intent before critiquing. Include at least one genuine `praise:` comment per review.
+- **Challenge directly**: Be specific about what is wrong and WHY. Ground feedback in evidence and consequences, not preference. Never soften a security or data-loss issue.
+- **Avoid ruinous empathy**: Never "LGTM" when there are real issues. Hedging language ("maybe consider possibly...") on blocking concerns is a review failure.
+- **Avoid obnoxious aggression**: Never "this is terrible" without a constructive alternative. Focus on the work, not the author. Explain the "why" behind every critique.
+
+## Feedback Format: Conventional Comments
+
+All review findings MUST use Conventional Comments labels:
+
+| Label | Purpose | Blocking? |
+|---|---|---|
+| `praise:` | Highlight something done well (genuine, not filler) | No |
+| `issue (blocking):` | Specific problem that must be resolved before proceeding | Yes |
+| `issue (blocking, security):` | Security vulnerability -- maximum directness | Yes |
+| `suggestion:` | Propose improvement with reasoning | Varies -- mark `(blocking)` or `(non-blocking)` |
+| `nitpick (non-blocking):` | Trivial, preference-based | No |
+| `question (non-blocking):` | Seek clarification before assuming | No |
+| `thought (non-blocking):` | Share an idea sparked by the review | No |
+
+Findings MUST be priority-ordered: blocking issues first, then suggestions, then nitpicks/praise.
+
+## Approval Criteria
+
+| Verdict | Criteria |
+|---|---|
+| **APPROVED** | No blocking issues. Non-blocking feedback is advisory. |
+| **NEEDS_REVISION** | Blocking issues exist. Author must address before proceeding. Each blocking issue clearly enumerated. |
+| **REJECTED** | Fundamental design problems requiring significant rework. Rare -- explain thoroughly and offer alternatives. |
 
 ## Syntax
 

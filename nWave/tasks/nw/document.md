@@ -1,5 +1,5 @@
 ---
-description: "Create evidence-based DIVIO-compliant documentation"
+description: "Creates evidence-based documentation following DIVIO/Diataxis principles. Use when writing tutorials, how-to guides, reference docs, or explanations."
 argument-hint: "[topic/component] - Optional: --type=[tutorial|howto|reference|explanation] --research-depth=[overview|detailed|comprehensive|deep-dive]"
 ---
 

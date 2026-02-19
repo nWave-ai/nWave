@@ -1,6 +1,6 @@
 ---
-description: "Architecture design with visual representation"
-argument-hint: "[component-name] - Optional: --architecture=[hexagonal|layered|microservices] --diagram-format=[mermaid|plantuml]"
+description: "Designs system architecture with C4 diagrams and technology selection. Use when defining component boundaries, choosing tech stacks, or creating architecture documents."
+argument-hint: "[component-name] - Optional: --residuality (enable residuality analysis for complex/critical systems)"
 ---
 
 # NW-DESIGN: Architecture Design
@@ -11,9 +11,9 @@ argument-hint: "[component-name] - Optional: --architecture=[hexagonal|layered|m
 
 ## Overview
 
-Execute DESIGN wave through software architecture design, technology selection, and C4 visual representation. Morgan handles component boundaries, tech stack, and integration points.
+Execute DESIGN wave through discovery-driven architecture design. Morgan asks about business drivers and constraints first, then recommends architecture that fits -- no pattern menus, no upfront style selection.
 
-Morgan analyzes the existing codebase and evaluates open-source alternatives before designing new components. Integration-first mindset is part of the agent's methodology.
+Morgan analyzes the existing codebase, evaluates open-source alternatives, and produces C4 diagrams (Mermaid) as mandatory output.
 
 ## Context Files Required
 
@@ -23,40 +23,31 @@ Morgan analyzes the existing codebase and evaluates open-source alternatives bef
 - docs/feature/{feature-name}/discuss/ux-journey.md - From DISCUSS wave
 - docs/feature/{feature-name}/design/constraints.md - Technical and business constraints
 
-## Interactive Decision Points
+## Discovery Flow
 
-Before proceeding, the orchestrator asks the user:
+Architecture decisions are driven by quality attributes, not pattern shopping:
 
-### Decision 1: Architecture Style
-**Question**: What architecture style should Morgan use for micro-design?
-**Options**:
-1. Hexagonal (recommended) -- ports and adapters, strong domain isolation
-2. Layered -- traditional presentation/business/data layers
-3. Clean Architecture -- concentric dependency rings
-4. Ports-and-Adapters -- explicit primary/secondary ports
+### Step 1: Understand the Problem
+Morgan asks: What are we building? For whom? What quality attributes matter most? (scalability, maintainability, testability, time-to-market, fault tolerance, auditability)
 
-### Decision 2: System Design
-**Question**: What system design approach?
-**Options**:
-1. Monolithic -- single deployable unit
-2. Microservices -- independently deployable services
-3. Modular Monolith -- logical modules within a single deployment
-4. Serverless -- function-as-a-service composition
+### Step 2: Understand Constraints
+Morgan asks: Team size and experience? Timeline? Existing systems to integrate with? Regulatory requirements? Operational maturity (CI/CD, monitoring)?
 
-### Decision 3: Communication Pattern
-**Question**: How should components communicate?
-**Options**:
-1. Synchronous -- REST/gRPC direct calls
-2. Asynchronous -- message-driven/event-sourced
-3. Hybrid -- synchronous for queries, asynchronous for commands
+### Step 3: Team Structure (Conway's Law)
+Morgan asks: How many teams? How do they communicate? Does the proposed architecture match the org chart?
 
-### Decision 4: Data Architecture
-**Question**: What data architecture approach?
-**Options**:
-1. Single Database -- shared database for all components
-2. Database-per-Service -- isolated data stores per bounded context
-3. Event Store -- append-only event log as source of truth
-4. CQRS -- separate read and write models
+### Step 4: Recommend Architecture Based on Drivers
+Morgan recommends architecture based on the quality attribute priorities and constraints gathered in Steps 1-3. Default is modular monolith with dependency inversion (ports-and-adapters). Overrides require evidence. User can request a different approach.
+
+### Step 5: Residuality Analysis (OPTIONAL)
+Offered only when: `--residuality` flag provided, OR system has regulatory constraints, complex failure modes, or volatile business environment. Skipped for simple projects.
+
+### Step 6: Produce Deliverables
+- Architecture document with component boundaries, tech stack, integration patterns
+- C4 System Context diagram (Mermaid) -- MANDATORY
+- C4 Container diagram (Mermaid) -- MANDATORY
+- C4 Component diagrams (Mermaid) -- only for complex subsystems
+- ADRs for significant decisions
 
 ## Agent Invocation
 
@@ -70,21 +61,21 @@ Context files: see Context Files Required above.
 
 - interactive: moderate
 - output_format: markdown
-- diagram_format: c4
-- architecture_style: {from Decision 1, default: hexagonal}
-- system_design: {from Decision 2}
-- communication_pattern: {from Decision 3}
-- data_architecture: {from Decision 4}
+- diagram_format: mermaid (C4)
+- residuality: {true if --residuality flag, false otherwise}
 
 ## Success Criteria
 
+- [ ] Business drivers and constraints gathered before architecture selection
 - [ ] Existing system analyzed before design (codebase search performed)
 - [ ] Integration points with existing components documented
 - [ ] Reuse vs. new component decisions justified
 - [ ] Architecture supports all business requirements
 - [ ] Technology stack selected with clear rationale
-- [ ] Component boundaries defined (hexagonal architecture)
-- [ ] C4 diagrams complete and accessible
+- [ ] Component boundaries defined with dependency-inversion compliance
+- [ ] C4 System Context diagram produced (Mermaid)
+- [ ] C4 Container diagram produced (Mermaid)
+- [ ] ADRs written with alternatives considered
 - [ ] Handoff accepted by nw-platform-architect (DEVOP wave)
 
 ## Next Wave
@@ -96,9 +87,10 @@ Context files: see Context Files Required above.
 
 ```
 docs/feature/{feature-name}/design/
-  architecture-design.md
+  architecture-design.md       (includes C4 diagrams in Mermaid)
   technology-stack.md
   component-boundaries.md
   data-models.md
-  diagrams/*.svg
+docs/adrs/
+  ADR-NNN-*.md
 ```

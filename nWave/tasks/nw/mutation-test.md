@@ -1,5 +1,5 @@
 ---
-description: "Mutation testing quality gate for test suite validation"
+description: "Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%)."
 argument-hint: "[project-id] - Optional: --threshold=[75|80|85] --language=[auto|python|java|javascript]"
 ---
 

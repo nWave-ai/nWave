@@ -1,5 +1,5 @@
 ---
-description: "Evidence-based product discovery and market validation"
+description: "Conducts evidence-based product discovery through customer interviews and assumption testing. Use at project start to validate problem-solution fit."
 argument-hint: "[product-concept] - Optional: --interview-depth=[overview|comprehensive] --output-format=[md|yaml]"
 ---
 

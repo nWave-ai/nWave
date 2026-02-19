@@ -1,6 +1,7 @@
 ---
-description: "Execute atomic task with state tracking"
-argument-hint: '[agent] [step-id] - Example: @software-crafter "01-01"'
+description: "Dispatches a single roadmap step to a specialized agent for TDD execution. Use when implementing a specific step from a roadmap.yaml plan."
+argument-hint: '[agent] [project-id] [step-id] - Example: @nw-software-crafter "auth-upgrade" "01-01"'
+disable-model-invocation: true
 ---
 
 # NW-EXECUTE: Atomic Task Execution

@@ -1,5 +1,5 @@
 ---
-description: "Acceptance test creation and business validation"
+description: "Creates E2E acceptance tests in Given-When-Then format from requirements and architecture. Use when preparing executable specifications before implementation."
 argument-hint: "[story-id] - Optional: --test-framework=[cucumber|specflow|pytest-bdd] --integration=[real-services|mocks]"
 ---
 

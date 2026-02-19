@@ -1,5 +1,6 @@
 ---
-description: "Evidence-driven knowledge research with source verification"
+description: "Gathers knowledge from web and files, cross-references across multiple sources, and produces cited research documents. Use when investigating technologies, patterns, or decisions that need evidence backing."
+argument-hint: '[topic] - Optional: --research_depth=[overview|detailed|comprehensive|deep-dive] --skill-for=[agent-name]'
 ---
 
 # NW-RESEARCH: Evidence-Driven Knowledge Research
