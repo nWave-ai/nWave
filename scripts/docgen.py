@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import sys
 from pathlib import Path
 from typing import TypedDict
@@ -492,6 +493,9 @@ def render(data: dict[str, list]) -> dict[str, str]:
 # Stage 5: Write
 # ---------------------------------------------------------------------------
 def write_pages(pages: dict[str, str], output_dir: Path) -> None:
+    """Write pages to output_dir, cleaning it first for deterministic output."""
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
     for rel_path, content in pages.items():
         full_path = output_dir / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
@@ -532,7 +536,7 @@ def main(argv: list[str] | None = None) -> int:
         "--output-dir",
         type=Path,
         default=None,
-        help="Output directory (default: docs/generated/)",
+        help="Output directory (default: docs/reference/)",
     )
     parser.add_argument(
         "--check",
@@ -542,7 +546,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = Path(__file__).resolve().parent.parent
-    output_dir = args.output_dir or root / "docs" / "generated"
+    output_dir = args.output_dir or root / "docs" / "reference"
 
     try:
         pages = run_pipeline(root, output_dir)
