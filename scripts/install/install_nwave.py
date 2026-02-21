@@ -547,12 +547,9 @@ def show_installation_summary(logger: Logger) -> None:
     logger.info("")
     logger.info("  📖 Quick start")
     commands = [
-        ("/nw:discover", "Evidence-based product discovery"),
-        ("/nw:discuss", "Requirements gathering and business analysis"),
-        ("/nw:design", "Architecture design with visual representation"),
-        ("/nw:distill", "Acceptance test creation and business validation"),
-        ("/nw:develop", "Outside-In TDD implementation with refactoring"),
-        ("/nw:deliver", "Production readiness validation"),
+        ("/nw:new", "Start a new feature (guided wizard)"),
+        ("/nw:continue", "Resume where you left off"),
+        ("/nw:ff", "Fast-forward through all waves"),
     ]
     for cmd, desc in commands:
         logger.info(f"    {cmd:<16} {desc}")

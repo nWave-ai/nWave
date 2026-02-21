@@ -1,0 +1,237 @@
+schema_version: "1.0"
+epic: wizard-commands
+date: "2026-02-21"
+status: draft
+
+journeys:
+  - id: new
+    name: "Start New Feature"
+    command: "/nw:new"
+    trigger: "User wants to build something but doesn't know which nWave command to run"
+    persona: "Developer using nWave for the first time, or returning user starting a new feature"
+
+    emotional_arc:
+      start: "Uncertain -- has an idea but doesn't know the entry point"
+      middle: "Curious then Oriented -- wizard asks the right questions and classifies the work"
+      end: "Confident -- the right wave launches without the user having to choose"
+
+    steps:
+      - id: invoke
+        action: "User types /nw:new"
+        output: "Welcome message with open-ended question"
+        emotion: uncertain
+        data_produced:
+          - command_invocation
+
+      - id: describe
+        action: "User describes the feature in natural language"
+        output: "Acknowledgment + clarifying questions (new vs existing, greenfield vs brownfield, readiness)"
+        emotion: curious
+        data_produced:
+          - feature_description
+          - project_state_detection
+        data_consumed:
+          - command_invocation
+
+      - id: classify
+        action: "Wizard classifies feature type and readiness"
+        output: "Feature type, project state, readiness summary"
+        emotion: oriented
+        data_produced:
+          - feature_type
+          - project_state
+          - readiness_level
+        data_consumed:
+          - feature_description
+
+      - id: recommend
+        action: "Wizard recommends starting wave with rationale"
+        output: "Recommended wave, why, configuration preview, next-wave lookahead"
+        emotion: relieved
+        data_produced:
+          - recommended_wave
+          - wave_configuration
+          - project_id
+        data_consumed:
+          - feature_type
+          - project_state
+          - readiness_level
+
+      - id: confirm
+        action: "User confirms or adjusts"
+        output: "Launch confirmation with project ID and output directory"
+        emotion: confident
+        data_consumed:
+          - recommended_wave
+          - wave_configuration
+          - project_id
+
+      - id: launch
+        action: "Wizard dispatches to the recommended wave command"
+        output: "Wave-specific conversation begins"
+        emotion: confident
+        data_consumed:
+          - recommended_wave
+          - wave_configuration
+          - project_id
+
+    error_paths:
+      - id: vague_description
+        trigger: "Feature description too vague to classify"
+        response: "Ask for specifics: what system, what problem, who benefits"
+        recovery: "Re-enter describe step with better input"
+
+      - id: wants_specific_wave
+        trigger: "User says they already know what wave they need"
+        response: "Suggest /nw:continue or the direct command, offer to check artifacts first"
+        recovery: "Redirect to direct command or /nw:continue"
+
+      - id: name_conflict
+        trigger: "Derived project ID matches existing docs/feature/ directory"
+        response: "Offer continue, rename, or archive-and-restart"
+        recovery: "User picks option, wizard proceeds accordingly"
+
+    recommendation_logic:
+      - condition: "No prior artifacts, unclear requirements"
+        wave: DISCOVER
+        rationale: "Need to validate the problem space first"
+
+      - condition: "No prior artifacts, clear requirements"
+        wave: DISCUSS
+        rationale: "Define user stories and acceptance criteria"
+
+      - condition: "Requirements exist, no architecture"
+        wave: DESIGN
+        rationale: "Requirements are solid, design the system"
+
+      - condition: "User explicitly says 'just build it' and all prior waves complete"
+        wave: DELIVER
+        rationale: "All prerequisites met, ready for implementation"
+
+  - id: continue
+    name: "Resume Feature Progress"
+    command: "/nw:continue"
+    trigger: "User returns to a feature and doesn't remember where they left off"
+    persona: "Developer resuming work after hours/days away"
+
+    emotional_arc:
+      start: "Disoriented -- was working on something, lost context"
+      middle: "Recognized -- wizard found the project and shows progress"
+      end: "Relieved -- seamlessly picks up where they left off"
+
+    steps:
+      - id: invoke
+        action: "User types /nw:continue"
+        output: "Scanning message (implicit)"
+        emotion: disoriented
+        data_produced:
+          - command_invocation
+
+      - id: scan
+        action: "Wizard scans docs/feature/ for project directories and artifact presence"
+        output: "Project list with wave completion status"
+        emotion: hopeful
+        data_produced:
+          - project_list
+          - wave_progress_map
+          - last_modified_timestamps
+        data_consumed:
+          - command_invocation
+
+      - id: show_status
+        action: "Display progress for selected project"
+        output: "Wave progress bar, current wave details, recommendation"
+        emotion: recognized
+        data_produced:
+          - recommended_wave
+          - resume_context
+        data_consumed:
+          - project_list
+          - wave_progress_map
+
+      - id: confirm
+        action: "User confirms or selects different project"
+        output: "Launch confirmation"
+        emotion: relieved
+        data_consumed:
+          - recommended_wave
+          - resume_context
+
+      - id: resume
+        action: "Wizard dispatches to the detected wave command"
+        output: "Wave-specific conversation resumes"
+        emotion: relieved
+        data_consumed:
+          - recommended_wave
+          - resume_context
+
+    error_paths:
+      - id: no_projects
+        trigger: "No docs/feature/ directories found"
+        response: "Suggest /nw:new to start a new feature"
+        recovery: "User runs /nw:new"
+
+      - id: multiple_projects
+        trigger: "Multiple active projects detected"
+        response: "List projects with last-modified timestamps, ask user to pick"
+        recovery: "User selects project number"
+
+      - id: skipped_waves
+        trigger: "Artifacts exist for non-adjacent waves (e.g., DISCUSS + DELIVER but no DESIGN)"
+        response: "Warn about gap, offer to fill it or continue as-is"
+        recovery: "User chooses approach"
+
+      - id: corrupted_artifacts
+        trigger: "Key artifact file exists but is empty or malformed"
+        response: "Flag the issue, recommend re-running that wave"
+        recovery: "Re-run the affected wave"
+
+    wave_detection:
+      discover:
+        required_artifacts:
+          - "docs/discovery/problem-validation.md"
+          - "docs/discovery/lean-canvas.md"
+      discuss:
+        required_artifacts:
+          - "docs/feature/{id}/discuss/requirements.md"
+          - "docs/feature/{id}/discuss/user-stories.md"
+      design:
+        required_artifacts:
+          - "docs/feature/{id}/design/architecture-design.md"
+      devop:
+        required_artifacts:
+          - "docs/feature/{id}/deliver/platform-architecture.md"
+      distill:
+        required_artifacts:
+          - "docs/feature/{id}/distill/test-scenarios.md"
+      deliver:
+        required_artifacts:
+          - "docs/feature/{id}/execution-log.yaml"
+        completion_check: "All steps in roadmap.yaml have COMMIT/PASS status"
+        resume_file: ".develop-progress.json"
+
+shared_artifacts:
+  - name: feature_description
+    type: string
+    source: "User input during /nw:new"
+    consumers: ["wave command argument", "project ID derivation"]
+
+  - name: project_id
+    type: string (kebab-case)
+    source: "Derived from feature description"
+    consumers: ["docs/feature/{project_id}/ directory", "all wave commands"]
+
+  - name: feature_type
+    type: enum [user-facing, backend, infrastructure, cross-cutting]
+    source: "Wizard classification in /nw:new"
+    consumers: ["DISCUSS wave configuration"]
+
+  - name: wave_progress_map
+    type: object
+    source: "Artifact scanning in /nw:continue"
+    consumers: ["Status display", "wave recommendation"]
+
+  - name: recommended_wave
+    type: enum [discover, discuss, design, devops, distill, deliver]
+    source: "Wizard logic"
+    consumers: ["Command dispatch"]

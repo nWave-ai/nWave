@@ -186,6 +186,28 @@ commands:
     wave: "DEVOP"
     outputs: ["infrastructure_design", "ci_cd_pipeline", "deployment_strategy"]
 
+  # Wizard Entry Points
+  new:
+    description: "Guided wizard to start a new feature. Asks what you want to build, recommends the right starting wave, and launches it."
+    argument_hint: "[feature-description] - Example: \"Add rate limiting to the API gateway\""
+    agents: []
+    wave: "CROSS_WAVE"
+    outputs: ["wave_dispatch"]
+
+  continue:
+    description: "Detects current wave progress for a feature and resumes at the next step. Scans docs/feature/ for artifacts and shows a progress summary."
+    argument_hint: "[project-id] - Optional: omit to auto-detect from docs/feature/"
+    agents: []
+    wave: "CROSS_WAVE"
+    outputs: ["wave_dispatch"]
+
+  ff:
+    description: "Fast-forwards through remaining waves end-to-end without stopping for review between waves. Use when scope is clear and you want to move fast."
+    argument_hint: "[feature-description] - Optional: --from=[discuss|design|devops|distill|deliver]"
+    agents: []
+    wave: "CROSS_WAVE"
+    outputs: ["complete_feature"]
+
   # Specialist Commands
   mikado:
     description: "[EXPERIMENTAL] Complex refactoring roadmaps with visual tracking"
