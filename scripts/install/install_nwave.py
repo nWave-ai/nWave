@@ -541,17 +541,15 @@ def show_title_panel(logger: Logger, dry_run: bool = False) -> None:
 
 
 _SUMMARY_WAVE = [
-    "  ┌───────────────────────────────────────────────┐",
-    "  │                                               │",
-    "  │   ~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~   │",
-    "  │                                               │",
-    "  │   /nw:new        Start a new feature           │",
-    "  │   /nw:continue   Resume where you left off     │",
-    "  │   /nw:ff         Fast-forward all waves         │",
-    "  │                                               │",
-    "  │   ~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~   │",
-    "  │                                               │",
-    "  └───────────────────────────────────────────────┘",
+    "",
+    "     ~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~",
+    "",
+    "      /nw:new        Start a new feature",
+    "      /nw:continue   Resume where you left off",
+    "      /nw:ff         Fast-forward all waves",
+    "",
+    "     ~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~",
+    "",
 ]
 
 
