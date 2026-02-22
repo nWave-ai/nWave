@@ -187,6 +187,13 @@ commands:
     outputs: ["infrastructure_design", "ci_cd_pipeline", "deployment_strategy"]
 
   # Specialist Commands
+  hotspot:
+    description: "Git change frequency hotspot analysis — find the most-changed files in your codebase"
+    argument_hint: "[--top=N] [--since=6m] [--json] [--rank report.md] [--detail file]"
+    agents: []  # Inline execution — no agent required
+    wave: "CROSS_WAVE"
+    outputs: ["hotspot_ranking", "churn_annotated_report"]
+
   mikado:
     description: "[EXPERIMENTAL] Complex refactoring roadmaps with visual tracking"
     argument_hint: "[refactoring-goal] - Optional: --complexity=[simple|moderate|complex] --visualization=[tree|graph]"
