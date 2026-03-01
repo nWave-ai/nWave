@@ -102,7 +102,7 @@ class TestSessionGuardPolicy:
     def test_execution_log_allowed(self, policy):
         """execution-log.json in docs/feature/ should be allowed."""
         result = policy.check(
-            file_path="docs/feature/auth-upgrade/execution-log.json",
+            file_path="docs/feature/auth-upgrade/deliver/execution-log.json",
             session_active=True,
             des_task_active=False,
         )

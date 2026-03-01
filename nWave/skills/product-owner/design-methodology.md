@@ -139,4 +139,4 @@ Three artifact types produced:
 2. **Structured Schema** (`journey-{name}.yaml`): Machine-readable journey definition following schema above
 3. **Gherkin Scenarios** (`journey-{name}.feature`): Testable acceptance scenarios from each journey step
 
-All artifacts go to `docs/ux/{epic}/`.
+All artifacts go to `docs/feature/{feature-id}/discuss/`.

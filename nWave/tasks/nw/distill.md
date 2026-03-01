@@ -9,7 +9,7 @@ argument-hint: "[story-id] - Optional: --test-framework=[cucumber|specflow|pytes
 
 ## Overview
 
-Create E2E acceptance tests from requirements|architecture|infrastructure design using Given-When-Then format. Produces executable specifications bridging business requirements and technical implementation. Infrastructure design from DEVOP informs test environment setup.
+Create E2E acceptance tests from requirements|architecture|infrastructure design using Given-When-Then format. Produces executable specifications bridging business requirements and technical implementation. Infrastructure design from DEVOPS informs test environment setup.
 
 ## Interactive Decision Points
 
@@ -43,9 +43,9 @@ Create E2E acceptance tests from requirements|architecture|infrastructure design
 
 ## Context Files Required
 
-- docs/feature/{feature-name}/discuss/requirements.md | user-stories.md
-- docs/feature/{feature-name}/design/architecture-design.md | component-boundaries.md | technology-stack.md
-- docs/feature/{feature-name}/deliver/* (infrastructure design from DEVOP)
+- docs/feature/{feature-id}/discuss/requirements.md | user-stories.md
+- docs/feature/{feature-id}/design/architecture-design.md | component-boundaries.md | technology-stack.md
+- docs/feature/{feature-id}/devops/* (infrastructure design from DEVOPS)
 
 ## Rigor Profile Integration
 
@@ -57,7 +57,7 @@ Before dispatching the acceptance designer, read rigor config from `.nwave/des-c
 
 @nw-acceptance-designer
 
-Execute \*create-acceptance-tests for {feature-name}.
+Execute \*create-acceptance-tests for {feature-id}.
 
 Context files: see above.
 
@@ -94,7 +94,7 @@ Quinn creates Given-When-Then acceptance tests from requirements and architectur
 ## Expected Outputs
 
 ```
-tests/{test-type-path}/{feature-name}/acceptance/
+tests/{test-type-path}/{feature-id}/acceptance/
   walking-skeleton.feature
   milestone-{N}-{description}.feature
   integration-checkpoints.feature
@@ -102,7 +102,7 @@ tests/{test-type-path}/{feature-name}/acceptance/
     conftest.py
     {domain}_steps.py
 
-docs/feature/{feature-name}/distill/
+docs/feature/{feature-id}/distill/
   test-scenarios.md
   walking-skeleton.md
   acceptance-review.md

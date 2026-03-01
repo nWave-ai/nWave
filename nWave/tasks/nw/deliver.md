@@ -9,7 +9,7 @@ argument-hint: '[feature-description] - Example: "Implement user authentication 
 
 ## Overview
 
-Orchestrates complete DELIVER wave: feature description → production-ready code with mandatory quality gates. You (main Claude instance) coordinate by delegating to specialized agents via Task tool. Final wave (DISCOVER > DISCUSS > DESIGN > DEVOP > DISTILL > DELIVER).
+Orchestrates complete DELIVER wave: feature description → production-ready code with mandatory quality gates. You (main Claude instance) coordinate by delegating to specialized agents via Task tool. Final wave (DISCOVER > DISCUSS > DESIGN > DEVOPS > DISTILL > DELIVER).
 
 Sub-agents cannot use Skill tool or `/nw:*` commands. You MUST:
 - Read the relevant command file and embed instructions in the Task prompt
@@ -57,8 +57,8 @@ INPUT: "{feature-description}"
   0. Read rigor profile from .nwave/des-config.json (default: standard)
      Store: agent_model|reviewer_model|tdd_phases|review_enabled|double_review|mutation_enabled|refactor_pass
   |
-  1. Parse input|derive project-id (kebab-case)|create docs/feature/{project-id}/
-     a. Create execution-log.json if missing: schema_version "2.0"|project_id|events: []
+  1. Parse input|derive feature-id (kebab-case)|create docs/feature/{feature-id}/deliver/
+     a. Create execution-log.json if missing: schema_version "2.0"|feature_id|events: []
      b. Create deliver session marker: .nwave/des/deliver-session.json
   |
   1.5. Detect development paradigm
@@ -100,7 +100,7 @@ INPUT: "{feature-description}"
      a. Collect modified files: git diff --name-only {base-commit}..HEAD -- '*.py' | sort -u
         Split: PRODUCTION_FILES (src/) | TEST_FILES (tests/)
      b. /nw:refactor {files} --levels L1-L4 via {selected-crafter} with DES orchestrator markers:
-        <!-- DES-VALIDATION : required -->|<!-- DES-PROJECT-ID : {project-id} -->|<!-- DES-MODE : orchestrator -->
+        <!-- DES-VALIDATION : required -->|<!-- DES-PROJECT-ID : {feature-id} -->|<!-- DES-MODE : orchestrator -->
      c. All tests green after each module
   |
   5. Phase 4 — Adversarial Review [SKIP if rigor.review_enabled = false]
@@ -121,7 +121,7 @@ INPUT: "{feature-description}"
      disabled → SKIP|log "disabled per project configuration"
   |
   7. Phase 6 — Deliver Integrity Verification
-     a. PYTHONPATH=$HOME/.claude/lib/python python -m des.cli.verify_deliver_integrity docs/feature/{project-id}/
+     a. PYTHONPATH=$HOME/.claude/lib/python python -m des.cli.verify_deliver_integrity docs/feature/{feature-id}/deliver/
      b. Exit 0 → proceed|Exit 1 → STOP, read output
      c. No entries = not executed through DES|Partial = incomplete TDD
      d. Violations → re-execute via Task with DES markers|Only proceed after pass
@@ -198,15 +198,15 @@ HIGH findings → return to architect for one revision.
 ## Input
 
 - `feature-description` (string, required, min 10 chars)
-- project-id: strip prefixes (implement|add|create)|remove stop words|kebab-case|max 5 words
+- feature-id: strip prefixes (implement|add|create)|remove stop words|kebab-case|max 5 words
 
 ## Output Artifacts
 
 ```
-docs/feature/{project-id}/
+docs/feature/{feature-id}/deliver/
   roadmap.json|execution-log.json|.develop-progress.json
 docs/evolution/
-  {project-id}-evolution.md
+  {feature-id}-evolution.md
 ```
 
 ## Quality Gates
@@ -237,8 +237,8 @@ Same command → loads .develop-progress.json → skips completed → resumes fr
 For manual granular control, use individual commands:
 ```
 /nw:roadmap @nw-solution-architect "goal"
-/nw:execute {selected-crafter} "project-id" "01-01"
-/nw:finalize @nw-platform-architect "project-id"
+/nw:execute {selected-crafter} "feature-id" "01-01"
+/nw:finalize @nw-platform-architect "feature-id"
 ```
 
 ## Completion

@@ -5,6 +5,7 @@
 - [bdd-methodology](../../../nWave/skills/acceptance-designer/bdd-methodology.md) — BDD patterns for acceptance test design - Given-When-Then structure, scenario writing rules, pytest-bdd implementation, anti-patterns, and living documentation
 - [critique-dimensions](../../../nWave/skills/acceptance-designer/critique-dimensions.md) — Review dimensions for acceptance test quality - happy path bias, GWT compliance, business language purity, coverage completeness, walking skeleton user-centricity, and priority validation
 - [test-design-mandates](../../../nWave/skills/acceptance-designer/test-design-mandates.md) — Three design mandates for acceptance tests - hexagonal boundary enforcement, business language abstraction, user journey completeness, and walking skeleton strategy
+- [test-organization-conventions](../../../nWave/skills/acceptance-designer/test-organization-conventions.md) — Test directory structure patterns by architecture style, language conventions, naming rules, and fixture placement. Decision tree for selecting test organization strategy.
 
 ## [nw-agent-builder](../agents/nw-agent-builder.md)
 
@@ -98,7 +99,7 @@
 - [discovery-methodology](../../../nWave/skills/product-owner/discovery-methodology.md) — Question-first approach to understanding user journeys. Load when starting a new journey design or when the discovery phase needs deepening.
 - [jtbd-bdd-integration](../../../nWave/skills/product-owner/jtbd-bdd-integration.md) — Translating JTBD analysis to BDD scenarios - job story to Given-When-Then patterns, forces-based test discovery, job-map-based test discovery, and property-shaped criteria
 - [jtbd-core](../../../nWave/skills/product-owner/jtbd-core.md) — Core JTBD theory and job story format - job dimensions, job story template, job stories vs user stories, 8-step universal job map, outcome statements, and forces of progress
-- [jtbd-interviews](../../../nWave/skills/product-owner/jtbd-interviews.md) — JTBD interview techniques - Switch interview methodology, timeline reconstruction, Four Forces extraction, functional/emotional/social job discovery, anti-patterns, and question banks
+- [jtbd-interviews](../../../nWave/skills/product-owner/jtbd-interviews.md) — JTBD discovery techniques adapted for AI product owner context. Four Forces extraction, job dimension probing, question banks, and anti-patterns for interactive feature discovery conversations.
 - [jtbd-opportunity-scoring](../../../nWave/skills/product-owner/jtbd-opportunity-scoring.md) — JTBD opportunity scoring and prioritization - outcome statement format, opportunity algorithm, scoring interpretation, feature prioritization, and opportunity matrix template
 - [jtbd-workflow-selection](../../../nWave/skills/product-owner/jtbd-workflow-selection.md) — JTBD workflow classification and routing - ODI two-phase framework, five job types with workflow sequences, baseline type selection, workflow anti-patterns, and common recipes
 - [leanux-methodology](../../../nWave/skills/product-owner/leanux-methodology.md) — LeanUX backlog management methodology - user story template, story sizing, story states, task types, Definition of Ready/Done, anti-pattern detection and remediation
@@ -131,6 +132,7 @@
 
 - [collaboration-and-handoffs](../../../nWave/skills/software-crafter/collaboration-and-handoffs.md) — Cross-agent collaboration protocols, workflow handoff patterns, and commit message formats for TDD/Mikado/refactoring workflows
 - [hexagonal-testing](../../../nWave/skills/software-crafter/hexagonal-testing.md) — 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
+- [legacy-refactoring-ddd](../../../nWave/skills/software-crafter/legacy-refactoring-ddd.md) — DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
 - [mikado-method](../../../nWave/skills/software-crafter/mikado-method.md) — Enhanced Mikado Method for complex architectural refactoring - systematic dependency discovery, tree-based planning, and bottom-up execution
 - [production-safety](../../../nWave/skills/software-crafter/production-safety.md) — Agent safety boundaries - input validation, output filtering, scope constraints, and document creation policy
 - [progressive-refactoring](../../../nWave/skills/software-crafter/progressive-refactoring.md) — Progressive L1-L6 refactoring hierarchy, 22 code smell taxonomy, atomic transformations, test code smells, and Fowler refactoring catalog
@@ -146,9 +148,13 @@
 
 ## [nw-solution-architect](../agents/nw-solution-architect.md)
 
+- [architectural-styles-tradeoffs](../../../nWave/skills/solution-architect/architectural-styles-tradeoffs.md) — Architectural style selection decision matrices, trade-off analysis, structural enforcement rules, and combination patterns. Load when choosing or evaluating architecture styles.
 - [architecture-patterns](../../../nWave/skills/solution-architect/architecture-patterns.md) — Comprehensive architecture patterns, methodologies, quality frameworks, and evaluation methods for solution architects. Load when designing system architecture or selecting patterns.
 - [critique-dimensions](../../../nWave/skills/solution-architect/critique-dimensions.md) — Architecture quality critique dimensions for peer review. Load when invoking solution-architect-reviewer or performing self-review of architecture documents.
+- [domain-driven-design](../../../nWave/skills/solution-architect/domain-driven-design.md) — Strategic and tactical DDD patterns, bounded context discovery, context mapping, aggregate design rules, and decision frameworks for when to apply DDD
+- [formal-verification-tlaplus](../../../nWave/skills/solution-architect/formal-verification-tlaplus.md) — TLA+ and PlusCal for specifying distributed system invariants. Decision heuristics for when formal verification adds value, key patterns, state explosion management, and alternatives comparison.
 - [roadmap-design](../../../nWave/skills/solution-architect/roadmap-design.md) — Roadmap concision rules, step decomposition efficiency, AC abstraction guidelines, and step-to-scenario mapping. Load when creating implementation roadmaps.
+- [security-by-design](../../../nWave/skills/solution-architect/security-by-design.md) — Security design principles, STRIDE threat modeling, OWASP Top 10 architectural mitigations, and secure patterns. Load when designing systems or reviewing architecture for security.
 - [stress-analysis](../../../nWave/skills/solution-architect/stress-analysis.md) — Advanced architecture stress analysis methodology for designing systems that survive unknown stresses. Load when --residuality flag is used or when designing high-uncertainty, mission-critical systems.
 
 ## [nw-solution-architect-reviewer](../agents/nw-solution-architect-reviewer.md)

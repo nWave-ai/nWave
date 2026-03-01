@@ -246,6 +246,7 @@ def plugin_already_built(build_config: dict[str, Any], build_result: dict[str, A
     result = build(config)
     build_result["plugin_dir"] = result.output_dir
     build_result["success"] = result.is_success()
+    build_result["build_result"] = result
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +263,7 @@ def build_plugin(build_config: dict[str, Any], build_result: dict[str, Any]):
     result = build(config)
     build_result["plugin_dir"] = result.output_dir
     build_result["success"] = result.is_success()
+    build_result["build_result"] = result
 
 
 @when("the plugin validator checks the output")
@@ -294,6 +296,7 @@ def attempt_build_plugin(build_config: dict[str, Any], build_result: dict[str, A
         build_result["plugin_dir"] = result.output_dir
         build_result["success"] = result.is_success()
         build_result["error"] = result.error if not result.is_success() else None
+        build_result["build_result"] = result
     except Exception as exc:
         build_result["success"] = False
         build_result["error"] = str(exc)
@@ -321,21 +324,24 @@ def hooks_use_plugin_root(build_result: dict[str, Any]):
     hooks = json.loads(
         (plugin_dir / "hooks" / "hooks.json").read_text(encoding="utf-8")
     )
-    for hook in hooks.get("hooks", []):
-        cmd = hook.get("command", "")
-        assert "${CLAUDE_PLUGIN_ROOT}" in cmd or "CLAUDE_PLUGIN_ROOT" in cmd, (
-            f"Hook command does not reference plugin root: {cmd}"
-        )
+    for event, entries in hooks.get("hooks", {}).items():
+        for entry in entries:
+            for hook in entry.get("hooks", []):
+                cmd = hook.get("command", "")
+                assert "${CLAUDE_PLUGIN_ROOT}" in cmd or "CLAUDE_PLUGIN_ROOT" in cmd, (
+                    f"Hook command for {event} does not reference plugin root: {cmd}"
+                )
 
 
 @then(parsers.parse('the plugin metadata version is "{version}"'))
 def metadata_version_is(version: str, build_result: dict[str, Any]):
-    """Verify specific version in metadata."""
-    plugin_dir = build_result["plugin_dir"]
-    metadata = json.loads(
-        (plugin_dir / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
-    )
-    assert metadata["version"] == version
+    """Verify specific version in build result metadata.
+
+    Version is in BuildResult.metadata (not in plugin.json on disk),
+    because plugin.json only contains fields used by Claude Code runtime.
+    """
+    result = build_result["build_result"]
+    assert result.metadata["version"] == version
 
 
 @then("the DES module is importable from the plugin directory")

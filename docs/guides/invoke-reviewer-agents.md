@@ -8,21 +8,20 @@ Step-by-step guide to requesting peer reviews from reviewer agents.
 
 **Prerequisites**: Familiarity with Task tool and wave workflows.
 
-**Related Docs**:
-- [Reviewer Agents Reference](../reference/agents/index.md) (lookup)
-- [Reviewer Agents Reference](../reference/agents/index.md) (reference)
+**Related**: [Reviewer Agents Reference](../reference/agents/index.md)
 
 ---
 
 ## Quick Start
 
-Copy-paste this to request a review:
+Request a review via the Task tool:
 
 ```
-Use the Task tool to invoke the product-owner-reviewer agent.
-Read the specification from ~/.claude/agents/nw/nw-product-owner-reviewer.md
-Review the artifact at docs/feature/{feature-name}/discuss/requirements.md
-Provide YAML feedback with strengths, issues, recommendations, and approval_status.
+Use Task tool:
+subagent_type: general-purpose
+prompt: Read ~/.claude/agents/nw/nw-{reviewer-name}.md
+        Review docs/feature/{feature-id}/{wave}/{artifact}.md
+        Return YAML: strengths, issues, recommendations, approval_status
 ```
 
 ---
@@ -86,50 +85,40 @@ issues_identified:
 
 ---
 
-## Method 2: Direct Agent Activation
+## Method 2: Interactive Review
 
-For interactive review sessions.
-
-### Step 1: Request Persona Activation
+Request persona activation in the chat:
 
 ```
-Read ~/.claude/agents/nw/nw-acceptance-designer-reviewer.md and activate as the acceptance-designer-reviewer agent.
+Read ~/.claude/agents/nw/nw-{reviewer-name}.md and activate as the {reviewer-name} agent.
+
+Review the artifact at {path-to-artifact}
+
+Provide conversational feedback on:
+1. Completeness
+2. Consistency
+3. Quality issues
+4. Approval recommendation
 ```
-
-### Step 2: Provide Artifact
-
-```
-Review the acceptance tests at tests/acceptance/features/checkout.feature
-```
-
-### Step 3: Receive Interactive Feedback
-
-The agent adopts the reviewer persona and provides conversational feedback.
 
 ---
 
-## Method 3: Workflow Integration
+## Method 3: Add Review Steps to Workflows
 
 Add review steps to wave workflows.
 
-### In DISCUSS Wave
-
-After requirements gathering:
-
+### After DISCUSS wave
 ```
 1. Create requirements (product-owner)
-2. REVIEW requirements (product-owner-reviewer) <- Add this
-3. Handoff to DESIGN wave
+2. Review requirements (product-owner-reviewer)  <- Add this step
+3. Proceed to DESIGN
 ```
 
-### In DISTILL Wave
-
-After test creation:
-
+### After DISTILL wave
 ```
 1. Create acceptance tests (acceptance-designer)
-2. REVIEW tests (acceptance-designer-reviewer) <- Add this
-3. Handoff to DELIVER wave
+2. Review tests (acceptance-designer-reviewer)  <- Add this step
+3. Proceed to DELIVER
 ```
 
 ---
@@ -174,41 +163,11 @@ The reviewer validates revisions and returns updated status.
 
 ## Troubleshooting
 
-### Reviewer Not Found
-
-**Symptom**: "Reviewer agent not found"
-
-**Solution**: Use Task tool with explicit spec path:
-```
-Read ~/.claude/agents/nw/nw-{reviewer-name}.md and adopt that persona
-```
-
-### No Feedback Returned
-
-**Symptom**: Review completes but no structured feedback
-
-**Solution**: Explicitly request YAML format:
-```
-Provide feedback in YAML format with:
-- strengths
-- issues_identified (include severity: critical/high/medium/low)
-- recommendations
-- approval_status (approved/rejected_pending_revisions/conditionally_approved)
-```
-
-### Review Takes Too Long
-
-**Symptom**: Reviewer produces extensive analysis
-
-**Solution**: Scope the review:
-```
-Focus only on:
-1. Confirmation bias detection
-2. Completeness gaps
-3. Testability concerns
-
-Skip: style, formatting, minor improvements
-```
+| Issue | Solution |
+|-------|----------|
+| Reviewer not found | Use Task tool with full spec path: `Read ~/.claude/agents/nw/nw-{reviewer-name}.md` |
+| No structured feedback | Explicitly request YAML with: `approval_status`, `issues_identified` (with severity), `recommendations` |
+| Review too lengthy | Scope it: "Focus only on: 1) confirmation bias, 2) completeness gaps, 3) testability. Skip style/formatting." |
 
 ---
 
@@ -227,7 +186,7 @@ I need peer review on my requirements document.
 
     Read: ~/.claude/agents/nw/nw-product-owner-reviewer.md
 
-    Review: docs/feature/{feature-name}/discuss/checkout-requirements.md
+    Review: docs/feature/{feature-id}/discuss/checkout-requirements.md
 
     Focus on:
     1. Confirmation bias (technology assumptions)
@@ -277,7 +236,7 @@ Review my architecture design for feasibility.
 
     Read: ~/.claude/agents/nw/nw-solution-architect-reviewer.md
 
-    Review: docs/feature/{feature-name}/design/architecture-design.md
+    Review: docs/feature/{feature-id}/design/architecture-design.md
 
     Focus on:
     1. Architectural bias (premature technology choices)
@@ -293,17 +252,9 @@ Review my architecture design for feasibility.
 
 ## Verification Checklist
 
-After invoking a reviewer, verify:
-
-- [ ] Reviewer persona adopted correctly
-- [ ] Artifact path correct and accessible
+- [ ] Reviewer persona loaded correctly
+- [ ] Artifact path correct
 - [ ] YAML feedback received with all sections
-- [ ] Approval status clearly stated
+- [ ] Approval status stated
 - [ ] Critical/high issues have recommendations
-- [ ] Iteration number tracked (max 2)
-
----
-
-**Last Updated**: 2026-01-21
-**Type**: How-to Guide
-**Purity**: 95%+
+- [ ] Tracked iteration count (max 2)

@@ -232,7 +232,7 @@ Slack notifications on failure (RED) and recovery (GREEN).
 The canonical development sequence:
 
 ```
-DISCOVER → DISCUSS → DESIGN → DISTILL → DELIVER → DEVOP
+DISCOVER → DISCUSS → DESIGN → DEVOPS → DISTILL → DELIVER
 ```
 
 | Wave | Command | Agent | Output |
@@ -240,9 +240,9 @@ DISCOVER → DISCUSS → DESIGN → DISTILL → DELIVER → DEVOP
 | DISCOVER | `/nw:discover` | product-discoverer | Evidence, opportunity validation |
 | DISCUSS | `/nw:discuss` | product-owner | User stories, acceptance criteria |
 | DESIGN | `/nw:design` | solution-architect | Architecture, component boundaries |
+| DEVOPS | `/nw:devops` | platform-architect | Infrastructure, CI/CD, deployment |
 | DISTILL | `/nw:distill` | acceptance-designer | BDD test scenarios (Given-When-Then) |
 | DELIVER | `/nw:deliver` | software-crafter | Working code via Outside-In TDD |
-| DEVOP | `/nw:devops` | platform-architect | Infrastructure, CI/CD, deployment |
 
 **Cross-wave agents**: researcher, troubleshooter, documentarist, visual-architect
 **Reviewers**: 11 peer review agents (one per specialist + specialized reviewers)

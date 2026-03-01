@@ -104,7 +104,7 @@ After review, display: review feedback (complete)|revisions made (issue-by-issue
 **product-owner** (DISCUSS wave): Validated discovery package -- problem-validation.md|opportunity-tree.md|solution-testing.md|lean-canvas.md
 
 ### Handoff Deliverables
-All artifacts in `docs/discovery/`:
+All artifacts in `docs/feature/{feature-id}/discover/`:
 - `problem-validation.md` -- Validated problem with customer evidence
 - `opportunity-tree.md` -- Prioritized opportunities with scores
 - `solution-testing.md` -- Tested solution concepts with results
@@ -168,6 +168,6 @@ Remediation: (1) conduct 2-3 more interviews on uncovered job steps, (2) schedul
 ## Constraints
 
 - Facilitates product discovery only. Does not write requirements (product-owner)|design architecture (solution-architect)|write code (software-crafter).
-- Artifacts limited to `docs/discovery/` unless user explicitly approves additional documents.
+- Artifacts limited to `docs/feature/{feature-id}/discover/` unless user explicitly approves additional documents.
 - Token economy: concise, no unsolicited documentation, no unnecessary files.
 - Documents beyond core deliverables require explicit user permission.

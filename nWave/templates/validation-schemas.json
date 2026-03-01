@@ -1,0 +1,561 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nWave Framework Validation Schemas",
+  "description": "Validation schemas for agent, skill, and command definitions. Version 1.0 (2026-02-28).",
+
+  "$defs": {
+    "agent_frontmatter": {
+      "type": "object",
+      "description": "YAML frontmatter for agent definition files (.md)",
+      "required": ["name", "description", "model", "tools", "maxTurns"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^nw-[a-z][a-z0-9-]+(-reviewer)?$",
+          "description": "Kebab-case agent name with nw- prefix. Must match filename without .md."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 500,
+          "description": "Delegation criteria. Should start with 'Use for' or wave name."
+        },
+        "model": {
+          "type": "string",
+          "enum": ["inherit", "haiku", "sonnet", "opus"],
+          "description": "Model selection. Reviewers use 'haiku'; specialists use 'inherit'."
+        },
+        "tools": {
+          "type": "string",
+          "description": "Comma-separated tool names from allowed set.",
+          "pattern": "^(Read|Write|Edit|Bash|Glob|Grep|Task|WebSearch|WebFetch)(,\\s*(Read|Write|Edit|Bash|Glob|Grep|Task|WebSearch|WebFetch))*$"
+        },
+        "maxTurns": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 65,
+          "description": "Maximum turn limit. Reviewers: 15-30. Specialists: 30-50."
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]+$",
+            "description": "Skill file basename (kebab-case, no extension)."
+          },
+          "description": "List of skill file basenames. Declarative only -- agent must load via Read tool."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "reviewer_frontmatter": {
+      "type": "object",
+      "description": "YAML frontmatter for reviewer agent definitions. Extends agent_frontmatter with reviewer-specific constraints.",
+      "required": ["name", "description", "model", "tools", "maxTurns"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^nw-[a-z][a-z0-9-]+-reviewer$",
+          "description": "Must end with '-reviewer'."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 500
+        },
+        "model": {
+          "type": "string",
+          "enum": ["haiku"],
+          "description": "Reviewers always use haiku model."
+        },
+        "tools": {
+          "type": "string",
+          "description": "Read-only tools plus optional Task.",
+          "pattern": "^(Read|Glob|Grep|Task)(,\\s*(Read|Glob|Grep|Task))*$"
+        },
+        "maxTurns": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 30,
+          "description": "Reviewers limited to 15-30 turns."
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]+$"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "skill_frontmatter": {
+      "type": "object",
+      "description": "YAML frontmatter for skill files (.md)",
+      "required": ["name", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]+$",
+          "description": "Kebab-case skill name. Must match filename without .md."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 300,
+          "description": "One-line purpose description."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "command_frontmatter": {
+      "type": "object",
+      "description": "YAML frontmatter for command/task files (.md)",
+      "required": ["description"],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 500,
+          "description": "Command purpose. Include 'Use when...' guidance."
+        },
+        "argument-hint": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Usage pattern showing parameters and flags."
+        },
+        "disable-model-invocation": {
+          "type": "boolean",
+          "description": "Set true for orchestrator-only commands."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "agent_sections": {
+      "type": "object",
+      "description": "Required and optional sections in agent body",
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "title",
+            "persona_paragraph",
+            "core_principles",
+            "skill_loading",
+            "workflow",
+            "examples",
+            "critical_rules",
+            "constraints"
+          ]
+        },
+        "optional": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "peer_review_protocol",
+            "wave_collaboration",
+            "quality_gates",
+            "commands",
+            "output_format",
+            "anti_patterns"
+          ]
+        }
+      }
+    },
+
+    "section_patterns": {
+      "type": "object",
+      "description": "Regex patterns to detect required sections in markdown body",
+      "properties": {
+        "title": {
+          "type": "string",
+          "const": "^# nw-[a-z][a-z0-9-]+(-reviewer)?$",
+          "description": "H1 title matching agent name"
+        },
+        "persona_paragraph": {
+          "type": "string",
+          "const": "^You are [A-Z][a-z]+",
+          "description": "Persona introduction: 'You are {Name}, a ...'"
+        },
+        "subagent_mode": {
+          "type": "string",
+          "const": "In subagent mode",
+          "description": "Subagent mode instructions paragraph"
+        },
+        "core_principles": {
+          "type": "string",
+          "const": "^## Core Principles",
+          "description": "Core principles section header"
+        },
+        "principles_intro": {
+          "type": "string",
+          "const": "principles diverge from defaults",
+          "description": "Standard principles introduction text"
+        },
+        "skill_loading": {
+          "type": "string",
+          "const": "^## Skill Loading",
+          "description": "Mandatory skill loading section"
+        },
+        "skill_must_load": {
+          "type": "string",
+          "const": "You MUST load your skill files",
+          "description": "Imperative skill loading language"
+        },
+        "skills_path": {
+          "type": "string",
+          "const": "~/.claude/skills/nw/",
+          "description": "Skills path reference"
+        },
+        "workflow": {
+          "type": "string",
+          "const": "^## (Workflow|\\d+-Phase|Review Workflow)",
+          "description": "Workflow section header"
+        },
+        "load_directive": {
+          "type": "string",
+          "const": "^Load:.*read it NOW",
+          "description": "Skill loading directive in workflow phase"
+        },
+        "examples": {
+          "type": "string",
+          "const": "^## Examples",
+          "description": "Examples section header"
+        },
+        "example_item": {
+          "type": "string",
+          "const": "^### Example \\d+:",
+          "description": "Individual example header"
+        },
+        "critical_rules": {
+          "type": "string",
+          "const": "^## Critical Rules",
+          "description": "Critical rules section header"
+        },
+        "constraints": {
+          "type": "string",
+          "const": "^## Constraints",
+          "description": "Constraints section header"
+        }
+      }
+    }
+  },
+
+  "validation_rules": {
+    "description": "Rules that go beyond JSON Schema and require programmatic validation",
+
+    "agent_rules": [
+      {
+        "id": "A01",
+        "name": "frontmatter_present",
+        "description": "File starts with --- YAML frontmatter ---",
+        "severity": "error"
+      },
+      {
+        "id": "A02",
+        "name": "name_matches_filename",
+        "description": "Frontmatter 'name' matches filename without .md extension",
+        "severity": "error"
+      },
+      {
+        "id": "A03",
+        "name": "line_count_under_limit",
+        "description": "Total file under 400 lines (specialists) or 170 lines (reviewers)",
+        "severity": "warning",
+        "thresholds": {
+          "specialist_max": 400,
+          "reviewer_max": 170
+        }
+      },
+      {
+        "id": "A04",
+        "name": "required_sections_present",
+        "description": "All required sections found via regex patterns",
+        "severity": "error",
+        "sections": ["title", "persona_paragraph", "subagent_mode", "core_principles", "skill_loading", "workflow", "examples", "critical_rules", "constraints"]
+      },
+      {
+        "id": "A05",
+        "name": "skill_loading_imperative",
+        "description": "Skill loading section uses imperative language ('MUST load', not 'should load')",
+        "severity": "error",
+        "pattern": "You MUST load your skill files"
+      },
+      {
+        "id": "A06",
+        "name": "skills_path_documented",
+        "description": "Skills path (~/.claude/skills/nw/{agent-name}/) documented",
+        "severity": "error",
+        "pattern": "~/.claude/skills/nw/"
+      },
+      {
+        "id": "A07",
+        "name": "no_orphan_skills",
+        "description": "Every skill in frontmatter has at least one Load: directive in workflow text",
+        "severity": "error"
+      },
+      {
+        "id": "A08",
+        "name": "load_directives_in_workflow",
+        "description": "Workflow phases contain explicit Load: directives with 'read it NOW'",
+        "severity": "warning"
+      },
+      {
+        "id": "A09",
+        "name": "example_count",
+        "description": "Between 3 and 7 examples (### Example N: headers)",
+        "severity": "warning",
+        "min_examples": 3,
+        "max_examples": 7
+      },
+      {
+        "id": "A10",
+        "name": "no_aggressive_language",
+        "description": "No CRITICAL, MANDATORY, or ABSOLUTE in prose (exception: skill loading section)",
+        "severity": "warning",
+        "excluded_sections": ["Skill Loading"]
+      },
+      {
+        "id": "A11",
+        "name": "reviewer_model_haiku",
+        "description": "Reviewer agents must use model: haiku",
+        "severity": "error",
+        "applies_to": "reviewer"
+      },
+      {
+        "id": "A12",
+        "name": "reviewer_no_write_tools",
+        "description": "Reviewer agents must not have Write or Edit tools",
+        "severity": "error",
+        "applies_to": "reviewer"
+      },
+      {
+        "id": "A13",
+        "name": "principles_divergence_intro",
+        "description": "Core Principles starts with 'These N principles diverge from defaults'",
+        "severity": "warning",
+        "pattern": "principles diverge from defaults"
+      },
+      {
+        "id": "A14",
+        "name": "subagent_mode_paragraph",
+        "description": "Contains canonical subagent mode paragraph with CLARIFICATION_NEEDED",
+        "severity": "error",
+        "pattern": "In subagent mode"
+      },
+      {
+        "id": "A15",
+        "name": "maxturns_set",
+        "description": "maxTurns is set in frontmatter",
+        "severity": "error"
+      },
+      {
+        "id": "A16",
+        "name": "skill_loading_table",
+        "description": "Skill loading section contains a Phase|Load|Trigger table",
+        "severity": "warning",
+        "pattern": "\\| Phase \\| Load \\| Trigger \\|"
+      }
+    ],
+
+    "skill_rules": [
+      {
+        "id": "S01",
+        "name": "frontmatter_present",
+        "description": "File starts with --- YAML frontmatter ---",
+        "severity": "error"
+      },
+      {
+        "id": "S02",
+        "name": "name_matches_filename",
+        "description": "Frontmatter 'name' matches filename without .md extension",
+        "severity": "error"
+      },
+      {
+        "id": "S03",
+        "name": "kebab_case_name",
+        "description": "Skill name is kebab-case (lowercase, hyphens, digits)",
+        "severity": "error",
+        "pattern": "^[a-z][a-z0-9-]+$"
+      },
+      {
+        "id": "S04",
+        "name": "description_present",
+        "description": "Description field is non-empty",
+        "severity": "error"
+      },
+      {
+        "id": "S05",
+        "name": "no_persona_definition",
+        "description": "Skill does not contain 'You are' persona definition",
+        "severity": "warning"
+      },
+      {
+        "id": "S06",
+        "name": "no_workflow_steps",
+        "description": "Skill does not contain '## Workflow' or '### Phase N:' headers",
+        "severity": "warning"
+      },
+      {
+        "id": "S07",
+        "name": "line_count_range",
+        "description": "Skill file is between 30 and 400 lines",
+        "severity": "warning",
+        "min_lines": 30,
+        "max_lines": 400
+      },
+      {
+        "id": "S08",
+        "name": "has_h1_title",
+        "description": "Skill has exactly one H1 title",
+        "severity": "warning"
+      },
+      {
+        "id": "S09",
+        "name": "only_name_description_frontmatter",
+        "description": "Frontmatter contains only 'name' and 'description' fields",
+        "severity": "warning"
+      }
+    ],
+
+    "command_rules": [
+      {
+        "id": "C01",
+        "name": "frontmatter_present",
+        "description": "File starts with --- YAML frontmatter ---",
+        "severity": "error"
+      },
+      {
+        "id": "C02",
+        "name": "description_present",
+        "description": "Frontmatter 'description' field is non-empty",
+        "severity": "error"
+      },
+      {
+        "id": "C03",
+        "name": "has_title",
+        "description": "Body starts with # NW-{NAME}: title",
+        "severity": "warning",
+        "pattern": "^# NW-[A-Z]+"
+      },
+      {
+        "id": "C04",
+        "name": "has_wave_and_agent",
+        "description": "Contains **Wave**: and **Agent**: metadata",
+        "severity": "warning"
+      },
+      {
+        "id": "C05",
+        "name": "has_overview",
+        "description": "Contains ## Overview section",
+        "severity": "warning"
+      },
+      {
+        "id": "C06",
+        "name": "has_agent_invocation",
+        "description": "Contains ## Agent Invocation section with @nw-{agent}",
+        "severity": "warning"
+      },
+      {
+        "id": "C07",
+        "name": "has_success_criteria",
+        "description": "Contains ## Success Criteria section with checkboxes",
+        "severity": "warning"
+      },
+      {
+        "id": "C08",
+        "name": "has_next_wave",
+        "description": "Contains ## Next Wave section with Handoff To",
+        "severity": "warning"
+      },
+      {
+        "id": "C09",
+        "name": "line_count_range",
+        "description": "Command file is within size target for its category",
+        "severity": "warning",
+        "thresholds": {
+          "dispatcher_max": 100,
+          "orchestrator_max": 300
+        }
+      },
+      {
+        "id": "C10",
+        "name": "no_embedded_workflow",
+        "description": "No step-by-step workflow instructions (STEP 1, STEP 2 patterns)",
+        "severity": "warning",
+        "pattern": "^(STEP|Step) \\d+:"
+      },
+      {
+        "id": "C11",
+        "name": "skill_loading_reminder",
+        "description": "Task prompts include SKILL_LOADING reminder for sub-agents",
+        "severity": "warning",
+        "pattern": "SKILL_LOADING"
+      },
+      {
+        "id": "C12",
+        "name": "kebab_case_filename",
+        "description": "Filename is kebab-case",
+        "severity": "error",
+        "pattern": "^[a-z][a-z0-9-]+\\.md$"
+      }
+    ]
+  },
+
+  "naming_conventions": {
+    "agent_file": {
+      "pattern": "^nw-[a-z][a-z0-9-]+(-reviewer)?\\.md$",
+      "directory": "nWave/agents/",
+      "examples": ["nw-software-crafter.md", "nw-software-crafter-reviewer.md"]
+    },
+    "skill_file": {
+      "pattern": "^[a-z][a-z0-9-]+\\.md$",
+      "directory": "nWave/skills/{agent-name}/",
+      "examples": ["tdd-methodology.md", "architecture-patterns.md"]
+    },
+    "command_file": {
+      "pattern": "^[a-z][a-z0-9-]+\\.md$",
+      "directory": "nWave/tasks/nw/",
+      "examples": ["deliver.md", "forge.md", "execute.md"]
+    },
+    "skill_directory": {
+      "pattern": "^[a-z][a-z0-9-]+(-reviewer)?$",
+      "parent": "nWave/skills/",
+      "examples": ["software-crafter", "solution-architect-reviewer"]
+    }
+  },
+
+  "size_limits": {
+    "agent_specialist": {
+      "warning": 300,
+      "error": 400,
+      "description": "Specialist agents should be under 300 lines, hard limit 400"
+    },
+    "agent_reviewer": {
+      "warning": 130,
+      "error": 170,
+      "description": "Reviewer agents should be under 130 lines, hard limit 170"
+    },
+    "skill": {
+      "min": 30,
+      "warning": 300,
+      "error": 400,
+      "description": "Skills: minimum 30, target under 300, hard limit 400"
+    },
+    "command_dispatcher": {
+      "warning": 80,
+      "error": 100,
+      "description": "Dispatcher commands: target 80, hard limit 100"
+    },
+    "command_orchestrator": {
+      "warning": 200,
+      "error": 300,
+      "description": "Orchestrator commands: target 200, hard limit 300"
+    }
+  }
+}

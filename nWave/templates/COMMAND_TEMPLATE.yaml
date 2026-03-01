@@ -39,7 +39,7 @@ agent-activation:
 #
 # # DW-{WAVE}: {Task Title}
 #
-# **Wave**: {DISCUSS|DESIGN|DEVOP|DISTILL|DELIVER|CROSS_WAVE}
+# **Wave**: {DISCUSS|DESIGN|DEVOPS|DISTILL|DELIVER|CROSS_WAVE}
 # **Agent**: {PersonaName} ({agent-id})
 # **Command**: `*{command-name}`
 #
@@ -69,7 +69,7 @@ agent-activation:
 # VARIABLE SUBSTITUTION GUIDE:
 #
 # Wave Variables:
-#   {WAVE} → DISCUSS | DESIGN | DEVOP | DISTILL | DELIVER | CROSS_WAVE
+#   {WAVE} → DISCUSS | DESIGN | DEVOPS | DISTILL | DELIVER | CROSS_WAVE
 #   {PREVIOUS_WAVE} → Previous wave in sequence (or "None" for DISCUSS)
 #
 # Agent Variables:

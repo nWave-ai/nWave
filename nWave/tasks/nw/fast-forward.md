@@ -20,11 +20,11 @@ You (main Claude instance) run this orchestration directly. Each wave invoked by
 
 ### Step 1: Input Parsing
 
-Accept: feature description (new project)|`--from` flag with optional project ID|no arguments (auto-detect from `docs/feature/`)
+Accept: feature description (new project)|`--from` flag with optional feature ID|no arguments (auto-detect from `docs/feature/`)
 
 ### Step 2: Project Resolution
 
-**New project (description provided):** Derive project ID per `~/.claude/nWave/data/wizard-shared-rules.md` (Project ID Derivation). Show derived ID, allow override via AskUserQuestion. Create `docs/feature/{project-id}/`.
+**New project (description provided):** Derive feature ID per `~/.claude/nWave/data/wizard-shared-rules.md` (Feature ID Derivation). Show derived ID, allow override via AskUserQuestion. Create `docs/feature/{feature-id}/`.
 
 **Existing project (no description):** Scan `docs/feature/` (same as `/nw:continue` Step 1-2). If multiple, ask user to select.
 
@@ -43,7 +43,7 @@ Default order (DISCOVER skipped): DISCUSS > DESIGN > DEVOPS > DISTILL > DELIVER
 ### Step 5: Show Plan and Confirm
 
 ```
-Feature: {project-id}
+Feature: {feature-id}
 
   Fast-forward plan:
     1. DISCUSS  — Define requirements and user stories
@@ -101,7 +101,7 @@ If any wave fails:
 ### Step 8: Completion
 
 ```
-✓ Fast-forward complete for {project-id}
+✓ Fast-forward complete for {feature-id}
 
   DISCUSS   ● complete
   DESIGN    ● complete

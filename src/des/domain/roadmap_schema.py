@@ -43,9 +43,10 @@ class RoadmapSchemaLoader:
     def _resolve_default_schema_path() -> Path:
         """Resolve schema path for current environment.
 
-        Handles both:
+        Handles three deployment contexts:
         - Source: src/des/domain/roadmap_schema.py -> project_root/nWave/templates/
         - Installed: ~/.claude/lib/python/des/domain/roadmap_schema.py -> ~/.claude/templates/
+        - Plugin: .../scripts/des/domain/roadmap_schema.py -> .../scripts/templates/
         """
         module_file = Path(__file__)
         module_str = str(module_file).replace("\\", "/")
@@ -66,6 +67,16 @@ class RoadmapSchemaLoader:
                         )
                         if candidate.exists():
                             return candidate
+
+        # Plugin context: scripts/des/domain/roadmap_schema.py → scripts/templates/
+        for search_path in [module_file, module_file.resolve()]:
+            for parent in search_path.parents:
+                if parent.name == "scripts":
+                    candidate = (
+                        parent / "templates" / RoadmapSchemaLoader.SCHEMA_FILENAME
+                    )
+                    if candidate.exists():
+                        return candidate
 
         return (
             module_file.resolve().parent.parent.parent.parent

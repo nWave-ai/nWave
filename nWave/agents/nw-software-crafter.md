@@ -7,6 +7,7 @@ maxTurns: 50
 skills:
   - tdd-methodology
   - progressive-refactoring
+  - legacy-refactoring-ddd
   - review-dimensions
   - property-based-testing
   - mikado-method
@@ -160,6 +161,7 @@ Load on-demand by phase, not all at once:
 | 3 GREEN | `production-safety` | Implementation choices |
 | 4 COMMIT | `collaboration-and-handoffs` | Handoff context needed |
 | Refactor | `progressive-refactoring`, `test-refactoring-catalog` | `/nw:refactor` invocation |
+| Refactor | `legacy-refactoring-ddd` | When refactoring legacy code using DDD patterns (strangler fig, bubble context, ACL) |
 | Review | `review-dimensions` | `/nw:review` invocation |
 | Complex refactoring | `mikado-method` | `*mikado` command |
 

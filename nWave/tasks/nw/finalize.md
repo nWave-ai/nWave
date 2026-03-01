@@ -1,7 +1,7 @@
 ---
 description: "Archives a completed feature to docs/evolution/ and cleans up workflow files. Use after all implementation steps pass and mutation testing completes."
 disable-model-invocation: true
-argument-hint: '[agent] [project-id] - Example: @platform-architect "auth-upgrade"'
+argument-hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrade"'
 ---
 
 # NW-FINALIZE: Feature Completion and Archive
@@ -11,18 +11,18 @@ argument-hint: '[agent] [project-id] - Example: @platform-architect "auth-upgrad
 
 ## Overview
 
-Finalize a completed feature: verify all steps done|create evolution document in docs/evolution/|clean up workflow files in docs/feature/{project-id}/|optionally generate reference docs. Agent gathers project data|analyzes execution history|writes summaries|archives|cleans up.
+Finalize a completed feature: verify all steps done|create evolution document in docs/evolution/|clean up workflow files in docs/feature/{feature-id}/|optionally generate reference docs. Agent gathers project data|analyzes execution history|writes summaries|archives|cleans up.
 
 ## Usage
 
 ```
-/nw:finalize @{agent} "{project-id}"
+/nw:finalize @{agent} "{feature-id}"
 ```
 
 ## Context Files Required
 
-- docs/feature/{project-id}/roadmap.json - Original project plan
-- docs/feature/{project-id}/execution-log.json - Step execution history (Schema v2.0)
+- docs/feature/{feature-id}/deliver/roadmap.json - Original project plan
+- docs/feature/{feature-id}/deliver/execution-log.json - Step execution history (Schema v2.0)
 
 ## Pre-Dispatch Gate: All Steps Complete
 
@@ -34,10 +34,10 @@ Parse execution-log.json, verify every step has status DONE. If any step is not 
 
 @{agent}
 
-Finalize: {project-id}
+Finalize: {feature-id}
 
 **Key constraints:**
-- Create evolution document in docs/evolution/YYYY-MM-DD-{project-id}.md
+- Create evolution document in docs/evolution/YYYY-MM-DD-{feature-id}.md
 - Archive workflow files, do not delete before user approval
 - Verify all steps DONE before proceeding
 - Update architecture doc statuses from "FUTURE DESIGN" to "IMPLEMENTED"
@@ -62,8 +62,8 @@ Agent handles: gather project data|analyze completion stats|write evolution docu
 | Error | Response |
 |-------|----------|
 | Invalid agent name | "Invalid agent. Available: nw-researcher, nw-software-crafter, nw-solution-architect, nw-product-owner, nw-acceptance-designer, nw-platform-architect" |
-| Missing project ID | "Usage: /nw:finalize @agent 'project-id'" |
-| Project directory not found | "Project not found: docs/feature/{project-id}/" |
+| Missing feature ID | "Usage: /nw:finalize @agent 'feature-id'" |
+| Project directory not found | "Project not found: docs/feature/{feature-id}/" |
 | Incomplete steps | Block finalization, list incomplete steps |
 
 ## Examples
@@ -89,12 +89,12 @@ Pre-dispatch gate finds step 02-03 status IN_PROGRESS. Returns: "BLOCKED: 1 inco
 ## Next Wave
 
 **Handoff To**: Feature complete - no next wave
-**Deliverables**: docs/evolution/YYYY-MM-DD-{project-id}.md, cleaned docs/feature/{project-id}/
+**Deliverables**: docs/evolution/YYYY-MM-DD-{feature-id}.md, cleaned docs/feature/{feature-id}/
 
 ## Expected Outputs
 
 ```
-docs/evolution/YYYY-MM-DD-{project-id}.md
+docs/evolution/YYYY-MM-DD-{feature-id}.md
 Updated architecture docs (status -> IMPLEMENTED)
-Cleaned docs/feature/{project-id}/ directory
+Cleaned docs/feature/{feature-id}/ directory
 ```

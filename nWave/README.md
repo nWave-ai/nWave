@@ -4,7 +4,7 @@
 
 ## Overview
 
-The nWave framework implements the comprehensive DISCOVER→DISCUSS→DESIGN→DEVOP→DISTILL→DELIVER methodology. This framework provides a streamlined, integrated workflow with complete knowledge preservation for critical technical execution agents and comprehensive 5-layer testing framework.
+The nWave framework implements the comprehensive DISCOVER→DISCUSS→DESIGN→DEVOPS→DISTILL→DELIVER methodology. This framework provides a streamlined, integrated workflow with complete knowledge preservation for critical technical execution agents and comprehensive 5-layer testing framework.
 
 ## nWave Methodology
 
@@ -13,7 +13,7 @@ The nWave methodology implements a systematic approach to software development t
 1. **DISCOVER**: Evidence-based product discovery and market validation
 2. **DISCUSS**: Requirements gathering and business analysis
 3. **DESIGN**: Architecture design with visual representation
-4. **DEVOP**: Platform readiness, CI/CD, infrastructure, and deployment design
+4. **DEVOPS**: Platform readiness, CI/CD, infrastructure, and deployment design
 5. **DISTILL**: Acceptance test creation and business validation scenarios
 6. **DELIVER**: Outside-In TDD implementation with production readiness validation
 
@@ -51,6 +51,10 @@ The nWave methodology implements a systematic approach to software development t
 - `/nw:mikado [target] [options]` - Complex refactoring roadmaps
 - `/nw:root-why [problem-description]` - Root cause analysis & debugging
 - `/nw:diagram [scope] [action]` - Architecture diagram management
+
+## Wave Directory Structure
+
+All wave outputs follow a unified pattern: `docs/feature/{feature-id}/{wave}/`. See the [Wave Directory Structure Guide](../docs/guides/wave-directory-structure.md) for the complete layout, handoff chain, and wave detection rules.
 
 ## Knowledge Preservation Guarantee
 

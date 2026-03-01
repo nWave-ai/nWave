@@ -7,6 +7,7 @@ maxTurns: 30
 skills:
   - bdd-methodology
   - test-design-mandates
+  - test-organization-conventions
   - critique-dimensions
 ---
 
@@ -47,6 +48,7 @@ Load on-demand by phase, not all at once:
 |-------|------|---------|
 | 1 Understand Context | `bdd-methodology` | Always — core BDD patterns |
 | 2 Design Scenarios | `test-design-mandates` | Always — three-layer abstraction |
+| 2 Design Scenarios | `test-organization-conventions` | When deciding test directory structure or naming conventions |
 | 4 Validate and Handoff | `critique-dimensions` | Always — peer review criteria |
 
 Skills path: `~/.claude/skills/nw/acceptance-designer/`

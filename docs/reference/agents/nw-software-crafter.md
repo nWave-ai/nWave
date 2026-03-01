@@ -24,6 +24,7 @@ DELIVER wave - Outside-In TDD and progressive refactoring. Research-optimized co
 
 - [collaboration-and-handoffs](../../../nWave/skills/software-crafter/collaboration-and-handoffs.md) — Cross-agent collaboration protocols, workflow handoff patterns, and commit message formats for TDD/Mikado/refactoring workflows
 - [hexagonal-testing](../../../nWave/skills/software-crafter/hexagonal-testing.md) — 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
+- [legacy-refactoring-ddd](../../../nWave/skills/software-crafter/legacy-refactoring-ddd.md) — DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
 - [mikado-method](../../../nWave/skills/software-crafter/mikado-method.md) — Enhanced Mikado Method for complex architectural refactoring - systematic dependency discovery, tree-based planning, and bottom-up execution
 - [production-safety](../../../nWave/skills/software-crafter/production-safety.md) — Agent safety boundaries - input validation, output filtering, scope constraints, and document creation policy
 - [progressive-refactoring](../../../nWave/skills/software-crafter/progressive-refactoring.md) — Progressive L1-L6 refactoring hierarchy, 22 code smell taxonomy, atomic transformations, test code smells, and Fowler refactoring catalog

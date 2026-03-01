@@ -122,22 +122,30 @@ def any_valid_version():
 
 @then("the plugin directory contains a metadata file with the project version")
 def plugin_has_metadata_with_version(build_result: dict[str, Any]):
-    """Verify plugin.json exists and contains the project version."""
+    """Verify plugin.json exists and contains required fields.
+
+    Version is tracked in BuildResult.metadata (not in plugin.json on disk),
+    because plugin.json only contains fields used by Claude Code runtime.
+    """
     plugin_dir = build_result["plugin_dir"]
     metadata_path = plugin_dir / ".claude-plugin" / "plugin.json"
     assert metadata_path.exists(), f"Metadata file not found: {metadata_path}"
 
     metadata = _read_plugin_metadata(build_result)
-    assert "version" in metadata
-    assert metadata["version"], "Version must not be empty"
+    assert "name" in metadata
+    assert metadata["name"], "Name must not be empty"
 
 
 @then("the plugin metadata version matches the project version")
 def metadata_version_matches_project(
     build_result: dict[str, Any], build_config: dict[str, Any]
 ):
-    """Verify metadata version matches pyproject.toml version."""
-    metadata = _read_plugin_metadata(build_result)
+    """Verify build result version matches pyproject.toml version.
+
+    Version is in BuildResult.metadata (not in plugin.json on disk),
+    because plugin.json only contains fields used by Claude Code runtime.
+    """
+    result = build_result["build_result"]
 
     import tomllib
 
@@ -145,7 +153,7 @@ def metadata_version_matches_project(
         pyproject = tomllib.load(f)
     expected = pyproject["project"]["version"]
 
-    assert metadata["version"] == expected
+    assert result.metadata["version"] == expected
 
 
 @then(parsers.parse('the plugin metadata name is "{name}"'))
@@ -165,18 +173,29 @@ def metadata_has_description(build_result: dict[str, Any]):
 
 @then("the plugin metadata contains keywords for discoverability")
 def metadata_has_keywords(build_result: dict[str, Any]):
-    """Verify metadata includes keywords."""
+    """Verify metadata includes description (keywords removed from plugin.json).
+
+    Extra fields like keywords, homepage, license caused Claude Code to
+    silently fail plugin command discovery, so plugin.json now only contains
+    name, description, and author. Description serves as the discoverability
+    mechanism via the Claude Code plugin registry.
+    """
     metadata = _read_plugin_metadata(build_result)
-    assert "keywords" in metadata
-    assert len(metadata["keywords"]) > 0
+    assert "description" in metadata
+    assert len(metadata["description"]) > 0
 
 
 @then("the plugin metadata identifies the source directory")
 def metadata_identifies_source(build_result: dict[str, Any]):
-    """Verify plugin metadata contains a source directory reference."""
+    """Verify plugin metadata contains author info (source field removed).
+
+    Extra fields like source, homepage, repository caused Claude Code to
+    silently fail plugin command discovery. Author info is the closest
+    remaining field that identifies the plugin origin.
+    """
     metadata = _read_plugin_metadata(build_result)
-    assert "source" in metadata, "Metadata missing 'source' field"
-    assert len(metadata["source"]) > 0, "Source directory must not be empty"
+    assert "author" in metadata, "Metadata missing 'author' field"
+    assert metadata["author"].get("name"), "Author name must not be empty"
 
 
 # "the plugin metadata version is" is defined in conftest.py for cross-module sharing.
@@ -219,16 +238,58 @@ def agents_are_structured(build_result: dict[str, Any]):
         )
 
 
-@then("the content of each agent file in the plugin matches the source")
-def agents_match_source(build_result: dict[str, Any], build_config: dict[str, Any]):
-    """Verify agent files are copied without modification."""
+@then("every agent body is identical to the source")
+def agents_body_matches_source(
+    build_result: dict[str, Any], build_config: dict[str, Any]
+):
+    """Verify agent body content is preserved (frontmatter may differ for skill refs)."""
     plugin_dir = build_result["plugin_dir"]
     source_dir = build_config["nwave_dir"] / "agents"
+
+    def _body(text: str) -> str:
+        """Extract body after YAML frontmatter."""
+        if text.startswith("---"):
+            parts = text.split("---", 2)
+            return parts[2] if len(parts) >= 3 else ""
+        return text
+
     for agent_file in (plugin_dir / "agents").glob("*.md"):
         source_file = source_dir / agent_file.name
         assert source_file.exists()
-        assert agent_file.read_text(encoding="utf-8") == source_file.read_text(
-            encoding="utf-8"
+        plugin_body = _body(agent_file.read_text(encoding="utf-8"))
+        source_body = _body(source_file.read_text(encoding="utf-8"))
+        assert plugin_body == source_body, (
+            f"Agent body content differs: {agent_file.name}"
+        )
+
+
+@then("agents with skills have their frontmatter rewritten to bundle refs")
+def agents_skill_refs_rewritten(
+    build_result: dict[str, Any], build_config: dict[str, Any]
+):
+    """Verify agents with skill bundles have rewritten frontmatter."""
+    plugin_dir = build_result["plugin_dir"]
+    skills_dir = plugin_dir / "skills"
+    available_bundles = (
+        {d.name for d in skills_dir.iterdir() if d.is_dir()}
+        if skills_dir.exists()
+        else set()
+    )
+
+    for agent_file in (plugin_dir / "agents").glob("nw-*.md"):
+        agent_name = agent_file.stem.removeprefix("nw-")
+        if agent_name not in available_bundles:
+            continue
+        content = agent_file.read_text(encoding="utf-8")
+        if not content.startswith("---"):
+            continue
+        parts = content.split("---", 2)
+        if len(parts) < 3:
+            continue
+        frontmatter = parts[1]
+        # Should reference the bundle name, not individual skill files
+        assert f"  - {agent_name}" in frontmatter, (
+            f"Agent {agent_file.name} frontmatter not rewritten to bundle ref"
         )
 
 
@@ -321,24 +382,29 @@ def skills_mirror_source_layout(
     assert source_dirs == plugin_dirs
 
 
-@then("skill files are distributed with their original names")
-def skills_have_original_names(build_result: dict[str, Any]):
-    """Verify skill files keep their original names in the plugin."""
-    plugin_dir = build_result["plugin_dir"]
-    skill_md_files = list((plugin_dir / "skills").rglob("SKILL.md"))
-    assert len(skill_md_files) == 0, (
-        f"Found {len(skill_md_files)} renamed skill files -- originals expected"
-    )
-
-
-@then("each skill file retains its original filename")
-def skills_retain_filenames(build_result: dict[str, Any], build_config: dict[str, Any]):
-    """Verify skill filenames are preserved."""
+@then("every source skill file is present in the plugin")
+def source_skills_present(build_result: dict[str, Any], build_config: dict[str, Any]):
+    """Verify all source skill files exist in the plugin (SKILL.md is additive)."""
     plugin_dir = build_result["plugin_dir"]
     source_dir = build_config["nwave_dir"] / "skills"
     source_names = {f.name for f in source_dir.rglob("*.md")}
     plugin_names = {f.name for f in (plugin_dir / "skills").rglob("*.md")}
-    assert source_names == plugin_names
+    missing = source_names - plugin_names
+    assert len(missing) == 0, f"Source skills missing from plugin: {missing}"
+
+
+@then("each skill directory has a SKILL.md entry point")
+def skill_dirs_have_entry_points(build_result: dict[str, Any]):
+    """Verify every skill subdirectory has a generated SKILL.md."""
+    plugin_dir = build_result["plugin_dir"]
+    skills_dir = plugin_dir / "skills"
+    subdirs = [d for d in skills_dir.iterdir() if d.is_dir()]
+    assert len(subdirs) > 0, "Expected at least one skill subdirectory"
+    for subdir in subdirs:
+        skill_md = subdir / "SKILL.md"
+        assert skill_md.exists(), (
+            f"Missing SKILL.md entry point in skills/{subdir.name}/"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -400,7 +466,7 @@ def plugin_metadata_valid(build_result: dict[str, Any]):
     """Verify metadata is parseable JSON with required fields."""
     metadata = _read_plugin_metadata(build_result)
     assert "name" in metadata
-    assert "version" in metadata
+    assert "description" in metadata
 
 
 @then(parsers.parse("the agent file appears in the plugin with its original name"))
@@ -442,15 +508,19 @@ def no_extra_agents(build_result: dict[str, Any], build_config: dict[str, Any]):
 
 @then("the plugin metadata version is identical to the source version")
 def version_identity(build_result: dict[str, Any], build_config: dict[str, Any]):
-    """Property: version is always preserved exactly."""
+    """Property: version is always preserved exactly in BuildResult.metadata.
+
+    Version is in BuildResult.metadata (not in plugin.json on disk),
+    because plugin.json only contains fields used by Claude Code runtime.
+    """
     import tomllib
 
-    metadata = _read_plugin_metadata(build_result)
+    result = build_result["build_result"]
     with open(build_config["pyproject_path"], "rb") as f:
         pyproject = tomllib.load(f)
     expected_version = pyproject["project"]["version"]
-    assert metadata["version"] == expected_version, (
-        f"Version mismatch: metadata={metadata['version']!r}, source={expected_version!r}"
+    assert result.metadata["version"] == expected_version, (
+        f"Version mismatch: metadata={result.metadata['version']!r}, source={expected_version!r}"
     )
 
 

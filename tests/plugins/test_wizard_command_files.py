@@ -76,10 +76,10 @@ class TestSharedRulesReferences:
             f"Shared rules file missing: {SHARED_RULES_PATH}"
         )
 
-    def test_shared_rules_has_project_id_section(self):
-        """Shared rules must contain Project ID Derivation section."""
+    def test_shared_rules_has_feature_id_section(self):
+        """Shared rules must contain Feature ID Derivation section."""
         content = SHARED_RULES_PATH.read_text(encoding="utf-8")
-        assert "## Project ID Derivation" in content
+        assert "## Feature ID Derivation" in content
 
     def test_shared_rules_has_wave_detection_section(self):
         """Shared rules must contain Wave Detection Rules section."""
@@ -87,7 +87,7 @@ class TestSharedRulesReferences:
         assert "## Wave Detection Rules" in content
 
     def test_new_references_shared_rules(self):
-        """new.md must reference shared rules for project ID derivation."""
+        """new.md must reference shared rules for feature ID derivation."""
         content = (COMMANDS_DIR / "new.md").read_text(encoding="utf-8")
         assert "wizard-shared-rules.md" in content
 

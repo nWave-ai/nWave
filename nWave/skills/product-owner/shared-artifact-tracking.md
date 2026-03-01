@@ -71,11 +71,11 @@ CLI UX compliance: command structure follows chosen pattern | help available on 
 ## Handoff Specifications
 
 ### To Requirements Crafting (internal handoff within Luna)
-Artifacts: `docs/ux/{epic}/journey-{name}.yaml` (complete journey with emotional arc) | `docs/ux/{epic}/shared-artifacts-registry.md` (tracked artifacts with sources)
+Artifacts: `docs/feature/{feature-id}/discuss/journey-{name}.yaml` (complete journey with emotional arc) | `docs/feature/{feature-id}/discuss/shared-artifacts-registry.md` (tracked artifacts with sources)
 
 Validation: journey complete with all steps | emotional arc defined | shared artifacts documented | CLI vocabulary consistent
 
 ### To Acceptance Designer (Quinn)
-Deliverables: `docs/ux/{epic}/journey-{name}.yaml` (journey schema) | `docs/ux/{epic}/journey-{name}.feature` (Gherkin scenarios) | `docs/ux/{epic}/shared-artifacts-registry.md` (integration validation points)
+Deliverables: `docs/feature/{feature-id}/discuss/journey-{name}.yaml` (journey schema) | `docs/feature/{feature-id}/discuss/journey-{name}.feature` (Gherkin scenarios) | `docs/feature/{feature-id}/discuss/shared-artifacts-registry.md` (integration validation points)
 
 Validation: all product-owner checks passed | Gherkin scenarios generated | integration checkpoints testable | peer review approved

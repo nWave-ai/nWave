@@ -13,7 +13,7 @@ argument-hint: '[agent] [goal-description] - Example: @solution-architect "Migra
 
 Dispatches expert agent to fill a pre-scaffolded YAML roadmap skeleton. CLI tools handle structure; agent handles content.
 
-Output: `docs/feature/{project-id}/roadmap.json`
+Output: `docs/feature/{feature-id}/deliver/roadmap.json`
 
 ## Usage
 
@@ -30,15 +30,15 @@ You MUST execute these steps in order. Do NOT skip any.
 **Step 1 — Parse parameters:**
 1. Agent name (after @, validated against agent registry)
 2. Goal description (quoted string)
-3. Derive project-id from goal (kebab-case, e.g., "Migrate to OAuth2" -> "migrate-to-oauth2")
+3. Derive feature-id from goal (kebab-case, e.g., "Migrate to OAuth2" -> "migrate-to-oauth2")
 
 **Step 2 — Scaffold skeleton via CLI (mandatory, BEFORE invoking agent):**
 
 ```bash
 PYTHONPATH=~/.claude/lib/python python3 -m des.cli.roadmap init \
-  --project-id {project-id} \
+  --project-id {feature-id} \
   --goal "{goal-description}" \
-  --output docs/feature/{project-id}/roadmap.json
+  --output docs/feature/{feature-id}/deliver/roadmap.json
 ```
 For complex projects add: `--phases 3 --steps "01:3,02:2,03:1"`
 
@@ -50,7 +50,7 @@ Skeleton exists with TODO placeholders. Invoke via Task tool:
 ```
 @{agent-name}
 
-Fill in the roadmap skeleton at docs/feature/{project-id}/roadmap.json.
+Fill in the roadmap skeleton at docs/feature/{feature-id}/deliver/roadmap.json.
 Replace every TODO with real content. Do NOT change the YAML structure
 (phases, steps, keys). Fill in: names, descriptions, acceptance criteria,
 time estimates, dependencies, and implementation_scope paths.
@@ -63,7 +63,7 @@ Context to pass (if available): measurement baseline|mikado-graph.md|existing do
 **Step 4 — Validate via CLI (hard gate, mandatory):**
 
 ```bash
-PYTHONPATH=~/.claude/lib/python python3 -m des.cli.roadmap validate docs/feature/{project-id}/roadmap.json
+PYTHONPATH=~/.claude/lib/python python3 -m des.cli.roadmap validate docs/feature/{feature-id}/deliver/roadmap.json
 ```
 - Exit 0 -> success, roadmap ready
 - Exit 1 -> print errors, STOP, do NOT proceed
@@ -81,7 +81,7 @@ For performance roadmaps, include measurement context inline so agent can valida
 ## Success Criteria
 
 ### Dispatcher (you) — all 4 must be checked
-- [ ] Parameters parsed (agent name, goal, project-id)
+- [ ] Parameters parsed (agent name, goal, feature-id)
 - [ ] `des.cli.roadmap init` executed via Bash (exit 0)
 - [ ] Agent invoked via Task tool to fill TODO placeholders
 - [ ] `des.cli.roadmap validate` executed via Bash (exit 0)
@@ -106,7 +106,7 @@ For performance roadmaps, include measurement context inline so agent can valida
 ```
 /nw:roadmap @nw-solution-architect "Migrate authentication to OAuth2"
 ```
-Derives project-id="migrate-auth-to-oauth2", scaffolds skeleton, invokes agent to fill TODOs, validates. Produces docs/feature/migrate-auth-to-oauth2/roadmap.json.
+Derives feature-id="migrate-auth-to-oauth2", scaffolds skeleton, invokes agent to fill TODOs, validates. Produces docs/feature/migrate-auth-to-oauth2/deliver/roadmap.json.
 
 ### Example 2: Performance roadmap with measurement context
 ```
@@ -124,6 +124,6 @@ Agent fills skeleton with methodology: mikado, references mikado-graph.md, maps 
 
 ```bash
 /nw:roadmap @agent "goal"           # 1. Plan (init -> agent fills -> validate)
-/nw:execute @agent "project" "01-01" # 2. Execute steps
-/nw:finalize @agent "project"        # 3. Finalize
+/nw:execute @agent "feature-id" "01-01" # 2. Execute steps
+/nw:finalize @agent "feature-id"        # 3. Finalize
 ```

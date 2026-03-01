@@ -1,14 +1,12 @@
-# Jobs To Be Done Guide: nWave Framework
+# Jobs To Be Done Guide
 
-## Overview
+Help choosing the right nWave workflow for your task.
 
-This guide uses the **Outcome Driven Innovation (ODI)** framework to help you understand when and how to use the nWave agentic system based on your specific job context.
+This guide uses the **Outcome Driven Innovation (ODI)** framework to match your job to the right sequence of waves and commands.
 
----
+## The 6-Wave Pipeline
 
-## The 6-Wave Sequence
-
-The framework operates as a **sequential pipeline of 6 waves**:
+The framework operates as a sequential pipeline of 6 waves:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐

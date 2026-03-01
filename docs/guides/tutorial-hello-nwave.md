@@ -35,10 +35,10 @@ Three commands. You review at each step. The machine never runs without your app
 /nw:discuss "ASCII art banner generator: a pure Python function that takes a string and returns multi-line ASCII block letters. Only uppercase A-Z and spaces. No external dependencies."
 ```
 
-The `@product-owner` agent asks clarifying questions — answer simply. When it finishes, you'll find requirements at:
+The `@product-owner` agent asks clarifying questions — answer simply. When it finishes, you'll find requirements under:
 
 ```
-docs/requirements/requirements.md
+docs/feature/{feature-id}/discuss/
 ```
 
 **What to check**: Open the file. Are the requirements reasonable? Is the scope small? If the agent added too much (colors, fonts, animations), edit the file and remove it. Keep it simple: one function, block letters, A-Z + space.

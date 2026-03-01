@@ -1,15 +1,12 @@
-# Tutorial: Your First Feature with nWave
+# Tutorial: Your First Feature
 
-**Version**: 1.0.0
-**Date**: 2026-02-13
-**Status**: Production Ready
-
-Build a feature from requirements to working code using the nWave 6-wave workflow.
+Learn nWave by building a complete feature end-to-end.
 
 **Prerequisites**:
-- nWave installed — run `pipx install nwave-ai && nwave-ai install` in your **terminal** (not inside Claude Code)
-- Claude Code reopened after install, open in a Python project with pytest
-- Basic familiarity with TDD concepts
+- nWave installed: `pipx install nwave-ai && nwave-ai install` (in terminal, not Claude Code)
+- Claude Code reopened after install
+- A Python project with pytest
+- Basic TDD familiarity
 
 ---
 
@@ -159,7 +156,3 @@ Your feature artifacts live in `docs/feature/user-login/` — requirements, arch
 - **Peer review**: Add quality gates with reviewer agents — see [How to Invoke Reviewers](./invoke-reviewer-agents.md)
 - **All commands**: See [nWave Commands Reference](../reference/commands/index.md)
 
----
-
-**Last Updated**: 2026-02-13
-**Type**: Tutorial

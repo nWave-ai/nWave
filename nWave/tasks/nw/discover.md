@@ -9,7 +9,7 @@ argument-hint: "[product-concept] - Optional: --interview-depth=[overview|compre
 
 ## Overview
 
-Execute evidence-based product discovery through assumption testing and market validation. First wave in nWave (DISCOVER > DISCUSS > DESIGN > DEVOP > DISTILL > DELIVER).
+Execute evidence-based product discovery through assumption testing and market validation. First wave in nWave (DISCOVER > DISCUSS > DESIGN > DEVOPS > DISTILL > DELIVER).
 
 Scout establishes product-market fit through rigorous customer development using Mom Test interviewing principles and continuous discovery practices.
 
@@ -59,7 +59,7 @@ Scout conducts customer development interviews, validates problem-solution fit t
 ## Expected Outputs
 
 ```
-docs/discovery/
+docs/feature/{feature-id}/discover/
   problem-validation.md
   opportunity-tree.md
   solution-testing.md

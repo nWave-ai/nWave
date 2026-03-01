@@ -1,6 +1,6 @@
 ---
 description: "Dispatches a single roadmap step to a specialized agent for TDD execution. Use when implementing a specific step from a roadmap.json plan."
-argument-hint: '[agent] [project-id] [step-id] - Example: @nw-software-crafter "auth-upgrade" "01-01"'
+argument-hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter "auth-upgrade" "01-01"'
 ---
 
 # NW-EXECUTE: Atomic Task Execution
@@ -14,13 +14,13 @@ Dispatch a single roadmap step to an agent. Orchestrator extracts step context f
 ## Syntax
 
 ```
-/nw:execute @{agent} "{project-id}" "{step-id}"
+/nw:execute @{agent} "{feature-id}" "{step-id}"
 ```
 
 ## Context Files Required
 
-- `docs/feature/{project-id}/roadmap.json` — Orchestrator reads once, extracts step context
-- `docs/feature/{project-id}/execution-log.json` — Agent appends only (never reads)
+- `docs/feature/{feature-id}/deliver/roadmap.json` — Orchestrator reads once, extracts step context
+- `docs/feature/{feature-id}/deliver/execution-log.json` — Agent appends only (never reads)
 
 ## Rigor Profile Integration
 
@@ -32,7 +32,7 @@ Before dispatching the agent, read rigor config from `.nwave/des-config.json` (k
 
 ## Dispatcher Workflow
 
-1. Parse parameters: agent name|project ID|step ID
+1. Parse parameters: agent name|feature ID|step ID
 2. Read rigor profile from `.nwave/des-config.json` (default: standard)
 3. Validate roadmap and execution-log exist
 4. Grep roadmap for `step_id: "{step-id}"` with ~50 lines context
@@ -46,12 +46,12 @@ Use this DES template verbatim. Fill `{placeholders}` from roadmap. Without DES 
 
 ```
 <!-- DES-VALIDATION : required -->
-<!-- DES-PROJECT-ID : {project-id} -->
+<!-- DES-PROJECT-ID : {feature-id} -->
 <!-- DES-STEP-ID : {step-id} -->
 
 # DES_METADATA
 Step: {step-id}
-Project: {project-id}
+Feature: {feature-id}
 Command: /nw:execute
 
 # AGENT_IDENTITY
@@ -78,7 +78,7 @@ Execute in order:
    Include git trailer: `Step-ID: {step-id}` (required for DES verification)
    Example:
    ```
-   feat(project-id): implement feature X
+   feat(feature-id): implement feature X
 
    Step-ID: 02-01
    ```
@@ -92,7 +92,7 @@ Execute in order:
 After ACTUALLY EXECUTING each phase, record via DES CLI:
 
     PYTHONPATH=$HOME/.claude/lib/python python -m des.cli.log_phase \
-      --project-dir docs/feature/{project-id} \
+      --project-dir docs/feature/{feature-id}/deliver \
       --step-id {step-id} \
       --phase {PHASE_NAME} \
       --status EXECUTED \
@@ -101,7 +101,7 @@ After ACTUALLY EXECUTING each phase, record via DES CLI:
 For SKIPPED phases (genuinely not applicable):
 
     PYTHONPATH=$HOME/.claude/lib/python python -m des.cli.log_phase \
-      --project-dir docs/feature/{project-id} \
+      --project-dir docs/feature/{feature-id}/deliver \
       --step-id {step-id} \
       --phase {PHASE_NAME} \
       --status SKIPPED \

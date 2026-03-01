@@ -6,9 +6,9 @@ nWave runs inside [Claude Code](https://claude.com/product/claude-code). You des
 
 ## Quick Start
 
-Choose your installation method below. Both work equally well; the plugin method has zero dependencies and is recommended for most users.
+Choose your installation method. Both work equally well; the plugin method is recommended for most users.
 
-### Plugin (Recommended — 1 command, zero dependencies)
+### Plugin (Recommended)
 
 From Claude Code, run:
 
@@ -17,38 +17,37 @@ From Claude Code, run:
 /plugin install nwave@nwave-marketplace
 ```
 
-That's it. Restart Claude Code and type `/nw:` to see all available commands.
+Restart Claude Code and type `/nw:` to see all available commands.
 
-> **Coming soon**: We're working to be hosted on Anthropic's official plugin marketplace.
-> Once available, installation will be even simpler:
+> **Coming soon**: Official Anthropic plugin marketplace integration:
 > ```
 > /plugin install nwave@claude-plugins-official
 > ```
 
-### CLI Installer (Python 3.10+ required)
+### CLI Installer
 
-For users who prefer pip-based installation or need advanced configuration:
+For developers or users who need advanced configuration:
 
 ```bash
 pipx install nwave-ai
 nwave-ai install
 ```
 
-No repository clone needed. This installs nWave from PyPI and sets up agents and commands in `~/.claude/`.
+Installs from PyPI with no repository clone needed. Agents and commands go to `~/.claude/`.
 
-> **Don't have pipx?** Install it first: `pip install pipx && pipx ensurepath`, then restart your terminal. [pipx docs](https://pipx.pypa.io).
-> **Windows users**: Use WSL, not cmd.exe or PowerShell. Install WSL first: `wsl --install`
+> **Don't have pipx?** Install with: `pip install pipx && pipx ensurepath`, then restart your terminal.
+> **Windows users**: Use WSL (Windows Subsystem for Linux). Install with: `wsl --install`
 
 Full setup details: **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide.md)**
 
-### Which method should I use?
+### Which method?
 
-| I am... | Use | Why |
-|---------|-----|-----|
-| Trying nWave for the first time | Plugin | Zero dependencies, instant setup |
-| Rolling out to my team | Plugin | Same command on every machine |
-| Already using the CLI installer | Either | Both coexist safely, migrate at your pace |
-| Contributing to nWave development | CLI | Access to dev scripts and DES internals |
+| Scenario | Use | Why |
+|----------|-----|-----|
+| First time | Plugin | Zero dependencies, instant |
+| Team rollout | Plugin | Same command everywhere |
+| Contributing | CLI | Dev scripts, internals access |
+| Already on CLI | Either | Both coexist safely |
 
 ### Use (inside Claude Code, after reopening it)
 
@@ -65,43 +64,42 @@ Full walkthrough: **[Your First Feature](https://github.com/nwave-ai/nwave/tree/
 
 ## Staying Updated
 
-nWave checks for new versions when you open Claude Code. When an update is available, you'll see a note in Claude's context with the version and what changed.
+nWave checks for new versions when you open Claude Code. When available, you'll see a note in Claude's context with version details and changes.
 
-**If you used the plugin method:**
+**Plugin method:**
 ```
 /plugin marketplace update nwave-marketplace
 ```
 
-Or enable auto-updates in your Claude Code plugin settings.
+Or enable auto-updates in Claude Code plugin settings.
 
-**If you used the CLI installer:**
+**CLI method:**
 ```bash
-pipx upgrade nwave-ai   # pull the latest package (use pip install --upgrade nwave-ai if you installed via pip)
-nwave-ai install        # deploy the new framework files to ~/.claude/
+pipx upgrade nwave-ai
+nwave-ai install
 ```
 
-To control check frequency: set `update_check.frequency` in `~/.nwave/des-config.json` (`daily` / `weekly` / `every_session` / `never`).
+Control check frequency via `update_check.frequency` in `~/.nwave/des-config.json`: `daily`, `weekly`, `every_session`, or `never`.
 
-## Control Your Token Spend — Without Sacrificing Quality
+## Token Efficiency — Scale Quality to Stakes
 
-nWave enforces proven engineering practices — TDD, peer review, mutation testing — at every step. `/nw:rigor` lets you scale the depth of those practices to match the stakes of your work. A config tweak doesn't need the same investment as a security-critical feature. You pick the profile; nWave enforces it everywhere.
+nWave enforces proven engineering practices (TDD, peer review, mutation testing) at every step. Use `/nw:rigor` to adjust the depth of quality practices to match your task's risk level. A config tweak needs less rigor than a security-critical feature.
 
 ```
-/nw:rigor                    # Interactive: compare profiles, pick one
-/nw:rigor lean               # Quick switch: apply immediately
-/nw:rigor custom             # Build your own: choose each setting
+/nw:rigor                    # Interactive: compare profiles
+/nw:rigor lean               # Quick switch to lean mode
+/nw:rigor custom             # Build your own combination
 ```
 
-| Profile | Agent | Reviewer | Review | TDD | Mutation | Est. Cost | When to Use |
-|---------|-------|----------|--------|-----|----------|-----------|-------------|
-| **lean** | haiku | -- | no | R→G | no | lowest | Spikes, config, docs |
-| **standard** ⭐ | sonnet | haiku | single | full 5-phase | no | moderate | Most work |
-| **thorough** | opus | sonnet | double | full 5-phase | no | higher | Critical features |
-| **exhaustive** | opus | opus | double | full 5-phase | ≥80% kill | highest | Production core |
-| **custom** | *you choose* | *you choose* | *you choose* | *you choose* | *you choose* | depends | Your exact combo |
-| **inherit** | *yours* | haiku | single | full 5-phase | no | varies | You pick the model |
+| Profile | Agent | Reviewer | TDD | Mutation | Cost | Use When |
+|---------|-------|----------|-----|----------|------|----------|
+| **lean** | haiku | none | RED→GREEN | no | lowest | Spikes, config, docs |
+| **standard** ⭐ | sonnet | haiku | full 5-phase | no | moderate | Most features |
+| **thorough** | opus | sonnet | full 5-phase | no | higher | Critical features |
+| **exhaustive** | opus | opus | full 5-phase | ≥80% kill | highest | Production core |
+| **custom** | *you choose* | *you choose* | *you choose* | *you choose* | varies | Exact combo needed |
 
-Pick once — it persists across sessions. Change anytime. Every `/nw:deliver`, `/nw:design`, `/nw:review` respects your choice automatically. Need a combination no preset covers? `/nw:rigor custom` walks you through each setting.
+Picked once, persists across sessions. Every `/nw:deliver`, `/nw:design`, `/nw:review` respects your choice. Need to mix profiles? `/nw:rigor custom` walks through each setting.
 
 ```
 /nw:rigor lean        # prototype fast
@@ -163,6 +161,7 @@ The full workflow has six waves. Use all six for greenfield projects, or jump st
 ### Guides & Reference
 
 - **[Agents & Commands Reference](https://github.com/nwave-ai/nwave/tree/main/docs/reference/index.md)** — All agents, commands, skills, templates
+- **[Wave Directory Structure](https://github.com/nwave-ai/nwave/tree/main/docs/guides/wave-directory-structure.md)** — How wave outputs are organized per feature
 - **[Invoke Reviewers](https://github.com/nwave-ai/nwave/tree/main/docs/guides/invoke-reviewer-agents.md)** — Peer review workflow
 - **[Troubleshooting](https://github.com/nwave-ai/nwave/tree/main/docs/guides/troubleshooting-guide.md)** — Common issues and fixes
 

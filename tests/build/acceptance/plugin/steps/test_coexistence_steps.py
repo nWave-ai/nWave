@@ -87,9 +87,13 @@ def test_check_version_consistency_mismatch():
 
 
 def _create_plugin_structure(plugin_dir: Path) -> None:
-    """Create a realistic plugin directory with commands, hooks, metadata."""
-    # commands/nw/ with .md files
-    commands_dir = plugin_dir / "commands" / "nw"
+    """Create a realistic plugin directory with commands, hooks, metadata.
+
+    Commands go directly in commands/ (not commands/nw/) because the plugin
+    name in plugin.json provides the 'nw:' namespace prefix.
+    """
+    # commands/ with .md files (flat, no nw/ subdirectory)
+    commands_dir = plugin_dir / "commands"
     commands_dir.mkdir(parents=True, exist_ok=True)
     (commands_dir / "deliver.md").write_text(
         "---\nname: deliver\n---\n# Deliver\n", encoding="utf-8"
@@ -105,27 +109,26 @@ def _create_plugin_structure(plugin_dir: Path) -> None:
         "---\nname: nw-software-crafter\n---\n# Agent\n", encoding="utf-8"
     )
 
-    # hooks/hooks.json using CLAUDE_PLUGIN_ROOT
+    # hooks/hooks.json using CLAUDE_PLUGIN_ROOT (settings.json schema)
     hooks_dir = plugin_dir / "hooks"
     hooks_dir.mkdir(parents=True, exist_ok=True)
-    hooks_data = {
-        "hooks": [
-            {
-                "event": event,
-                "command": (
-                    "PYTHONPATH=${CLAUDE_PLUGIN_ROOT}/scripts python3"
-                    f" -m des.adapters.drivers.hooks.claude_code_hook_adapter {action}"
-                ),
-            }
-            for event, action in [
-                ("PreToolUse", "pre-task"),
-                ("PostToolUse", "post-tool-use"),
-                ("SubagentStop", "subagent-stop"),
-                ("SessionStart", "session-start"),
-                ("SubagentStart", "subagent-start"),
-            ]
-        ]
-    }
+    hooks_data: dict[str, dict] = {"hooks": {}}
+    for event, matcher, action in [
+        ("PreToolUse", "Task", "pre-task"),
+        ("PostToolUse", "Task", "post-tool-use"),
+        ("SubagentStop", None, "subagent-stop"),
+        ("SessionStart", "startup", "session-start"),
+        ("SubagentStart", None, "subagent-start"),
+    ]:
+        command = (
+            "PYTHONPATH=${CLAUDE_PLUGIN_ROOT}/scripts python3"
+            f" -m des.adapters.drivers.hooks.claude_code_hook_adapter {action}"
+        )
+        entry: dict = {"hooks": [{"type": "command", "command": command}]}
+        if matcher is not None:
+            entry["matcher"] = matcher
+        hooks_data["hooks"].setdefault(event, []).append(entry)
+
     (hooks_dir / "hooks.json").write_text(
         json.dumps(hooks_data, indent=2) + "\n", encoding="utf-8"
     )
@@ -137,8 +140,6 @@ def _create_plugin_structure(plugin_dir: Path) -> None:
         json.dumps(
             {
                 "name": "nw",
-                "version": "2.18.0",
-                "privacy_policy": "https://example.com/privacy",
             },
             indent=2,
         )
@@ -533,14 +534,16 @@ def single_event_handler(build_result: dict[str, Any]):
     assert hooks_path.exists(), "Plugin hooks.json not found"
     plugin_hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
 
-    for hook in plugin_hooks.get("hooks", []):
-        cmd = hook.get("command", "")
-        assert "CLAUDE_PLUGIN_ROOT" in cmd, (
-            f"Plugin hook for {hook['event']} does not use CLAUDE_PLUGIN_ROOT: {cmd}"
-        )
-        assert "$HOME" not in cmd, (
-            f"Plugin hook for {hook['event']} incorrectly references $HOME: {cmd}"
-        )
+    for event, entries in plugin_hooks.get("hooks", {}).items():
+        for entry in entries:
+            for hook in entry.get("hooks", []):
+                cmd = hook.get("command", "")
+                assert "CLAUDE_PLUGIN_ROOT" in cmd, (
+                    f"Plugin hook for {event} does not use CLAUDE_PLUGIN_ROOT: {cmd}"
+                )
+                assert "$HOME" not in cmd, (
+                    f"Plugin hook for {event} incorrectly references $HOME: {cmd}"
+                )
 
     # Installer hooks must use a different path (not CLAUDE_PLUGIN_ROOT)
     assert installer_settings is not None, "Installer settings not created"
@@ -569,12 +572,14 @@ def no_duplicate_enforcement(build_result: dict[str, Any]):
     plugin_hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
 
     plugin_pythonpaths = set()
-    for hook in plugin_hooks.get("hooks", []):
-        cmd = hook.get("command", "")
-        # Extract the PYTHONPATH value (before "python3")
-        if "PYTHONPATH=" in cmd:
-            pythonpath = cmd.split("PYTHONPATH=")[1].split(" ")[0]
-            plugin_pythonpaths.add(pythonpath)
+    for _event, entries in plugin_hooks.get("hooks", {}).items():
+        for entry in entries:
+            for hook in entry.get("hooks", []):
+                cmd = hook.get("command", "")
+                # Extract the PYTHONPATH value (before "python3")
+                if "PYTHONPATH=" in cmd:
+                    pythonpath = cmd.split("PYTHONPATH=")[1].split(" ")[0]
+                    plugin_pythonpaths.add(pythonpath)
 
     installer_pythonpaths = set()
     for _event, cmd in installer_settings.get("hooks", {}).items():

@@ -60,12 +60,13 @@ def unrewritable_import(build_config: dict[str, Any], tmp_path: Path):
 def broken_hook_template(build_config: dict[str, Any]):
     """Configure a hook template that references a nonexistent command."""
     build_config["hook_template_override"] = {
-        "hooks": [
-            {
-                "event": "PreToolUse",
-                "command": "",  # Empty command path
-            }
-        ]
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "hooks": [{"type": "command", "command": ""}],  # Empty command
+                }
+            ]
+        }
     }
 
 
@@ -163,18 +164,21 @@ def des_no_external_deps(build_result: dict[str, Any]):
 # ---------------------------------------------------------------------------
 
 
-def _load_hooks(build_result: dict[str, Any]) -> list[dict]:
-    """Load hook entries from the plugin's hooks.json."""
+def _load_hooks(build_result: dict[str, Any]) -> dict[str, list[dict]]:
+    """Load hook config from the plugin's hooks.json.
+
+    Returns a dict mapping event names to lists of hook entries.
+    """
     import json
 
     plugin_dir = build_result["plugin_dir"]
     data = json.loads((plugin_dir / "hooks" / "hooks.json").read_text(encoding="utf-8"))
-    return data.get("hooks", [])
+    return data.get("hooks", {})
 
 
 def _get_registered_events(build_result: dict[str, Any]) -> list[str]:
     """Extract registered event names from hooks.json."""
-    return [h.get("event", "") for h in _load_hooks(build_result)]
+    return list(_load_hooks(build_result).keys())
 
 
 # plugin_has_hooks is defined in conftest.py (shared with walking-skeleton)
@@ -210,20 +214,24 @@ def hooks_register_session_start(build_result: dict[str, Any]):
 @then("every hook command references the plugin root variable")
 def every_hook_uses_plugin_root(build_result: dict[str, Any]):
     """Verify all hooks use CLAUDE_PLUGIN_ROOT."""
-    for hook in _load_hooks(build_result):
-        cmd = hook.get("command", "")
-        assert "$HOME" not in cmd, (
-            f"Hook uses $HOME instead of CLAUDE_PLUGIN_ROOT: {cmd}"
-        )
+    for event, entries in _load_hooks(build_result).items():
+        for entry in entries:
+            for hook in entry.get("hooks", []):
+                cmd = hook.get("command", "")
+                assert "$HOME" not in cmd, (
+                    f"Hook for {event} uses $HOME instead of CLAUDE_PLUGIN_ROOT: {cmd}"
+                )
 
 
 @then("no hook command references a home directory path")
 def no_home_dir_in_hooks(build_result: dict[str, Any]):
     """Verify no $HOME references in hook commands."""
-    for hook in _load_hooks(build_result):
-        cmd = hook.get("command", "")
-        assert "$HOME" not in cmd
-        assert "~/" not in cmd
+    for event, entries in _load_hooks(build_result).items():
+        for entry in entries:
+            for hook in entry.get("hooks", []):
+                cmd = hook.get("command", "")
+                assert "$HOME" not in cmd
+                assert "~/" not in cmd
 
 
 # ---------------------------------------------------------------------------

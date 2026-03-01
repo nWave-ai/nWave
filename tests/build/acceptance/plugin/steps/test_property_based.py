@@ -5,7 +5,7 @@ independently of the BDD scenarios. These complement the @property-tagged BDD
 scenarios by testing properties with generated inputs.
 
 Properties tested:
-  1. Version string round-trip through metadata generation
+  1. Plugin name preserved in metadata generation
   2. DES import rewriting is idempotent
   3. Import rewriting preserves non-DES content
   4. Hook entries always produce exactly 5 events with correct names
@@ -18,24 +18,23 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from scripts.build_plugin import (
-    generate_hook_entries,
+    generate_hook_config,
     generate_plugin_metadata,
     rewrite_des_imports,
 )
 
 
 # ---------------------------------------------------------------------------
-# Property 1: Version string round-trip
+# Property 1: Plugin name preserved in metadata
 # ---------------------------------------------------------------------------
 
 
-@given(version=st.from_regex(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}", fullmatch=True))
-@settings(max_examples=30)
-def test_property_version_preserved_in_metadata(version: str):
-    """generate_plugin_metadata always preserves the exact version string."""
-    metadata = generate_plugin_metadata("nw", version)
-    assert metadata["version"] == version
+def test_property_plugin_name_preserved_in_metadata():
+    """generate_plugin_metadata always preserves the exact plugin name."""
+    metadata = generate_plugin_metadata("nw")
     assert metadata["name"] == "nw"
+    assert "description" in metadata
+    assert "author" in metadata
 
 
 # ---------------------------------------------------------------------------
@@ -80,21 +79,23 @@ def test_property_rewrite_preserves_non_des_imports(content: str):
 # ---------------------------------------------------------------------------
 
 
-def test_property_hook_entries_always_five_events():
-    """generate_hook_entries always produces exactly 5 entries with expected events."""
-    entries = generate_hook_entries()
-    assert len(entries) == 5
-    events = {entry["event"] for entry in entries}
-    assert events == {
+def test_property_hook_config_always_five_events():
+    """generate_hook_config always produces exactly 5 event keys with expected names."""
+    config = generate_hook_config()
+    assert len(config) == 5
+    assert set(config.keys()) == {
         "PreToolUse",
         "PostToolUse",
         "SubagentStop",
         "SessionStart",
         "SubagentStart",
     }
-    # Every entry must have a non-empty command
-    for entry in entries:
-        assert entry["command"].strip(), f"Empty command for event {entry['event']}"
+    # Every event must have at least one entry with a non-empty command
+    for event, entries in config.items():
+        assert len(entries) > 0, f"No entries for event {event}"
+        for entry in entries:
+            for hook in entry["hooks"]:
+                assert hook["command"].strip(), f"Empty command for event {event}"
 
 
 # ---------------------------------------------------------------------------

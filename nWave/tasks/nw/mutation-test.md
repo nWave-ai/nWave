@@ -1,6 +1,6 @@
 ---
 description: "Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%)."
-argument-hint: "[project-id] - Optional: --threshold=[75|80|85] --language=[auto|python|java|javascript]"
+argument-hint: "[feature-id] - Optional: --threshold=[75|80|85] --language=[auto|python|java|javascript]"
 ---
 
 # NW-MUTATION-TEST: Feature-Scoped Mutation Testing
@@ -14,7 +14,7 @@ Run mutation testing against implementation files from the current feature. Extr
 
 ## Context Files Required
 
-- `docs/feature/{project-id}/execution-log.json` - Implementation file extraction
+- `docs/feature/{feature-id}/deliver/execution-log.json` - Implementation file extraction
 - `scripts/mutation/generate_scoped_configs.py` - Automated config generation (if available)
 
 ## Pre-Invocation
@@ -31,7 +31,7 @@ Orchestrator performs before delegating:
 
 @nw-software-crafter
 
-Execute mutation testing for project {project-id}.
+Execute mutation testing for project {feature-id}.
 
 **Context to pass inline (agent has no Skill access):**
 - Project ID
@@ -45,7 +45,7 @@ Execute mutation testing for project {project-id}.
 - approach: feature-scoped (one config per component, scoped test commands)
 - config_generator: `scripts/mutation/generate_scoped_configs.py` (preferred over manual)
 
-**Output file:** `docs/feature/{project-id}/mutation/mutation-report.md`
+**Output file:** `docs/feature/{feature-id}/deliver/mutation/mutation-report.md`
 
 ## Examples
 
@@ -93,12 +93,12 @@ Skip conditions: no mutation tool for language|project opts out via `.mutation-c
 ## Next Wave
 
 **Handoff To**: Phase 8 - Finalize (orchestrator continues develop.md workflow)
-**Deliverables**: `docs/feature/{project-id}/mutation/mutation-report.md`
+**Deliverables**: `docs/feature/{feature-id}/deliver/mutation/mutation-report.md`
 
 ## Expected Outputs
 
 ```
-docs/feature/{project-id}/mutation/
+docs/feature/{feature-id}/deliver/mutation/
   mutation-report.md
   cosmic-ray-*.toml                (ephemeral)
 ```

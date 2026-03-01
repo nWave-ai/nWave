@@ -336,7 +336,7 @@ class TestWaveGrouping:
             ("Runs before DESIGN wave", "DESIGN"),
             ("DISTILL wave acceptance tests", "DISTILL"),
             ("DELIVER wave implementation", "DELIVER"),
-            ("DEVOP wave deployment", "DEVOP"),
+            ("DEVOPS wave deployment", "DEVOPS"),
             ("A utility agent", "Other"),
         ],
     )

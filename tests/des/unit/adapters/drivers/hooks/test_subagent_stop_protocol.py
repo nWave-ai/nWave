@@ -181,9 +181,9 @@ class TestSubagentStopWithClaudeCodeProtocol:
         transcript = _make_transcript(str(tmp_path), prompt)
 
         # Create execution log at the expected path
-        feature_dir = tmp_path / "docs" / "feature" / "test-project"
-        feature_dir.mkdir(parents=True)
-        exec_log = feature_dir / "execution-log.json"
+        deliver_dir = tmp_path / "docs" / "feature" / "test-project" / "deliver"
+        deliver_dir.mkdir(parents=True)
+        exec_log = deliver_dir / "execution-log.json"
         exec_log.write_text(
             json.dumps(
                 {
@@ -247,9 +247,9 @@ class TestSubagentStopWithClaudeCodeProtocol:
         transcript = _make_transcript(str(tmp_path), prompt)
 
         # Create execution log with only 2 phases
-        feature_dir = tmp_path / "docs" / "feature" / "test-project"
-        feature_dir.mkdir(parents=True)
-        exec_log = feature_dir / "execution-log.json"
+        deliver_dir = tmp_path / "docs" / "feature" / "test-project" / "deliver"
+        deliver_dir.mkdir(parents=True)
+        exec_log = deliver_dir / "execution-log.json"
         exec_log.write_text(
             json.dumps(
                 {
@@ -297,9 +297,9 @@ class TestSubagentStopWithClaudeCodeProtocol:
         transcript = _make_transcript(str(tmp_path), prompt)
 
         # Create execution log with missing phases to trigger block
-        feature_dir = tmp_path / "docs" / "feature" / "test-project"
-        feature_dir.mkdir(parents=True)
-        exec_log = feature_dir / "execution-log.json"
+        deliver_dir = tmp_path / "docs" / "feature" / "test-project" / "deliver"
+        deliver_dir.mkdir(parents=True)
+        exec_log = deliver_dir / "execution-log.json"
         exec_log.write_text(
             json.dumps(
                 {

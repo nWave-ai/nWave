@@ -40,7 +40,7 @@ methodology_overview:
       duration: "15% of total timeline"
       focus: "Acceptance test creation with production service patterns"
       deliverable: "Executable acceptance tests with real system integration"
-    - phase: "DEVOP"
+    - phase: "DEVOPS"
       duration: "5% of total timeline"
       focus: "Platform readiness, CI/CD, infrastructure, and deployment design"
       deliverable: "Infrastructure design and deployment strategy"

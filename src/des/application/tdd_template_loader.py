@@ -27,10 +27,10 @@ from pathlib import Path
 def _get_template_path() -> Path:
     """Resolve template path for current environment.
 
-    Handles both:
-    - Symlink paths: /home/user/.claude/lib/python/des/...
-    - Real paths: /mnt/c/Users/user/.claude/lib/python/des/...
-    - Source paths: /path/to/project/src/des/...
+    Handles three deployment contexts:
+    - Installed: ~/.claude/lib/python/des/... → ~/.claude/templates/
+    - Plugin: .../scripts/des/... → .../scripts/templates/
+    - Source: /path/to/project/src/des/... → project/nWave/templates/
     """
     module_file = Path(__file__)
     # Normalize to forward slashes for cross-platform matching
@@ -48,6 +48,14 @@ def _get_template_path() -> Path:
                     candidate = parent / "templates" / "step-tdd-cycle-schema.json"
                     if candidate.exists():
                         return candidate
+
+    # Plugin context: scripts/des/application/tdd_template_loader.py → scripts/templates/
+    for search_path in [module_file, module_file.resolve()]:
+        for parent in search_path.parents:
+            if parent.name == "scripts":
+                candidate = parent / "templates" / "step-tdd-cycle-schema.json"
+                if candidate.exists():
+                    return candidate
 
     return (
         module_file.parent.parent.parent.parent

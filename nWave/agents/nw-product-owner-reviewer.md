@@ -50,7 +50,7 @@ Skills path: `~/.claude/skills/nw/product-owner-reviewer/`
 ## Workflow
 
 ### Phase 1: Load Artifacts
-Read journey files from `docs/ux/{epic}/`: `journey-{name}.yaml`|`journey-{name}-visual.md`|`shared-artifacts-registry.md`. Read requirements from `docs/requirements/`: user stories|acceptance criteria|DoR checklist. Gate: artifacts exist and are readable. If missing, report which files were not found.
+Read journey files from `docs/feature/{feature-id}/discuss/`: `journey-{name}.yaml`|`journey-{name}-visual.md`|`shared-artifacts-registry.md`. Read requirements from same directory: user stories|acceptance criteria|DoR checklist. Gate: artifacts exist and are readable. If missing, report which files were not found.
 
 ### Phase 2: Journey Review
 Load: `product-owner-reviewer/review-criteria` — read it NOW before proceeding.

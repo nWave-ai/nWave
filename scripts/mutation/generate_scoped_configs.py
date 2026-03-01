@@ -12,13 +12,13 @@ Approach:
 - Runs only relevant tests per mutant (10-50x faster than full test suite)
 
 Usage:
-    python scripts/mutation/generate_scoped_configs.py <project-id>
+    python scripts/mutation/generate_scoped_configs.py <feature-id>
 
 Example:
     python scripts/mutation/generate_scoped_configs.py des-hook-enforcement
 
 Output:
-    docs/feature/{project-id}/mutation/cosmic-ray-{component}.toml (one per implementation file)
+    docs/feature/{feature-id}/deliver/mutation/cosmic-ray-{component}.toml (one per implementation file)
 """
 
 import argparse
@@ -219,19 +219,19 @@ Examples:
   python scripts/mutation/generate_scoped_configs.py des-hook-enforcement
 
   # Output is written to:
-  docs/feature/{project-id}/mutation/cosmic-ray-*.toml
+  docs/feature/{feature-id}/deliver/mutation/cosmic-ray-*.toml
         """,
     )
-    parser.add_argument("project_id", help="Project ID (e.g., des-hook-enforcement)")
+    parser.add_argument("project_id", help="Feature ID (e.g., des-hook-enforcement)")
     parser.add_argument(
         "--output-dir",
-        help="Output directory (default: docs/feature/{project-id}/mutation/)",
+        help="Output directory (default: docs/feature/{feature-id}/deliver/mutation/)",
     )
 
     args = parser.parse_args()
 
     project_id = args.project_id
-    execution_status_path = f"docs/feature/{project_id}/execution-log.json"
+    execution_status_path = f"docs/feature/{project_id}/deliver/execution-log.json"
 
     # Check if execution status file exists
     if not os.path.exists(execution_status_path):
@@ -240,7 +240,7 @@ Examples:
         sys.exit(1)
 
     # Determine output directory
-    output_dir = args.output_dir or f"docs/feature/{project_id}/mutation/"
+    output_dir = args.output_dir or f"docs/feature/{project_id}/deliver/mutation/"
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'=' * 60}")

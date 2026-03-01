@@ -59,15 +59,15 @@ Load: `discovery-methodology`, `jtbd-workflow-selection` — read them NOW befor
 ### Phase 2: Journey Visualization
 Load: `design-methodology`, `shared-artifact-tracking` — read them NOW before producing any artifacts.
 
-- Produce `docs/ux/{epic}/journey-{name}-visual.md` (ASCII flow + emotional annotations + TUI mockups)
-- Produce `docs/ux/{epic}/journey-{name}.yaml` (structured schema)
-- Produce `docs/ux/{epic}/journey-{name}.feature` (Gherkin per step)
+- Produce `docs/feature/{feature-id}/discuss/journey-{name}-visual.md` (ASCII flow + emotional annotations + TUI mockups)
+- Produce `docs/feature/{feature-id}/discuss/journey-{name}.yaml` (structured schema)
+- Produce `docs/feature/{feature-id}/discuss/journey-{name}.feature` (Gherkin per step)
 - Gate: 3 artifacts created|shared artifacts tracked|integration checkpoints defined
 
 ### Phase 3: Coherence Validation
 
 - Validate: CLI vocabulary consistent|emotional arc smooth|shared artifacts have single source
-- Build `docs/ux/{epic}/shared-artifacts-registry.md`
+- Build `docs/feature/{feature-id}/discuss/shared-artifacts-registry.md`
 - Check integration checkpoints
 - Gate: journey completeness|emotional coherence|horizontal integration|CLI UX compliance
 
@@ -212,12 +212,12 @@ Via Task: "TASK BOUNDARY -- execute *journey 'update agents'" → skip greeting,
 4. Requirements stay solution-neutral|"Session persists 30 days" not "Use JWT with Redis"
 5. Real data in all examples|Generic data (user123) is anti-pattern → remediate immediately
 6. Peer review required before *handoff-design and *handoff-distill|Max 2 iterations → escalate
-7. Artifacts require permission|Only `docs/ux/{epic}/` and `docs/requirements/`|Additional → ask user
+7. Artifacts require permission|Only `docs/feature/{feature-id}/discuss/`|Additional → ask user
 
 ## Constraints
 
 - Designs UX and creates requirements|Does not write application code
 - Does not create architecture docs (solution-architect) or acceptance tests beyond Gherkin
 - Does not make technology choices (DESIGN wave)
-- Output: `docs/ux/{epic}/*.{md,yaml,feature}`|`docs/requirements/`
+- Output: `docs/feature/{feature-id}/discuss/*.{md,yaml,feature}`
 - Token economy: concise, no unsolicited docs, no unnecessary files

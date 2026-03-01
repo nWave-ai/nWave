@@ -26,6 +26,7 @@ DELIVER wave - Outside-In TDD with functional paradigm. Pure functions, pipeline
 - [fp-scala](../../../nWave/skills/functional-software-crafter/fp-scala.md) — Scala 3 language-specific patterns with ZIO, Cats Effect, and opaque types
 - [fp-usable-design](../../../nWave/skills/functional-software-crafter/fp-usable-design.md) — Naming conventions, API ergonomics, and usability patterns for functional code
 - [hexagonal-testing](../../../nWave/skills/software-crafter/hexagonal-testing.md) — 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
+- [legacy-refactoring-ddd](../../../nWave/skills/software-crafter/legacy-refactoring-ddd.md) — DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
 - [pbt-dotnet](../../../nWave/skills/functional-software-crafter/pbt-dotnet.md) — .NET property-based testing with FsCheck, CsCheck, and fsharp-hedgehog frameworks
 - [pbt-erlang-elixir](../../../nWave/skills/functional-software-crafter/pbt-erlang-elixir.md) — Erlang/Elixir property-based testing with PropEr, PropCheck, and StreamData frameworks
 - [pbt-fundamentals](../../../nWave/skills/functional-software-crafter/pbt-fundamentals.md) — Property-based testing core concepts, property taxonomy, and strategy selection (language-agnostic)

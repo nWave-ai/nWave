@@ -13,14 +13,12 @@ Execute DESIGN wave through discovery-driven architecture design. Morgan asks ab
 
 ## Context Files Required
 
-- docs/feature/{feature-name}/discuss/requirements.md
-- docs/feature/{feature-name}/discuss/user-stories.md
-- docs/feature/{feature-name}/discuss/domain-model.md
-- docs/feature/{feature-name}/discuss/ux-journey.md
-- docs/feature/{feature-name}/discuss/jtbd-job-stories.md — Job stories (JTBD Phase 1)
-- docs/feature/{feature-name}/discuss/jtbd-four-forces.md — Four Forces analysis
-- docs/feature/{feature-name}/discuss/jtbd-opportunity-scores.md — Opportunity scores (if multiple jobs)
-- docs/feature/{feature-name}/design/constraints.md — Technical and business constraints
+- docs/feature/{feature-id}/discuss/jtbd-job-stories.md — Job stories from DISCUSS
+- docs/feature/{feature-id}/discuss/jtbd-four-forces.md — Four Forces analysis from DISCUSS
+- docs/feature/{feature-id}/discuss/jtbd-opportunity-scores.md — Opportunity scores (if multiple jobs)
+- docs/feature/{feature-id}/discuss/journey-{name}-visual.md — UX journey map from DISCUSS
+- docs/feature/{feature-id}/discuss/user-stories.md — User stories from DISCUSS
+- docs/feature/{feature-id}/discuss/requirements.md — Requirements from DISCUSS
 
 ## Discovery Flow
 
@@ -83,7 +81,7 @@ Before dispatching the architect agent, read rigor config from `.nwave/des-confi
 
 @nw-solution-architect
 
-Execute \*design-architecture for {feature-name}.
+Execute \*design-architecture for {feature-id}.
 
 Context files: see Context Files Required above.
 
@@ -93,6 +91,8 @@ Context files: see Context Files Required above.
 - output_format: markdown
 - diagram_format: mermaid (C4)
 - stress_analysis: {true if --residuality flag, false otherwise}
+
+**SKILL_LOADING**: Read your skill files at `~/.claude/skills/nw/solution-architect/`. At Phase 4, always load: `architecture-patterns.md`, `architectural-styles-tradeoffs.md`, `roadmap-design.md`. Then follow your Skill Loading Strategy table for phase-specific skills.
 
 ## Success Criteria
 
@@ -106,17 +106,17 @@ Context files: see Context Files Required above.
 - [ ] Component boundaries defined with dependency-inversion compliance
 - [ ] C4 System Context + Container diagrams produced (Mermaid)
 - [ ] ADRs written with alternatives considered
-- [ ] Handoff accepted by nw-platform-architect (DEVOP wave)
+- [ ] Handoff accepted by nw-platform-architect (DEVOPS wave)
 
 ## Next Wave
 
-**Handoff To**: nw-platform-architect (DEVOP wave)
+**Handoff To**: nw-platform-architect (DEVOPS wave)
 **Deliverables**: See Morgan's handoff package specification in agent file
 
 ## Expected Outputs
 
 ```
-docs/feature/{feature-name}/design/
+docs/feature/{feature-id}/design/
   architecture-design.md       (includes C4 diagrams in Mermaid)
   technology-stack.md
   component-boundaries.md

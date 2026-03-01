@@ -355,7 +355,7 @@ python install-nwave-claude-code.py
 ## What's Included
 
 - 24 specialized agents for the nWave methodology
-- 21 workflow commands for DISCUSS→DESIGN→DEVOP→DISTILL→DELIVER
+- 21 workflow commands for DISCUSS→DESIGN→DEVOPS→DISTILL→DELIVER
 - Utility scripts for target project integration
 - Schema templates for step file validation
 

@@ -1,24 +1,20 @@
-# nWave Troubleshooting Guide
+# Troubleshooting Guide
 
-**Version**: 2.0.0
-**Date**: 2026-02-13
-**Status**: Production Ready
+Quick fixes for common nWave issues.
 
----
-
-## Quick Diagnostic
+## Diagnostic Quick Check
 
 ```bash
-echo "Agents: $(ls ~/.claude/agents/nw/ 2>/dev/null | wc -l) files"
-echo "Commands: $(ls ~/.claude/commands/nw/ 2>/dev/null | wc -l) files"
+echo "Agents: $(ls ~/.claude/agents/nw/ 2>/dev/null | wc -l)"
+echo "Commands: $(ls ~/.claude/commands/nw/ 2>/dev/null | wc -l)"
 python3 --version
 ```
 
-If agents or commands show 0, reinstall: `nwave-ai install`
+If agents or commands show 0, run: `nwave-ai install`
 
 ---
 
-## Installation
+## Installation Issues
 
 ### `pipx: command not found`
 
@@ -74,21 +70,20 @@ nwave-ai install
 
 ## Agent Issues
 
-### Agent gives generic responses (no persona)
+### Agent gives generic responses (not adopting persona)
 
-**Cause**: Agent specification file missing or not loaded.
+**Cause**: Agent specification files missing or not loaded.
 
 **Fix**: Verify agent files exist:
 ```bash
 ls ~/.claude/agents/nw/nw-*.md | wc -l
-# Expected: 22 files (11 primary + 11 reviewers)
 ```
 
-If missing, reinstall: `nwave-ai install`
+Expected: 22 files (11 primary + 11 reviewers). If missing: `nwave-ai install`
 
 ---
 
-## Platform-Specific
+## Platform-Specific Issues
 
 ### WSL: Path or permission errors
 
@@ -134,32 +129,24 @@ nwave-ai install
 ## Recovery
 
 ### Complete reset
-
 ```bash
 nwave-ai uninstall --backup
 nwave-ai install
 ```
 
 ### Restore from backup
-
 ```bash
-ls ~/.claude/backups/
 nwave-ai install --restore
 ```
 
 ---
 
-## Getting Help
+## Need More Help
 
-1. Run the quick diagnostic at the top of this page
-2. Try reinstalling (`nwave-ai install`)
-3. If the issue persists:
+1. Run the diagnostic above
+2. Try: `nwave-ai install`
+3. If still stuck:
    - **Discord**: [nWave Community](https://discord.gg/Cywj3uFdpd)
-   - **GitHub Issues**: [github.com/nWave-ai/nWave/issues](https://github.com/nWave-ai/nWave/issues)
+   - **GitHub**: [Report issue](https://github.com/nWave-ai/nWave/issues)
 
-Include in your report: diagnostic output, error messages, OS, and Python version.
-
----
-
-**Last Updated**: 2026-02-13
-**Type**: How-to Guide
+Include: diagnostic output, error message, OS, and Python version.

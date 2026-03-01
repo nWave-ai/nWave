@@ -87,9 +87,10 @@ class TDDSchemaLoader:
     def _resolve_default_schema_path() -> Path:
         """Resolve schema path for current environment.
 
-        Handles both:
+        Handles three deployment contexts:
         - Source: src/des/domain/tdd_schema.py → project_root/nWave/templates/
         - Installed: ~/.claude/lib/python/des/domain/tdd_schema.py → ~/.claude/templates/
+        - Plugin: .../scripts/des/domain/tdd_schema.py → .../scripts/templates/
         """
         module_file = Path(__file__)
         # Normalize to forward slashes for cross-platform matching
@@ -109,6 +110,14 @@ class TDDSchemaLoader:
                         candidate = parent / "templates" / "step-tdd-cycle-schema.json"
                         if candidate.exists():
                             return candidate
+
+        # Plugin context: scripts/des/domain/tdd_schema.py → scripts/templates/
+        for search_path in [module_file, module_file.resolve()]:
+            for parent in search_path.parents:
+                if parent.name == "scripts":
+                    candidate = parent / "templates" / "step-tdd-cycle-schema.json"
+                    if candidate.exists():
+                        return candidate
 
         return (
             module_file.resolve().parent.parent.parent.parent

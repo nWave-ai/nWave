@@ -4,7 +4,7 @@
 Assembles agents, commands, skills, DES module, hooks, and metadata into
 a plugin layout:
   nWave/agents/nw-*.md  -> plugin/agents/nw-*.md
-  nWave/tasks/nw/*.md   -> plugin/commands/nw/*.md   (tasks -> commands)
+  nWave/tasks/nw/*.md   -> plugin/commands/*.md       (tasks -> commands, flat)
   nWave/skills/*/       -> plugin/skills/*/           (preserving structure)
   src/des/              -> plugin/scripts/des/         (imports rewritten)
   nWave/templates/*.json-> plugin/scripts/templates/   (DES runtime templates)
@@ -202,11 +202,15 @@ def read_version(pyproject_path: Path) -> tuple[str | None, str | None]:
 # ---------------------------------------------------------------------------
 
 
-def generate_plugin_metadata(plugin_name: str, version: str) -> dict:
-    """Generate plugin.json metadata content."""
+def generate_plugin_metadata(plugin_name: str) -> dict:
+    """Generate plugin.json metadata content.
+
+    Only includes fields used by official Anthropic plugins (name, description,
+    author). Extra fields (version, homepage, keywords, etc.) cause Claude Code
+    to silently fail plugin command discovery.
+    """
     return {
         "name": plugin_name,
-        "version": version,
         "description": (
             "nWave: AI-powered workflow framework — 23 agents, 98+ skills, "
             "TDD enforcement, and wave-based development methodology for Claude Code"
@@ -215,20 +219,6 @@ def generate_plugin_metadata(plugin_name: str, version: str) -> dict:
             "name": "nWave AI",
             "email": "hello@nwave.ai",
         },
-        "homepage": "https://nwave.ai",
-        "repository": "https://github.com/nwave-ai/nwave",
-        "license": "MIT",
-        "privacy_policy": "https://github.com/nwave-ai/nwave/blob/main/PRIVACY.md",
-        "source": f"./plugins/{plugin_name}",
-        "keywords": [
-            "tdd",
-            "workflow",
-            "agents",
-            "software-craft",
-            "bdd",
-            "outside-in-tdd",
-            "code-quality",
-        ],
     }
 
 
@@ -292,10 +282,79 @@ def copy_agents(config: BuildConfig, plugin_dir: Path) -> StepResult:
     return StepResult.ok("agents", count)
 
 
+def rewrite_agent_skill_refs(plugin_dir: Path, skills_dir: Path) -> StepResult:
+    """Rewrite agent frontmatter to reference skill bundles instead of individual skills.
+
+    Transforms:
+      skills:
+        - tdd-methodology
+        - progressive-refactoring
+    Into:
+      skills:
+        - software-crafter
+
+    The bundle name matches the agent's skill directory (nw-<name> -> <name>).
+    Only rewrites if a matching skill directory exists in the plugin.
+    """
+    agents_dir = plugin_dir / "agents"
+    if not agents_dir.exists():
+        return StepResult.ok("skill_refs", 0)
+
+    available_bundles = (
+        {d.name for d in skills_dir.iterdir() if d.is_dir()}
+        if skills_dir.exists()
+        else set()
+    )
+
+    rewritten = 0
+    for agent_file in sorted(agents_dir.glob("nw-*.md")):
+        agent_name = agent_file.stem.removeprefix("nw-")
+        if agent_name not in available_bundles:
+            continue
+
+        content = agent_file.read_text(encoding="utf-8")
+        if not content.startswith("---"):
+            continue
+
+        parts = content.split("---", 2)
+        if len(parts) < 3:
+            continue
+
+        frontmatter = parts[1].strip()
+        body = parts[2]
+
+        # Replace the skills list with the single bundle reference
+        new_fm_lines = []
+        in_skills_block = False
+        for line in frontmatter.splitlines():
+            if line.startswith("skills:"):
+                new_fm_lines.append("skills:")
+                new_fm_lines.append(f"  - {agent_name}")
+                in_skills_block = True
+            elif in_skills_block and line.startswith("  - "):
+                continue  # Skip old individual skill entries
+            else:
+                in_skills_block = False
+                new_fm_lines.append(line)
+
+        new_frontmatter = "\n".join(new_fm_lines)
+        agent_file.write_text(
+            f"---\n{new_frontmatter}\n---{body}",
+            encoding="utf-8",
+        )
+        rewritten += 1
+
+    return StepResult.ok("skill_refs", rewritten)
+
+
 def copy_commands(config: BuildConfig, plugin_dir: Path) -> StepResult:
-    """Copy command definitions from tasks/nw/ to commands/nw/."""
+    """Copy command definitions from tasks/nw/ to commands/.
+
+    Commands go directly into commands/ (not commands/nw/) because the
+    plugin name in plugin.json already provides the 'nw:' namespace prefix.
+    """
     source_dir = config.nwave_dir / "tasks" / "nw"
-    dest_dir = plugin_dir / "commands" / "nw"
+    dest_dir = plugin_dir / "commands"
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     count = 0
@@ -326,7 +385,75 @@ def copy_skills(config: BuildConfig, plugin_dir: Path) -> StepResult:
     if count == 0:
         return StepResult.fail("skills", "No skill files found in source")
 
+    # Generate SKILL.md entry points for Claude Code discovery
+    for skill_dir in sorted(dest_dir.iterdir()):
+        if skill_dir.is_dir():
+            _generate_skill_entry_point(skill_dir)
+
     return StepResult.ok("skills", count)
+
+
+def _parse_skill_frontmatter(md_path: Path) -> dict[str, str]:
+    """Extract name and description from a skill file's YAML frontmatter."""
+    content = md_path.read_text(encoding="utf-8")
+    if not content.startswith("---"):
+        return {"name": md_path.stem, "description": ""}
+
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return {"name": md_path.stem, "description": ""}
+
+    result: dict[str, str] = {"name": md_path.stem, "description": ""}
+    for line in parts[1].strip().splitlines():
+        if line.startswith("name:"):
+            result["name"] = line.split(":", 1)[1].strip().strip("\"'")
+        elif line.startswith("description:"):
+            result["description"] = line.split(":", 1)[1].strip().strip("\"'")
+    return result
+
+
+def _generate_skill_entry_point(skill_dir: Path) -> None:
+    """Generate a SKILL.md entry point in a skill directory.
+
+    Creates a lightweight index that Claude Code discovers automatically.
+    Lists all individual skill files with descriptions so the agent knows
+    what's available and can load files on demand.
+    """
+    skill_files = sorted(f for f in skill_dir.glob("*.md") if f.name != "SKILL.md")
+    if not skill_files:
+        return
+
+    dir_name = skill_dir.name
+    skills_info = [_parse_skill_frontmatter(f) for f in skill_files]
+
+    lines = [
+        "---",
+        f"name: {dir_name}",
+        f"description: Skill bundle for nw-{dir_name} agent — "
+        f"{len(skill_files)} skill files",
+        "---",
+        "",
+        f"# {dir_name.replace('-', ' ').title()} Skills",
+        "",
+        "Load skill files on-demand by phase. "
+        "Read the files from this directory as needed.",
+        "",
+        "| Skill | File | Description |",
+        "|-------|------|-------------|",
+    ]
+
+    for info, path in zip(skills_info, skill_files, strict=True):
+        desc = (
+            info["description"][:80] + "..."
+            if len(info["description"]) > 80
+            else info["description"]
+        )
+        lines.append(f"| {info['name']} | {path.name} | {desc} |")
+
+    lines.append("")
+
+    skill_md = skill_dir / "SKILL.md"
+    skill_md.write_text("\n".join(lines), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -369,38 +496,47 @@ _HOOK_COMMAND_TEMPLATE = (
     " -m des.adapters.drivers.hooks.claude_code_hook_adapter {action}"
 )
 
-_HOOK_EVENTS: tuple[tuple[str, str], ...] = (
-    ("PreToolUse", "pre-task"),
-    ("PostToolUse", "post-tool-use"),
-    ("SubagentStop", "subagent-stop"),
-    ("SessionStart", "session-start"),
-    ("SubagentStart", "subagent-start"),
+_HOOK_EVENTS: tuple[tuple[str, str | None, str], ...] = (
+    ("PreToolUse", "Task", "pre-task"),
+    ("PostToolUse", "Task", "post-tool-use"),
+    ("SubagentStop", None, "subagent-stop"),
+    ("SessionStart", "startup", "session-start"),
+    ("SubagentStart", None, "subagent-start"),
 )
 
 
-def generate_hook_entries(
+def generate_hook_config(
     command_template: str = _HOOK_COMMAND_TEMPLATE,
-) -> list[dict[str, str]]:
-    """Generate the list of hook event entries for hooks.json."""
-    return [
-        {
-            "event": event,
-            "command": command_template.format(action=action),
-        }
-        for event, action in _HOOK_EVENTS
-    ]
+) -> dict[str, list[dict]]:
+    """Generate hooks config in Claude Code settings.json format.
+
+    Output matches the hooks schema documented at
+    https://code.claude.com/docs/en/plugins-reference#hooks
+    """
+    config: dict[str, list[dict]] = {}
+    for event, matcher, action in _HOOK_EVENTS:
+        command = command_template.format(action=action)
+        entry: dict = {"hooks": [{"type": "command", "command": command}]}
+        if matcher is not None:
+            entry["matcher"] = matcher
+        config.setdefault(event, []).append(entry)
+    return config
 
 
-def validate_hook_entries(entries: list[dict[str, str]]) -> str | None:
+def validate_hook_config(config: dict[str, list[dict]]) -> str | None:
     """Validate that all hook entries have non-empty commands.
 
     Returns None on success, error message on failure.
     """
-    for entry in entries:
-        command = entry.get("command", "")
-        if not command.strip():
-            event = entry.get("event", "unknown")
-            return f"Hook configuration error: empty command for event '{event}'"
+    for event, entries in config.items():
+        for idx, entry in enumerate(entries):
+            for hook in entry.get("hooks", []):
+                command = hook.get("command", "")
+                if not command.strip():
+                    return (
+                        f"Hook configuration error: empty command for "
+                        f"event '{event}' entry {idx}"
+                    )
     return None
 
 
@@ -487,28 +623,33 @@ def generate_hooks_json(
 ) -> StepResult:
     """Generate hooks/hooks.json with all 5 DES enforcement events.
 
-    If hook_template_override is provided, its entries are validated and used
-    instead of the default entries. This enables error-path testing.
+    Output format matches the Claude Code settings.json hooks schema:
+    {"hooks": {"EventName": [{"matcher": "...", "hooks": [...]}]}}
+
+    If hook_template_override is provided, its config is validated and used
+    instead of the default config. This enables error-path testing.
     """
     if hook_template_override is not None:
-        entries = hook_template_override.get("hooks", [])
-        validation_error = validate_hook_entries(entries)
+        config = hook_template_override.get("hooks", {})
+        validation_error = validate_hook_config(config)
         if validation_error is not None:
             return StepResult.fail("hooks", validation_error)
     else:
-        entries = generate_hook_entries()
-        validation_error = validate_hook_entries(entries)
+        config = generate_hook_config()
+        validation_error = validate_hook_config(config)
         if validation_error is not None:
             return StepResult.fail("hooks", validation_error)
 
     hooks_dir = plugin_dir / "hooks"
     hooks_dir.mkdir(parents=True, exist_ok=True)
 
-    hooks_data = {"hooks": entries}
+    hooks_data = {"hooks": config}
     hooks_path = hooks_dir / "hooks.json"
     hooks_path.write_text(json.dumps(hooks_data, indent=2) + "\n", encoding="utf-8")
 
-    return StepResult.ok("hooks", len(entries))
+    # Count total hook entries across all events
+    total_entries = sum(len(entries) for entries in config.values())
+    return StepResult.ok("hooks", total_entries)
 
 
 def generate_hook_wrapper(plugin_dir: Path) -> StepResult:
@@ -544,10 +685,11 @@ def write_marketplace_json(
 ) -> StepResult:
     """Write marketplace.json for self-hosted distribution.
 
-    Creates the directory structure expected by Claude Code:
+    Creates the marketplace catalog at a SEPARATE directory from the plugin.
+    The marketplace references plugins via relative paths:
       marketplace_dir/
-        .claude-plugin/marketplace.json
-        plugins/nwave/  -> symlink or copy of plugin artifacts
+        .claude-plugin/marketplace.json   <- catalog
+        plugins/<plugin_name>/            <- plugin artifacts (symlinked or copied)
     """
     catalog = generate_marketplace_catalog(plugin_name, version)
 
@@ -635,7 +777,11 @@ def build(config: BuildConfig, *, version_override: str | None = None) -> BuildR
         if not result.success:
             return _fail(result.error, tuple(steps))
 
-    # Step 5: DES module bundling
+    # Step 5: Rewrite agent skill references to use bundles
+    skill_refs_result = rewrite_agent_skill_refs(plugin_dir, plugin_dir / "skills")
+    steps.append(skill_refs_result)
+
+    # Step 6: DES module bundling
     des_result = copy_des_module(config, plugin_dir)
     steps.append(des_result)
     if not des_result.success:
@@ -656,18 +802,14 @@ def build(config: BuildConfig, *, version_override: str | None = None) -> BuildR
     steps.append(wrapper_result)
 
     # Step 9: Generate and write metadata
-    metadata = generate_plugin_metadata(config.plugin_name, version)
+    metadata = generate_plugin_metadata(config.plugin_name)
     metadata_result = write_metadata(plugin_dir, metadata)
     steps.append(metadata_result)
-
-    # Step 10: Generate marketplace catalog
-    marketplace_result = write_marketplace_json(plugin_dir, config.plugin_name, version)
-    steps.append(marketplace_result)
 
     return BuildResult(
         output_dir=plugin_dir,
         success=True,
-        metadata=metadata,
+        metadata={**metadata, "version": version},
         steps=tuple(steps),
     )
 
@@ -692,7 +834,7 @@ def _validate_metadata(plugin_dir: Path) -> tuple[bool, list[str]]:
         errors.append(f"Invalid metadata: plugin.json is not valid JSON ({exc})")
         return False, errors
 
-    for required_field in ("name", "version", "privacy_policy"):
+    for required_field in ("name",):
         if required_field not in data:
             errors.append(
                 f"Invalid metadata: plugin.json missing required field '{required_field}'"
@@ -723,7 +865,11 @@ def _validate_directory_with_md_files(
 
 
 def _validate_hooks(plugin_dir: Path) -> tuple[bool, list[str]]:
-    """Validate hooks/hooks.json exists, is valid JSON, and has proper schema."""
+    """Validate hooks/hooks.json exists, is valid JSON, and has proper schema.
+
+    Expected format (Claude Code settings.json schema):
+    {"hooks": {"EventName": [{"matcher": "...", "hooks": [{"type": "command", "command": "..."}]}]}}
+    """
     errors: list[str] = []
     hooks_path = plugin_dir / "hooks" / "hooks.json"
 
@@ -738,22 +884,31 @@ def _validate_hooks(plugin_dir: Path) -> tuple[bool, list[str]]:
         return False, errors
 
     if "hooks" not in data:
-        errors.append("Invalid hooks: hooks.json missing required 'hooks' array")
+        errors.append("Invalid hooks: hooks.json missing required 'hooks' key")
         return False, errors
 
-    if not isinstance(data["hooks"], list):
-        errors.append("Invalid hooks: 'hooks' must be an array")
+    if not isinstance(data["hooks"], dict):
+        errors.append(
+            "Invalid hooks: 'hooks' must be an object mapping event names to arrays"
+        )
         return False, errors
 
-    for idx, entry in enumerate(data["hooks"]):
-        event = entry.get("event", "")
-        command = entry.get("command", "")
-        if not event or not isinstance(event, str):
-            errors.append(f"Invalid hooks: entry {idx} missing or empty 'event' field")
-        if not command or not isinstance(command, str):
-            errors.append(
-                f"Invalid hooks: entry {idx} missing or empty 'command' field"
-            )
+    for event, entries in data["hooks"].items():
+        if not isinstance(entries, list):
+            errors.append(f"Invalid hooks: event '{event}' must map to an array")
+            continue
+        for idx, entry in enumerate(entries):
+            hooks_list = entry.get("hooks", [])
+            if not isinstance(hooks_list, list) or len(hooks_list) == 0:
+                errors.append(
+                    f"Invalid hooks: event '{event}' entry {idx} missing or empty 'hooks' array"
+                )
+            for hook in hooks_list:
+                command = hook.get("command", "")
+                if not command or not isinstance(command, str):
+                    errors.append(
+                        f"Invalid hooks: event '{event}' entry {idx} has empty 'command'"
+                    )
 
     return len(errors) == 0, errors
 

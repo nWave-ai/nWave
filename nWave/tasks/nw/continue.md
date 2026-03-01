@@ -1,6 +1,6 @@
 ---
 description: "Detects current wave progress for a feature and resumes at the next step. Scans docs/feature/ for artifacts."
-argument-hint: "[project-id] - Optional: omit to auto-detect from docs/feature/"
+argument-hint: "[feature-id] - Optional: omit to auto-detect from docs/feature/"
 disable-model-invocation: true
 ---
 
@@ -31,7 +31,7 @@ ls -d docs/feature/*/
 
 If multiple directories exist, list by most recent file modification:
 ```bash
-find docs/feature/{project-id}/ -type f -printf '%T@ %p\n' | sort -rn | head -1
+find docs/feature/{feature-id}/ -type f -printf '%T@ %p\n' | sort -rn | head -1
 ```
 
 Present via AskUserQuestion: project name|last modified date|most recent first. Ask user to select.
@@ -54,14 +54,14 @@ Check before showing progress:
 ### Step 5: DELIVER Progress Detail
 
 If DELIVER in progress, show step-level detail:
-- Read `docs/feature/{id}/execution-log.json`: count COMMIT/PASS steps, find first without COMMIT/PASS
+- Read `docs/feature/{id}/deliver/execution-log.json`: count COMMIT/PASS steps, find first without COMMIT/PASS
 - Read `.develop-progress.json` if exists: check last failure point
 - Display: "DELIVER in progress: Steps 01-01 through 02-01 complete. Next: 02-02"
 
 ### Step 6: Progress Display
 
 ```
-Feature: {project-id}
+Feature: {feature-id}
 
   DISCOVER   ○ not started
   DISCUSS    ● complete

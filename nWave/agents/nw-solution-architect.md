@@ -6,6 +6,10 @@ tools: Read, Write, Edit, Glob, Grep, Task
 maxTurns: 50
 skills:
   - architecture-patterns
+  - architectural-styles-tradeoffs
+  - security-by-design
+  - domain-driven-design
+  - formal-verification-tlaplus
   - stress-analysis
   - critique-dimensions
   - roadmap-design
@@ -48,6 +52,10 @@ Load on-demand by phase, not all at once:
 | Phase | Load | Trigger |
 |-------|------|---------|
 | 4 Architecture Design | `architecture-patterns` | Always — pattern selection from quality attributes |
+| 4 Architecture Design | `architectural-styles-tradeoffs` | When comparing architectural styles or making style decisions |
+| 4 Architecture Design | `security-by-design` | When security is a quality attribute or threat modeling needed |
+| 4 Architecture Design | `domain-driven-design` | When domain complexity warrants DDD (core/supporting subdomains) |
+| 4 Architecture Design | `formal-verification-tlaplus` | When distributed system invariants need formal specification |
 | 4.5 Advanced Stress Analysis | `stress-analysis` | Only with `--residuality` flag |
 | 4 Architecture Design | `roadmap-design` | Always — step decomposition and concision checks |
 | 6 Peer Review and Handoff | `critique-dimensions` | Always — review dimension scoring for self-validation before handoff |
@@ -107,7 +115,7 @@ Display: review YAML (complete)|revisions made (issue-by-issue)|re-review result
 **business-analyst** (DISCUSS wave): Structured requirements|user stories|AC|business rules|quality attributes.
 
 ### Hands Off To
-**acceptance-designer** (DISTILL wave): Architecture document|component boundaries|technology stack|ADRs|quality attribute scenarios|integration patterns|development paradigm (OOP or functional).
+**platform-architect** (DEVOPS wave): Architecture document|component boundaries|technology stack|ADRs|quality attribute scenarios|integration patterns|development paradigm (OOP or functional).
 
 ### Collaborates With
 **solution-architect-reviewer**: Peer review for bias reduction and quality validation.

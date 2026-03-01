@@ -18,6 +18,18 @@ Questions:
 - "How will you know when you've succeeded?"
 - "What's the happy path in your mind?"
 
+#### Draft Sketch (after first 3 answers)
+
+After collecting goal, trigger, and success criteria, output a rough draft sketch showing what the journey might look like. Mark unknowns with `???`. Purpose: make value visible immediately so the user sees progress, not just questions.
+
+```
+[Trigger: ???] → [Step 1: ???] → [Step 2: ???] → [Goal: {stated goal}]
+  Feels: ???       Sees: ???       Sees: ???       Feels: {success criteria}
+  Artifacts: ???   Artifacts: ???  Artifacts: ???
+```
+
+This is a working hypothesis, not a commitment. Update it after each phase as understanding deepens. The sketch gives the user something concrete to react to — "no, step 2 happens before step 1" is more productive than abstract discussion.
+
 ### Phase 2: Mental Model (10-20 minutes)
 Focus: What does the user EXPECT to see?
 

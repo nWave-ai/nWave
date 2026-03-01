@@ -5,11 +5,11 @@ argument-hint: "[deployment-target] - Optional: --environment=[staging|productio
 
 # NW-DEVOPS: Platform Readiness and Infrastructure Design
 
-**Wave**: DEVOP (wave 4 of 6) | **Agent**: Apex (nw-platform-architect) | **Command**: `/nw:devops`
+**Wave**: DEVOPS (wave 4 of 6) | **Agent**: Apex (nw-platform-architect) | **Command**: `/nw:devops`
 
 ## Overview
 
-Execute DEVOP wave: platform readiness|CI/CD pipeline setup|observability design|infrastructure preparation. Positioned between DESIGN and DISTILL (DISCOVER > DISCUSS > DESIGN > DEVOP > DISTILL > DELIVER), ensures infrastructure is ready before acceptance tests and code.
+Execute DEVOPS wave: platform readiness|CI/CD pipeline setup|observability design|infrastructure preparation. Positioned between DESIGN and DISTILL (DISCOVER > DISCUSS > DESIGN > DEVOPS > DISTILL > DELIVER), ensures infrastructure is ready before acceptance tests and code.
 
 Apex translates DESIGN architecture decisions into operational infrastructure: CI/CD pipelines|logging|monitoring|alerting|observability.
 
@@ -118,19 +118,19 @@ Default if not chosen: **per-feature**.
 
 ## Context Files Required
 
-- docs/feature/{feature-name}/design/architecture-design.md
-- docs/feature/{feature-name}/design/technology-stack.md
-- docs/feature/{feature-name}/design/component-boundaries.md
+- docs/feature/{feature-id}/design/architecture-design.md
+- docs/feature/{feature-id}/design/technology-stack.md
+- docs/feature/{feature-id}/design/component-boundaries.md
 
 ## Previous Artifacts (Wave Handoff)
 
-- docs/feature/{feature-name}/design/* — Complete architecture from DESIGN
+- docs/feature/{feature-id}/design/* — Complete architecture from DESIGN
 
 ## Agent Invocation
 
 @nw-platform-architect
 
-Execute platform readiness and infrastructure design for {feature-name}.
+Execute platform readiness and infrastructure design for {feature-id}.
 
 Context files: see Context Files Required above.
 
@@ -175,7 +175,7 @@ User selects: hybrid, Docker Compose, GitLab CI (existing), existing CI/CD only,
 ## Expected Outputs
 
 ```
-docs/feature/{feature-name}/deliver/
+docs/feature/{feature-id}/devops/
   platform-architecture.md
   ci-cd-pipeline.md
   observability-design.md

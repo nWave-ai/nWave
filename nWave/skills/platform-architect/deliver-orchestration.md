@@ -9,33 +9,33 @@ When invoked via `*deliver "{feature-description}"`, Apex orchestrates the compl
 
 ## Orchestration Role
 
-Parse feature description, derive project ID, execute 9 phases in order. Track state for resume capability.
+Parse feature description, derive feature ID, execute 9 phases in order. Track state for resume capability.
 
 **Invocation**: `*deliver "Implement user authentication with JWT tokens"`
 
 ## 9 Phases
 
 ### Phase 1-2: Baseline Creation + Review
-Create: `docs/feature/{project-id}/baseline.yaml`. Reviewer: @nw-software-crafter-reviewer.
+Create: `docs/feature/{feature-id}/deliver/baseline.yaml`. Reviewer: @nw-software-crafter-reviewer.
 Smart skip: yes (if file exists AND `validation.status == "approved"`).
 
 ### Phase 3-4: Roadmap Creation + Dual Review
-Create: `docs/feature/{project-id}/roadmap.json`.
+Create: `docs/feature/{feature-id}/deliver/roadmap.json`.
 Reviewer 1: @nw-product-owner-reviewer (business) | Reviewer 2: @nw-software-crafter-reviewer (technical). Sequential reviews.
 Smart skip: yes (if approved).
 
 ### Phase 5-6: Split + Review Each Step
-Define steps in: `docs/feature/{project-id}/roadmap.json`. Reviewer: @nw-software-crafter-reviewer (per roadmap step).
+Define steps in: `docs/feature/{feature-id}/deliver/roadmap.json`. Reviewer: @nw-software-crafter-reviewer (per roadmap step).
 Smart skip: yes (if all approved).
 
 ### Phase 7: Execute All Steps
 For each step: invoke `@nw-software-crafter` with step ID. Automatic dependency ordering (topological sort via Kahn's algorithm). 11-phase TDD per step (PREPARE through COMMIT). Local commit after each step (no push). Stop immediately if any step fails.
 
 ### Phase 8: Finalize
-Archive to: `docs/evolution/{timestamp}_{project-id}.md`. Clean up workflow files.
+Archive to: `docs/evolution/{timestamp}_{feature-id}.md`. Clean up workflow files.
 
 ### Phase 9: Report Completion
-Display comprehensive statistics | List all quality gates passed | Show next steps (review evolution doc, push commits, proceed to DEVOP wave validation).
+Display comprehensive statistics | List all quality gates passed | Show next steps (review evolution doc, push commits, proceed to DEVOPS wave validation).
 
 ## Smart Skip Logic
 - File exists AND `validation.status == "approved"` -> skip creation, load for context
@@ -65,7 +65,7 @@ Display comprehensive statistics | List all quality gates passed | Show next ste
 
 ## State Tracking
 
-Progress tracked in `docs/feature/{project-id}/.deliver-progress.json`:
+Progress tracked in `docs/feature/{feature-id}/deliver/.deliver-progress.json`:
 
 ```json
 {

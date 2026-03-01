@@ -63,7 +63,7 @@ Linear workflows with clear dependencies between stages.
 
 **Structure**: Agent1 -> Output1 -> Agent2 -> Output2 -> Agent3 -> Result
 **When**: Pipeline workflows where each stage transforms previous output.
-**Example**: nWave waves: DISCUSS -> DESIGN -> DEVOP -> DISTILL -> DELIVER.
+**Example**: nWave waves: DISCUSS -> DESIGN -> DEVOPS -> DISTILL -> DELIVER.
 
 ## 6. Parallel Orchestration
 

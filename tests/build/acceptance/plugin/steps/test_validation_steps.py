@@ -40,7 +40,7 @@ def plugin_empty_agents(plugin_output_dir: Path, build_result: dict[str, Any]):
     """Create a plugin directory with empty agents/."""
     (plugin_output_dir / ".claude-plugin").mkdir(parents=True)
     (plugin_output_dir / ".claude-plugin" / "plugin.json").write_text(
-        '{"name": "nw", "version": "1.0.0", "privacy_policy": "https://example.com/privacy"}',
+        '{"name": "nw"}',
         encoding="utf-8",
     )
     (plugin_output_dir / "agents").mkdir()  # Empty
@@ -53,7 +53,7 @@ def plugin_without_hooks(plugin_output_dir: Path, build_result: dict[str, Any]):
     """Create a plugin directory missing hooks/hooks.json."""
     (plugin_output_dir / ".claude-plugin").mkdir(parents=True)
     (plugin_output_dir / ".claude-plugin" / "plugin.json").write_text(
-        '{"name": "nw", "version": "1.0.0", "privacy_policy": "https://example.com/privacy"}',
+        '{"name": "nw"}',
         encoding="utf-8",
     )
     agents = plugin_output_dir / "agents"
@@ -67,7 +67,7 @@ def plugin_without_des(plugin_output_dir: Path, build_result: dict[str, Any]):
     """Create a plugin directory missing scripts/des/."""
     (plugin_output_dir / ".claude-plugin").mkdir(parents=True)
     (plugin_output_dir / ".claude-plugin" / "plugin.json").write_text(
-        '{"name": "nw", "version": "1.0.0", "privacy_policy": "https://example.com/privacy"}',
+        '{"name": "nw"}',
         encoding="utf-8",
     )
     agents = plugin_output_dir / "agents"
@@ -75,7 +75,7 @@ def plugin_without_des(plugin_output_dir: Path, build_result: dict[str, Any]):
     (agents / "test-agent.md").write_text("# Agent", encoding="utf-8")
     hooks = plugin_output_dir / "hooks"
     hooks.mkdir()
-    (hooks / "hooks.json").write_text('{"hooks": []}', encoding="utf-8")
+    (hooks / "hooks.json").write_text('{"hooks": {}}', encoding="utf-8")
     build_result["plugin_dir"] = plugin_output_dir
 
 
@@ -98,8 +98,6 @@ def minimal_valid_plugin(plugin_output_dir: Path, build_result: dict[str, Any]):
         json.dumps(
             {
                 "name": "nw",
-                "version": "0.0.1",
-                "privacy_policy": "https://example.com/privacy",
             }
         ),
         encoding="utf-8",
@@ -132,12 +130,13 @@ def minimal_valid_plugin(plugin_output_dir: Path, build_result: dict[str, Any]):
     (hooks / "hooks.json").write_text(
         json.dumps(
             {
-                "hooks": [
-                    {
-                        "event": "PreToolUse",
-                        "command": "echo test",
-                    }
-                ]
+                "hooks": {
+                    "PreToolUse": [
+                        {
+                            "hooks": [{"type": "command", "command": "echo test"}],
+                        }
+                    ]
+                }
             }
         ),
         encoding="utf-8",
@@ -265,28 +264,32 @@ def validation_metadata_present(build_result: dict[str, Any]):
 
 @then("the hook configuration is valid according to the expected schema")
 def hooks_valid_schema(build_result: dict[str, Any]):
-    """Verify hooks.json validates against schema."""
+    """Verify hooks.json validates against Claude Code settings.json schema."""
     import json
 
     plugin_dir = build_result["plugin_dir"]
     hooks_path = plugin_dir / "hooks" / "hooks.json"
     hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
     assert "hooks" in hooks
-    assert isinstance(hooks["hooks"], list)
+    assert isinstance(hooks["hooks"], dict)
 
 
 @then("every hook entry has a command and event type")
 def hooks_have_required_fields(build_result: dict[str, Any]):
-    """Verify each hook has command and event."""
+    """Verify each event has entries with hooks containing commands."""
     import json
 
     plugin_dir = build_result["plugin_dir"]
-    hooks = json.loads(
-        (plugin_dir / "hooks" / "hooks.json").read_text(encoding="utf-8")
-    )
-    for hook in hooks["hooks"]:
-        assert "event" in hook, f"Hook missing event: {hook}"
-        assert "command" in hook, f"Hook missing command: {hook}"
+    data = json.loads((plugin_dir / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+    for event, entries in data["hooks"].items():
+        assert isinstance(entries, list), f"Event {event} is not a list"
+        for entry in entries:
+            hooks_list = entry.get("hooks", [])
+            assert len(hooks_list) > 0, f"Event {event} entry missing hooks array"
+            for hook in hooks_list:
+                assert "command" in hook, (
+                    f"Hook missing command in event {event}: {hook}"
+                )
 
 
 # ---------------------------------------------------------------------------

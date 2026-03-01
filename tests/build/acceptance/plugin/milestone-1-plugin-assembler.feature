@@ -28,7 +28,6 @@ Feature: Plugin Assembler with Metadata Generation
     When the plugin assembler builds the plugin
     Then the plugin metadata contains a description
     And the plugin metadata contains keywords for discoverability
-    And the plugin metadata identifies the source directory
 
   # --- Happy Path: Agent Assembly ---
 
@@ -37,9 +36,10 @@ Feature: Plugin Assembler with Metadata Generation
     Then the plugin contains all 23 agent definitions
     And every agent file is readable and properly structured
 
-  Scenario: Agent files are copied without modification
+  Scenario: Agent files preserve body content with skill refs rewritten
     When the plugin assembler builds the plugin
-    Then the content of each agent file in the plugin matches the source
+    Then every agent body is identical to the source
+    And agents with skills have their frontmatter rewritten to bundle refs
 
   # --- Happy Path: Skill Assembly ---
 
@@ -49,10 +49,10 @@ Feature: Plugin Assembler with Metadata Generation
     And skill files are organized by agent name
     And the directory structure mirrors the source layout
 
-  Scenario: Skill files are copied as-is without renaming
+  Scenario: Skill files are present with SKILL.md entry points
     When the plugin assembler builds the plugin
-    Then skill files are distributed with their original names
-    And each skill file retains its original filename
+    Then every source skill file is present in the plugin
+    And each skill directory has a SKILL.md entry point
 
   # --- Happy Path: Command Assembly ---
 

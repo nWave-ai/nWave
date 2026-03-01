@@ -1,13 +1,13 @@
 ---
 template_type: "moderate-demo-production-readiness"
 methodology: "nWave ATDD"
-wave: "DEVOP"
+wave: "DEVOPS"
 interactivity_level: "moderate"
-description: "Moderately interactive production readiness and stakeholder validation template for DEVOP wave with comprehensive deployment and business value validation"
+description: "Moderately interactive production readiness and stakeholder validation template for DEVOPS wave with comprehensive deployment and business value validation"
 version: "1.0.0"
 
 # ==================================================================================
-# DEVOP WAVE: Production Readiness and Stakeholder Validation Template
+# DEVOPS WAVE: Production Readiness and Stakeholder Validation Template
 # ==================================================================================
 
 metadata:
@@ -679,7 +679,7 @@ demo_wave_deliverables:
   completion_criteria:
     methodology_success_validation:
       - criterion: "nWave Methodology Completion"
-        validation: "All waves (DISCOVER→DISCUSS→DESIGN→DEVOP→DISTILL→DELIVER) completed successfully"
+        validation: "All waves (DISCOVER→DISCUSS→DESIGN→DEVOPS→DISTILL→DELIVER) completed successfully"
 
       - criterion: "ATDD Integration Success"
         validation: "Customer-developer-tester collaboration effective throughout methodology"
@@ -762,7 +762,7 @@ interactive_guidance:
 usage_documentation: |
   # Template Usage Instructions
 
-  This moderately interactive template supports comprehensive production deployment and stakeholder validation for the DEVOP wave of the nWave methodology.
+  This moderately interactive template supports comprehensive production deployment and stakeholder validation for the DEVOPS wave of the nWave methodology.
 
   ## Customization Guidelines
 

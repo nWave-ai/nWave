@@ -30,9 +30,9 @@ If vague (fewer than 3 meaningful words or unclassifiable):
 
 Do NOT proceed until you have a clear, actionable description.
 
-### Step 2: Project ID Derivation
+### Step 2: Feature ID Derivation
 
-Derive project ID per rules in `~/.claude/nWave/data/wizard-shared-rules.md` (section: Project ID Derivation).
+Derive feature ID per rules in `~/.claude/nWave/data/wizard-shared-rules.md` (section: Feature ID Derivation).
 
 Examples: "Add rate limiting to the API gateway" -> `rate-limiting-api-gateway` | "OAuth2 upgrade" -> `oauth2-upgrade` | "Implement a real-time notification system with WebSocket support for mobile and desktop clients" -> `real-time-notification-system-websocket`
 
@@ -40,10 +40,10 @@ Show derived ID via AskUserQuestion. Allow override with custom value.
 
 ### Step 3: Name Conflict Check
 
-Check if `docs/feature/{project-id}/` exists. If so, offer via AskUserQuestion:
+Check if `docs/feature/{feature-id}/` exists. If so, offer via AskUserQuestion:
 1. **Continue that project** — switch to `/nw:continue`
 2. **Start fresh with different name** — ask for distinguishing name
-3. **Archive and restart** — move to `docs/feature/{project-id}-archived-{date}/`
+3. **Archive and restart** — move to `docs/feature/{feature-id}-archived-{date}/`
 
 ### Step 4: Clarifying Questions
 
@@ -106,10 +106,10 @@ Show recommendation with rationale via AskUserQuestion: recommended wave command
 
 After user confirms, create project directory:
 ```bash
-mkdir -p docs/feature/{project-id}
+mkdir -p docs/feature/{feature-id}
 ```
 
-Invoke recommended wave command by reading its task file and following instructions, passing project ID as argument.
+Invoke recommended wave command by reading its task file and following instructions, passing feature ID as argument.
 
 ## Error Handling
 
@@ -128,7 +128,7 @@ Invoke recommended wave command by reading its task file and following instructi
 - [ ] Feature classified by type
 - [ ] Starting wave recommended with rationale
 - [ ] User confirmed recommendation
-- [ ] Wave command launched with correct project ID
+- [ ] Wave command launched with correct feature ID
 
 ## Examples
 

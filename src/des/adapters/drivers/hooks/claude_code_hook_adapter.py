@@ -774,7 +774,7 @@ def _resolve_des_context(
     project_id = des_context["project_id"]
     step_id = des_context["step_id"]
     execution_log_path = os.path.join(
-        cwd, "docs", "feature", project_id, "execution-log.json"
+        cwd, "docs", "feature", project_id, "deliver", "execution-log.json"
     )
     return execution_log_path, project_id, step_id
 

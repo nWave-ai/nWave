@@ -260,7 +260,7 @@ _WAVE_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\bDISTILL\s+wave\b", re.IGNORECASE), "DISTILL"),
     (re.compile(r"\bDESIGN\s+wave\b", re.IGNORECASE), "DESIGN"),
     (re.compile(r"\bDELIVER\s+wave\b", re.IGNORECASE), "DELIVER"),
-    (re.compile(r"\bDEVOP\s+wave\b", re.IGNORECASE), "DEVOP"),
+    (re.compile(r"\bDEVOPS?\s+wave\b", re.IGNORECASE), "DEVOPS"),
 ]
 
 _WAVE_ORDER = [
@@ -269,7 +269,7 @@ _WAVE_ORDER = [
     "DESIGN",
     "DISTILL",
     "DELIVER",
-    "DEVOP",
+    "DEVOPS",
     "Other",
 ]
 

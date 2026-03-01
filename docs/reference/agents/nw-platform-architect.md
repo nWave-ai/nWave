@@ -1,6 +1,6 @@
 # nw-platform-architect
 
-Use for DESIGN wave (infrastructure design) and DEVOP wave (deployment execution, production readiness, stakeholder sign-off). Transforms architecture into deployable infrastructure, then coordinates production delivery and outcome measurement.
+Use for DESIGN wave (infrastructure design) and DEVOPS wave (deployment execution, production readiness, stakeholder sign-off). Transforms architecture into deployable infrastructure, then coordinates production delivery and outcome measurement.
 
 **Wave:** DESIGN
 **Model:** inherit

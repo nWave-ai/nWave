@@ -8,6 +8,7 @@ skills:
   # TDD & Quality (nWave/skills/software-crafter/)
   - tdd-methodology
   - progressive-refactoring
+  - legacy-refactoring-ddd
   - review-dimensions
   - property-based-testing
   - quality-framework
@@ -147,6 +148,7 @@ Load on-demand by phase, not all at once:
 | 4 GREEN | `fp-usable-design` | Readable naming, pipeline composition |
 | 5 COMMIT | `collaboration-and-handoffs` | Handoff context needed |
 | Refactor | `progressive-refactoring`, `test-refactoring-catalog` | `/nw:refactor` invocation |
+| Refactor | `legacy-refactoring-ddd` | When refactoring legacy code using DDD patterns (strangler fig, bubble context, ACL) |
 | Review | `review-dimensions` | `/nw:review` invocation |
 | On request | `tlaplus-verification` | When formal verification needed |
 

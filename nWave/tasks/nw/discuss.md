@@ -38,26 +38,19 @@ For greenfield projects (no src/ code, no docs/feature/ history), Luna proposes 
 2. Comprehensive -- full experience mapping with emotional arcs
 3. Deep-dive -- extensive user research, multiple personas, edge cases
 
-### Decision 4: Number of User Jobs
-**Question**: How many distinct jobs are your users trying to accomplish with this feature?
-**Options**:
-1. Single job -- one primary job to focus on
-2. Multiple jobs (2-4) -- several related jobs, will need opportunity scoring
-3. Unclear -- Luna will help discover and define the jobs through interview
-
 ## Context Files Required
 
 - docs/project-brief.md | docs/stakeholders.yaml | docs/architecture/constraints.md
 
 ## Previous Artifacts (Wave Handoff)
 
-- docs/discovery/problem-validation.md | opportunity-tree.md | lean-canvas.md — From DISCOVER
+- docs/feature/{feature-id}/discover/problem-validation.md | opportunity-tree.md | lean-canvas.md — From DISCOVER
 
 ## Agent Invocation
 
 @nw-product-owner
 
-Execute *jtbd-analysis for {feature-name}, then *journey informed by JTBD artifacts, then *gather-requirements informed by both.
+Execute *jtbd-analysis for {feature-id}, then *journey informed by JTBD artifacts, then *gather-requirements informed by both.
 
 Context files: see Context Files Required and Previous Artifacts above.
 
@@ -65,8 +58,8 @@ Context files: see Context Files Required and Previous Artifacts above.
 - format: visual | yaml | gherkin | all (default: all)
 - research_depth: {Decision 3} | interactive: high | output_format: markdown
 - elicitation_depth: comprehensive | feature_type: {Decision 1}
-- walking_skeleton: {Decision 2} | job_count: {Decision 4}
-- output_directory: docs/ux/{epic}/ (JTBD + journeys), docs/requirements/ (stories)
+- walking_skeleton: {Decision 2}
+- output_directory: docs/feature/{feature-id}/discuss/
 
 **Phase 1 -- Jobs-to-be-Done Analysis (REQUIRED):**
 
@@ -85,9 +78,9 @@ Grounds all subsequent artifacts in real user motivations.
 
 | Artifact | Path |
 |----------|------|
-| Job Stories | `docs/ux/{epic}/jtbd-job-stories.md` |
-| Four Forces | `docs/ux/{epic}/jtbd-four-forces.md` |
-| Opportunity Scores | `docs/ux/{epic}/jtbd-opportunity-scores.md` (when multiple jobs) |
+| Job Stories | `docs/feature/{feature-id}/discuss/jtbd-job-stories.md` |
+| Four Forces | `docs/feature/{feature-id}/discuss/jtbd-four-forces.md` |
+| Opportunity Scores | `docs/feature/{feature-id}/discuss/jtbd-opportunity-scores.md` (when multiple jobs) |
 
 **Phase 2 -- Journey Design:**
 
@@ -95,10 +88,10 @@ Luna runs deep discovery (mental model|emotional arc|shared artifacts|error path
 
 | Artifact | Path |
 |----------|------|
-| Visual Journey | `docs/ux/{epic}/journey-{name}-visual.md` |
-| Journey Schema | `docs/ux/{epic}/journey-{name}.yaml` |
-| Gherkin Scenarios | `docs/ux/{epic}/journey-{name}.feature` |
-| Artifact Registry | `docs/ux/{epic}/shared-artifacts-registry.md` |
+| Visual Journey | `docs/feature/{feature-id}/discuss/journey-{name}-visual.md` |
+| Journey Schema | `docs/feature/{feature-id}/discuss/journey-{name}.yaml` |
+| Gherkin Scenarios | `docs/feature/{feature-id}/discuss/journey-{name}.feature` |
+| Artifact Registry | `docs/feature/{feature-id}/discuss/shared-artifacts-registry.md` |
 
 **Phase 3 -- Requirements and User Stories:**
 
@@ -106,10 +99,10 @@ Luna crafts LeanUX stories informed by JTBD + journey artifacts. Every story tra
 
 | Artifact | Path |
 |----------|------|
-| Requirements | `docs/requirements/requirements.md` |
-| User Stories | `docs/requirements/user-stories.md` |
-| Acceptance Criteria | `docs/requirements/acceptance-criteria.md` |
-| DoR Checklist | `docs/requirements/dor-checklist.md` |
+| Requirements | `docs/feature/{feature-id}/discuss/requirements.md` |
+| User Stories | `docs/feature/{feature-id}/discuss/user-stories.md` |
+| Acceptance Criteria | `docs/feature/{feature-id}/discuss/acceptance-criteria.md` |
+| DoR Checklist | `docs/feature/{feature-id}/discuss/dor-checklist.md` |
 
 ## Success Criteria
 
@@ -138,7 +131,7 @@ Luna crafts LeanUX stories informed by JTBD + journey artifacts. Every story tra
 ## Expected Outputs
 
 ```
-docs/ux/{epic}/
+docs/feature/{feature-id}/discuss/
   jtbd-job-stories.md
   jtbd-four-forces.md
   jtbd-opportunity-scores.md    (when multiple jobs)
@@ -146,8 +139,6 @@ docs/ux/{epic}/
   journey-{name}.yaml
   journey-{name}.feature
   shared-artifacts-registry.md
-
-docs/requirements/
   requirements.md
   user-stories.md               (each story traces to a job)
   acceptance-criteria.md
@@ -160,7 +151,7 @@ docs/requirements/
 ```
 /nw:discuss first-time-setup
 ```
-Orchestrator asks Decision 1-4. User selects "User-facing", "No skeleton", "Comprehensive", "Multiple jobs". Luna starts with JTBD analysis: discovers jobs like "When I first open the app, I want to feel productive immediately, so I can justify the purchase." Maps four forces for each job. Scores opportunities. Then runs journey discovery informed by JTBD, produces visual journey + YAML + Gherkin. Finally crafts stories where each traces to a job, validates DoR, and prepares handoff.
+Orchestrator asks Decision 1-3. User selects "User-facing", "No skeleton", "Comprehensive". Luna starts with JTBD analysis: discovers jobs like "When I first open the app, I want to feel productive immediately, so I can justify the purchase." Maps four forces for each job. Scores opportunities. Then runs journey discovery informed by JTBD, produces visual journey + YAML + Gherkin. Finally crafts stories where each traces to a job, validates DoR, and prepares handoff.
 
 ### Example 2: JTBD-only invocation
 ```
