@@ -13,7 +13,7 @@ argument-hint: "[refactoring-goal] - Optional: --complexity=[simple|moderate|com
 
 ## Overview
 
-Plan and execute complex refactoring using the Mikado Method. Builds dependency graph through iterative exploration|tracks discoveries via commits|executes leaf-to-goal bottom-up. For architectural changes spanning multiple classes where simple refactoring is insufficient.
+Plan and execute complex refactoring using the Mikado Method. Builds dependency {visualization} through iterative exploration|tracks discoveries via commits|executes leaf-to-goal bottom-up. For architectural changes spanning multiple classes where simple refactoring is insufficient.
 
 ## Context Files Required
 
@@ -33,19 +33,22 @@ Execute \*mikado for {refactoring-goal}.
 **Configuration:**
 - refactoring_goal: "{goal description with business value}"
 - complexity: complex # simple/moderate/complex
+- visualization: {tree|graph} # tree = indented markdown checklist, graph = Mermaid dependency diagram
 
 ## Success Criteria
 
-- [ ] Mikado graph persisted at docs/mikado/{goal-name}.mikado.md
+- [ ] Mikado {visualization} persisted at docs/mikado/{goal-name}.mikado.md
 - [ ] Discovery commits capture each exploration attempt
 - [ ] All leaf nodes implemented bottom-up
 - [ ] Goal node achieved with all tests passing
-- [ ] Graph stable (no new dependencies emerging)
+- [ ] {visualization_label} stable (no new dependencies emerging)
+
+**Visualization labels**: tree → "Tree", graph → "Graph". Use the selected visualization type in all output messages (e.g., "Wrote the Mikado tree" or "Wrote the Mikado graph").
 
 ## Next Wave
 
 **Handoff To**: {invoking-agent-returns-to-workflow}
-**Deliverables**: Refactored codebase + Mikado graph documentation
+**Deliverables**: Refactored codebase + Mikado {visualization} documentation
 
 ## Examples
 
@@ -53,7 +56,7 @@ Execute \*mikado for {refactoring-goal}.
 ```
 /nw:mikado "Extract shared domain model from monolithic service layer"
 ```
-Crafty builds Mikado dependency graph through iterative exploration, discovers 12 leaf nodes across 4 modules, executes bottom-up from leaves to goal with discovery commits at each step.
+Crafty builds Mikado dependency {visualization} through iterative exploration, discovers 12 leaf nodes across 4 modules, executes bottom-up from leaves to goal with discovery commits at each step.
 
 ## Expected Outputs
 
