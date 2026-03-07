@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Pre-push hook: regenerate docs/reference/ if stale, amend the push commit.
+"""Check docs/reference/ freshness; auto-regenerate in local hooks, fail in CI.
 
-Usage (called by pre-push hook):
-    python scripts/hooks/check_documentation_freshness.py
+Usage:
+    python scripts/hooks/check_documentation_freshness.py          # local hook
+    python scripts/hooks/check_documentation_freshness.py --check  # CI (no writes)
 
 Exit codes:
-    0 - Documentation is fresh (or was auto-regenerated)
-    1 - Regeneration failed
+    0 - Documentation is fresh (or was auto-regenerated locally)
+    1 - Regeneration failed or docs are stale (CI mode)
 """
 
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -26,8 +28,13 @@ run_pipeline = _docgen.run_pipeline
 write_pages = _docgen.write_pages
 
 
+def _is_ci() -> bool:
+    return "--check" in sys.argv or os.environ.get("CI") == "true"
+
+
 def main() -> int:
     output_dir = _ROOT / "docs" / "reference"
+    ci_mode = _is_ci()
 
     try:
         pages = run_pipeline(_ROOT, output_dir)
@@ -40,11 +47,18 @@ def main() -> int:
         print("✓ docs/reference/ is up to date")
         return 0
 
-    # Regenerate
+    if ci_mode:
+        print(
+            f"ERROR: docs/reference/ has {len(stale)} stale files: {', '.join(stale)}",
+            file=sys.stderr,
+        )
+        print("Run 'python scripts/docgen.py' locally and commit.", file=sys.stderr)
+        return 1
+
+    # Local hook: regenerate, stage, and amend
     print(f"Regenerating docs/reference/ ({len(stale)} stale files)...")
     write_pages(pages, output_dir)
 
-    # Stage and amend
     subprocess.run(["git", "add", "docs/reference/"], check=True)
     subprocess.run(
         ["git", "commit", "--amend", "--no-edit"],

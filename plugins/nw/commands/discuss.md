@@ -38,6 +38,12 @@ For greenfield projects (no src/ code, no docs/feature/ history), Luna proposes 
 2. Comprehensive -- full experience mapping with emotional arcs
 3. Deep-dive -- extensive user research, multiple personas, edge cases
 
+### Decision 4: JTBD Analysis
+**Question**: Include Jobs-to-be-Done analysis?
+**Options**:
+1. Yes -- recommended when user motivations are unclear or multiple jobs compete
+2. No -- skip JTBD, proceed directly to journey design (default)
+
 ## Context Files Required
 
 - docs/project-brief.md | docs/stakeholders.yaml | docs/architecture/constraints.md
@@ -50,7 +56,8 @@ For greenfield projects (no src/ code, no docs/feature/ history), Luna proposes 
 
 @nw-product-owner
 
-Execute *jtbd-analysis for {feature-id}, then *journey informed by JTBD artifacts, then *gather-requirements informed by both.
+IF Decision 4 = Yes: Execute *jtbd-analysis for {feature-id}, then *journey informed by JTBD artifacts, then *story-map, then *gather-requirements with outcome KPIs.
+IF Decision 4 = No (default): Execute *journey for {feature-id}, then *story-map, then *gather-requirements with outcome KPIs.
 
 Context files: see Context Files Required and Previous Artifacts above.
 
@@ -61,7 +68,7 @@ Context files: see Context Files Required and Previous Artifacts above.
 - walking_skeleton: {Decision 2}
 - output_directory: docs/feature/{feature-id}/discuss/
 
-**Phase 1 -- Jobs-to-be-Done Analysis (REQUIRED):**
+**Phase 1 -- Jobs-to-be-Done Analysis (OPTIONAL -- when Decision 4 = Yes):**
 
 Grounds all subsequent artifacts in real user motivations.
 
@@ -93,6 +100,21 @@ Luna runs deep discovery (mental model|emotional arc|shared artifacts|error path
 | Gherkin Scenarios | `docs/feature/{feature-id}/discuss/journey-{name}.feature` |
 | Artifact Registry | `docs/feature/{feature-id}/discuss/shared-artifacts-registry.md` |
 
+**Phase 2.5 -- User Story Mapping:**
+Luna loads `user-story-mapping` skill before this phase.
+
+Organizes discovered stories into a visual story map (backbone → walking skeleton → incremental slices). Produces prioritization suggestions based on outcomes identified in earlier phases.
+
+1. **Backbone**: Map user activities (big steps) horizontally across the top
+2. **Walking Skeleton**: Identify minimum slice that delivers end-to-end value
+3. **Release Slices**: Group stories into outcome-based releases
+4. **Prioritization**: Suggest priority order based on outcome impact and dependencies
+
+| Artifact | Path |
+|----------|------|
+| Story Map | `docs/feature/{feature-id}/discuss/story-map.md` |
+| Prioritization | `docs/feature/{feature-id}/discuss/prioritization.md` |
+
 **Phase 3 -- Requirements and User Stories:**
 
 Luna crafts LeanUX stories informed by JTBD + journey artifacts. Every story traces to at least one job story. Validates against DoR, invokes peer review, prepares handoff.
@@ -103,46 +125,53 @@ Luna crafts LeanUX stories informed by JTBD + journey artifacts. Every story tra
 | User Stories | `docs/feature/{feature-id}/discuss/user-stories.md` |
 | Acceptance Criteria | `docs/feature/{feature-id}/discuss/acceptance-criteria.md` |
 | DoR Checklist | `docs/feature/{feature-id}/discuss/dor-checklist.md` |
+| Outcome KPIs | `docs/feature/{feature-id}/discuss/outcome-kpis.md` |
 
 ## Success Criteria
 
-- [ ] JTBD analysis complete: all jobs in job story format
-- [ ] Job dimensions identified: functional|emotional|social per job
-- [ ] Four Forces mapped per job (push|pull|anxiety|habit)
-- [ ] Opportunity scores produced (when multiple jobs)
+- [ ] (when JTBD selected) JTBD analysis complete: all jobs in job story format
+- [ ] (when JTBD selected) Job dimensions identified: functional|emotional|social per job
+- [ ] (when JTBD selected) Four Forces mapped per job (push|pull|anxiety|habit)
+- [ ] (when JTBD selected) Opportunity scores produced (when multiple jobs)
 - [ ] UX journey map with emotional arcs and shared artifacts
-- [ ] Every journey maps to at least one job
+- [ ] (when JTBD selected) Every journey maps to at least one job
 - [ ] Discovery complete: user mental model understood, no vague steps
 - [ ] Happy path defined: all steps start-to-goal with expected outputs
 - [ ] Emotional arc coherent: confidence builds progressively
 - [ ] Shared artifacts tracked: every ${variable} has single documented source
+- [ ] Story map created with backbone, walking skeleton, and release slices
+- [ ] Outcome KPIs defined with measurable targets
+- [ ] Prioritization suggestions based on outcome impact
 - [ ] Requirements completeness score > 0.95
-- [ ] Every user story traces to at least one job story
+- [ ] (when JTBD selected) Every user story traces to at least one job story
 - [ ] All acceptance criteria testable
-- [ ] DoR passed: all 8 items validated with evidence
+- [ ] DoR passed: all 9 items validated with evidence
 - [ ] Peer review approved
 - [ ] Handoff accepted by nw-solution-architect (DESIGN wave)
 
 ## Next Wave
 
-**Handoff To**: nw-solution-architect (DESIGN wave)
-**Deliverables**: JTBD artifacts (job stories|four forces|opportunity scores) + journey artifacts (visual|YAML|Gherkin|artifact registry) + requirements (stories|acceptance criteria|DoR validation|peer review)
+**Handoff To**: nw-solution-architect (DESIGN wave) + nw-platform-architect (DEVOPS wave, KPIs only)
+**Deliverables**: Journey artifacts + story map + requirements + outcome KPIs | JTBD artifacts (when selected)
 
 ## Expected Outputs
 
 ```
 docs/feature/{feature-id}/discuss/
-  jtbd-job-stories.md
-  jtbd-four-forces.md
-  jtbd-opportunity-scores.md    (when multiple jobs)
+  jtbd-job-stories.md           (when JTBD selected)
+  jtbd-four-forces.md           (when JTBD selected)
+  jtbd-opportunity-scores.md    (when JTBD selected, multiple jobs)
   journey-{name}-visual.md
   journey-{name}.yaml
   journey-{name}.feature
   shared-artifacts-registry.md
+  story-map.md
+  prioritization.md
   requirements.md
   user-stories.md               (each story traces to a job)
   acceptance-criteria.md
   dor-checklist.md
+  outcome-kpis.md
 ```
 
 ## Examples

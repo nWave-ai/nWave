@@ -5,6 +5,24 @@ description: Roadmap concision rules, step decomposition efficiency, AC abstract
 
 # Roadmap Design
 
+## Roadmap Principles
+
+When this skill is loaded, these principles activate in addition to the agent's core principles:
+
+1. **Measure before planning**: Never create roadmap without quantitative baseline. Require timing breakdowns|impact rankings|target validation. Halt and request data when missing.
+2. **Concise roadmaps**: Step descriptions max 50 words, AC max 5 per step at max 30 words each. Bullets over prose. Assume expertise. Eliminate qualifiers/motivational text. Token efficiency compounds -- crafter reads roadmap ~35 times.
+3. **Paradigm-aware roadmap strategy**: When functional paradigm selected, adapt roadmap for FP: types-first (algebraic data types before implementation)|composition pipelines|pure core/effect shell|effect boundaries instead of port interfaces. Strategic guidance only -- no code snippets/function signatures.
+
+## Roadmap Critical Rules
+
+1. Never include implementation code in roadmaps. You design; software-crafter writes code.
+2. Never create roadmaps without quantitative data. Halt and request measurement data when missing.
+3. Roadmap steps with identical patterns (differing by substitution variable) must batch into single step. 3+ identical-pattern steps = batching opportunity.
+
+## Quality Gate (DELIVER only)
+
+- [ ] Roadmap step count efficient (steps/production-files <= 2.5)
+
 ## Canonical Format
 
 Use ONLY compact nested format. See `nWave/templates/roadmap-schema.json` for fields/validation. Structure: `roadmap` metadata, `phases` with nested `steps`, `implementation_scope`, `validation`. Phase IDs: two digits (`"01"`). Step IDs: `"NN-MM"`.
@@ -95,3 +113,57 @@ Before multi-phase (>3 steps), document rejected alternatives:
 ```
 
 Min 2 alternatives. Each: specific description, expected impact, evidence-based rejection.
+
+## Examples
+
+### Example 1: Roadmap Step (Correct)
+```json
+{
+  "id": "01-03",
+  "title": "Order processing with payment integration",
+  "description": "Process orders through payment gateway with confirmation",
+  "acceptance_criteria": [
+    "Order confirmed after successful payment",
+    "Failed payment returns clear error to caller",
+    "Order persists with payment reference"
+  ],
+  "architectural_constraints": [
+    "Payment gateway accessed through driven port",
+    "Order aggregate maintains consistency"
+  ]
+}
+```
+
+### Example 1b: Functional Paradigm (Correct)
+```json
+{
+  "id": "01-03",
+  "title": "Order processing pipeline with payment integration",
+  "description": "Transform order request through validation, pricing, and payment pipeline",
+  "acceptance_criteria": [
+    "Valid order request produces confirmed order with payment reference",
+    "Invalid payment produces domain error value (not exception)",
+    "Order state is immutable — processing produces new OrderConfirmed value"
+  ],
+  "architectural_constraints": [
+    "Payment accessed through function-signature port (PaymentRequest -> Result)",
+    "Order pipeline composed from pure transformation functions",
+    "Effect boundary at adapter layer only"
+  ]
+}
+```
+Same WHAT-level criteria as Example 1, adapted for FP. No function names or type definitions -- functional-software-crafter decides those.
+
+### Example 2: Roadmap Step (Incorrect -- Implementation Coupled)
+```json
+{
+  "id": "01-03",
+  "title": "Implement PaymentProcessor class",
+  "description": "Create _process_payment() method that calls Stripe API",
+  "acceptance_criteria": [
+    "_validate_card() returns CardValidationResult",
+    "PaymentProcessor.charge() uses retry with exponential backoff"
+  ]
+}
+```
+Crafter decides class names|method signatures|retry strategies.

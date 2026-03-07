@@ -121,10 +121,12 @@ Default if not chosen: **per-feature**.
 - docs/feature/{feature-id}/design/architecture-design.md
 - docs/feature/{feature-id}/design/technology-stack.md
 - docs/feature/{feature-id}/design/component-boundaries.md
+- docs/feature/{feature-id}/discuss/outcome-kpis.md (from DISCUSS wave)
 
 ## Previous Artifacts (Wave Handoff)
 
 - docs/feature/{feature-id}/design/* — Complete architecture from DESIGN
+- docs/feature/{feature-id}/discuss/outcome-kpis.md — Outcome KPIs from DISCUSS (defines what to measure, baselines, targets)
 
 ## Agent Invocation
 
@@ -141,6 +143,12 @@ Context files: see Context Files Required above.
 - continuous_learning: {Decision 7} | git_branching_strategy: {Decision 8}
 - mutation_testing_strategy: {Decision 9}
 
+**KPI-Driven Observability:**
+If `outcome-kpis.md` exists in the feature's discuss directory, Apex MUST read it and design instrumentation to collect the defined KPIs. Each KPI's "Measured By" and "Measurement Plan" sections drive:
+- Data collection infrastructure (events, logs, analytics)
+- Dashboard design (which metrics to visualize)
+- Alerting rules (guardrail metric thresholds)
+
 ## Success Criteria
 
 - [ ] CI/CD pipeline design finalized and documented
@@ -151,6 +159,9 @@ Context files: see Context Files Required above.
 - [ ] Continuous learning capabilities designed (if applicable)
 - [ ] Git branching strategy selected and CI/CD triggers aligned
 - [ ] Mutation testing strategy selected and persisted to project CLAUDE.md
+- [ ] Outcome KPIs instrumentation designed (if outcome-kpis.md exists)
+- [ ] Data collection pipeline documented for each KPI
+- [ ] Dashboard mockup or spec includes all outcome KPIs
 - [ ] Handoff accepted by nw-acceptance-designer (DISTILL wave)
 
 ## Next Wave
@@ -183,4 +194,5 @@ docs/feature/{feature-id}/devops/
   infrastructure-integration.md    (if existing infra)
   branching-strategy.md
   continuous-learning.md           (if applicable)
+  kpi-instrumentation.md           (if outcome-kpis.md exists)
 ```

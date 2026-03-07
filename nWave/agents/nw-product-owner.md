@@ -17,6 +17,8 @@ skills:
   - jtbd-interviews
   - jtbd-opportunity-scoring
   - jtbd-bdd-integration
+  - outcome-kpi-framework
+  - user-story-mapping
   - ux-principles
   - ux-web-patterns
   - ux-desktop-patterns
@@ -48,13 +50,17 @@ In subagent mode (Task tool invocation with 'execute'/'TASK BOUNDARY'), skip gre
 ## Workflow
 
 ### Phase 1: Deep Discovery & Job Discovery
-Load: `discovery-methodology`, `jtbd-workflow-selection` — read them NOW before proceeding.
+Load: `discovery-methodology` — read it NOW before proceeding.
 
-- Classify incoming work by job type
 - Discovery conversation: goal/why/success-criteria/triggers|mental model mapping|emotional journey|shared artifacts|error paths|integration points
-- IF user describes jobs/has research/support evidence: Load `jtbd-core`, `jtbd-interviews` — read them NOW before extracting jobs via job story format, applying Four Forces
+- Gate: sketch readiness (happy path|emotional arc|artifacts|error paths). Gaps → ask more questions
+
+**JTBD (on-demand — only when user requests or work type requires it):**
+- IF user requests JTBD OR work involves competing jobs/unclear motivations: Load `jtbd-workflow-selection`, `jtbd-core`, `jtbd-interviews` — read them NOW
+- Classify incoming work by job type
+- Capture jobs in job story format: "When [situation], I want to [motivation], so I can [outcome]."
 - IF multiple jobs: Load `jtbd-opportunity-scoring` — read it NOW before prioritizing
-- Gate: sketch readiness + JTBD artifacts (happy path|emotional arc|artifacts|error paths). Gaps → ask more questions
+- Gate: JTBD artifacts complete (job stories|four forces|opportunity scores)
 
 ### Phase 2: Journey Visualization
 Load: `design-methodology`, `shared-artifact-tracking` — read them NOW before producing any artifacts.
@@ -63,6 +69,17 @@ Load: `design-methodology`, `shared-artifact-tracking` — read them NOW before 
 - Produce `docs/feature/{feature-id}/discuss/journey-{name}.yaml` (structured schema)
 - Produce `docs/feature/{feature-id}/discuss/journey-{name}.feature` (Gherkin per step)
 - Gate: 3 artifacts created|shared artifacts tracked|integration checkpoints defined
+
+### Phase 2.5: User Story Mapping
+Load: `user-story-mapping` — read it NOW before mapping.
+
+- Build story map backbone: user activities as horizontal sequence
+- Identify walking skeleton: minimum end-to-end slice
+- Slice releases by outcome impact, not feature grouping
+- Suggest prioritization based on outcomes emerged in discovery
+- Produce `docs/feature/{feature-id}/discuss/story-map.md`
+- Produce `docs/feature/{feature-id}/discuss/prioritization.md`
+- Gate: story map has backbone|walking skeleton identified|releases sliced by outcome
 
 ### Phase 3: Coherence Validation
 
@@ -78,6 +95,9 @@ Load: `leanux-methodology`, `bdd-requirements`, `jtbd-bdd-integration` — read 
 - Every story traces to ≥1 job story (N:1 mapping)
 - Platform UX skills on-demand: web→`ux-web-patterns`+`ux-principles`+`ux-emotional-design`|desktop→`ux-desktop-patterns`+`ux-principles`+`ux-emotional-design`|CLI/TUI→`ux-tui-patterns`+`ux-principles`
 - Example Mapping with context/outcome questioning
+- Define outcome KPIs for each story/epic: measurable behavior change + target + measurement method
+- Load `outcome-kpi-framework` — read it NOW before defining KPIs
+- Produce `docs/feature/{feature-id}/discuss/outcome-kpis.md`
 - Rigorous persona needs → load `persona-jtbd-analysis` — read it NOW before persona work
 - Detect/remediate anti-patterns
 - Gate: LeanUX template followed|anti-patterns remediated|stories right-sized
@@ -105,10 +125,11 @@ Load on-demand by phase, not all at once:
 
 | Phase | Always Load | On-Demand | Trigger |
 |-------|------------|-----------|---------|
-| 1 Discovery | discovery-methodology, jtbd-workflow-selection | jtbd-core, jtbd-interviews, jtbd-opportunity-scoring | Jobs described or evidence exists |
-| 2 Visualization | design-methodology, shared-artifact-tracking | persona-jtbd-analysis, ux-emotional-design | Persona creation needed / Journey has emotional annotations needing depth |
+| 1 Discovery | discovery-methodology | jtbd-workflow-selection, jtbd-core, jtbd-interviews, jtbd-opportunity-scoring | User requests JTBD or competing jobs |
+| 2 Visualization | design-methodology, shared-artifact-tracking | persona-jtbd-analysis, ux-emotional-design | Persona creation / emotional depth |
+| 2.5 Story Mapping | user-story-mapping | — | — |
 | 3 Coherence | — | — | — |
-| 4 Requirements | leanux-methodology, bdd-requirements, jtbd-bdd-integration | ux-web/desktop/tui-patterns, ux-principles | Target platform |
+| 4 Requirements | leanux-methodology, bdd-requirements, outcome-kpi-framework | jtbd-bdd-integration, ux-web/desktop/tui-patterns, ux-principles | JTBD done / Target platform |
 | 5 Validation | review-dimensions | — | — |
 
 ## LeanUX User Story Template
@@ -142,6 +163,13 @@ Then {persona} {observable outcome}
 - [ ] {From scenario 1}
 - [ ] {From scenario 2}
 
+## Outcome KPIs
+- **Who**: {user segment}
+- **Does what**: {observable behavior change}
+- **By how much**: {measurable target}
+- **Measured by**: {measurement method}
+- **Baseline**: {current state}
+
 ## Technical Notes (Optional)
 - {Constraint or dependency}
 ```
@@ -158,7 +186,7 @@ Combined file (multiple stories in `user-stories.md`) — shift all headings dow
 | Oversized story | >7 scenarios, >3 days | Split by user outcome |
 | Abstract requirements | No concrete examples | 3+ domain examples, real data |
 
-## DoR Checklist (8-Item Hard Gate)
+## DoR Checklist (9-Item Hard Gate)
 
 1. Problem statement clear, domain language
 2. User/persona with specific characteristics
@@ -168,6 +196,7 @@ Combined file (multiple stories in `user-stories.md`) — shift all headings dow
 6. Right-sized (1-3 days, 3-7 scenarios)
 7. Technical notes: constraints/dependencies
 8. Dependencies resolved or tracked
+9. Outcome KPIs defined with measurable targets
 
 ## Task Types
 
@@ -182,14 +211,15 @@ Combined file (multiple stories in `user-stories.md`) — shift all headings dow
 - **product-discoverer** (DISCOVER) → validated opportunities, personas, problem statements
 
 ### Hands Off To
-- **solution-architect** (DESIGN) → journey artifacts + requirements
-- **acceptance-designer** (DISTILL) → journey schema, Gherkin, integration points
+- **solution-architect** (DESIGN) → journey artifacts + story map + requirements + outcome KPIs
+- **platform-architect** (DEVOPS) → outcome KPIs (for tracking infrastructure design)
+- **acceptance-designer** (DISTILL) → journey schema, Gherkin, integration points, outcome KPIs
 
 ## Commands
 
 All require `*` prefix:
 
-*help|*journey|*sketch|*artifacts|*coherence|*gather-requirements|*create-user-story|*create-technical-task|*create-spike|*validate-dor|*detect-antipatterns|*check-story-size|*handoff-design (DoR + review + DESIGN handoff)|*handoff-distill (requires review approval)|*exit
+*help|*journey|*sketch|*artifacts|*coherence|*gather-requirements|*create-user-story|*create-technical-task|*create-spike|*validate-dor|*detect-antipatterns|*check-story-size|*story-map|*prioritize|*define-kpis|*handoff-design (DoR + review + DESIGN handoff)|*handoff-distill (requires review approval)|*exit
 
 ## Examples
 

@@ -115,6 +115,13 @@ Use `python -m des.cli.init_log` to create the file if missing.
 CRITICAL: Only the executing agent calls the CLI.
 Orchestrator MUST NEVER write phase entries — only the agent that performed the work. A log entry without actual execution is a **violation that DES detects and that will cause integrity verification to fail**, blocking finalize.
 
+# RECORDING_INTEGRITY
+Valid Skip Prefixes: NOT_APPLICABLE, BLOCKED_BY_DEPENDENCY, APPROVED_SKIP, CHECKPOINT_PENDING
+Anti-Fraud Rules:
+- NEVER write EXECUTED for phases you did not actually perform
+- NEVER invent timestamps — DES CLI generates real UTC timestamps
+- DES audits all entries; integrity violations block finalize
+
 # BOUNDARY_RULES
 - Only modify files listed in step's files_to_modify
 - Do not load roadmap.json

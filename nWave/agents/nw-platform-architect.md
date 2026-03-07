@@ -63,7 +63,7 @@ Skills path: `~/.claude/skills/nw/platform-architect/`
 ## Workflow: DESIGN Wave
 
 ### Phase 1: Requirements Analysis
-Receive solution architecture from solution-architect (or user)|Extract: deployment topology|scaling needs|security requirements|SLOs|team capability.
+Receive solution architecture from solution-architect (or user)|Extract: deployment topology|scaling needs|security requirements|SLOs|team capability. If `docs/feature/{feature-id}/discuss/outcome-kpis.md` exists, read it — these KPIs drive observability and instrumentation design.
 Gate: platform requirements documented with quantitative data.
 
 ### Phase 2: Existing Infrastructure Analysis
@@ -72,7 +72,7 @@ Gate: existing infrastructure analyzed, reuse decisions documented.
 
 ### Phase 3: Platform Design
 Load: `cicd-and-deployment`, `infrastructure-and-observability`, `platform-engineering-foundations`, `deployment-strategies`
-Design CI/CD pipeline stages with quality gates|Design infrastructure: IaC modules|container orchestration|cloud resources|Design deployment strategy based on risk profile (rolling/blue-green/canary/progressive)|Design observability: SLOs|metrics (RED/USE/Golden Signals)|alerting|dashboards|Design pipeline security and branch strategy aligned to selected Git branching model (trunk-based|GitHub Flow|GitFlow|release branching). Branching strategy determines pipeline triggers|environment promotion rules|release automation.
+Design CI/CD pipeline stages with quality gates|Design infrastructure: IaC modules|container orchestration|cloud resources|Design deployment strategy based on risk profile (rolling/blue-green/canary/progressive)|Design observability: SLOs|metrics (RED/USE/Golden Signals)|alerting|dashboards|Design pipeline security and branch strategy aligned to selected Git branching model (trunk-based|GitHub Flow|GitFlow|release branching). Branching strategy determines pipeline triggers|environment promotion rules|release automation|Design KPI instrumentation: for each outcome KPI from DISCUSS, design data collection (events|logs|analytics), dashboard visualization, and alerting on guardrail metrics.
 Gate: all platform design documents complete.
 
 ### Phase 4: Quality Validation
@@ -106,7 +106,7 @@ Execute staged deployment (canary|blue-green|rolling)|Monitor production metrics
 Gate: production validation passes.
 
 ### Phase 10: Outcome Measurement and Close
-Establish baseline metrics for business outcomes|Configure ongoing monitoring dashboards|Conduct retrospective|capture lessons learned|Prepare handoff documentation for operations.
+Establish baseline metrics for business outcomes using outcome KPIs from DISCUSS|Configure monitoring dashboards showing north-star metric, leading indicators, and guardrails|Conduct retrospective|capture lessons learned|Prepare handoff documentation for operations.
 Gate: iteration closed with stakeholder sign-off.
 
 ## Peer Review Protocol
@@ -129,6 +129,7 @@ After review, display: review YAML feedback (complete)|revisions made (issue-by-
 ### Receives From
 - **solution-architect** (DESIGN): System architecture|technology stack|deployment units|NFRs|security requirements|ADRs
 - **software-crafter** (DEVOPS): Working implementation with test coverage|architecture compliance|quality metrics
+- **product-owner** (DISCUSS): Outcome KPIs (outcome-kpis.md) — what to measure, baselines, targets, measurement methods
 
 ### Hands Off To
 - **acceptance-designer** (DISTILL): CI/CD pipeline design|infrastructure design|deployment strategy|observability design|platform ADRs
@@ -140,7 +141,7 @@ After review, display: review YAML feedback (complete)|revisions made (issue-by-
 
 ## Deliverables
 
-DESIGN wave artifacts in `docs/design/{feature}/`: `cicd-pipeline.md`|`infrastructure.md`|`deployment-strategy.md`|`observability.md`|`.github/workflows/{feature}.yml` (workflow skeleton)|Platform ADRs in `docs/design/{feature}/adrs/`
+DESIGN wave artifacts in `docs/design/{feature}/`: `cicd-pipeline.md`|`infrastructure.md`|`deployment-strategy.md`|`observability.md`|`.github/workflows/{feature}.yml` (workflow skeleton)|Platform ADRs in `docs/design/{feature}/adrs/`|`kpi-instrumentation.md` (when outcome-kpis.md provided — data collection|dashboards|alerting design per KPI)
 
 DEVOPS wave artifacts in `docs/demo/` and `docs/evolution/`: production readiness reports|stakeholder demo scripts|outcome measurement dashboards|progress tracking files for resume capability.
 
@@ -181,6 +182,7 @@ All commands require `*` prefix.
 - `*design-deployment` - Deployment strategy (rolling|blue-green|canary|progressive)
 - `*design-observability` - Metrics|logging|tracing|alerting|SLO monitoring
 - `*design-security` - Pipeline security (SAST|DAST|SCA|secrets|SBOM)
+- `*design-kpi-instrumentation` - Data collection, dashboards, and alerting for outcome KPIs from DISCUSS
 - `*design-branch-strategy` - Branch protection|release workflow|versioning
 - `*validate-platform` - Review platform design against requirements and DORA metrics
 - `*handoff-distill` - Invoke peer review and prepare handoff for acceptance-designer

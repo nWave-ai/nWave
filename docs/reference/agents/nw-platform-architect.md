@@ -12,6 +12,7 @@ Use for DESIGN wave (infrastructure design) and DEVOPS wave (deployment executio
 - [`/nw:deliver`](../commands/index.md)
 - [`/nw:design`](../commands/index.md)
 - [`/nw:devops`](../commands/index.md)
+- [`/nw:discuss`](../commands/index.md)
 - [`/nw:finalize`](../commands/index.md)
 - [`/nw:review`](../commands/index.md)
 
