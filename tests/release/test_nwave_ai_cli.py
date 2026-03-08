@@ -45,20 +45,24 @@ class TestVersionResolution:
             result = _get_version()
         assert result == "0.0.0-dev"
 
-    def test_tries_nwave_name_second(self):
-        """Given 'nwave-ai' lookup fails but 'nwave' succeeds,
+    def test_never_falls_back_to_nwave_package(self):
+        """Given 'nwave-ai' lookup fails but 'nwave' is installed,
         when _get_version() is called,
-        then it returns the 'nwave' metadata version.
+        then it must NOT return the 'nwave' version (regression: stale version bug).
+        It should fall through to __version__ instead.
         """
         from importlib.metadata import PackageNotFoundError
 
         def _version_side_effect(name):
             if name == "nwave-ai":
                 raise PackageNotFoundError
-            return "2.0.0"
+            if name == "nwave":
+                return "1.5.0"  # stale dev version
+            raise PackageNotFoundError
 
         with patch("importlib.metadata.version", side_effect=_version_side_effect):
-            assert _get_version() == "2.0.0"
+            result = _get_version()
+        assert result != "1.5.0", "Must not fall back to 'nwave' package metadata"
 
 
 class TestProjectRoot:

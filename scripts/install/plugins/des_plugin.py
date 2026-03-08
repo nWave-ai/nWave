@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.shared import hook_definitions as shared_hooks
+
 from .base import InstallationPlugin, InstallContext, PluginResult
 
 
@@ -43,14 +45,8 @@ class DESPlugin(InstallationPlugin):
         "des.adapters.drivers.hooks.claude_code_hook_adapter {action}"
     )
 
-    # Hook event types that DES registers
-    HOOK_EVENTS = (
-        "PreToolUse",
-        "SubagentStop",
-        "PostToolUse",
-        "SessionStart",
-        "SubagentStart",
-    )
+    # Hook event types that DES registers (from shared definitions)
+    HOOK_EVENTS = tuple(shared_hooks.HOOK_EVENT_TYPES)
 
     def __init__(self):
         """Initialize DES plugin with name, priority, and dependencies."""
@@ -486,17 +482,19 @@ class DESPlugin(InstallationPlugin):
                 if event not in config["hooks"]:
                     config["hooks"][event] = []
 
-            # Check if hooks already exist with correct nested format
-            new_pretask_command = self._generate_hook_command(context, "pre-task")
-            new_stop_command = self._generate_hook_command(context, "subagent-stop")
-            new_post_command = self._generate_hook_command(context, "post-tool-use")
-            new_session_start_command = self._generate_hook_command(
-                context, "session-start"
-            )
-            new_subagent_start_command = self._generate_hook_command(
-                context, "subagent-start"
+            # Generate the desired hook config using shared definitions
+            def _installer_command(action: str) -> str:
+                return self._generate_hook_command(context, action)
+
+            def _installer_guard_command(action: str) -> str:
+                python_cmd = self._generate_hook_command(context, action)
+                return shared_hooks.build_guard_command(python_cmd)
+
+            desired_hooks = shared_hooks.generate_hook_config(
+                _installer_command, guard_command_fn=_installer_guard_command
             )
 
+            # Check if hooks already exist with correct format
             def _has_command(hooks_list, command):
                 return any(
                     any(h2.get("command") == command for h2 in h.get("hooks", []))
@@ -506,35 +504,22 @@ class DESPlugin(InstallationPlugin):
             def _has_matcher(hooks_list, matcher):
                 return any(h.get("matcher") == matcher for h in hooks_list)
 
-            has_correct_pretask = _has_command(
-                config["hooks"]["PreToolUse"], new_pretask_command
-            )
-            has_correct_stop = _has_command(
-                config["hooks"]["SubagentStop"], new_stop_command
-            )
-            has_correct_post = _has_command(
-                config["hooks"]["PostToolUse"], new_post_command
-            )
-            has_correct_session_start = _has_command(
-                config["hooks"]["SessionStart"], new_session_start_command
-            )
-            has_correct_subagent_start = _has_command(
-                config["hooks"]["SubagentStart"], new_subagent_start_command
-            )
-            has_write_guard = _has_matcher(config["hooks"]["PreToolUse"], "Write")
-            has_edit_guard = _has_matcher(config["hooks"]["PreToolUse"], "Edit")
-            has_agent_matcher = _has_matcher(config["hooks"]["PreToolUse"], "Agent")
+            all_up_to_date = True
+            for event, desired_entries in desired_hooks.items():
+                existing = config["hooks"].get(event, [])
+                for entry in desired_entries:
+                    cmd = entry["hooks"][0]["command"]
+                    if not _has_command(existing, cmd):
+                        all_up_to_date = False
+                        break
+                    matcher = entry.get("matcher")
+                    if matcher and not _has_matcher(existing, matcher):
+                        all_up_to_date = False
+                        break
+                if not all_up_to_date:
+                    break
 
-            if (
-                has_correct_pretask
-                and has_correct_stop
-                and has_correct_post
-                and has_correct_session_start
-                and has_correct_subagent_start
-                and has_write_guard
-                and has_edit_guard
-                and has_agent_matcher
-            ):
+            if all_up_to_date:
                 context.logger.info("  ✅ DES hooks up-to-date")
                 return PluginResult(
                     success=True,
@@ -548,81 +533,13 @@ class DESPlugin(InstallationPlugin):
                     config["hooks"][event] = [
                         h
                         for h in config["hooks"][event]
-                        if not self._is_des_hook_entry(h)
+                        if not shared_hooks.is_des_hook_entry(h)
                     ]
 
-            # Generate hooks with Claude Code v2 nested format
-            # Format: {"matcher": "...", "hooks": [{"type": "command", "command": "..."}]}
-            pretooluse_hook = {
-                "matcher": "Agent",
-                "hooks": [{"type": "command", "command": new_pretask_command}],
-            }
-            subagent_stop_hook = {
-                "hooks": [{"type": "command", "command": new_stop_command}],
-            }
-            posttooluse_hook = {
-                "matcher": "Agent",
-                "hooks": [{"type": "command", "command": new_post_command}],
-            }
-
-            # Generate Write/Edit guard hooks with shell fast-path
-            # test -f exits in ~1ms when no deliver session exists
-            # Uses $HOME for portability across machines
-            lib_path = "$HOME/.claude/lib/python"
-            python_path = self._resolve_python_path()
-            # Buffer stdin so we can check for execution-log.json before fast-path.
-            # If the target is execution-log.json, always invoke Python (guard is
-            # unconditional). Otherwise, use the deliver-session fast-path.
-            python_cmd_write = (
-                f"PYTHONPATH={lib_path} {python_path} -m "
-                f"des.adapters.drivers.hooks.claude_code_hook_adapter pre-write"
-            )
-            python_cmd_edit = (
-                f"PYTHONPATH={lib_path} {python_path} -m "
-                f"des.adapters.drivers.hooks.claude_code_hook_adapter pre-edit"
-            )
-            write_guard_command = (
-                f"INPUT=$(cat); "
-                f"echo \"$INPUT\" | grep -q 'execution-log\\.json' && "
-                f'{{ echo "$INPUT" | {python_cmd_write}; exit $?; }}; '
-                f"test -f .nwave/des/deliver-session.json || exit 0; "
-                f'echo "$INPUT" | {python_cmd_write}'
-            )
-            edit_guard_command = (
-                f"INPUT=$(cat); "
-                f"echo \"$INPUT\" | grep -q 'execution-log\\.json' && "
-                f'{{ echo "$INPUT" | {python_cmd_edit}; exit $?; }}; '
-                f"test -f .nwave/des/deliver-session.json || exit 0; "
-                f'echo "$INPUT" | {python_cmd_edit}'
-            )
-            write_hook = {
-                "matcher": "Write",
-                "hooks": [{"type": "command", "command": write_guard_command}],
-            }
-            edit_hook = {
-                "matcher": "Edit",
-                "hooks": [{"type": "command", "command": edit_guard_command}],
-            }
-
-            # Generate SessionStart hook (session-level event, matcher="startup")
-            session_start_hook = {
-                "matcher": "startup",
-                "hooks": [{"type": "command", "command": new_session_start_command}],
-            }
-
-            # Generate SubagentStart hook (no matcher — fires for all agent types)
-            subagent_start_hook = {
-                "hooks": [{"type": "command", "command": new_subagent_start_command}],
-            }
-
-            # Add DES hooks
-            config["hooks"]["PreToolUse"].append(pretooluse_hook)
-            config["hooks"]["PreToolUse"].append(write_hook)
-            config["hooks"]["PreToolUse"].append(edit_hook)
-            config["hooks"]["SubagentStop"].append(subagent_stop_hook)
-            config["hooks"]["PostToolUse"].append(posttooluse_hook)
-            config["hooks"]["SessionStart"].append(session_start_hook)
-            config["hooks"]["SubagentStart"].append(subagent_start_hook)
+            # Add all DES hooks from shared definitions
+            for event, entries in desired_hooks.items():
+                for entry in entries:
+                    config["hooks"][event].append(entry)
 
             if not context.dry_run:
                 self._save_settings(settings_file, config, context)
@@ -803,31 +720,20 @@ class DESPlugin(InstallationPlugin):
             return False
 
         return any(
-            any(self._is_des_hook_entry(h) for h in config["hooks"].get(event, []))
+            any(
+                shared_hooks.is_des_hook_entry(h)
+                for h in config["hooks"].get(event, [])
+            )
             for event in self.HOOK_EVENTS
         )
 
     def _is_des_hook_entry(self, hook_entry: dict) -> bool:
         """Check if a hook entry is a DES hook.
 
-        Supports both old flat format and new nested format:
-        - Old flat: {"matcher": "Task|Agent", "command": "...claude_code_hook_adapter..."}
-        - New nested: {"matcher": "Agent", "hooks": [{"type": "command", "command": "...claude_code_hook_adapter..."}]}
-
-        Args:
-            hook_entry: Hook entry dictionary from settings JSON
-
-        Returns:
-            bool: True if entry is a DES hook
+        Delegates to shared hook_definitions module for consistent detection
+        across plugin builder and installer paths.
         """
-        # Check old flat format
-        if "claude_code_hook_adapter" in hook_entry.get("command", ""):
-            return True
-        # Check new nested format
-        for h in hook_entry.get("hooks", []):
-            if "claude_code_hook_adapter" in h.get("command", ""):
-                return True
-        return False
+        return shared_hooks.is_des_hook_entry(hook_entry)
 
     def uninstall(self, context: InstallContext) -> PluginResult:
         """Uninstall DES plugin.
@@ -910,7 +816,7 @@ class DESPlugin(InstallationPlugin):
                         config["hooks"][event] = [
                             h
                             for h in config["hooks"][event]
-                            if not self._is_des_hook_entry(h)
+                            if not shared_hooks.is_des_hook_entry(h)
                         ]
 
             self._save_settings(settings_file, config, context)

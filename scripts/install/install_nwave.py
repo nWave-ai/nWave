@@ -78,11 +78,10 @@ def _get_version() -> str:
     # 1. Try importlib.metadata first (works when installed via pip/pipx)
     from importlib.metadata import PackageNotFoundError, version
 
-    for pkg_name in ("nwave-ai", "nwave"):
-        try:
-            return version(pkg_name)
-        except PackageNotFoundError:
-            continue
+    try:
+        return version("nwave-ai")
+    except PackageNotFoundError:
+        pass
 
     # 2. Fallback: read pyproject.toml (dev checkout layout)
     pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"

@@ -9,11 +9,10 @@ def _get_version() -> str:
     """Get version from package metadata (installed) or __init__.py (dev)."""
     from importlib.metadata import PackageNotFoundError, version
 
-    for pkg_name in ("nwave-ai", "nwave"):
-        try:
-            return version(pkg_name)
-        except PackageNotFoundError:
-            continue
+    try:
+        return version("nwave-ai")
+    except PackageNotFoundError:
+        pass
 
     from nwave_ai import __version__
 

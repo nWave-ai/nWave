@@ -8,7 +8,25 @@
             "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT}/scripts python3 -m des.adapters.drivers.hooks.claude_code_hook_adapter pre-task"
           }
         ],
-        "matcher": "Task"
+        "matcher": "Agent"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); echo \"$INPUT\" | grep -q 'execution-log\\.json' && { echo \"$INPUT\" | PYTHONPATH=${CLAUDE_PLUGIN_ROOT}/scripts python3 -m des.adapters.drivers.hooks.claude_code_hook_adapter pre-write; exit $?; }; test -f .nwave/des/deliver-session.json || exit 0; echo \"$INPUT\" | PYTHONPATH=${CLAUDE_PLUGIN_ROOT}/scripts python3 -m des.adapters.drivers.hooks.claude_code_hook_adapter pre-write"
+          }
+        ],
+        "matcher": "Write"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); echo \"$INPUT\" | grep -q 'execution-log\\.json' && { echo \"$INPUT\" | PYTHONPATH=${CLAUDE_PLUGIN_ROOT}/scripts python3 -m des.adapters.drivers.hooks.claude_code_hook_adapter pre-edit; exit $?; }; test -f .nwave/des/deliver-session.json || exit 0; echo \"$INPUT\" | PYTHONPATH=${CLAUDE_PLUGIN_ROOT}/scripts python3 -m des.adapters.drivers.hooks.claude_code_hook_adapter pre-edit"
+          }
+        ],
+        "matcher": "Edit"
       }
     ],
     "PostToolUse": [
@@ -19,7 +37,7 @@
             "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT}/scripts python3 -m des.adapters.drivers.hooks.claude_code_hook_adapter post-tool-use"
           }
         ],
-        "matcher": "Task"
+        "matcher": "Agent"
       }
     ],
     "SubagentStop": [

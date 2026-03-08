@@ -34,6 +34,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+# Ensure project root is in sys.path when invoked as standalone script
+# (CI runs: python3 scripts/build_plugin.py --output-dir plugin/)
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
+from scripts.shared import hook_definitions as shared_hooks  # noqa: E402
+
+
 # ---------------------------------------------------------------------------
 # DES Import Rewriting Patterns (shared with build_dist.py)
 # ---------------------------------------------------------------------------
@@ -493,36 +502,45 @@ def validate_python_syntax(content: str, filename: str) -> str | None:
 # Pure Functions: Hook Configuration Generation
 # ---------------------------------------------------------------------------
 
-_HOOK_COMMAND_TEMPLATE = (
+# Plugin-path command template: uses CLAUDE_PLUGIN_ROOT for portability
+_PLUGIN_COMMAND_TEMPLATE = (
     "PYTHONPATH=${{CLAUDE_PLUGIN_ROOT}}/scripts python3"
     " -m des.adapters.drivers.hooks.claude_code_hook_adapter {action}"
 )
 
-_HOOK_EVENTS: tuple[tuple[str, str | None, str], ...] = (
-    ("PreToolUse", "Task", "pre-task"),
-    ("PostToolUse", "Task", "post-tool-use"),
-    ("SubagentStop", None, "subagent-stop"),
-    ("SessionStart", "startup", "session-start"),
-    ("SubagentStart", None, "subagent-start"),
-)
+
+def _plugin_command(action: str) -> str:
+    """Generate a hook command using plugin-relative paths."""
+    return _PLUGIN_COMMAND_TEMPLATE.format(action=action)
+
+
+def _plugin_guard_command(action: str) -> str:
+    """Generate a Write/Edit guard command using plugin-relative paths."""
+    python_cmd = _PLUGIN_COMMAND_TEMPLATE.format(action=action)
+    return shared_hooks.build_guard_command(python_cmd)
 
 
 def generate_hook_config(
-    command_template: str = _HOOK_COMMAND_TEMPLATE,
+    command_template: str | None = None,
 ) -> dict[str, list[dict]]:
     """Generate hooks config in Claude Code settings.json format.
 
     Output matches the hooks schema documented at
     https://code.claude.com/docs/en/plugins-reference#hooks
+
+    Uses the shared hook definitions as single source of truth for
+    events, matchers, and actions.
     """
-    config: dict[str, list[dict]] = {}
-    for event, matcher, action in _HOOK_EVENTS:
-        command = command_template.format(action=action)
-        entry: dict = {"hooks": [{"type": "command", "command": command}]}
-        if matcher is not None:
-            entry["matcher"] = matcher
-        config.setdefault(event, []).append(entry)
-    return config
+    if command_template is not None:
+        # Legacy path: use template string directly (for tests with overrides)
+        def _legacy_command(action: str) -> str:
+            return command_template.format(action=action)
+
+        return shared_hooks.generate_hook_config(_legacy_command)
+
+    return shared_hooks.generate_hook_config(
+        _plugin_command, guard_command_fn=_plugin_guard_command
+    )
 
 
 def validate_hook_config(config: dict[str, list[dict]]) -> str | None:

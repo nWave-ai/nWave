@@ -20,7 +20,7 @@ packages = ["nwave_ai"]
 
 [project]
 name = "nwave-ai"
-version = "2.2.0"
+version = "2.2.1"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -28,6 +28,9 @@ requires-python = ">=3.10"
 authors = [
     { name = "Michele Brissoni", email = "michele.brissoni@brix.consulting" },
     { name = "Alessandro Digioia", email = "alessandro.digioia@brix.consulting" }
+]
+contributors = [
+    { name = "Fabio (@lagom1985)" }
 ]
 keywords = [
     "cli",
@@ -280,7 +283,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "2.2.0"
+version = "2.2.1"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",
