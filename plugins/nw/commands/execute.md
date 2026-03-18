@@ -64,7 +64,7 @@ Always load at PREPARE: tdd-methodology.md, quality-framework.md
 Load on-demand per phase as specified in your Skill Loading Strategy table.
 
 # TASK_CONTEXT
-{step context from roadmap - name|description|acceptance_criteria|test_file|scenario_name|quality_gates|implementation_notes|dependencies|estimated_hours|deliverables}
+{step context from roadmap - name|description|acceptance_criteria|test_file|scenario_name|files_to_modify|quality_gates|implementation_notes|dependencies|estimated_hours|deliverables}
 
 # DESIGN_CONTEXT
 {Summary of architectural decisions relevant to this step, extracted by the orchestrator from design wave artifacts (architecture-design.md, component-boundaries.md, wave-decisions.md). Include: component structure, dependency boundaries, technology choices, and any design constraints that affect implementation. If no design artifacts exist, write "No design artifacts available — use project conventions."}
