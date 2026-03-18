@@ -1,7 +1,7 @@
 ---
 name: nw-ux-web-patterns
 description: Web UI design patterns for product owners. Load when designing web application interfaces, writing web-specific acceptance criteria, or evaluating responsive designs.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Web UI Patterns

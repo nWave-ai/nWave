@@ -1,7 +1,7 @@
 ---
 name: nw-sc-review-dimensions
 description: Reviewer critique dimensions for peer review - implementation bias detection, test quality validation, completeness checks, and priority validation
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Code Quality Critique Dimensions

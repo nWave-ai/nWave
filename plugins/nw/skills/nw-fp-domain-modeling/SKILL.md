@@ -2,7 +2,7 @@
 name: nw-fp-domain-modeling
 agent: nw-functional-software-crafter
 description: Domain modeling with algebraic data types, smart constructors, and type-level error handling
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # FP Domain Modeling

@@ -2,7 +2,7 @@
 name: nw-liberating-structures-facilitation
 agent: nw-workshopper
 description: Practitioner guide for selecting and specifying Liberating Structures, World Café, and Open Space Technology based on group size and learning intent
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Liberating Structures and Large-Group Facilitation

@@ -1,7 +1,7 @@
 ---
 name: nw-interaction-choreography
 description: Animation principles, timing, easing curves, and choreography sequences for futuristic interfaces -- motion as communication
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Interaction Choreography

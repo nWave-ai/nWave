@@ -1,7 +1,7 @@
 ---
 name: nw-review-output-format
 description: YAML output format and approval criteria for platform design reviews. Load when generating review feedback.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Platform Review Output Format

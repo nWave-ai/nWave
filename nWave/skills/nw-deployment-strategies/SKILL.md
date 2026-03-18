@@ -1,7 +1,7 @@
 ---
 name: nw-deployment-strategies
 description: Rollback procedures, risk assessment, pre/post-deployment validation, and contingency planning. Load when orchestrating deployment or preparing rollback plans. For deployment strategy details (canary, blue-green, rolling), see `cicd-and-deployment` skill.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Deployment Strategies — Rollback, Risk, and Validation

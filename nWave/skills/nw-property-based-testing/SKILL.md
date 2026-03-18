@@ -1,7 +1,7 @@
 ---
 name: nw-property-based-testing
 description: Property-based testing strategies, mutation testing, shrinking, and combined PBT+mutation workflow for test quality validation
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Property-Based Testing and Mutation Testing

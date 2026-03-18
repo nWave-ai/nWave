@@ -1,7 +1,7 @@
 ---
 name: nw-tdd-methodology
 description: Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Outside-In TDD Methodology

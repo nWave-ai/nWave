@@ -2,7 +2,7 @@
 name: nw-backward-design-ubd
 agent: nw-workshopper
 description: Backward design using UbD (Understanding by Design) — how to apply the 3-stage framework to every workshop, write transfer goals, design essential questions, and identify/fix coverage-trap designs
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Backward Design and UbD for Workshop Design

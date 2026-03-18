@@ -1,7 +1,7 @@
 ---
 name: nw-psychological-safety
 description: Psychological safety in professional workshop contexts — detecting threats, building safety through design, adapting gamification, and facilitating debrief without breaking vulnerability
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

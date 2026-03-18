@@ -1,7 +1,7 @@
 ---
 name: nw-deliver-orchestration
 description: DELIVER wave orchestration workflow -- 9 phases from baseline to finalization. Load when user invokes *deliver command. Covers state tracking, smart skip logic, retry, resume, and quality gate enforcement.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # DELIVER Wave Orchestration

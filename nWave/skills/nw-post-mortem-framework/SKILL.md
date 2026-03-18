@@ -1,7 +1,7 @@
 ---
 name: nw-post-mortem-framework
 description: Blameless post-mortem structure, incident timeline reconstruction, response evaluation, and organizational learning
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Post-Mortem Framework

@@ -1,7 +1,7 @@
 ---
 name: nw-fisher-ury-preparation
 description: Principled negotiation structural analysis from Getting to Yes — BATNA, ZOPA estimation, interests mapping, option generation, objective criteria
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Fisher/Ury Preparation -- Principled Negotiation & Structural Analysis

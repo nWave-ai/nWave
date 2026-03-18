@@ -1,7 +1,7 @@
 ---
 name: nw-der-review-criteria
 description: Evaluation criteria and scoring for data engineering artifact reviews
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Data Engineer Review Criteria

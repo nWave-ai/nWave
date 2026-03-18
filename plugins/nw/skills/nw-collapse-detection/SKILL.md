@@ -1,7 +1,7 @@
 ---
 name: nw-collapse-detection
 description: Documentation collapse anti-patterns - detection rules, bad examples, and remediation strategies for type-mixing violations
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Collapse Detection

@@ -2,7 +2,7 @@
 name: nw-fp-principles
 agent: nw-functional-software-crafter
 description: Core functional programming thinking patterns and type system foundations, language-agnostic
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # FP Principles

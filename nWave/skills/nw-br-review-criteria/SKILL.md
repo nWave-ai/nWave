@@ -1,7 +1,7 @@
 ---
 name: nw-br-review-criteria
 description: Review criteria, ethical boundaries, compliance checklists, and numerical benchmarks for business artifact review
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Review Criteria -- Business Artifact Review

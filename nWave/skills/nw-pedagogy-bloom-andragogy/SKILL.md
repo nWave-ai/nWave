@@ -1,7 +1,7 @@
 ---
 name: nw-pedagogy-bloom-andragogy
 description: Evidence-based methodology for designing adult professional workshops — Bloom's Revised Taxonomy levels with action verbs and time calibration, Knowles' andragogical principles, behavioral change frameworks, and transfer-optimized outcome writing
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

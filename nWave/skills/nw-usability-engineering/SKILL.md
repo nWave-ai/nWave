@@ -1,7 +1,7 @@
 ---
 name: nw-usability-engineering
 description: Cognitive science principles applied to futuristic interface design -- Fitts, Hick, Miller, cognitive load theory, and Nielsen heuristics
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Usability Engineering for Futuristic Interfaces

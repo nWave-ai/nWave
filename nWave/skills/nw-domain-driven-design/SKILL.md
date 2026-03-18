@@ -1,7 +1,7 @@
 ---
 name: nw-domain-driven-design
 description: Strategic and tactical DDD patterns, bounded context discovery, context mapping, aggregate design rules, and decision frameworks for when to apply DDD
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Domain-Driven Design

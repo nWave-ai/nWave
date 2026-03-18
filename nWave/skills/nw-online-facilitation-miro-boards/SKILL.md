@@ -1,7 +1,7 @@
 ---
 name: nw-online-facilitation-miro-boards
 description: Evidence-based methodology for designing online workshop sessions with correct duration/energy management, Miro board architecture, modality selection criteria, and complete artifact templates
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

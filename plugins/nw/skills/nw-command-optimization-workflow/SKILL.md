@@ -1,7 +1,7 @@
 ---
 name: nw-command-optimization-workflow
 description: Step-by-step workflow for converting bloated command files to lean declarative definitions
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Command Optimization Workflow

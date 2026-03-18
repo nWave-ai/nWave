@@ -2,7 +2,7 @@
 name: nw-fp-hexagonal-architecture
 agent: nw-functional-software-crafter
 description: Hexagonal architecture patterns with pure core and side-effect shell for functional codebases
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # FP Hexagonal Architecture

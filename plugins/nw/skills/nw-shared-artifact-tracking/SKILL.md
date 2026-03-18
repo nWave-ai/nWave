@@ -1,7 +1,7 @@
 ---
 name: nw-shared-artifact-tracking
 description: Shared artifact registry, common artifact patterns, and integration validation. Load when tracking data that flows across journey steps or validating horizontal coherence.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Shared Artifact Tracking

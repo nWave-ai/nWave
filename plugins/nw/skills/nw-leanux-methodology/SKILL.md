@@ -1,7 +1,7 @@
 ---
 name: nw-leanux-methodology
 description: LeanUX backlog management methodology - user story template, story sizing, story states, task types, Definition of Ready/Done, anti-pattern detection and remediation
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # LeanUX Backlog Management Methodology

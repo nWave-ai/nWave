@@ -1,7 +1,7 @@
 ---
 name: nw-copywriting-frameworks
 description: PAS, BAB, and AIDA copywriting frameworks for B2B outreach with decision tree for framework selection
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Copywriting Frameworks for B2B Outreach

@@ -2,7 +2,7 @@
 name: nw-pbt-fundamentals
 agent: nw-functional-software-crafter
 description: Property-based testing core concepts, property taxonomy, and strategy selection (language-agnostic)
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # PBT Fundamentals

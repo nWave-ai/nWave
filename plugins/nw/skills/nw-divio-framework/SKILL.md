@@ -1,7 +1,7 @@
 ---
 name: nw-divio-framework
 description: DIVIO/Diataxis four-quadrant documentation framework - type definitions, classification decision tree, and signal catalog
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # DIVIO Documentation Framework

@@ -1,7 +1,7 @@
 ---
 name: nw-proposal-structure
 description: B2B proposal generation templates, ROI calculator structures, and deal packaging patterns for training, consulting, and enterprise support
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Proposal Structure -- B2B Proposal Templates & ROI Calculators

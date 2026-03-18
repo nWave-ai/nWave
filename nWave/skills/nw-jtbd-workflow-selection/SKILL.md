@@ -1,7 +1,7 @@
 ---
 name: nw-jtbd-workflow-selection
 description: JTBD workflow classification and routing - ODI two-phase framework, five job types with workflow sequences, baseline type selection, workflow anti-patterns, and common recipes
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # JTBD Workflow Selection

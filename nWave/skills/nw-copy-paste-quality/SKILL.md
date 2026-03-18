@@ -1,7 +1,7 @@
 ---
 name: nw-copy-paste-quality
 description: Copy-paste quality standards — self-contained snippet validation, environment assumptions, expected output contracts, and test script generation
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Copy-Paste Quality Standards

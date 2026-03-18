@@ -2,7 +2,7 @@
 name: nw-pbt-erlang-elixir
 agent: nw-functional-software-crafter
 description: Erlang/Elixir property-based testing with PropEr, PropCheck, and StreamData frameworks
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # PBT Erlang/Elixir -- PropEr, PropCheck, StreamData

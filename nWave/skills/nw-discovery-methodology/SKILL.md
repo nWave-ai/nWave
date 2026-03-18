@@ -1,7 +1,7 @@
 ---
 name: nw-discovery-methodology
 description: Question-first approach to understanding user journeys. Load when starting a new journey design or when the discovery phase needs deepening.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Discovery Methodology

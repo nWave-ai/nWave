@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Fix skill frontmatter: add user-invocable: false and normalize names to nw- prefix.
+"""Fix skill frontmatter: add disable-model-invocation: true and normalize names to nw- prefix.
 
 Agent-only skills should NOT appear in the "/" slash command menu.
-Setting user-invocable: false hides them from users while keeping
+Setting disable-model-invocation: true hides them from users while keeping
 them available to Claude and sub-agents.
 
 Additionally, frontmatter name: fields are updated to match the
@@ -70,7 +70,7 @@ def fix_skill_file(
             new_block = new_block.replace(old_line, new_line, 1)
             changes.append(f"  name: {current_name} -> {dir_name}")
 
-    # Fix 2: add user-invocable: false if not present
+    # Fix 2: add disable-model-invocation: true if not present
     if "user-invocable" not in fields:
         # Add after description line
         desc_match = re.search(r"^description:.*$", new_block, re.MULTILINE)
@@ -78,13 +78,13 @@ def fix_skill_file(
             insert_pos = desc_match.end()
             new_block = (
                 new_block[:insert_pos]
-                + "\nuser-invocable: false"
+                + "\ndisable-model-invocation: true"
                 + new_block[insert_pos:]
             )
-            changes.append("  + user-invocable: false")
+            changes.append("  + disable-model-invocation: true")
     elif fields.get("user-invocable") != "false":
         old = f"user-invocable: {fields['user-invocable']}"
-        new = "user-invocable: false"
+        new = "disable-model-invocation: true"
         new_block = new_block.replace(old, new, 1)
         changes.append(f"  user-invocable: {fields['user-invocable']} -> false")
 

@@ -1,7 +1,7 @@
 ---
 name: nw-review-workflow
 description: Detailed review process, v2 validation checklist, and scoring methodology for agent definition reviews
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Agent Review Workflow

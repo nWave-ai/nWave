@@ -1,7 +1,7 @@
 ---
 name: nw-stress-analysis
 description: Advanced architecture stress analysis methodology for designing systems that survive unknown stresses. Load when --residuality flag is used or when designing high-uncertainty, mission-critical systems.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Advanced Architecture Stress Analysis

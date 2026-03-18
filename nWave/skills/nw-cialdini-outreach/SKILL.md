@@ -1,7 +1,7 @@
 ---
 name: nw-cialdini-outreach
 description: Cialdini's 7 influence principles applied to B2B outreach with ethical guardrails and compliance boundaries
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Cialdini's Influence Principles Applied to Outreach

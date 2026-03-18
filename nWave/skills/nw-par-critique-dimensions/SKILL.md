@@ -1,7 +1,7 @@
 ---
 name: nw-par-critique-dimensions
 description: Platform design review critique dimensions and severity levels. Load when reviewing CI/CD pipelines, infrastructure, deployment strategies, observability, or security designs.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Platform Design Critique Dimensions

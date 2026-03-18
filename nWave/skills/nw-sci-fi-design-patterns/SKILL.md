@@ -1,7 +1,7 @@
 ---
 name: nw-sci-fi-design-patterns
 description: Catalog of UI patterns from games, anime, and films with analysis of why they work -- structural principles extractable to real interfaces
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Sci-Fi Design Patterns

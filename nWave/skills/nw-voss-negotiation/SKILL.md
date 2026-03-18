@@ -1,7 +1,7 @@
 ---
 name: nw-voss-negotiation
 description: Tactical empathy and conversational tactics from Never Split the Difference — Ackerman sequences, accusation audits, calibrated questions, labeling, mirroring, Black Swan discovery
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Voss Negotiation -- Tactical Empathy & Conversational Tactics

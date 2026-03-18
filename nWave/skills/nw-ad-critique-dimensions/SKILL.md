@@ -1,7 +1,7 @@
 ---
 name: nw-ad-critique-dimensions
 description: Review dimensions for acceptance test quality - happy path bias, GWT compliance, business language purity, coverage completeness, walking skeleton user-centricity, and priority validation
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Acceptance Test Critique Dimensions

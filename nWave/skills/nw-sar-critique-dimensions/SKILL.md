@@ -2,7 +2,7 @@
 name: nw-sar-critique-dimensions
 agent: nw-solution-architect-reviewer
 description: Architecture quality critique dimensions for peer review. Load when performing architecture document reviews.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Architecture Quality Critique Dimensions

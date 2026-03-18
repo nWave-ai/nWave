@@ -1,7 +1,7 @@
 ---
 name: nw-ab-critique-dimensions
 description: Review dimensions for validating agent quality - template compliance, safety, testing, and priority validation
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Agent Quality Critique Dimensions

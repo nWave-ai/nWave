@@ -1,7 +1,7 @@
 ---
 name: nw-dr-review-criteria
 description: Critique dimensions, severity framework, verdict decision matrix, and review output format for documentation assessment reviews
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Documentation Review Criteria

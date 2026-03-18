@@ -1,7 +1,7 @@
 ---
 name: nw-wizard-shared-rules
 description: Shared rules for feature ID derivation and wave detection used by /nw:new, /nw:continue, and /nw:fast-forward wizards
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Wizard Shared Rules

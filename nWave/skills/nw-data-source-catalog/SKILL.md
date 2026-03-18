@@ -1,7 +1,7 @@
 ---
 name: nw-data-source-catalog
 description: Complete catalog of OSINT data sources for business intelligence, organized by pipeline (people, company, relationship, digital footprint) with API details, pricing tiers, rate limits, and recommended query sequence.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Data Source Catalog

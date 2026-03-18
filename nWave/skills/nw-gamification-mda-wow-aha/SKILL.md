@@ -1,7 +1,7 @@
 ---
 name: nw-gamification-mda-wow-aha
 description: Pedagogical gamification design using MDA framework, flow theory, Bartle audience analysis, WOW moment and AHA moment engineering for professional workshops
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: nw-quality-validation
 description: Type-specific validation checklists, six quality characteristics, and quality gate thresholds for documentation assessment
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Quality Validation

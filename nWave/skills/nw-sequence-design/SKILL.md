@@ -1,7 +1,7 @@
 ---
 name: nw-sequence-design
 description: Multi-channel outreach sequence design — 12-touch 22-day framework with tiered personalization and signal-based triggers
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Multi-Channel Sequence Design

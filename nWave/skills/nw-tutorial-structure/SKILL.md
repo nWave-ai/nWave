@@ -1,7 +1,7 @@
 ---
 name: nw-tutorial-structure
 description: Tutorial structure blueprint — section ordering, step templates, and progressive disclosure patterns for evidence-based tutorial design
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Tutorial Structure Blueprint

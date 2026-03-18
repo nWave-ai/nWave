@@ -2,7 +2,7 @@
 name: nw-pbt-jvm
 agent: nw-functional-software-crafter
 description: JVM property-based testing with jqwik, ScalaCheck, and ZIO Test frameworks
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # PBT JVM -- jqwik (Java/Kotlin) + ScalaCheck + ZIO Test

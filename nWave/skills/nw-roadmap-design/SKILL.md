@@ -1,7 +1,7 @@
 ---
 name: nw-roadmap-design
 description: Roadmap concision rules, step decomposition efficiency, AC abstraction guidelines, and step-to-scenario mapping. Load when creating implementation roadmaps.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Roadmap Design

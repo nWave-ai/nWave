@@ -1,7 +1,7 @@
 ---
 name: nw-jtbd-opportunity-scoring
 description: JTBD opportunity scoring and prioritization - outcome statement format, opportunity algorithm, scoring interpretation, feature prioritization, and opportunity matrix template
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # JTBD Opportunity Scoring

@@ -1,7 +1,7 @@
 ---
 name: nw-opportunity-mapping
 description: Opportunity Solution Trees, opportunity scoring, Lean Canvas, JTBD job mapping, and technique selection guide
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Opportunity Mapping

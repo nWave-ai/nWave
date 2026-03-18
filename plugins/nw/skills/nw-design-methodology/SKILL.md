@@ -1,7 +1,7 @@
 ---
 name: nw-design-methodology
 description: Apple LeanUX++ design workflow, journey schema, emotional arc patterns, and CLI UX patterns. Load when transitioning from discovery to visualization or when designing journey artifacts.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Design Methodology (Apple LeanUX++)

@@ -1,7 +1,7 @@
 ---
 name: nw-query-optimization
 description: SQL and NoSQL query optimization techniques, indexing strategies, execution plan analysis, JOIN algorithms, cardinality estimation, and database-specific query patterns
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Query Optimization

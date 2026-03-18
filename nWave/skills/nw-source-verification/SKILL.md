@@ -1,7 +1,7 @@
 ---
 name: nw-source-verification
 description: Source reputation tiers, cross-referencing methodology, bias detection, and citation format requirements
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Source Verification

@@ -1,7 +1,7 @@
 ---
 name: nw-agent-creation-workflow
 description: Detailed 5-phase workflow for creating agents - from requirements analysis through validation and iterative refinement
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Agent Creation Workflow

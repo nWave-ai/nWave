@@ -1,7 +1,7 @@
 ---
 name: nw-authoritative-sources
 description: Domain-specific authoritative source databases, search strategies by topic category, and source freshness rules
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Authoritative Sources

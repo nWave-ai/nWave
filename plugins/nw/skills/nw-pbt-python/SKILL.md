@@ -2,7 +2,7 @@
 name: nw-pbt-python
 agent: nw-functional-software-crafter
 description: Python property-based testing with Hypothesis framework, strategies, and pytest integration
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # PBT Python -- Hypothesis

@@ -348,7 +348,13 @@ def validate_skill(filepath: Path, result: ValidationResult) -> None:
         result.add("S08", "warning", name, "Missing H1 title")
 
     # S09: allowed frontmatter fields for skills
-    allowed_fields = {"name", "description", "agent", "user-invocable"}
+    allowed_fields = {
+        "name",
+        "description",
+        "agent",
+        "user-invocable",
+        "disable-model-invocation",
+    }
     extra_fields = set(fm.keys()) - allowed_fields
     if extra_fields:
         result.add(

@@ -1,7 +1,7 @@
 ---
 name: nw-icp-design
 description: Ideal Customer Profile schema, signal catalog, scoring methodology, and Go-to-Market phase design for small teams
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # ICP Design

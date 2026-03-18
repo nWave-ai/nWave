@@ -1,7 +1,7 @@
 ---
 name: nw-futuristic-color-typography
 description: Color palettes, font pairing, and visual treatments for sci-fi aesthetics -- concrete values with rationale
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Futuristic Color and Typography

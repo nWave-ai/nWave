@@ -1,7 +1,7 @@
 ---
 name: nw-architecture-patterns
 description: Comprehensive architecture patterns, methodologies, quality frameworks, and evaluation methods for solution architects. Load when designing system architecture or selecting patterns.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Architecture Patterns and Methodologies

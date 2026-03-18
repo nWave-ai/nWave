@@ -1,7 +1,7 @@
 ---
 name: nw-canary
 description: "Canary skill for auto-injection detection"
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Canary Skill

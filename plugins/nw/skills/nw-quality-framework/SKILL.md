@@ -1,7 +1,7 @@
 ---
 name: nw-quality-framework
 description: Quality gates - 11 commit readiness gates, build/test protocol, validation checkpoints, and quality metrics
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Quality Framework

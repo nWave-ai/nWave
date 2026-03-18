@@ -1,7 +1,7 @@
 ---
 name: nw-architectural-styles-tradeoffs
 description: Architectural style selection decision matrices, trade-off analysis, structural enforcement rules, and combination patterns. Load when choosing or evaluating architecture styles.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Architectural Styles: Selection and Trade-offs

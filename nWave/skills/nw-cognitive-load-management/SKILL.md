@@ -1,7 +1,7 @@
 ---
 name: nw-cognitive-load-management
 description: Cognitive Load Theory (Sweller) applied to tutorial design — intrinsic/extraneous/germane load management, concept budgeting, and progressive disclosure
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Cognitive Load Management for Tutorials

@@ -1,7 +1,7 @@
 ---
 name: nw-production-safety
 description: Agent safety boundaries - input validation, output filtering, scope constraints, and document creation policy
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Production Safety

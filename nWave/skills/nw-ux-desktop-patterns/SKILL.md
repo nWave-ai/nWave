@@ -1,7 +1,7 @@
 ---
 name: nw-ux-desktop-patterns
 description: Desktop application UI patterns for product owners. Load when designing native or cross-platform desktop applications, writing desktop-specific acceptance criteria, or evaluating panel layouts and keyboard workflows.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Desktop Application UI Patterns

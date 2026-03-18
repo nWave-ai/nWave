@@ -1,7 +1,7 @@
 ---
 name: nw-interviewing-techniques
 description: Mom Test questioning toolkit, JTBD analysis, interview conduct, assumption testing framework, and hypothesis design
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Interviewing Techniques

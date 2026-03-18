@@ -1,7 +1,7 @@
 ---
 name: nw-security-by-design
 description: Security design principles, STRIDE threat modeling, OWASP Top 10 architectural mitigations, and secure patterns. Load when designing systems or reviewing architecture for security.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Security by Design

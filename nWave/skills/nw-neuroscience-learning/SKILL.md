@@ -1,7 +1,7 @@
 ---
 name: nw-neuroscience-learning
 description: Evidence-based neuroscience findings applied to workshop design — primacy/recency effects, retrieval practice, spaced/interleaved practice, emotional arousal encoding, and attention-fatigue management
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

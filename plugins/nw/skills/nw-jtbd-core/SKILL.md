@@ -1,7 +1,7 @@
 ---
 name: nw-jtbd-core
 description: Core JTBD theory and job story format - job dimensions, job story template, job stories vs user stories, 8-step universal job map, outcome statements, and forces of progress
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # JTBD Core Theory

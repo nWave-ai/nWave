@@ -1,7 +1,7 @@
 ---
 name: nw-sa-critique-dimensions
 description: Architecture quality critique dimensions for peer review. Load when invoking solution-architect-reviewer or performing self-review of architecture documents.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Architecture Quality Critique Dimensions

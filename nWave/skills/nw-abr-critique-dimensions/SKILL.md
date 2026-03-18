@@ -2,7 +2,7 @@
 name: nw-abr-critique-dimensions
 agent: nw-agent-builder-reviewer
 description: Review dimensions for validating agent quality - template compliance, safety, testing, and priority validation
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Agent Quality Critique Dimensions

@@ -1,7 +1,7 @@
 ---
 name: nw-ux-emotional-design
 description: Emotional design and delight patterns for product owners. Load when designing onboarding flows, empty states, first-run experiences, or evaluating the emotional quality of an interface.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Emotional Design and Delight

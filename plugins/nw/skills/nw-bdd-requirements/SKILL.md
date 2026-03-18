@@ -1,7 +1,7 @@
 ---
 name: nw-bdd-requirements
 description: BDD requirements discovery methodology - Example Mapping, Three Amigos, conversational patterns, Given-When-Then translation, and collaborative specification
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # BDD Requirements Discovery

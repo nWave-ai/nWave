@@ -1,7 +1,7 @@
 ---
 name: nw-platform-engineering-foundations
 description: Foundational platform engineering knowledge from key references -- Continuous Delivery, SRE, Accelerate, Team Topologies, Chaos Engineering, and Secure Delivery. Load when contextual grounding in platform engineering theory is needed.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Platform Engineering Foundations

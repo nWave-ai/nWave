@@ -1,7 +1,7 @@
 ---
 name: nw-discovery-workflow
 description: 4-phase discovery workflow with decision gates, phase transitions, success metrics, and state tracking
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Discovery Workflow

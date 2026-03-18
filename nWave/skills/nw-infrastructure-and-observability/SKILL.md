@@ -1,7 +1,7 @@
 ---
 name: nw-infrastructure-and-observability
 description: Infrastructure as Code patterns (Terraform, Kubernetes), observability design (SLOs, metrics, alerting, dashboards), and pipeline security stages. Load when designing infrastructure, observability, or security scanning.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Infrastructure as Code and Observability

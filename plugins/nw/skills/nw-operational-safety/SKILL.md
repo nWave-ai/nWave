@@ -1,7 +1,7 @@
 ---
 name: nw-operational-safety
 description: Tool safety protocols, adversarial output validation, error recovery patterns, and I/O contracts for research operations
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Operational Safety

@@ -1,7 +1,7 @@
 ---
 name: nw-user-story-mapping
 description: User story mapping for backlog management and outcome-based prioritization. Load during Phase 2.5 (User Story Mapping) to produce story-map.md and prioritization.md.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # User Story Mapping

@@ -1,7 +1,7 @@
 ---
 name: nw-css-implementation-recipes
 description: Concrete CSS code snippets for futuristic UI patterns -- glassmorphism, neon glows, HUD elements, data grids, holographic effects
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # CSS Implementation Recipes

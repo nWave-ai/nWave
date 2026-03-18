@@ -1,7 +1,7 @@
 ---
 name: nw-test-organization-conventions
 description: Test directory structure patterns by architecture style, language conventions, naming rules, and fixture placement. Decision tree for selecting test organization strategy.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Test Organization Conventions

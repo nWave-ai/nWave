@@ -2,7 +2,7 @@
 name: nw-fp-scala
 agent: nw-functional-software-crafter
 description: Scala 3 language-specific patterns with ZIO, Cats Effect, and opaque types
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # FP in Scala 3 -- Functional Software Crafter Skill

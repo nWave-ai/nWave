@@ -1,7 +1,7 @@
 ---
 name: nw-lean-canvas-methodology
 description: Lean Canvas and Value Proposition Canvas generation methodology with assumption mapping, pivot triggers, and anti-patterns
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Lean Canvas Methodology

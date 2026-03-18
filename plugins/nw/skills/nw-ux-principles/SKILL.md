@@ -1,7 +1,7 @@
 ---
 name: nw-ux-principles
 description: Core UX principles for product owners. Load when evaluating interface designs, writing acceptance criteria with UX requirements, or reviewing wireframes and mockups.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # UX Principles

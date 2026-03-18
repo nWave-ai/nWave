@@ -1,7 +1,7 @@
 ---
 name: nw-entity-resolution
 description: Cross-platform identity matching techniques for resolving entities across multiple OSINT sources, with confidence scoring framework, blocking strategies, and LLM-assisted validation.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Entity Resolution

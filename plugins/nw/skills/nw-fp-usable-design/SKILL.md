@@ -2,7 +2,7 @@
 name: nw-fp-usable-design
 agent: nw-functional-software-crafter
 description: Naming conventions, API ergonomics, and usability patterns for functional code
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # FP Usable Design

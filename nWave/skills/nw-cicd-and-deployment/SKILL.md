@@ -1,7 +1,7 @@
 ---
 name: nw-cicd-and-deployment
 description: CI/CD pipeline design methodology, deployment strategies, GitHub Actions patterns, and branch/release strategies. Load when designing pipelines or deployment workflows.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # CI/CD Pipeline Design and Deployment Strategies

@@ -1,7 +1,7 @@
 ---
 name: nw-collaboration-and-handoffs
 description: Cross-agent collaboration protocols, workflow handoff patterns, and commit message formats for TDD/Mikado/refactoring workflows
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Collaboration and Handoffs

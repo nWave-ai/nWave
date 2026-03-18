@@ -1,7 +1,7 @@
 ---
 name: nw-it-specific-pedagogy
 description: IT-specific learning formats — coding katas, coding dojos, mob/ensemble programming, TDD workshops, architecture katas, refactoring katas — with facilitation rules, format selection logic, group size constraints, and activity sequencing for technical skill development
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

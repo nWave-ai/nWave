@@ -1,7 +1,7 @@
 ---
 name: nw-cognitive-load-theory
 description: Evidence-based framework for calibrating information density, detecting cognitive overload, recommending scaffolding, and adapting content sequencing by audience expertise level in technical IT workshops
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

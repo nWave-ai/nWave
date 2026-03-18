@@ -2,7 +2,7 @@
 name: nw-assessment-kirkpatrick
 agent: nw-workshopper
 description: Kirkpatrick New World Model applied to workshop design — assessment checkpoints, behavioral commitment instruments, rubric design, and Level 3 required drivers
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Assessment and Kirkpatrick Methodology for Workshop Design

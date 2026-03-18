@@ -1,7 +1,7 @@
 ---
 name: nw-investigation-techniques
 description: Evidence collection methods, problem categorization, analysis techniques, and solution design patterns
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Investigation Techniques

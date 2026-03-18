@@ -2,7 +2,7 @@
 name: nw-fp-clojure
 agent: nw-functional-software-crafter
 description: Clojure language-specific patterns, data-first modeling, REPL-driven development, and spec
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # FP in Clojure -- Functional Software Crafter Skill

@@ -1,7 +1,7 @@
 ---
 name: nw-dossier-templates
 description: JSON schemas for Person and Company dossiers, Admiralty Code source rating framework, output format specifications, and executive summary generation guidelines.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Dossier Templates

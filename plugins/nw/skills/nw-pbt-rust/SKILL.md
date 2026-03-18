@@ -2,7 +2,7 @@
 name: nw-pbt-rust
 agent: nw-functional-software-crafter
 description: Rust property-based testing with proptest, quickcheck, and bolero frameworks
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # PBT Rust -- proptest, quickcheck, bolero

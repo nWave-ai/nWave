@@ -1,7 +1,7 @@
 ---
 name: nw-production-readiness
 description: Monitoring, observability, operational procedures, CI/CD lessons learned, and quality gate definitions. Load when assessing production readiness or validating operational excellence.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Production Readiness

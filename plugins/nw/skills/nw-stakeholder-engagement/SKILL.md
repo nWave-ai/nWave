@@ -1,7 +1,7 @@
 ---
 name: nw-stakeholder-engagement
 description: Demonstration preparation, audience-tailored presentations, feedback collection, and business outcome measurement. Load when preparing demos or measuring business value delivery.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Stakeholder Engagement

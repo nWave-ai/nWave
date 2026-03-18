@@ -1,7 +1,7 @@
 ---
 name: nw-tr-review-criteria
 description: Review dimensions and scoring for root cause analysis quality assessment
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Troubleshooter Review Criteria

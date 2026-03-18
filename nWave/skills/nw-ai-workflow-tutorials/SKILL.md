@@ -1,7 +1,7 @@
 ---
 name: nw-ai-workflow-tutorials
 description: AI workflow tutorial patterns — non-deterministic output handling, outcome-based verification, and agent workflow step design
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # AI Workflow Tutorial Patterns

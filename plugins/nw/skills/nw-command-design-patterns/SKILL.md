@@ -1,7 +1,7 @@
 ---
 name: nw-command-design-patterns
 description: Best practices for command definition files - size targets, declarative template, anti-patterns, and canonical examples based on research evidence
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Command Design Patterns

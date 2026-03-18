@@ -1,7 +1,7 @@
 ---
 name: nw-tbr-methodology
 description: Train from the Back of the Room (TBR) practitioner reference for the nw-workshopper agent. Covers the 4C framework, time allocation formulas, 20% talk time rule, Six Trumps, series design with spacing, Bloom's spiral, and assessment checkpoints.
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

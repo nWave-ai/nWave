@@ -1,7 +1,7 @@
 ---
 name: nw-curriculum-series-design
 description: Arc-level curriculum design for multi-session workshop series — spiral curriculum, Bloom's progression across 6- and 12-session arcs, session opening/closing rituals, between-session transfer with spaced/interleaved practice, LARS assignment templates, and series-level capstone assessment models
-user-invocable: false
+disable-model-invocation: true
 agent: nw-workshopper
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: nw-pdr-review-criteria
 description: Evidence quality validation and decision gate criteria for product discovery reviews
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Review Criteria -- Product Discovery Review

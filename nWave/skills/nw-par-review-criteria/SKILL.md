@@ -1,7 +1,7 @@
 ---
 name: nw-par-review-criteria
 description: Quality dimensions and review checklist for devop reviews
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # DevOp Reviewer: Review Criteria

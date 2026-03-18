@@ -1,7 +1,7 @@
 ---
 name: nw-pricing-frameworks
 description: Hybrid margin-safe pricing (Base Floor + Value Capture + Success Fee), Good/Better/Best tiering, Cialdini anchoring, Ackerman deal structuring, unit economics, consulting-specific models
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Pricing Frameworks

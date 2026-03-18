@@ -1,7 +1,7 @@
 ---
 name: nw-por-review-criteria
 description: Review dimensions and bug patterns for journey artifact reviews
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Review Criteria Skill

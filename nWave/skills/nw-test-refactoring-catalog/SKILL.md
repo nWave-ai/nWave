@@ -1,7 +1,7 @@
 ---
 name: nw-test-refactoring-catalog
 description: Detailed refactoring mechanics with step-by-step procedures, and test code smell catalog with detection patterns and before/after examples
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Test Refactoring Catalog

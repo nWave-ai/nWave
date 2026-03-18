@@ -1,7 +1,7 @@
 ---
 name: nw-signal-detection
 description: Buying intent signal categories, scoring framework, data sources per signal type, and detection methods for identifying business changes and opportunities.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Signal Detection

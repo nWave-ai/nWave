@@ -1,7 +1,7 @@
 ---
 name: nw-ux-tui-patterns
 description: Terminal UI and CLI design patterns for product owners. Load when designing command-line tools, interactive terminal applications, or writing CLI-specific acceptance criteria.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # TUI and CLI Patterns

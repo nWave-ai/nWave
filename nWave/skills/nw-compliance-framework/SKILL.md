@@ -1,7 +1,7 @@
 ---
 name: nw-compliance-framework
 description: GDPR LIA template, CCPA thresholds, ethical OSINT principles, data retention policies, and clear boundaries for what CAN vs SHOULD NOT be collected.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Compliance Framework

@@ -1,7 +1,7 @@
 ---
 name: nw-research-methodology
 description: Research output templates, distillation workflow, and quality standards for evidence-driven research
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Research Methodology

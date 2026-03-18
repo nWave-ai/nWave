@@ -1,7 +1,7 @@
 ---
 name: nw-competitive-analysis
 description: Porter's 5 Forces and SWOT analysis automation from public data sources, technology adoption analysis methods, and competitive landscape mapping.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Competitive Analysis

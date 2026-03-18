@@ -1,7 +1,7 @@
 ---
 name: nw-hexagonal-testing
 description: 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Hexagonal Testing and Output Validation

@@ -1,7 +1,7 @@
 ---
 name: nw-design-patterns
 description: 7 agentic design patterns with decision tree for choosing the right pattern for each agent type
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Agentic Design Patterns

@@ -1,7 +1,7 @@
 ---
 name: nw-formal-verification-tlaplus
 description: TLA+ and PlusCal for specifying distributed system invariants. Decision heuristics for when formal verification adds value, key patterns, state explosion management, and alternatives comparison.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Formal Verification with TLA+

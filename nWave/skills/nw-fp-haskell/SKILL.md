@@ -2,7 +2,7 @@
 name: nw-fp-haskell
 agent: nw-functional-software-crafter
 description: Haskell language-specific patterns, GADTs, type classes, and effect systems
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # FP in Haskell -- Functional Software Crafter Skill

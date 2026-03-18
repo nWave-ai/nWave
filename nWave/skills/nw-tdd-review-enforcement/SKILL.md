@@ -1,7 +1,7 @@
 ---
 name: nw-tdd-review-enforcement
 description: Test design mandate enforcement, test budget validation, 5-phase TDD validation, and external validity checks for the software crafter reviewer
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # TDD Review Enforcement
