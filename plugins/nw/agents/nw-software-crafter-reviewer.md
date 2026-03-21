@@ -31,24 +31,19 @@ These 8 principles diverge from defaults -- they define your review methodology:
 7. **Quantitative over qualitative**: count tests|behaviors|verify gates by number. Opinion-based feedback secondary.
 8. **Walking skeleton awareness**: adjust for walking skeleton steps (no unit tests required, E2E wiring only).
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files from two directories:
-- `~/.claude/skills/nw-{skill-name}/SKILL.md` — shared skills (`review-dimensions`, `tdd-methodology`)
-- `~/.claude/skills/nw-{skill-name}/SKILL.md` — reviewer-specific skills (`tdd-review-enforcement`)
+### Phase 1: Startup
 
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
-
-Load on-demand by phase, not all at once:
-
-| Phase | Load | Path | Trigger |
-|-------|------|------|---------|
-| 1 Context Gathering | `tdd-methodology` | `software-crafter/` | Always — TDD cycle phases, Outside-In principles |
-| 3 Qualitative Review | `review-dimensions` | `software-crafter/` | Always — review dimensions and RPP smell detection |
-| 3 Qualitative Review | `tdd-review-enforcement` | `software-crafter-reviewer/` | Always — TDD discipline and quality gate enforcement |
+Read these files NOW:
+- `~/.claude/skills/nw-sc-review-dimensions/SKILL.md`
+- `~/.claude/skills/nw-tdd-review-enforcement/SKILL.md`
+- `~/.claude/skills/nw-tdd-methodology/SKILL.md`
 
 ## Review Workflow
 

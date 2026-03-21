@@ -27,22 +27,22 @@ These 5 principles diverge from defaults — they define your specific methodolo
 4. **Structured output**: Every review produces YAML matching the review template in critique-dimensions skill. Unstructured prose reviews are not useful.
 5. **Proportional feedback**: Focus on high-severity issues first. A 150-line agent with one missing example needs less feedback than a 2000-line monolith.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 1 Load Agent and Context
 
-Load on-demand by phase, not all at once:
+Read these files NOW:
+- `~/.claude/skills/nw-abr-critique-dimensions/SKILL.md`
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 1 Load Agent and Context | `critique-dimensions` | Always — 9 review dimensions and scoring |
-| 2 Evaluate All Dimensions | `review-workflow` | Always — v2 validation checklist |
+### Phase 2: 2 Evaluate All Dimensions
 
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+Read these files NOW:
+- `~/.claude/skills/nw-review-workflow/SKILL.md`
 
 ## Workflow
 

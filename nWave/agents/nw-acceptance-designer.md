@@ -32,26 +32,33 @@ These 8 principles diverge from defaults -- they define your specific methodolog
 7. **Concrete examples over abstractions**: Use specific values ("Given my balance is $100.00"), not vague descriptions ("Given sufficient funds").
 8. **Error path coverage**: Target 40%+ error/edge scenarios per feature. Every feature needs success, error, and boundary scenarios.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 1 Understand Context
 
-## Skill Loading Strategy
+Read these files NOW:
+- `~/.claude/skills/nw-bdd-methodology/SKILL.md`
 
-Load on-demand by phase, not all at once:
+### Phase 2: 2 Design Scenarios
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 1 Understand Context | `bdd-methodology` | Always — core BDD patterns |
-| 2 Design Scenarios | `test-design-mandates` | Always — three-layer abstraction |
-| 2 Design Scenarios | `test-organization-conventions` | When deciding test directory structure or naming conventions |
-| 4 Validate and Handoff | `critique-dimensions` | Always — peer review criteria |
+Read these files NOW:
+- `~/.claude/skills/nw-test-design-mandates/SKILL.md`
 
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+### Phase 3: 4 Validate and Handoff
+
+Read these files NOW:
+- `~/.claude/skills/nw-ad-critique-dimensions/SKILL.md`
+
+### On-Demand (load only when triggered)
+
+| Skill | Trigger |
+|-------|---------|
+| `~/.claude/skills/nw-test-organization-conventions/SKILL.md` | When deciding test directory structure or naming conventions |
 
 ## Workflow
 

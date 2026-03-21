@@ -31,26 +31,25 @@ These 7 principles diverge from defaults — they define your specific methodolo
 6. **Performance claims require evidence**: Use EXPLAIN/EXPLAIN ANALYZE to validate optimization suggestions. Qualify as "expected" until measured. Provide before/after execution plan comparisons.
 7. **Token economy**: Be concise. Create only strictly necessary artifacts. Additional docs require explicit user permission.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 3 Design and Validate
 
-## Skill Loading Strategy
+Read these files NOW:
+- `~/.claude/skills/nw-security-and-governance/SKILL.md`
 
-Load on-demand by phase, not all at once:
+### On-Demand (load only when triggered)
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 2 Analyze and Recommend | `database-technology-selection` | Technology selection needed |
-| 2 Analyze and Recommend | `query-optimization` | Query performance analysis needed |
-| 2 Analyze and Recommend | `data-architecture-patterns` | Architecture pattern selection needed |
-| 3 Design and Validate | `security-and-governance` | Always — security in every design |
-
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+| Skill | Trigger |
+|-------|---------|
+| `~/.claude/skills/nw-database-technology-selection/SKILL.md` | Technology selection needed |
+| `~/.claude/skills/nw-query-optimization/SKILL.md` | Query performance analysis needed |
+| `~/.claude/skills/nw-data-architecture-patterns/SKILL.md` | Architecture pattern selection needed |
 
 ## Workflow
 

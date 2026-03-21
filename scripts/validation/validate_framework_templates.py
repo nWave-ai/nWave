@@ -156,13 +156,15 @@ def validate_agent(filepath: Path, result: ValidationResult) -> None:
         if not re.search(pattern, body, re.MULTILINE):
             result.add("A04", "error", name, msg)
 
-    # A05: skill loading imperative
-    if "You MUST load your skill files" not in body:
+    # A05: skill loading imperative (old or new format)
+    has_old_imperative = "You MUST load your skill files" in body
+    has_new_imperative = "Your FIRST action before any other work" in body
+    if not has_old_imperative and not has_new_imperative:
         result.add(
             "A05",
             "error",
             name,
-            "Skill loading must use 'You MUST load your skill files'",
+            "Skill loading section must contain imperative loading instructions",
         )
 
     # A06: skills path documented (old: nw/{agent}/, new: nw-{skill}/SKILL.md)

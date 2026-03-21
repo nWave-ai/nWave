@@ -38,6 +38,7 @@ try:
     from scripts.install.plugins.des_plugin import DESPlugin
     from scripts.install.plugins.opencode_agents_plugin import OpenCodeAgentsPlugin
     from scripts.install.plugins.opencode_commands_plugin import OpenCodeCommandsPlugin
+    from scripts.install.plugins.opencode_des_plugin import OpenCodeDESPlugin
     from scripts.install.plugins.opencode_skills_plugin import OpenCodeSkillsPlugin
     from scripts.install.plugins.registry import PluginRegistry
     from scripts.install.plugins.skills_plugin import SkillsPlugin
@@ -62,6 +63,7 @@ except ImportError:
     from plugins.des_plugin import DESPlugin
     from plugins.opencode_agents_plugin import OpenCodeAgentsPlugin
     from plugins.opencode_commands_plugin import OpenCodeCommandsPlugin
+    from plugins.opencode_des_plugin import OpenCodeDESPlugin
     from plugins.opencode_skills_plugin import OpenCodeSkillsPlugin
     from plugins.registry import PluginRegistry
     from plugins.skills_plugin import SkillsPlugin
@@ -238,6 +240,8 @@ class NWaveInstaller:
             registry.register(opencode_commands)
             opencode_agents.set_dependencies(["opencode-skills"])
             opencode_commands.set_dependencies(["opencode-skills"])
+            opencode_des = OpenCodeDESPlugin()
+            registry.register(opencode_des)
         return registry
 
     def install_framework(self) -> bool:

@@ -26,23 +26,17 @@ These 5 principles diverge from defaults — they define your specific methodolo
 4. **Bias detection focus**: Check for vendor preference, latest-technology bias, and missing alternatives. Balanced trade-off presentation is primary review criterion.
 5. **Two-iteration limit**: Reviews complete in at most 2 cycles (initial + re-review). Escalate to human if unresolved.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 2 Apply Review Dimensions
 
-## Skill Loading Strategy
-
-Load on-demand by phase, not all at once:
-
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 2 Apply Review Dimensions | `review-criteria` | Always — review dimensions and scoring rubric |
-
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+Read these files NOW:
+- `~/.claude/skills/nw-der-review-criteria/SKILL.md`
 
 ## Workflow
 

@@ -144,42 +144,45 @@ Before RED_UNIT: count distinct behaviors in AC -> calculate `budget = 2 x behav
 During RED_UNIT: track vs budget, stop when reached. If more seem needed: "Is this new behavior or variation?"
 At review: reviewer counts. If count > budget, review blocked.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 0 PREPARE
 
-Load on-demand by phase, not all at once:
+Read these files NOW:
+- `~/.claude/skills/nw-tdd-methodology/SKILL.md`
+- `~/.claude/skills/nw-quality-framework/SKILL.md`
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 0 PREPARE | `tdd-methodology`, `quality-framework` | Always — core methodology |
-| 1-2 RED | `hexagonal-testing` | Port/adapter boundary decisions |
-| 2 RED_UNIT | `property-based-testing` | AC tagged `@property` or domain invariants |
-| 3 GREEN | `production-safety` | Implementation choices |
-| 4 COMMIT | `collaboration-and-handoffs` | Handoff context needed |
-| Refactor | `progressive-refactoring`, `test-refactoring-catalog` | `/nw-refactor` invocation |
-| Refactor | `legacy-refactoring-ddd` | When refactoring legacy code using DDD patterns (strangler fig, bubble context, ACL) |
-| Review | `review-dimensions` | `/nw-review` invocation |
-| Complex refactoring | `mikado-method` | `*mikado` command |
+### On-Demand (load only when triggered)
 
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+| Skill | Trigger |
+|-------|---------|
+| `~/.claude/skills/nw-hexagonal-testing/SKILL.md` | Port/adapter boundary decisions |
+| `~/.claude/skills/nw-property-based-testing/SKILL.md` | AC tagged `@property` or domain invariants |
+| `~/.claude/skills/nw-production-safety/SKILL.md` | Implementation choices |
+| `~/.claude/skills/nw-collaboration-and-handoffs/SKILL.md` | Handoff context needed |
+| `~/.claude/skills/nw-progressive-refactoring/SKILL.md` | `/nw-refactor` invocation |
+| `~/.claude/skills/nw-test-refactoring-catalog/SKILL.md` | `/nw-refactor` invocation |
+| `~/.claude/skills/nw-legacy-refactoring-ddd/SKILL.md` | When refactoring legacy code using DDD patterns (strangler fig, bubble context, ACL) |
+| `~/.claude/skills/nw-sc-review-dimensions/SKILL.md` | `/nw-review` invocation |
+| `~/.claude/skills/nw-mikado-method/SKILL.md` | `*mikado` command |
 
 ## 5-Phase TDD Workflow
 
 ### Phase 0: PREPARE
-Load: `tdd-methodology`, `quality-framework` — read them NOW before proceeding.
+Load: `~/.claude/skills/nw-tdd-methodology/SKILL.md`, `~/.claude/skills/nw-quality-framework — read them NOW before proceeding./SKILL.md`
 Remove @skip from target acceptance test. Verify exactly ONE scenario enabled. Gate: one acceptance test active.
 
 ### Phase 1: RED (Acceptance)
-Load: `hexagonal-testing` — read it NOW before proceeding.
+Load: `~/.claude/skills/nw-hexagonal-testing — read it NOW before proceeding./SKILL.md`
 If pre-existing distilled test exists (from DISTILL wave): verify @skip removed in PREPARE, run it — must fail for business logic reason (not import/syntax error). If no distilled test: write new acceptance test from step's acceptance_criteria, run it — must fail. Invalid failure reasons: database connection|test driver timeout|external service unreachable. Gate: fails for business logic reason.
 
 ### Phase 2: RED (Unit)
-Load: `property-based-testing` — read it NOW if AC tagged `@property` or domain invariants present.
+Load: `~/.claude/skills/nw-property-based-testing — read it NOW if AC tagged @property or domain invariants present./SKILL.md`
 Write unit test from driving port that fails on assertion (not setup). Enforce test budget. Parametrize input variations. Gates: fails on assertion|no mocks inside hexagon|count within budget.
 
 ### Phase 3: GREEN

@@ -50,7 +50,7 @@ In subagent mode (Task tool invocation with 'execute'/'TASK BOUNDARY'), skip gre
 ## Workflow
 
 ### Phase 1: Deep Discovery & Job Discovery
-Load: `discovery-methodology` — read it NOW before proceeding.
+Load: `~/.claude/skills/nw-discovery-methodology — read it NOW before proceeding./SKILL.md`
 
 - Discovery conversation: goal/why/success-criteria/triggers|mental model mapping|emotional journey|shared artifacts|error paths|integration points
 - Gate: sketch readiness (happy path|emotional arc|artifacts|error paths). Gaps → ask more questions
@@ -63,7 +63,7 @@ Load: `discovery-methodology` — read it NOW before proceeding.
 - Gate: JTBD artifacts complete (job stories|four forces|opportunity scores)
 
 ### Phase 2: Journey Visualization
-Load: `design-methodology`, `shared-artifact-tracking` — read them NOW before producing any artifacts.
+Load: `~/.claude/skills/nw-design-methodology/SKILL.md`, `~/.claude/skills/nw-shared-artifact-tracking — read them NOW before producing any artifacts./SKILL.md`
 
 - Produce `docs/feature/{feature-id}/discuss/journey-{name}-visual.md` (ASCII flow + emotional annotations + TUI mockups)
 - Produce `docs/feature/{feature-id}/discuss/journey-{name}.yaml` (structured schema)
@@ -71,7 +71,7 @@ Load: `design-methodology`, `shared-artifact-tracking` — read them NOW before 
 - Gate: 3 artifacts created|shared artifacts tracked|integration checkpoints defined
 
 ### Phase 2.5: User Story Mapping
-Load: `user-story-mapping` — read it NOW before mapping.
+Load: `~/.claude/skills/nw-user-story-mapping — read it NOW before mapping./SKILL.md`
 
 - Build story map backbone: user activities as horizontal sequence
 - Identify walking skeleton: minimum end-to-end slice
@@ -111,7 +111,7 @@ Before coherence validation, assess whether the feature scope is right-sized for
 - Gate: journey completeness|emotional coherence|horizontal integration|CLI UX compliance
 
 ### Phase 4: Requirements Crafting
-Load: `leanux-methodology`, `bdd-requirements`, `jtbd-bdd-integration` — read them NOW before crafting requirements.
+Load: `~/.claude/skills/nw-leanux-methodology/SKILL.md`, `~/.claude/skills/nw-bdd-requirements/SKILL.md`, `~/.claude/skills/nw-jtbd-bdd-integration — read them NOW before crafting requirements./SKILL.md`
 
 - Create LeanUX stories from Phase 1-3 journey artifacts
 - Every story traces to ≥1 job story (N:1 mapping)
@@ -125,7 +125,7 @@ Load: `leanux-methodology`, `bdd-requirements`, `jtbd-bdd-integration` — read 
 - Gate: LeanUX template followed|anti-patterns remediated|stories right-sized
 
 ### Phase 5: Validate and Handoff
-Load: `review-dimensions` — read it NOW before peer review.
+Load: `~/.claude/skills/nw-review-dimensions — read it NOW before peer review./SKILL.md`
 
 - DoR validation: each item MUST pass with evidence|failed items get specific remediation
 - Peer review via Task, max 2 iterations
@@ -133,27 +133,35 @@ Load: `review-dimensions` — read it NOW before peer review.
 - Prepare handoff package for solution-architect (DESIGN wave)
 - Gate: reviewer approved|DoR passed|handoff complete
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: Startup
 
-## Skill Loading Strategy
-
-Load on-demand by phase, not all at once:
-
-| Phase | Always Load | On-Demand | Trigger |
-|-------|------------|-----------|---------|
-| 1 Discovery | discovery-methodology | jtbd-workflow-selection, jtbd-core, jtbd-interviews, jtbd-opportunity-scoring | User requests JTBD or competing jobs |
-| 2 Visualization | design-methodology, shared-artifact-tracking | persona-jtbd-analysis, ux-emotional-design | Persona creation / emotional depth |
-| 2.5 Story Mapping | user-story-mapping | — | — |
-| 2.7 Scope Assessment | — | — | Automatic (Elephant Carpaccio gate) |
-| 3 Coherence | — | — | — |
-| 4 Requirements | leanux-methodology, bdd-requirements, outcome-kpi-framework | jtbd-bdd-integration, ux-web/desktop/tui-patterns, ux-principles | JTBD done / Target platform |
-| 5 Validation | review-dimensions | — | — |
+Read these files NOW:
+- `~/.claude/skills/nw-discovery-methodology/SKILL.md`
+- `~/.claude/skills/nw-design-methodology/SKILL.md`
+- `~/.claude/skills/nw-shared-artifact-tracking/SKILL.md`
+- `~/.claude/skills/nw-jtbd-workflow-selection/SKILL.md`
+- `~/.claude/skills/nw-persona-jtbd-analysis/SKILL.md`
+- `~/.claude/skills/nw-leanux-methodology/SKILL.md`
+- `~/.claude/skills/nw-bdd-requirements/SKILL.md`
+- `~/.claude/skills/nw-po-review-dimensions/SKILL.md`
+- `~/.claude/skills/nw-jtbd-core/SKILL.md`
+- `~/.claude/skills/nw-jtbd-interviews/SKILL.md`
+- `~/.claude/skills/nw-jtbd-opportunity-scoring/SKILL.md`
+- `~/.claude/skills/nw-jtbd-bdd-integration/SKILL.md`
+- `~/.claude/skills/nw-outcome-kpi-framework/SKILL.md`
+- `~/.claude/skills/nw-user-story-mapping/SKILL.md`
+- `~/.claude/skills/nw-ux-principles/SKILL.md`
+- `~/.claude/skills/nw-ux-web-patterns/SKILL.md`
+- `~/.claude/skills/nw-ux-desktop-patterns/SKILL.md`
+- `~/.claude/skills/nw-ux-tui-patterns/SKILL.md`
+- `~/.claude/skills/nw-ux-emotional-design/SKILL.md`
 
 ## LeanUX User Story Template
 

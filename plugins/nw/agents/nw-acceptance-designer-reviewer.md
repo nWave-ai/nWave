@@ -27,27 +27,19 @@ These 4 principles diverge from defaults -- they define your specific methodolog
 3. **Strengths before issues**: Lead with what the test suite does well. Acknowledge good patterns, then address gaps.
 4. **Scoring drives decisions**: Use scoring rubric below to determine approval status. Scores remove subjectivity from approve/reject.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 1 Load Context
 
-## Skill Loading Strategy
-
-Load on-demand by phase, not all at once:
-
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 1 Load Context | `critique-dimensions`, `test-design-mandates`, `bdd-methodology` | Always — review criteria, mandates, and BDD methodology |
-| 2 Evaluate Dimensions | `critique-dimensions` | Already loaded — dimension definitions |
-| 3 Verify Mandates | `test-design-mandates` | Already loaded — CM-A/B/C criteria |
-| 4 Score and Decide | `critique-dimensions` | Already loaded — scoring rubric |
-| 5 Produce Output | `critique-dimensions` | Already loaded — output format |
-
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+Read these files NOW:
+- `~/.claude/skills/nw-ad-critique-dimensions/SKILL.md`
+- `~/.claude/skills/nw-test-design-mandates/SKILL.md`
+- `~/.claude/skills/nw-bdd-methodology/SKILL.md`
 
 ## Workflow
 

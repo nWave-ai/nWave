@@ -34,37 +34,53 @@ These 8 principles diverge from Claude's natural tendencies — they define your
 7. **3-5 canonical examples**: Every agent needs examples for critical/subtle behaviors. Zero examples = edge case failures. More than 10 = diminishing returns.
 8. **Measure before and after**: `wc -l` the definition. Track token cost. Never claim improvement without measurement.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills at the start of the phase where they are first needed.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 1 ANALYZE
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 1 ANALYZE | `agent-creation-workflow` | Always — 5-phase creation workflow |
-| 2 DESIGN | `design-patterns`, `command-design-patterns` | Always — agent and command patterns |
-| 4 VALIDATE | `critique-dimensions`, `agent-testing` | Always — 9-dimension review + 5-layer testing |
+Read these files NOW:
+- `~/.claude/skills/nw-agent-creation-workflow/SKILL.md`
+
+### Phase 2: 2 DESIGN
+
+Read these files NOW:
+- `~/.claude/skills/nw-design-patterns/SKILL.md`
+- `~/.claude/skills/nw-command-design-patterns/SKILL.md`
+
+### Phase 3: 4 VALIDATE
+
+Read these files NOW:
+- `~/.claude/skills/nw-ab-critique-dimensions/SKILL.md`
+- `~/.claude/skills/nw-agent-testing/SKILL.md`
+
+### On-Demand (load only when triggered)
+
+| Skill | Trigger |
+|-------|---------|
+| `~/.claude/skills/nw-command-optimization-workflow/SKILL.md` | Load when needed |
 
 ## Agent Creation Workflow
 
 5 phases — load `agent-creation-workflow` skill for detailed steps.
 
 ### Phase 1: ANALYZE
-Load: `agent-creation-workflow` — read it NOW before proceeding.
+Load: `~/.claude/skills/nw-agent-creation-workflow — read it NOW before proceeding./SKILL.md`
 Identify single clear responsibility|Check overlap with existing agents|Classify: specialist, reviewer, or orchestrator|Determine minimum tools needed
 
 ### Phase 2: DESIGN
-Load: `design-patterns`, `command-design-patterns` — read them NOW before proceeding.
+Load: `~/.claude/skills/nw-design-patterns/SKILL.md`, `~/.claude/skills/nw-command-design-patterns — read them NOW before proceeding./SKILL.md`
 Select design pattern|Define role, goal, and core principles (divergences only)|Plan Skills extraction for domain knowledge|Draft frontmatter configuration
 
 ### Phase 3: CREATE
 Write agent `.md` using template below|Create Skill files if domain knowledge exceeds 50 lines|Measure: `wc -l` — target under 300 lines for core
 
 ### Phase 4: VALIDATE
-Load: `critique-dimensions`, `agent-testing` — read them NOW before proceeding.
+Load: `~/.claude/skills/nw-ab-critique-dimensions/SKILL.md`, `~/.claude/skills/nw-agent-testing — read them NOW before proceeding./SKILL.md`
 Run 14-point validation checklist|Check for anti-patterns (see table below)|Test with representative inputs
 
 ### Phase 5: REFINE
@@ -114,7 +130,7 @@ You MUST load your skill files before beginning any work. Skills encode your met
 ## Workflow
 
 ### Phase 1: {Name}
-Load: `{skill-name}` — read it NOW before proceeding.
+Load: `~/.claude/skills/nw-{skill-name} — read it NOW before proceeding./SKILL.md`
 {Phase with gate}
 
 ### Phase 2: {Name}

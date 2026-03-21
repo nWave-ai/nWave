@@ -30,23 +30,28 @@ These 6 principles diverge from defaults -- they define your specific methodolog
 5. **Output path discipline**: Research to `docs/research/`. Skills to `nWave/skills/{agent-name}/`. Ask permission before new directories.
 6. **Knowledge gaps are findings**: Document what you searched for and could not find. Well-documented gap > poorly-supported claim.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 1 Clarify Scope and Create Skeleton
 
-Load on-demand by phase, not all at once:
+Read these files NOW:
+- `~/.claude/skills/nw-research-methodology/SKILL.md`
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 1 Clarify Scope and Create Skeleton | `research-methodology` | Always — output template for skeleton creation |
-| 2 Research-and-Write Cycles | `authoritative-sources`, `operational-safety` | Always — domain strategies and tool safety |
-| 3 Synthesize and Cross-Reference | `source-verification` | Always — tier definitions and bias detection |
+### Phase 2: 2 Research-and-Write Cycles
 
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+Read these files NOW:
+- `~/.claude/skills/nw-authoritative-sources/SKILL.md`
+- `~/.claude/skills/nw-operational-safety/SKILL.md`
+
+### Phase 3: 3 Synthesize and Cross-Reference
+
+Read these files NOW:
+- `~/.claude/skills/nw-source-verification/SKILL.md`
 
 ## Workflow
 

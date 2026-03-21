@@ -116,38 +116,53 @@ def create_email(raw: str) -> Result[Email, ValidationError]:
     return Err(ValidationError(f"Invalid email: {raw}"))
 ```
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`.
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 1 PREPARE
 
-## Skill Loading Strategy
+Read these files NOW:
+- `~/.claude/skills/nw-tdd-methodology/SKILL.md`
+- `~/.claude/skills/nw-quality-framework/SKILL.md`
+- `~/.claude/skills/nw-fp-principles/SKILL.md`
+- `~/.claude/skills/nw-fp-domain-modeling/SKILL.md`
 
-Load on-demand by phase, not all at once:
+### On-Demand (load only when triggered)
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 0 DETECT | `fp-{lang}` | After language detection — 1 FP language skill matching detected language |
-| 0 DETECT | `pbt-{platform}` | After language detection — 1 PBT platform skill matching detected language |
-| 1 PREPARE | `tdd-methodology`, `quality-framework` | Always — core methodology |
-| 1 PREPARE | `fp-principles`, `fp-domain-modeling` | Always — FP foundations |
-| 2-3 RED | `hexagonal-testing`, `fp-hexagonal-architecture` | Port/adapter boundary decisions |
-| 3 RED_UNIT | `pbt-fundamentals` | Properties for domain invariants (default for FP) |
-| 3 RED_UNIT | `pbt-stateful` | Stateful protocol testing |
-| 3 RED_UNIT | `property-based-testing` | General PBT patterns |
-| 4 GREEN | `fp-algebra-driven-design` | Algebraic structures (monoid, functor) |
-| 4 GREEN | `fp-usable-design` | Readable naming, pipeline composition |
-| 5 COMMIT | `collaboration-and-handoffs` | Handoff context needed |
-| Refactor | `progressive-refactoring`, `test-refactoring-catalog` | `/nw-refactor` invocation |
-| Refactor | `legacy-refactoring-ddd` | When refactoring legacy code using DDD patterns (strangler fig, bubble context, ACL) |
-| Review | `review-dimensions` | `/nw-review` invocation |
-| On request | `tlaplus-verification` | When formal verification needed |
-
-Skills location:
-- All skills: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+| Skill | Trigger |
+|-------|---------|
+| `~/.claude/skills/nw-fp-{lang}/SKILL.md` | After language detection — 1 FP language skill matching detected language |
+| `~/.claude/skills/nw-pbt-{platform}/SKILL.md` | After language detection — 1 PBT platform skill matching detected language |
+| `~/.claude/skills/nw-hexagonal-testing/SKILL.md` | Port/adapter boundary decisions |
+| `~/.claude/skills/nw-fp-hexagonal-architecture/SKILL.md` | Port/adapter boundary decisions |
+| `~/.claude/skills/nw-pbt-fundamentals/SKILL.md` | Properties for domain invariants (default for FP) |
+| `~/.claude/skills/nw-pbt-stateful/SKILL.md` | Stateful protocol testing |
+| `~/.claude/skills/nw-property-based-testing/SKILL.md` | General PBT patterns |
+| `~/.claude/skills/nw-fp-algebra-driven-design/SKILL.md` | Algebraic structures (monoid, functor) |
+| `~/.claude/skills/nw-fp-usable-design/SKILL.md` | Readable naming, pipeline composition |
+| `~/.claude/skills/nw-collaboration-and-handoffs/SKILL.md` | Handoff context needed |
+| `~/.claude/skills/nw-progressive-refactoring/SKILL.md` | `/nw-refactor` invocation |
+| `~/.claude/skills/nw-test-refactoring-catalog/SKILL.md` | `/nw-refactor` invocation |
+| `~/.claude/skills/nw-legacy-refactoring-ddd/SKILL.md` | When refactoring legacy code using DDD patterns (strangler fig, bubble context, ACL) |
+| `~/.claude/skills/nw-sc-review-dimensions/SKILL.md` | `/nw-review` invocation |
+| `~/.claude/skills/nw-tlaplus-verification/SKILL.md` | When formal verification needed |
+| `~/.claude/skills/nw-fp-fsharp/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-fp-haskell/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-fp-scala/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-fp-clojure/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-fp-kotlin/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-pbt-python/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-pbt-typescript/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-pbt-jvm/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-pbt-dotnet/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-pbt-haskell/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-pbt-erlang-elixir/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-pbt-go/SKILL.md` | Load when needed |
+| `~/.claude/skills/nw-pbt-rust/SKILL.md` | Load when needed |
 
 ## 6-Phase TDD Workflow (Functional Adaptation)
 
@@ -171,11 +186,11 @@ Run `Glob("**/*.fsproj")`, `Glob("**/*.hs")`, etc. until a match is found. Load 
 Gate: language detected, language-specific skills loaded (or confirmed generic-only).
 
 ### Phase 1: PREPARE
-Load: `tdd-methodology`, `quality-framework`, `fp-principles`, `fp-domain-modeling` — read them NOW before proceeding.
+Load: `~/.claude/skills/nw-tdd-methodology/SKILL.md`, `~/.claude/skills/nw-quality-framework/SKILL.md`, `~/.claude/skills/nw-fp-principles/SKILL.md`, `~/.claude/skills/nw-fp-domain-modeling — read them NOW before proceeding./SKILL.md`
 Remove @skip from target acceptance test. Verify exactly one scenario enabled.
 
 ### Phase 2: RED (Acceptance)
-Load: `hexagonal-testing`, `fp-hexagonal-architecture` — read them NOW before writing any acceptance test.
+Load: `~/.claude/skills/nw-hexagonal-testing/SKILL.md`, `~/.claude/skills/nw-fp-hexagonal-architecture — read them NOW before writing any acceptance test./SKILL.md`
 If pre-existing distilled test exists (from DISTILL wave): verify @skip removed in PREPARE, run it — must fail for business logic reason (not import/syntax error). If no distilled test: write new acceptance test as property or example through driving port function, run it — must fail for valid business logic reason.
 
 ### Phase 3: RED (Unit)
@@ -193,11 +208,11 @@ If pre-existing distilled test exists (from DISTILL wave): verify @skip removed 
 | Complex setup, specific scenario, integration boundary | Example-based |
 | Adapter/IO boundary | Example-based (integration) |
 
-Load: `pbt-fundamentals` — read it NOW (default for FP domain logic). Also load `pbt-stateful` for stateful protocols|`property-based-testing` for general patterns.
+Load: `~/.claude/skills/nw-pbt-fundamentals — read it NOW (default for FP domain logic). Also load pbt-stateful for stateful protocols|property-based-testing for general patterns./SKILL.md`
 Write properties first for domain logic. Example-based tests only when properties impractical. Enforce test budget.
 
 ### Phase 4: GREEN
-Load: `fp-algebra-driven-design`, `fp-usable-design` — read them NOW before implementing.
+Load: `~/.claude/skills/nw-fp-algebra-driven-design/SKILL.md`, `~/.claude/skills/nw-fp-usable-design — read them NOW before implementing./SKILL.md`
 Implement minimal pure functions to pass tests. Build pipelines. Keep functions small. Do not modify acceptance tests.
 Gate: all tests green.
 

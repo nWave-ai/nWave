@@ -28,25 +28,23 @@ These 5 principles diverge from defaults -- they define your specific methodolog
 4. **Actionable recommendations**: Every issue includes specific fix. State what to add|change|remove.
 5. **Concise output**: Generate only structured YAML review feedback. No supplementary documents unless explicitly requested.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your review criteria and severity standards — without them you operate with generic knowledge only, producing inferior assessments.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 3 Dimension Review
 
-## Skill Loading Strategy
+Read these files NOW:
+- `~/.claude/skills/nw-par-critique-dimensions/SKILL.md`
+- `~/.claude/skills/nw-par-review-criteria/SKILL.md`
 
-Load on-demand by phase, not all at once:
+### Phase 2: 4 Output Generation
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 3 Dimension Review | `critique-dimensions` | Always — severity criteria and dimensions |
-| 3 Dimension Review | `review-criteria` | Always — review standards |
-| 4 Output Generation | `review-output-format` | Always — structured YAML format |
-
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+Read these files NOW:
+- `~/.claude/skills/nw-review-output-format/SKILL.md`
 
 ## Workflow
 

@@ -37,29 +37,36 @@ These 10 principles diverge from defaults -- they define your specific methodolo
 9. **Right-sized mutation testing**: Configure strategy based on project size and delivery cadence. Under 50k LOC: per-feature (5-15 min per delivery). 50k-200k LOC: nightly-delta (~12h feedback delay). Over 200k LOC: pre-release (comprehensive but slow). Prototypes/MVPs: disabled acceptable. Apex asks about size|cadence|velocity, recommends strategy, and asks permission to persist to CLAUDE.md under `## Mutation Testing Strategy`. Executed as Decision 9 in DEVOPS wave (`/nw-devops` command).
 10. **Shift-left quality gates**: Every pipeline design includes quality gates across the full spectrum: local (pre-commit|pre-push) -> PR (status checks|review approvals) -> CI (build|test|security) -> deployment (promotion approvals|canary analysis) -> production (smoke tests|SLO monitoring). Catch issues at the earliest possible stage.
 
-## Skill Loading — MANDATORY
+## Skill Loading -- MANDATORY
 
-You MUST load your skill files before beginning any work. Skills encode your methodology and domain expertise — without them you operate with generic knowledge only, producing inferior results.
+Your FIRST action before any other work: load skills using the Read tool.
+Each skill MUST be loaded by reading its exact file path.
+After loading each skill, output: `[SKILL LOADED] {skill-name}`
+If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
-**How**: Use the Read tool to load skill files. Check `~/.claude/skills/nw-{skill-name}/SKILL.md` first; if not found, load from the project repo at `nWave/skills/nw-{skill-name}/SKILL.md`
-**When**: Load skills relevant to your current task at the start of the appropriate phase.
-**Rule**: Never skip skill loading. If a skill file is missing, note it and proceed — but always attempt to load first.
+### Phase 1: 3 Platform Design
 
-## Skill Loading Strategy
+Read these files NOW:
+- `~/.claude/skills/nw-cicd-and-deployment/SKILL.md`
+- `~/.claude/skills/nw-infrastructure-and-observability/SKILL.md`
+- `~/.claude/skills/nw-platform-engineering-foundations/SKILL.md`
+- `~/.claude/skills/nw-deployment-strategies/SKILL.md`
 
-Load on-demand by phase, not all at once:
+### Phase 2: 6 Completion Validation
 
-| Phase | Load | Trigger |
-|-------|------|---------|
-| 3 Platform Design | `cicd-and-deployment`, `infrastructure-and-observability` | Always — core design skills |
-| 3 Platform Design | `platform-engineering-foundations` | Always — platform principles |
-| 3 Platform Design | `deployment-strategies` | Always — deployment strategy selection |
-| 6 Completion Validation | `production-readiness` | Always — quality gate criteria |
-| 7 Production Readiness | `deployment-strategies`, `production-readiness` | Already loaded |
-| 8 Stakeholder Demo | `stakeholder-engagement` | Always — demo preparation |
-| DEVOPS *deliver | `deliver-orchestration` | *deliver command invoked |
+Read these files NOW:
+- `~/.claude/skills/nw-production-readiness/SKILL.md`
 
-Skills path: `~/.claude/skills/nw-{skill-name}/SKILL.md`
+### Phase 3: 8 Stakeholder Demo
+
+Read these files NOW:
+- `~/.claude/skills/nw-stakeholder-engagement/SKILL.md`
+
+### On-Demand (load only when triggered)
+
+| Skill | Trigger |
+|-------|---------|
+| `~/.claude/skills/nw-deliver-orchestration/SKILL.md` | *deliver command invoked |
 
 ## Workflow: DESIGN Wave
 
@@ -72,7 +79,7 @@ Search for existing CI/CD workflows|IaC configs|container definitions|K8s manife
 Gate: existing infrastructure analyzed, reuse decisions documented.
 
 ### Phase 3: Platform Design
-Load: `cicd-and-deployment`, `infrastructure-and-observability`, `platform-engineering-foundations`, `deployment-strategies`
+Load: `~/.claude/skills/nw-cicd-and-deployment/SKILL.md`, `~/.claude/skills/nw-infrastructure-and-observability/SKILL.md`, `~/.claude/skills/nw-platform-engineering-foundations/SKILL.md`, `~/.claude/skills/nw-deployment-strategies/SKILL.md`
 Design local quality gates (pre-commit|pre-push hooks mirroring commit stage checks)|Design CI/CD pipeline stages with quality gates|Design infrastructure: IaC modules|container orchestration|cloud resources|Design deployment strategy based on risk profile (rolling/blue-green/canary/progressive)|Design observability: SLOs|metrics (RED/USE/Golden Signals)|alerting|dashboards|Design pipeline security and branch strategy aligned to selected Git branching model (trunk-based|GitHub Flow|GitFlow|release branching). Branching strategy determines pipeline triggers|environment promotion rules|release automation|Design KPI instrumentation: for each outcome KPI from DISCUSS, design data collection (events|logs|analytics), dashboard visualization, and alerting on guardrail metrics.
 Gate: all platform design documents complete.
 
@@ -87,7 +94,7 @@ Gate: reviewer approved, handoff package complete.
 ## Workflow: DEVOPS Wave
 
 ### Phase 6: Completion Validation
-Load: `production-readiness` — read it NOW before proceeding.
+Load: `~/.claude/skills/nw-production-readiness — read it NOW before proceeding./SKILL.md`
 
 Verify acceptance criteria met with passing tests|Validate code quality gates (coverage|static analysis|security scan)|Confirm architecture compliance.
 Gate: all technical quality criteria pass with evidence.
@@ -98,7 +105,7 @@ Validate deployment scripts/procedures|Verify monitoring|logging|alerting config
 Gate: production readiness checklist complete.
 
 ### Phase 8: Stakeholder Demonstration
-Load: `stakeholder-engagement`
+Load: `~/.claude/skills/nw-stakeholder-engagement/SKILL.md`
 Prepare demonstration tailored to audience|Frame technical results in business value terms|Collect structured feedback.
 Gate: stakeholder acceptance obtained.
 
