@@ -1,6 +1,6 @@
 ---
 name: nw-agent-testing
-description: 5-layer testing approach for agent validation including adversarial testing, security validation, and prompt injection resistance
+description: "Tests agents across 5 layers: output quality, integration, adversarial, security, and prompt injection resistance. Use when validating agent behavior or hardening agents against misuse."
 user-invocable: false
 disable-model-invocation: true
 ---

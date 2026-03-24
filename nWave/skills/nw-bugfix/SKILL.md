@@ -1,6 +1,6 @@
 ---
 name: nw-bugfix
-description: "Bug fix workflow: root cause analysis → user review → regression test + fix via TDD"
+description: "Diagnoses bugs through root cause analysis, then delivers regression tests and TDD-driven fixes. Use when fixing defects, investigating production issues, or adding regression coverage."
 user-invocable: true
 argument-hint: '[bug-description] - Describe the defect observed'
 ---

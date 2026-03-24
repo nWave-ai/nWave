@@ -1,6 +1,6 @@
 ---
 name: nw-root-why
-description: "Root cause analysis and debugging"
+description: "Toyota 5 Whys root cause analysis with multi-causal investigation and evidence validation. Use when debugging failures, investigating incidents, or finding the root cause of a problem."
 user-invocable: true
 argument-hint: '[problem-description] - Optional: --depth=[3|5|7-whys] --output=[text|diagram|report]'
 ---

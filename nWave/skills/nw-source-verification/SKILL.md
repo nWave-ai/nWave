@@ -1,6 +1,6 @@
 ---
 name: nw-source-verification
-description: Source reputation tiers, cross-referencing methodology, bias detection, and citation format requirements
+description: "Source reputation tiers, cross-referencing methodology, bias detection, and citation formats. Load when verifying research sources, checking citation quality, or assessing source credibility."
 user-invocable: false
 disable-model-invocation: true
 ---

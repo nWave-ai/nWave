@@ -1,7 +1,7 @@
 ---
 name: nw-fp-usable-design
 agent: nw-functional-software-crafter
-description: Naming conventions, API ergonomics, and usability patterns for functional code
+description: "Naming conventions, API ergonomics, and usability patterns for functional code. Load when improving FP API discoverability, naming monadic operations, or reviewing functional code for developer experience."
 user-invocable: false
 disable-model-invocation: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: nw-po-review-dimensions
-description: Requirements quality critique dimensions for peer review - confirmation bias detection, completeness validation, clarity checks, testability assessment, and priority validation
+description: "Requirements quality critique dimensions including bias detection, completeness, clarity, and testability. Load when peer-reviewing requirements documents or validating requirement quality."
 user-invocable: false
 disable-model-invocation: true
 ---

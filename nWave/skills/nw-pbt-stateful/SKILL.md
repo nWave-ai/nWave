@@ -1,7 +1,7 @@
 ---
 name: nw-pbt-stateful
 agent: nw-functional-software-crafter
-description: Stateful property-based testing patterns, model-based testing, and anti-patterns
+description: "Stateful property-based testing patterns, model-based testing, and anti-patterns. Load when testing stateful systems, mutable state sequences, or designing model-based property tests."
 user-invocable: false
 disable-model-invocation: true
 ---

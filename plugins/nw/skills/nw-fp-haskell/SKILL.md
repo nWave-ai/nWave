@@ -1,7 +1,7 @@
 ---
 name: nw-fp-haskell
 agent: nw-functional-software-crafter
-description: Haskell language-specific patterns, GADTs, type classes, and effect systems
+description: "Haskell functional patterns including GADTs, type classes, and effect systems. Load when writing Haskell code, designing type-safe APIs, or choosing between effect system libraries."
 user-invocable: false
 disable-model-invocation: true
 ---

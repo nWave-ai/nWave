@@ -1,6 +1,6 @@
 ---
 name: nw-command-optimization-workflow
-description: Step-by-step workflow for converting bloated command files to lean declarative definitions
+description: "Converts bloated command files to lean declarative definitions using the forge.md pattern. Use when refactoring oversized commands or reducing duplication in command definitions."
 user-invocable: false
 disable-model-invocation: true
 ---

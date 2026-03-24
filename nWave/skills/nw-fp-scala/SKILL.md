@@ -1,7 +1,7 @@
 ---
 name: nw-fp-scala
 agent: nw-functional-software-crafter
-description: Scala 3 language-specific patterns with ZIO, Cats Effect, and opaque types
+description: "Scala 3 functional patterns with ZIO, Cats Effect, and opaque types. Load when writing Scala 3 code, choosing between ZIO and Cats Effect, or designing tagless-final abstractions."
 user-invocable: false
 disable-model-invocation: true
 ---

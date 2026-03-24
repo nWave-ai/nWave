@@ -1,6 +1,6 @@
 ---
 name: nw-post-mortem-framework
-description: Blameless post-mortem structure, incident timeline reconstruction, response evaluation, and organizational learning
+description: "Blameless post-mortem structure, incident timeline reconstruction, and organizational learning. Load when conducting incident post-mortems, analyzing outages, or building action items from failures."
 user-invocable: false
 disable-model-invocation: true
 ---

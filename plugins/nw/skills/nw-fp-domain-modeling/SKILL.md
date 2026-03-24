@@ -1,7 +1,7 @@
 ---
 name: nw-fp-domain-modeling
 agent: nw-functional-software-crafter
-description: Domain modeling with algebraic data types, smart constructors, and type-level error handling
+description: "Domain modeling with algebraic data types, smart constructors, and type-level error handling. Load when designing domain types, encoding business rules in types, or making illegal states unrepresentable."
 user-invocable: false
 disable-model-invocation: true
 ---

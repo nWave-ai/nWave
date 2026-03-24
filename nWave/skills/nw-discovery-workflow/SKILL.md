@@ -1,6 +1,6 @@
 ---
 name: nw-discovery-workflow
-description: 4-phase discovery workflow with decision gates, phase transitions, success metrics, and state tracking
+description: "Guides discovery through 4 phases: problem validation, opportunity mapping, solution testing, and market viability. Use when running structured discovery or tracking discovery phase progress."
 user-invocable: false
 disable-model-invocation: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: nw-test-design-mandates
-description: Three design mandates for acceptance tests - hexagonal boundary enforcement, business language abstraction, user journey completeness, and walking skeleton strategy
+description: "Acceptance test design mandates for hexagonal boundary enforcement, business language abstraction, and user journey completeness. Load when writing acceptance tests, reviewing test boundaries, or building walking skeletons."
 user-invocable: false
 disable-model-invocation: true
 ---

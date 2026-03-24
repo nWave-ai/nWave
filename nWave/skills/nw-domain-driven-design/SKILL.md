@@ -1,6 +1,6 @@
 ---
 name: nw-domain-driven-design
-description: Strategic and tactical DDD patterns, bounded context discovery, context mapping, aggregate design rules, and decision frameworks for when to apply DDD
+description: "Strategic and tactical DDD patterns including bounded contexts, context mapping, and aggregate design. Use when modeling complex domains, defining service boundaries, or deciding whether to apply DDD."
 user-invocable: false
 disable-model-invocation: true
 ---

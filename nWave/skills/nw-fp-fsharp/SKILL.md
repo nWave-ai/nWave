@@ -1,7 +1,7 @@
 ---
 name: nw-fp-fsharp
 agent: nw-functional-software-crafter
-description: F# language-specific patterns, Railway-Oriented Programming, and Computation Expressions
+description: "F# functional patterns including Railway-Oriented Programming and Computation Expressions. Load when writing F# code, chaining Result types, or building custom computation expressions."
 user-invocable: false
 disable-model-invocation: true
 ---

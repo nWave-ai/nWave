@@ -1,7 +1,7 @@
 ---
 name: nw-pbt-haskell
 agent: nw-functional-software-crafter
-description: Haskell property-based testing with QuickCheck and Hedgehog frameworks
+description: "Haskell property-based testing with QuickCheck and Hedgehog. Load when writing property-based tests in Haskell or choosing between QuickCheck and Hedgehog."
 user-invocable: false
 disable-model-invocation: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: nw-new
-description: "Guided wizard to start a new feature. Asks what you want to build, recommends the right starting wave, and launches it."
+description: "Guided wizard to start a new feature, recommend the right wave, and launch it. Use when beginning a new feature or unsure which nWave wave to start with."
 user-invocable: false
 argument-hint: '[feature-description] - Example: "Add rate limiting to the API gateway"'
 ---

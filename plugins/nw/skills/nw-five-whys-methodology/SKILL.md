@@ -1,6 +1,6 @@
 ---
 name: nw-five-whys-methodology
-description: Toyota 5 Whys methodology with multi-causal branching, evidence requirements, and validation techniques
+description: "Toyota 5 Whys root cause analysis with multi-causal branching and evidence validation. Load when diagnosing production incidents, recurring bugs, or systemic failures."
 user-invocable: false
 disable-model-invocation: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: nw-progressive-refactoring
-description: Progressive L1-L6 refactoring hierarchy, 22 code smell taxonomy, atomic transformations, test code smells, and Fowler refactoring catalog
+description: "Progressive L1-L6 refactoring hierarchy with 22 code smells, atomic transformations, and Fowler catalog. Load when refactoring code, identifying code smells, or planning a structured refactoring pass."
 user-invocable: false
 disable-model-invocation: true
 ---

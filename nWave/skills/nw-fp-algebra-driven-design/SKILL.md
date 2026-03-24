@@ -1,7 +1,7 @@
 ---
 name: nw-fp-algebra-driven-design
 agent: nw-functional-software-crafter
-description: Algebra-driven API design with monoids, semigroups, and interpreters via algebraic equations
+description: "Algebra-driven API design with monoids, semigroups, and interpreters. Load when designing composable APIs, deriving laws from algebraic equations, or building interpreter patterns in FP."
 user-invocable: false
 disable-model-invocation: true
 ---

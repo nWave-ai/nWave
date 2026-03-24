@@ -1,6 +1,6 @@
 ---
 name: nw-divio-framework
-description: DIVIO/Diataxis four-quadrant documentation framework - type definitions, classification decision tree, and signal catalog
+description: "Applies the Diataxis four-quadrant documentation framework: tutorials, how-tos, reference, and explanation. Use when classifying documentation types, structuring docs, or auditing content quality."
 user-invocable: false
 disable-model-invocation: true
 ---

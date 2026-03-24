@@ -1,7 +1,7 @@
 ---
 name: nw-pbt-go
 agent: nw-functional-software-crafter
-description: Go property-based testing with rapid and gopter frameworks
+description: "Go property-based testing with rapid and gopter frameworks. Load when writing property-based tests in Go or choosing between rapid and gopter."
 user-invocable: false
 disable-model-invocation: true
 ---

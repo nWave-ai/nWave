@@ -1,6 +1,6 @@
 ---
 name: nw-jtbd-bdd-integration
-description: Translating JTBD analysis to BDD scenarios - job story to Given-When-Then patterns, forces-based test discovery, job-map-based test discovery, and property-shaped criteria
+description: "Translate JTBD analysis into BDD scenarios using job story to Given-When-Then patterns and forces-based test discovery. Load when converting job stories to acceptance tests or bridging product discovery with test design."
 user-invocable: false
 disable-model-invocation: true
 ---

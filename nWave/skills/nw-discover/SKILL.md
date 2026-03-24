@@ -1,6 +1,6 @@
 ---
 name: nw-discover
-description: "Conducts evidence-based product discovery through customer interviews and assumption testing. Use at project start to validate problem-solution fit."
+description: "Conducts evidence-based product discovery through customer interviews and assumption testing. Use when starting a new project, validating problem-solution fit, or running discovery workshops."
 user-invocable: true
 argument-hint: '[product-concept] - Optional: --interview-depth=[overview|comprehensive] --output-format=[md|yaml]'
 ---

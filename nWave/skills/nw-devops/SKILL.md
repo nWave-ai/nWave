@@ -1,6 +1,6 @@
 ---
 name: nw-devops
-description: "Designs CI/CD pipelines, infrastructure, observability, and deployment strategy. Use when preparing platform readiness for a feature."
+description: "Designs CI/CD pipelines, infrastructure, observability, and deployment strategy. Use when preparing platform readiness, setting up monitoring, or planning deployment topology for a feature."
 user-invocable: true
 argument-hint: '[deployment-target] - Optional: --environment=[staging|production] --validation=[full|smoke]'
 ---

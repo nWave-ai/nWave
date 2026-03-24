@@ -1,6 +1,6 @@
 ---
 name: nw-bdd-methodology
-description: BDD patterns for acceptance test design - Given-When-Then structure, scenario writing rules, pytest-bdd implementation, anti-patterns, and living documentation
+description: "BDD patterns for acceptance test design with Given-When-Then structure, pytest-bdd implementation, and living documentation. Load when writing BDD scenarios, reviewing acceptance tests, or setting up behavior-driven workflows."
 user-invocable: false
 disable-model-invocation: true
 ---

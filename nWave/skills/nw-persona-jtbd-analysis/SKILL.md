@@ -1,6 +1,6 @@
 ---
 name: nw-persona-jtbd-analysis
-description: Structured persona creation and JTBD analysis methodology - persona templates, ODI job step tables, pain point mapping, success metric quantification, and multi-persona segmentation
+description: "Structured persona creation and JTBD analysis with ODI job steps, pain point mapping, and success metrics. Load when building user personas, mapping jobs-to-be-done, or segmenting user types."
 user-invocable: false
 disable-model-invocation: true
 ---

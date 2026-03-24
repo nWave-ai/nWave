@@ -1,7 +1,7 @@
 ---
 name: nw-fp-principles
 agent: nw-functional-software-crafter
-description: Core functional programming thinking patterns and type system foundations, language-agnostic
+description: "Core functional programming patterns and type system foundations, language-agnostic. Load when applying FP principles, designing with immutability and pure functions, or learning functional thinking patterns."
 user-invocable: false
 disable-model-invocation: true
 ---

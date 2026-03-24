@@ -1,6 +1,6 @@
 ---
 name: nw-jtbd-interviews
-description: JTBD discovery techniques adapted for AI product owner context. Four Forces extraction, job dimension probing, question banks, and anti-patterns for interactive feature discovery conversations.
+description: "JTBD discovery interview techniques with Four Forces extraction and question banks. Load when conducting customer discovery conversations, probing job dimensions, or extracting switching forces for feature prioritization."
 user-invocable: false
 disable-model-invocation: true
 ---

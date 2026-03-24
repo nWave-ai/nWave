@@ -1,6 +1,6 @@
 ---
 name: nw-fast-forward
-description: "Fast-forwards through remaining waves end-to-end without stopping for review between waves."
+description: "Fast-forwards through remaining nWave waves end-to-end without stopping for review. Use when you want to chain DISCUSS through DELIVER automatically after a single confirmation."
 user-invocable: false
 argument-hint: '[feature-description] - Optional: --from=[discuss|design|devops|distill|deliver]'
 ---

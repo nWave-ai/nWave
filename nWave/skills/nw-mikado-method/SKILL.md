@@ -1,6 +1,6 @@
 ---
 name: nw-mikado-method
-description: Enhanced Mikado Method for complex architectural refactoring - systematic dependency discovery, tree-based planning, and bottom-up execution
+description: "Enhanced Mikado Method for complex architectural refactoring with dependency discovery and tree-based planning. Load when refactoring causes cascading failures, untangling coupled modules, or planning safe incremental changes."
 user-invocable: false
 disable-model-invocation: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: nw-outcome-kpi-framework
-description: Outcome KPI definition methodology - synthesizes Who Does What By How Much (Gothelf/Seiden), Running Lean (Maurya), and Measure What Matters (Doerr) into a practical framework for measurable outcome KPIs
+description: "Outcome KPI definition using Gothelf/Seiden, Running Lean, and OKR methodologies. Load when defining measurable outcome KPIs for user stories, features, or crafting success metrics."
 user-invocable: false
 disable-model-invocation: true
 ---

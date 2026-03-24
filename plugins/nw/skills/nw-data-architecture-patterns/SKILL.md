@@ -1,6 +1,6 @@
 ---
 name: nw-data-architecture-patterns
-description: Data architecture patterns (warehouse, lake, lakehouse, mesh), ETL/ELT pipelines, streaming architectures, scaling strategies, and schema design patterns
+description: "Data architecture patterns (warehouse, lake, lakehouse, mesh) with ETL/ELT and streaming designs. Use when selecting data architecture, designing pipelines, or planning data scaling strategies."
 user-invocable: false
 disable-model-invocation: true
 ---

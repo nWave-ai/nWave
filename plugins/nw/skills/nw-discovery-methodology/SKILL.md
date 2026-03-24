@@ -1,6 +1,6 @@
 ---
 name: nw-discovery-methodology
-description: Question-first approach to understanding user journeys. Load when starting a new journey design or when the discovery phase needs deepening.
+description: "Question-first approach to understanding user journeys through deep questioning before sketching. Load when starting a new journey design, deepening discovery, or mapping user goals and pain points."
 user-invocable: false
 disable-model-invocation: true
 ---

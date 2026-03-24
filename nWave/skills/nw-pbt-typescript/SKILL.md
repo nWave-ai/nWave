@@ -1,7 +1,7 @@
 ---
 name: nw-pbt-typescript
 agent: nw-functional-software-crafter
-description: TypeScript/JavaScript property-based testing with fast-check framework and arbitraries
+description: "TypeScript/JavaScript property-based testing with fast-check and arbitraries. Load when writing property-based tests in TypeScript or JavaScript or setting up fast-check."
 user-invocable: false
 disable-model-invocation: true
 ---

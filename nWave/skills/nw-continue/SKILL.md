@@ -1,6 +1,6 @@
 ---
 name: nw-continue
-description: "Detects current wave progress for a feature and resumes at the next step. Scans docs/feature/ for artifacts."
+description: "Detects current wave progress and resumes at the next step by scanning feature artifacts. Use when returning to a feature after a break or checking which wave phase comes next."
 user-invocable: false
 argument-hint: '[feature-id] - Optional: omit to auto-detect from docs/feature/'
 ---

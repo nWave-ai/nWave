@@ -1,7 +1,7 @@
 ---
 name: nw-tlaplus-verification
 agent: nw-functional-software-crafter
-description: TLA+ formal verification for design correctness and PBT pipeline integration
+description: "TLA+ formal verification for design correctness with PBT pipeline integration. Load when verifying concurrent algorithms, distributed protocols, or deciding between TLA+ and property-based testing."
 user-invocable: false
 disable-model-invocation: true
 ---

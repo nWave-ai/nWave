@@ -1,6 +1,6 @@
 ---
 name: nw-jtbd-core
-description: Core JTBD theory and job story format - job dimensions, job story template, job stories vs user stories, 8-step universal job map, outcome statements, and forces of progress
+description: "Core Jobs-to-be-Done theory with job story format, universal job map, and forces of progress. Load when writing job stories, mapping customer jobs, or comparing JTBD outcome statements to user stories."
 user-invocable: false
 disable-model-invocation: true
 ---

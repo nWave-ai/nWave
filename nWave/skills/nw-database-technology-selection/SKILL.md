@@ -1,6 +1,6 @@
 ---
 name: nw-database-technology-selection
-description: Database comparison catalogs, RDBMS vs NoSQL selection criteria, CAP/ACID/BASE theory, OLTP vs OLAP, and technology-specific characteristics
+description: "Compares database technologies across RDBMS, NoSQL, CAP/ACID/BASE, and OLTP vs OLAP dimensions. Use when selecting a database, evaluating data storage options, or designing data persistence."
 user-invocable: false
 disable-model-invocation: true
 ---

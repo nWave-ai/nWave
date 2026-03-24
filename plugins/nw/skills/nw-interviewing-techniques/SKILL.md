@@ -1,6 +1,6 @@
 ---
 name: nw-interviewing-techniques
-description: Mom Test questioning toolkit, JTBD analysis, interview conduct, assumption testing framework, and hypothesis design
+description: "Mom Test questioning toolkit with JTBD analysis, assumption testing, and hypothesis design. Load when preparing customer interviews, validating product assumptions, or designing discovery questions."
 user-invocable: false
 disable-model-invocation: true
 ---

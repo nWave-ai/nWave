@@ -1,6 +1,6 @@
 ---
 name: nw-deliver
-description: "Orchestrates the full DELIVER wave end-to-end (roadmap > execute-all > finalize). Use when all prior waves are complete and the feature is ready for implementation."
+description: "Orchestrates the full DELIVER wave end-to-end: roadmap, execute, finalize with quality gates. Use when all prior waves are complete and the feature is ready for TDD implementation."
 user-invocable: true
 argument-hint: '[feature-description] - Example: "Implement user authentication with JWT"'
 ---

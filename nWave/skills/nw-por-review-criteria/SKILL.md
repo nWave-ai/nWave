@@ -1,6 +1,6 @@
 ---
 name: nw-por-review-criteria
-description: Review dimensions and bug patterns for journey artifact reviews
+description: "Review dimensions and bug patterns for journey artifact reviews. Load when reviewing user journey coherence, emotional arcs, shared artifacts, or CLI UX patterns."
 user-invocable: false
 disable-model-invocation: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: nw-collapse-detection
-description: Documentation collapse anti-patterns - detection rules, bad examples, and remediation strategies for type-mixing violations
+description: "Detects documentation collapse anti-patterns where doc types merge inappropriately. Use when reviewing documentation quality, auditing content structure, or fixing type-mixing violations."
 user-invocable: false
 disable-model-invocation: true
 ---

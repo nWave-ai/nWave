@@ -1,6 +1,6 @@
 ---
 name: nw-ab-critique-dimensions
-description: Review dimensions for validating agent quality - template compliance, safety, testing, and priority validation
+description: "Validates agent quality across template compliance, safety, testing, and priority dimensions. Use when reviewing agent definitions or running quality audits on Claude Code agents."
 user-invocable: false
 disable-model-invocation: true
 ---

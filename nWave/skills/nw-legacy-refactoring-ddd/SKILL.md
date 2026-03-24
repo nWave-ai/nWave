@@ -1,6 +1,6 @@
 ---
 name: nw-legacy-refactoring-ddd
-description: DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
+description: "DDD-guided legacy refactoring with strangler fig, bubble context, and ACL migration patterns. Load when refactoring monoliths, defining bounded contexts in legacy code, or planning incremental microservices migration."
 user-invocable: false
 disable-model-invocation: true
 ---

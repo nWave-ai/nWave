@@ -1,6 +1,6 @@
 ---
 name: nw-investigation-techniques
-description: Evidence collection methods, problem categorization, analysis techniques, and solution design patterns
+description: "Evidence collection methods, problem categorization, and structured analysis techniques. Load when troubleshooting production issues, investigating root causes, or designing evidence-based solution approaches."
 user-invocable: false
 disable-model-invocation: true
 ---

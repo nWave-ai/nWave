@@ -1,6 +1,6 @@
 ---
 name: nw-test-refactoring-catalog
-description: Detailed refactoring mechanics with step-by-step procedures, and test code smell catalog with detection patterns and before/after examples
+description: "Test code smell catalog with detection patterns and step-by-step refactoring procedures. Load when cleaning up test suites, fixing flaky tests, or refactoring test code for readability and maintainability."
 user-invocable: false
 disable-model-invocation: true
 ---

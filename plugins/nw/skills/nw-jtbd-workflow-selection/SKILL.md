@@ -1,6 +1,6 @@
 ---
 name: nw-jtbd-workflow-selection
-description: JTBD workflow classification and routing - ODI two-phase framework, five job types with workflow sequences, baseline type selection, workflow anti-patterns, and common recipes
+description: "JTBD workflow classification and routing with ODI two-phase framework and five job types. Load when triaging incoming work, selecting the right nWave workflow entry point, or classifying jobs by type."
 user-invocable: false
 disable-model-invocation: true
 ---

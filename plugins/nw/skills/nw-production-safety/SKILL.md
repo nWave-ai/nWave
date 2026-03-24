@@ -1,6 +1,6 @@
 ---
 name: nw-production-safety
-description: Agent safety boundaries - input validation, output filtering, scope constraints, and document creation policy
+description: "Agent safety boundaries covering input validation, output filtering, and scope constraints. Load when enforcing production safety policies, validating agent inputs, or configuring security guardrails."
 user-invocable: false
 disable-model-invocation: true
 ---

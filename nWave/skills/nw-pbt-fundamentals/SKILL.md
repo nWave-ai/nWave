@@ -1,7 +1,7 @@
 ---
 name: nw-pbt-fundamentals
 agent: nw-functional-software-crafter
-description: Property-based testing core concepts, property taxonomy, and strategy selection (language-agnostic)
+description: "Property-based testing core concepts, property taxonomy, and strategy selection. Load when learning PBT fundamentals, choosing property types, or planning a property-based testing strategy."
 user-invocable: false
 disable-model-invocation: true
 ---

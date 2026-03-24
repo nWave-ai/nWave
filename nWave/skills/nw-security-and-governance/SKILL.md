@@ -1,6 +1,6 @@
 ---
 name: nw-security-and-governance
-description: Database security (encryption, access control, injection prevention), data governance (lineage, quality, MDM), and compliance frameworks (GDPR, CCPA, HIPAA)
+description: "Database security, data governance, and compliance frameworks (GDPR, CCPA, HIPAA). Load when implementing encryption, access control, injection prevention, data lineage, or auditing compliance requirements."
 user-invocable: false
 disable-model-invocation: true
 ---

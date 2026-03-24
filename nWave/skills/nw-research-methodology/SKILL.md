@@ -1,6 +1,6 @@
 ---
 name: nw-research-methodology
-description: Research output templates, distillation workflow, and quality standards for evidence-driven research
+description: "Research output templates, distillation workflow, and quality standards. Load when producing research documents, structuring evidence findings, or applying research quality standards."
 user-invocable: false
 disable-model-invocation: true
 ---

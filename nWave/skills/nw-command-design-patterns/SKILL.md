@@ -1,6 +1,6 @@
 ---
 name: nw-command-design-patterns
-description: Best practices for command definition files - size targets, declarative template, anti-patterns, and canonical examples based on research evidence
+description: "Best practices for command files: size targets, declarative templates, and anti-patterns. Use when creating new slash commands, optimizing existing commands, or reviewing command quality."
 user-invocable: false
 disable-model-invocation: true
 ---

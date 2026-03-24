@@ -1,6 +1,6 @@
 ---
 name: nw-diagram
-description: "Generates C4 architecture diagrams (context, container, component) in Mermaid or PlantUML. Use when creating or updating architecture visualizations."
+description: "Generates C4 architecture diagrams (context, container, component) in Mermaid or PlantUML. Use when creating architecture visualizations, updating system diagrams, or documenting component boundaries."
 user-invocable: true
 argument-hint: '[diagram-type] - Optional: --format=[mermaid|plantuml|c4] --level=[context|container|component]'
 ---

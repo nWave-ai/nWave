@@ -1,6 +1,6 @@
 ---
 name: nw-mikado
-description: "[EXPERIMENTAL] Complex refactoring roadmaps with visual tracking"
+description: "[EXPERIMENTAL] Builds complex refactoring roadmaps with visual dependency tracking. Use when planning multi-step refactoring, visualizing dependency trees, or tracking incremental refactoring progress."
 user-invocable: true
 argument-hint: '[refactoring-goal] - Optional: --complexity=[simple|moderate|complex] --visualization=[tree|graph]'
 ---

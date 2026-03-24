@@ -1,6 +1,6 @@
 ---
 name: nw-test-organization-conventions
-description: Test directory structure patterns by architecture style, language conventions, naming rules, and fixture placement. Decision tree for selecting test organization strategy.
+description: "Test directory structure patterns, naming conventions, and fixture placement by architecture style. Load when organizing test files, choosing a test directory layout, or enforcing naming rules across a codebase."
 user-invocable: false
 disable-model-invocation: true
 ---

@@ -1,7 +1,7 @@
 ---
 name: nw-pbt-dotnet
 agent: nw-functional-software-crafter
-description: .NET property-based testing with FsCheck, CsCheck, and fsharp-hedgehog frameworks
+description: ".NET property-based testing with FsCheck, CsCheck, and fsharp-hedgehog. Load when writing property-based tests in C# or F# or choosing a .NET PBT framework."
 user-invocable: false
 disable-model-invocation: true
 ---

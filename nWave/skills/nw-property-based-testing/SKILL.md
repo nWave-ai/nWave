@@ -1,6 +1,6 @@
 ---
 name: nw-property-based-testing
-description: Property-based testing strategies, mutation testing, shrinking, and combined PBT+mutation workflow for test quality validation
+description: "Property-based testing strategies, mutation testing, and shrinking techniques for test quality validation. Load when writing property-based tests, validating test suite effectiveness, or setting up PBT+mutation workflows."
 user-invocable: false
 disable-model-invocation: true
 ---

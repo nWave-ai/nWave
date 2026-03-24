@@ -1,6 +1,6 @@
 ---
 name: nw-hotspot
-description: "Git change frequency hotspot analysis — find the most-changed files in your codebase"
+description: "Git change-frequency hotspot analysis to find the most-changed files in a codebase. Use when identifying refactoring targets, detecting code churn, or prioritizing technical debt by change frequency."
 user-invocable: true
 argument-hint: '[--top=N] [--since=6m] [--json] [--rank report.md] [--detail file]'
 ---

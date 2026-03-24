@@ -1,6 +1,6 @@
 ---
 name: nw-operational-safety
-description: Tool safety protocols, adversarial output validation, error recovery patterns, and I/O contracts for research operations
+description: "Tool safety protocols, adversarial output validation, error recovery patterns, and I/O contracts. Load when configuring agent safety boundaries, validating tool usage, or hardening research operations."
 user-invocable: false
 disable-model-invocation: true
 ---

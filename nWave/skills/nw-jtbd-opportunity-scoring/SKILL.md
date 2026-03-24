@@ -1,6 +1,6 @@
 ---
 name: nw-jtbd-opportunity-scoring
-description: JTBD opportunity scoring and prioritization - outcome statement format, opportunity algorithm, scoring interpretation, feature prioritization, and opportunity matrix template
+description: "JTBD opportunity scoring with Ulwick ODI algorithm and opportunity matrix. Load when prioritizing features by customer outcomes, scoring backlog items, or building an evidence-based product roadmap."
 user-invocable: false
 disable-model-invocation: true
 ---

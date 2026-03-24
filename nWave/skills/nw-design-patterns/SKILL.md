@@ -1,6 +1,6 @@
 ---
 name: nw-design-patterns
-description: 7 agentic design patterns with decision tree for choosing the right pattern for each agent type
+description: "Catalogs 7 agentic design patterns (ReAct, Reflection, Orchestration) with a decision tree. Use when choosing an agent pattern, designing multi-agent workflows, or evaluating agent architectures."
 user-invocable: false
 disable-model-invocation: true
 ---

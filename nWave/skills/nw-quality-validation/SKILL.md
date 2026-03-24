@@ -1,6 +1,6 @@
 ---
 name: nw-quality-validation
-description: Type-specific validation checklists, six quality characteristics, and quality gate thresholds for documentation assessment
+description: "Six quality characteristics, validation checklists, and quality gate thresholds for documentation. Load when assessing document quality, running quality gates, or validating deliverable completeness."
 user-invocable: false
 disable-model-invocation: true
 ---

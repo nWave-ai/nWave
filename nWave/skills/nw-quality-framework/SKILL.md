@@ -1,6 +1,6 @@
 ---
 name: nw-quality-framework
-description: Quality gates - 11 commit readiness gates, build/test protocol, validation checkpoints, and quality metrics
+description: "Commit readiness gates, build/test protocol, and validation checkpoints for quality assurance. Load when checking code before committing, defining quality gates, or enforcing build and test standards."
 user-invocable: false
 disable-model-invocation: true
 ---
