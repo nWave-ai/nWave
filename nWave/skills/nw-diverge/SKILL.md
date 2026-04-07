@@ -44,7 +44,7 @@ Before beginning DIVERGE work, read SSOT and prior wave artifacts:
    - `wave-decisions.md` -- validated assumptions and key decisions
    - `problem-validation.md` -- customer evidence grounding the problem
 
-If `docs/product/` does not exist, this is the first wave using the SSOT model. DIVERGE will create it (bootstrap `docs/product/jobs.yaml` with the validated job).
+**Migration gate**: If `docs/product/` does not exist but `docs/feature/` has existing features, STOP. Guide the user to `docs/guides/migrating-to-ssot-model/README.md` and complete the migration first. If greenfield, DIVERGE will bootstrap `docs/product/jobs.yaml` with the validated job.
 
 **READING ENFORCEMENT**: You MUST read every file listed in Prior Wave Consultation above using the Read tool before proceeding. After reading, output a confirmation checklist. Do NOT skip files that exist -- skipping causes options disconnected from evidence.
 

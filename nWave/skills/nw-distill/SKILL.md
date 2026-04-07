@@ -24,24 +24,24 @@ Without the driving port, a crafter can write correct code that is never wired i
 
 ## Prior Wave Reading
 
-Before writing any scenario, read targeted prior wave artifacts:
+Before writing any scenario, read SSOT and feature delta artifacts:
 
-1. **DISCOVER** (skip): DISCUSS already synthesized DISCOVER evidence.
-2. **DISCUSS** (primary input): Read from `docs/feature/{feature-id}/discuss/`:
-   - `acceptance-criteria.md` -- primary input for test creation
-   - `story-map.md` -- drives walking skeleton priority and release slicing
-   - `user-stories.md` -- story-to-test traceability
-   - `wave-decisions.md` -- quick check for upstream changes
-3. **DESIGN** (structural context): Read from `docs/feature/{feature-id}/design/`:
-   - `architecture-design.md` -- port boundaries define test scope
-   - `component-boundaries.md` -- determines which components tests exercise
-   - `wave-decisions.md` -- check for upstream changes from DISCUSS
-4. **DEVOPS** (test environment): Read from `docs/feature/{feature-id}/devops/`:
-   - `platform-architecture.md` -- test environment setup
-   - `ci-cd-pipeline.md` -- test execution context
-   - `wave-decisions.md` -- check for infrastructure constraints affecting tests
+**SSOT (all three dimensions, from `docs/product/`):**
+1. **Journeys** (behavior): Read `docs/product/journeys/{name}.yaml` — extract embedded Gherkin as starting scenarios, identify integration checkpoints and `failure_modes` per step
+2. **Architecture** (structure): Read `docs/product/architecture/brief.md` — identify driving ports (from `## For Acceptance Designer` section) for `@driving_port` tagged scenarios
+3. **KPI contracts** (observability): Read `docs/product/kpi-contracts.yaml` — identify behaviors needing `@kpi` tagged scenarios (soft gate — warn if missing, proceed)
 
-DISTILL is the major synthesis point. Its job is to translate all prior wave knowledge into executable acceptance tests.
+**Feature delta:**
+4. **DISCUSS**: Read from `docs/feature/{feature-id}/discuss/`:
+   - `user-stories.md` — scope boundary and embedded acceptance criteria
+   - `story-map.md` — drives walking skeleton priority and release slicing
+   - `wave-decisions.md` — quick check for upstream changes
+5. **DEVOPS**: Read from `docs/feature/{feature-id}/devops/`:
+   - `wave-decisions.md` — check for infrastructure constraints affecting tests
+
+**Migration gate**: If `docs/product/` does not exist but `docs/feature/` has existing features, STOP. Guide the user to `docs/guides/migrating-to-ssot-model/README.md` and complete the migration first. If greenfield, prior waves should have bootstrapped `docs/product/` already.
+
+DISTILL is the conjunction point — it reads all three SSOT dimensions plus the feature delta to translate prior wave knowledge into executable acceptance tests.
 
 **READING ENFORCEMENT**: You MUST read every file listed above using the Read tool before proceeding. After reading, output a confirmation checklist (`+ {file}` for each read, `- {file} (not found)` for missing). Do NOT skip files that exist.
 

@@ -82,7 +82,7 @@ For each wave:
 
 Between waves show brief status:
 ```
-✓ DISCUSS complete — requirements.md, user-stories.md created
+✓ DISCUSS complete — user-stories.md, story-map.md created
   Starting DESIGN...
 ```
 

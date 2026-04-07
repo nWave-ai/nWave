@@ -20,18 +20,21 @@ All architects write to `docs/product/architecture/brief.md` (SSOT), each in its
 
 ## Prior Wave Consultation
 
-Before beginning DESIGN work, read targeted prior wave artifacts:
+Before beginning DESIGN work, read SSOT and prior wave artifacts:
 
-1. **DISCOVER** (synthesis check only): Read `docs/feature/{feature-id}/discover/wave-decisions.md` — if any decision is unclear or relevant to architecture, read the referenced source file
-2. **DISCUSS** (primary input): Read these key artifacts from `docs/feature/{feature-id}/discuss/`:
+1. **SSOT** (if `docs/product/` exists):
+   - `docs/product/architecture/brief.md` — existing architecture to extend (if exists)
+   - `docs/product/architecture/adr-*.md` — existing architectural decisions
+   - `docs/product/journeys/{name}.yaml` — journey schema for port identification
+2. **DISCUSS** (primary input): Read from `docs/feature/{feature-id}/discuss/`:
    - `wave-decisions.md` — decision summary
-   - `requirements.md` — functional requirements
-   - `acceptance-criteria.md` — testable criteria driving architecture
-   - `user-stories.md` — scope of what to build
+   - `user-stories.md` — scope, requirements, and embedded acceptance criteria
    - `story-map.md` — walking skeleton and release slicing
    - `outcome-kpis.md` — quality attributes informing architecture
 
-DISCUSS already synthesizes DISCOVER evidence into structured requirements. DESIGN does not need raw DISCOVER artifacts (problem-validation, interview-log, etc.) unless wave-decisions.md flags something architecturally significant.
+**Migration gate**: If `docs/product/` does not exist but `docs/feature/` has existing features, STOP. Guide the user to `docs/guides/migrating-to-ssot-model/README.md` and complete the migration first. If greenfield, DESIGN will bootstrap `docs/product/architecture/`.
+
+DESIGN reads SSOT architecture first (to extend, not recreate), then feature-level DISCUSS artifacts for the delta. DISCOVER evidence is already synthesized into DISCUSS — read DISCOVER only if wave-decisions.md flags something architecturally significant.
 
 **READING ENFORCEMENT**: You MUST read every file listed in Prior Wave Consultation above using the Read tool before proceeding. After reading, output a confirmation checklist (`✓ {file}` for each read, `⊘ {file} (not found)` for missing). Do NOT skip files that exist — skipping causes architectural decisions disconnected from requirements.
 

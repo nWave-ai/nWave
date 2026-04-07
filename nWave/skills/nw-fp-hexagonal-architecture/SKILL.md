@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Ports and adapters in functional programming. Structure applications with a pure core and side-effect shell.
 
-Cross-references: [fp-principles](./fp-principles.md) | [fp-domain-modeling](./fp-domain-modeling.md) | [fp-usable-design](./fp-usable-design.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [fp-usable-design](../nw-fp-usable-design/SKILL.md)
 
 ---
 
@@ -159,9 +159,9 @@ HTTP Request
 
 Each pure step is a function in the pipeline. Shell handles I/O at start and end.
 
-**Error-track pipelines**: Each step returns Result type; pipeline short-circuits on first failure. See [fp-domain-modeling](./fp-domain-modeling.md).
+**Error-track pipelines**: Each step returns Result type; pipeline short-circuits on first failure. See [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md).
 
-**Collect-all-errors**: When you need ALL validation errors, use Applicative style. See [fp-principles](./fp-principles.md) section 5.
+**Collect-all-errors**: When you need ALL validation errors, use Applicative style. See [fp-principles](../nw-fp-principles/SKILL.md) section 5.
 
 ---
 
@@ -178,7 +178,7 @@ Each pure step is a function in the pipeline. Shell handles I/O at start and end
 
 **Key insight**: Pure functions need no mocking. Input in, output out. Strongest practical argument for maximizing the pure core.
 
-**Property-based testing** is the natural companion. Define rules that hold for all valid inputs. See [fp-algebra-driven-design](./fp-algebra-driven-design.md).
+**Property-based testing** is the natural companion. Define rules that hold for all valid inputs. See [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md).
 
 ---
 

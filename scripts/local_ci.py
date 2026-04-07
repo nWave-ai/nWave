@@ -389,7 +389,7 @@ class LocalCIValidator:
 
         required_docs = [
             "README.md",
-            "docs/guides/installation-guide.md",
+            "docs/guides/installation-guide/README.md",
         ]
 
         doc_errors = 0

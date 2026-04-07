@@ -45,10 +45,10 @@ docs/features/{id}/
 | Wave | Reads SSOT | Produces Delta | Updates SSOT |
 |------|-----------|----------------|--------------|
 | DISCOVER | `jobs.yaml` | (evidence brief) | `jobs.yaml` + new validated job |
-| DIVERGE | `jobs.yaml`, `vision.md` | `recommendation.md` | `jobs.yaml` |
-| DISCUSS | `journeys/` | `user-stories.md` | `journeys/` (extends journey) |
-| DESIGN | `architecture/brief.md` | `wave-decisions.md` | `architecture/brief.md` + ADRs |
-| DEVOPS | `kpi-contracts.yaml` | (infra spec) | `kpi-contracts.yaml` |
+| DIVERGE | `jobs.yaml`, `vision.md` | `recommendation.md`, `job-analysis.md` | `jobs.yaml` |
+| DISCUSS | `journeys/`, `jobs.yaml`, `vision.md` | `user-stories.md`, `story-map.md`, `outcome-kpis.md` | `journeys/` (extends journey), `jobs.yaml` (if new job from DIVERGE) |
+| DESIGN | `architecture/brief.md`, `journeys/` | `wave-decisions.md` | `architecture/brief.md` + ADRs + `c4-diagrams.md` |
+| DEVOPS | `architecture/brief.md`, `kpi-contracts.yaml` | (infra spec) | `kpi-contracts.yaml` |
 | DISTILL | all above | `acceptance-tests.feature` | (none) |
 | DELIVER | `acceptance-tests.feature` | code | (code is the SSOT) |
 
@@ -67,17 +67,15 @@ docs/feature/{id}/          <- OLD MODEL (note: "feature" singular)
   deliver/
 ```
 
-**Fallback rules**:
-1. Agents check `docs/product/` first (SSOT)
-2. If `docs/product/` does not exist, fall back to `docs/feature/{id}/`
-3. Once `docs/product/` exists, old directories are not authoritative
-4. Old features are frozen archives — not updated, not migrated
+**Migration gate** (CRITICAL): If `docs/product/` does not exist but `docs/feature/` has existing features, the project MUST migrate before running new waves. All wave skills enforce this gate. Direct the user to the migration guide: `docs/guides/migrating-to-ssot-model/README.md`.
 
 **Key difference**: `docs/feature/` (singular, old) vs `docs/features/` (plural, new delta).
 
 ## Migration Path
 
-To bootstrap SSOT from existing features:
+Follow the step-by-step guide: `docs/guides/migrating-to-ssot-model/README.md`
+
+Summary of the 7 steps:
 
 1. Create `docs/product/` directory structure
 2. Extract validated jobs into `jobs.yaml`
@@ -106,5 +104,5 @@ To determine which model a project uses:
 3. Check if `docs/feature/` exists -> old model features present
 4. Both can coexist in the same project
 
-> For the full authoritative SSOT model reference, read `docs/guides/understanding-ssot-model.md`.
-> For the migration guide, read `docs/guides/migrating-to-ssot-model.md`.
+> For the full authoritative SSOT model reference, read `docs/guides/understanding-ssot-model/README.md`.
+> For the migration guide, read `docs/guides/migrating-to-ssot-model/README.md`.

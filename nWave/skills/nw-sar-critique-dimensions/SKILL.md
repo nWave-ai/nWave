@@ -65,7 +65,7 @@ Failure: Q1=NO (wrong problem) | Q2=MISSING (no alternatives) | Q3=INVERTED (>50
 ```yaml
 review_id: "arch_rev_{timestamp}"
 reviewer: "solution-architect-reviewer"
-artifact: "docs/architecture/architecture.md, docs/adrs/*.md"
+artifact: "docs/product/architecture/brief.md, docs/product/architecture/adr-*.md"
 iteration: {1 or 2}
 
 strengths:

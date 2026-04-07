@@ -148,6 +148,18 @@
 
 - [nw-curriculum-series-design](../../../nWave/skills/nw-curriculum-series-design/SKILL.md) — Arc-level curriculum design for multi-session workshop series — spiral curriculum, Bloom's progression across 6- and 12-session arcs, session opening/closing rituals, between-session transfer with spaced/interleaved practice, LARS assignment templates, and series-level capstone assessment models
 
+## nw-cw-awareness-frameworks
+
+- [nw-cw-awareness-frameworks](../../../nWave/skills/nw-cw-awareness-frameworks/SKILL.md) — Schwartz 5 levels of awareness with headline strategies, AIDA, PAS, and StoryBrand SB7 frameworks with when-to-use decision table
+
+## nw-cw-halbert-editing
+
+- [nw-cw-halbert-editing](../../../nWave/skills/nw-cw-halbert-editing/SKILL.md) — Halbert/Sugarman editing formula - greased slide, bucket brigades, open loops, seeds of curiosity, multi-pass editing, read-aloud test
+
+## nw-cw-persuasion-psychology
+
+- [nw-cw-persuasion-psychology](../../../nWave/skills/nw-cw-persuasion-psychology/SKILL.md) — Cialdini's 6 principles applied to copy, Ogilvy headline rules, power words, emotional vs rational triggers
+
 ## nw-data-architecture-patterns
 
 - [nw-data-architecture-patterns](../../../nWave/skills/nw-data-architecture-patterns/SKILL.md) — Data architecture patterns (warehouse, lake, lakehouse, mesh), ETL/ELT pipelines, streaming architectures, scaling strategies, and schema design patterns

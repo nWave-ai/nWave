@@ -6,7 +6,7 @@ nWave runs inside [Claude Code](https://claude.com/product/claude-code). It brea
 
 ## What's New in v3.5
 
-**[Full changelog →](https://github.com/nwave-ai/nwave/tree/main/docs/guides/whats-new-v35.md)**
+**[Full changelog →](https://github.com/nwave-ai/nwave/tree/main/docs/guides/whats-new-v35/)**
 
 - **`/nw-buddy`** — Your AI concierge. Not sure where to start? Ask the buddy. It reads your project and gives contextual answers about methodology, commands, project state, and troubleshooting.
 - **DIVERGE wave** — Structured brainstorming before convergence. Explore design options with JTBD analysis, competitive research, and SCAMPER ideation before locking into a solution.
@@ -45,7 +45,7 @@ The workflow has seven waves. Entry point depends on your context:
 - **Bug fix**: Jump straight to DISTILL (write failing test) then DELIVER
 - **Refactoring**: Jump to DELIVER (green already, refactor inside existing tests)
 
-DISTILL → DELIVER is always the terminal pair. See the [Wave Routing Guide](https://github.com/nwave-ai/nwave/tree/main/docs/guides/wave-routing-and-entry-points.md) for the full decision matrix.
+DISTILL → DELIVER is always the terminal pair. See the [Wave Routing Guide](https://github.com/nwave-ai/nwave/tree/main/docs/guides/wave-routing-and-entry-points/) for the full decision matrix.
 
 40 agents total: 10 wave agents (including 3 DESIGN specialists), 1 concierge, 8 cross-wave specialists, 14 peer reviewers, 7 business agents. Full list: **[Commands Reference](https://github.com/nwave-ai/nwave/tree/main/docs/reference/commands/index.md)**
 
@@ -69,7 +69,7 @@ Agents and commands go to `~/.claude/`.
 > **Don't have pipx?** Install with: `pip install pipx && pipx ensurepath`, then restart your terminal.
 > **Windows users**: Use WSL (Windows Subsystem for Linux). Install with: `wsl --install`
 
-Full setup details: **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide.md)**
+Full setup details: **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide/README.md)**
 
 ### Plugin (Limited)
 
@@ -145,7 +145,7 @@ The buddy reads your project and gives contextual answers. Use it anytime you're
 
 Each wave produces artifacts you review. The machine never runs unsupervised end-to-end.
 
-Full walkthrough: **[Your First Feature](https://github.com/nwave-ai/nwave/tree/main/docs/guides/tutorial-first-feature.md)**
+Full walkthrough: **[Your First Feature](https://github.com/nwave-ai/nwave/tree/main/docs/guides/tutorial-first-feature/)**
 
 ## Keeping nWave Updated
 
@@ -240,16 +240,16 @@ These messages protect code quality but never prevent your work — they guide y
 
 ### Getting Started
 
-- **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide.md)** — Setup instructions
-- **[Your First Feature](https://github.com/nwave-ai/nwave/tree/main/docs/guides/tutorial-first-feature.md)** — Build a feature end-to-end (tutorial)
-- **[Jobs To Be Done](https://github.com/nwave-ai/nwave/tree/main/docs/guides/jobs-to-be-done-guide.md)** — Which workflow fits your task
+- **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide/README.md)** — Setup instructions
+- **[Your First Feature](https://github.com/nwave-ai/nwave/tree/main/docs/guides/tutorial-first-feature/)** — Build a feature end-to-end (tutorial)
+- **[Jobs To Be Done](https://github.com/nwave-ai/nwave/tree/main/docs/guides/jobs-to-be-done-guide/)** — Which workflow fits your task
 
 ### Guides & Reference
 
 - **[Agents & Commands Reference](https://github.com/nwave-ai/nwave/tree/main/docs/reference/index.md)** — All agents, commands, skills, templates
-- **[Wave Directory Structure](https://github.com/nwave-ai/nwave/tree/main/docs/guides/wave-directory-structure.md)** — How wave outputs are organized per feature
-- **[Invoke Reviewers](https://github.com/nwave-ai/nwave/tree/main/docs/guides/invoke-reviewer-agents.md)** — Peer review workflow
-- **[Troubleshooting](https://github.com/nwave-ai/nwave/tree/main/docs/guides/troubleshooting-guide.md)** — Common issues and fixes
+- **[Wave Directory Structure](https://github.com/nwave-ai/nwave/tree/main/docs/guides/wave-directory-structure/)** — How wave outputs are organized per feature
+- **[Invoke Reviewers](https://github.com/nwave-ai/nwave/tree/main/docs/guides/invoke-reviewer-agents/)** — Peer review workflow
+- **[Troubleshooting](https://github.com/nwave-ai/nwave/tree/main/docs/guides/troubleshooting-guide/)** — Common issues and fixes
 
 ## Community
 

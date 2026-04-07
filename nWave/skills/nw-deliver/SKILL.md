@@ -57,10 +57,7 @@ Before beginning DELIVER work, read targeted prior wave artifacts. DISTILL is th
 
 1. **DISCOVER** (skip): Synthesized into DISCUSS, then into DISTILL acceptance tests.
 2. **DISCUSS** (skip): Synthesized into DISTILL acceptance tests. If needed during implementation, read specific files on demand.
-3. **DESIGN** (structural context): Read from `docs/feature/{feature-id}/design/`:
-   - `architecture-design.md` — component structure and C4 diagrams guide implementation
-   - `component-boundaries.md` — dependency-inversion boundaries
-   - `wave-decisions.md` — paradigm, tech stack, upstream changes
+3. **DESIGN** (structural context): Read `docs/product/architecture/brief.md` — component boundaries, driving ports, C4 diagrams, and key architectural decisions. Also read `docs/feature/{feature-id}/design/wave-decisions.md` — paradigm, tech stack, upstream changes.
 4. **DEVOPS** (skip): Infrastructure setup is independent of implementation. Read `wave-decisions.md` only if test environment issues arise.
 5. **DISTILL** (primary input): Read all files in `docs/feature/{feature-id}/distill/` — test scenarios, walking skeleton, acceptance review are the authoritative specification for implementation.
 
@@ -261,7 +258,7 @@ Load on-demand per phase as specified in your Skill Loading Strategy table.
 {Summarize key architectural decisions from design wave artifacts read at step 0.5.
 Include: component structure, dependency-inversion boundaries, technology choices,
 data models, and any design constraints relevant to this step.
-Source files: architecture-design.md, component-boundaries.md, wave-decisions.md.
+Source files: docs/product/architecture/brief.md, wave-decisions.md.
 If no design artifacts exist, write "No design artifacts available — use project conventions."}
 
 # TDD_PHASES

@@ -48,12 +48,19 @@ For greenfield projects (no src/ code, no docs/feature/ history), Luna proposes 
 
 ## Prior Wave Consultation
 
-Before beginning DISCUSS work, read prior wave artifacts and project context:
+Before beginning DISCUSS work, read SSOT and prior wave artifacts:
 
-1. **Project context**: `docs/project-brief.md` | `docs/stakeholders.yaml` | `docs/architecture/constraints.md`
-2. **DISCOVER artifacts**: Read all files in `docs/feature/{feature-id}/discover/`
+1. **SSOT** (if `docs/product/` exists):
+   - `docs/product/journeys/{name}.yaml` — existing journey to extend (if applicable)
+   - `docs/product/jobs.yaml` — validated jobs and opportunity scores
+   - `docs/product/vision.md` — product vision
+2. **Project context**: `docs/project-brief.md` | `docs/stakeholders.yaml`
+3. **DISCOVER artifacts**: Read `docs/feature/{feature-id}/discover/` (if present)
+4. **DIVERGE artifacts**: Read `docs/feature/{feature-id}/diverge/recommendation.md` and `job-analysis.md` (if present — job is already validated, do not re-run JTBD)
 
-DISCUSS is the direct successor to DISCOVER — reading all DISCOVER artifacts is appropriate since DISCUSS must synthesize raw evidence into structured requirements.
+**Migration gate**: If `docs/product/` does not exist but `docs/feature/` has existing features, STOP. The project has old-model features that should be migrated to SSOT before new waves run. Guide the user to `docs/guides/migrating-to-ssot-model/README.md` and complete the migration first. If `docs/product/` does not exist and no old features exist (greenfield), DISCUSS will bootstrap it.
+
+DISCUSS follows DISCOVER and optionally DIVERGE — reading SSOT first ensures continuity with prior features, then prior wave artifacts ground requirements in evidence.
 
 **READING ENFORCEMENT**: You MUST read every file listed in Prior Wave Consultation above using the Read tool before proceeding. After reading, output a confirmation checklist (`✓ {file}` for each read, `⊘ {file} (not found)` for missing). Do NOT skip files that exist — skipping causes requirements disconnected from evidence.
 
@@ -136,10 +143,8 @@ Luna crafts LeanUX stories informed by JTBD + journey artifacts. Every story tra
 
 | Artifact | Path |
 |----------|------|
-| Requirements | `docs/feature/{feature-id}/discuss/requirements.md` |
-| User Stories | `docs/feature/{feature-id}/discuss/user-stories.md` |
-| Acceptance Criteria | `docs/feature/{feature-id}/discuss/acceptance-criteria.md` |
-| DoR Checklist | `docs/feature/{feature-id}/discuss/dor-checklist.md` |
+| User Stories (includes requirements + embedded AC) | `docs/feature/{feature-id}/discuss/user-stories.md` |
+| DoR Validation | `docs/feature/{feature-id}/discuss/dor-validation.md` |
 | Outcome KPIs | `docs/feature/{feature-id}/discuss/outcome-kpis.md` |
 
 ## Success Criteria
@@ -167,7 +172,7 @@ Luna crafts LeanUX stories informed by JTBD + journey artifacts. Every story tra
 ## Next Wave
 
 **Handoff To**: nw-solution-architect (DESIGN wave) + nw-platform-architect (DEVOPS wave, KPIs only)
-**Deliverables**: Journey artifacts + story map + requirements + outcome KPIs | JTBD artifacts (when selected)
+**Deliverables**: User stories + story map + outcome KPIs + SSOT journey/jobs updates | JTBD artifacts (when selected)
 
 DISCUSS hands off to BOTH DESIGN (full artifacts) and DEVOPS (outcome-kpis.md only). DEVOPS and DESIGN can proceed in parallel — DESIGN receives the complete artifact set while DEVOPS receives only the KPI file to drive observability and instrumentation design.
 
@@ -193,27 +198,22 @@ Before completing DISCUSS, produce `docs/feature/{feature-id}/discuss/wave-decis
 - {any DISCOVER assumptions changed, with rationale}
 ```
 
-This summary enables DESIGN to quickly assess DISCUSS outcomes. DESIGN reads this plus key artifacts (requirements.md, acceptance-criteria.md, story-map.md, outcome-kpis.md) rather than all DISCUSS files.
+This summary enables DESIGN to quickly assess DISCUSS outcomes. DESIGN reads this plus key artifacts (user-stories.md, story-map.md, outcome-kpis.md) rather than all DISCUSS files.
 
 ## Expected Outputs
 
 ```
-docs/feature/{feature-id}/discuss/
-  jtbd-job-stories.md           (when JTBD selected)
-  jtbd-four-forces.md           (when JTBD selected)
-  jtbd-opportunity-scores.md    (when JTBD selected, multiple jobs)
-  journey-{name}-visual.md
-  journey-{name}.yaml
-  journey-{name}.feature
-  shared-artifacts-registry.md
+docs/feature/{feature-id}/discuss/     (feature delta)
+  user-stories.md               (requirements + embedded AC, each story traces to a job)
   story-map.md
-  prioritization.md
-  requirements.md
-  user-stories.md               (each story traces to a job)
-  acceptance-criteria.md
-  dor-checklist.md
+  dor-validation.md
   outcome-kpis.md
   wave-decisions.md
+
+docs/product/                          (SSOT updates)
+  journeys/{name}.yaml          (create or extend journey schema)
+  journeys/{name}-visual.md     (human-readable journey narrative)
+  jobs.yaml                     (add validated job if new)
 ```
 
 ## Examples

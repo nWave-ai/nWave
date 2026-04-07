@@ -27,7 +27,7 @@ scenarios("../milestone-5-coexistence.feature")
 
 def test_migration_guide_exists(project_root: Path):
     """Verify the migration guide exists and has required sections."""
-    guide = project_root / "docs" / "guides" / "plugin-migration-guide.md"
+    guide = project_root / "docs" / "guides" / "plugin-migration-guide" / "README.md"
     assert guide.exists(), f"Migration guide not found: {guide}"
     content = guide.read_text(encoding="utf-8")
     assert "Prerequisites" in content, "Migration guide missing Prerequisites section"

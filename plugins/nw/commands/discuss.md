@@ -46,7 +46,7 @@ Before beginning DISCUSS work, read SSOT and prior wave artifacts:
    - `docs/product/journeys/{name}.yaml` — existing journey to extend (if applicable)
    - `docs/product/jobs.yaml` — validated jobs and opportunity scores
    - `docs/product/vision.md` — product vision
-2. **Project context**: `docs/project-brief.md` | `docs/stakeholders.yaml` | `docs/architecture/constraints.md`
+2. **Project context**: `docs/project-brief.md` | `docs/stakeholders.yaml`
 3. **DISCOVER artifacts**: Read `docs/feature/{feature-id}/discover/` (if present)
 4. **DIVERGE artifacts**: Read `docs/feature/{feature-id}/diverge/` (if present)
    - `recommendation.md` is the primary input — the selected design direction and job statement

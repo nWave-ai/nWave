@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # FP in Haskell -- Functional Software Crafter Skill
 
-Cross-references: [fp-principles](./fp-principles.md) | [fp-domain-modeling](./fp-domain-modeling.md) | [pbt-haskell](./pbt-haskell.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [pbt-haskell](../nw-pbt-haskell/SKILL.md)
 
 ## When to Choose Haskell
 
@@ -156,7 +156,7 @@ instance OrderRepo IO where
 
 ## [INTERMEDIATE] Testing
 
-**Frameworks**: QuickCheck (original PBT) | Hedgehog (integrated shrinking) | Hspec (BDD) | tasty (composable test tree). See [pbt-haskell](./pbt-haskell.md) for detailed PBT patterns.
+**Frameworks**: QuickCheck (original PBT) | Hedgehog (integrated shrinking) | Hspec (BDD) | tasty (composable test tree). See [pbt-haskell](../nw-pbt-haskell/SKILL.md) for detailed PBT patterns.
 
 ### Property Test Example
 

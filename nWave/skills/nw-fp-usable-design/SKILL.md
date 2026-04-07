@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Make functional code usable. The developer is the user of your design. Apply usability thinking to code organization, naming, and architecture.
 
-Cross-references: [fp-domain-modeling](./fp-domain-modeling.md) | [fp-hexagonal-architecture](./fp-hexagonal-architecture.md) | [fp-algebra-driven-design](./fp-algebra-driven-design.md)
+Cross-references: [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) | [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md)
 
 ---
 
@@ -168,7 +168,7 @@ Ask "what design change prevents this category of bug?" rather than fixing indiv
 
 **Fear of making changes signals design problem**: unclear side effects | missing tests | tangled responsibilities. Fixing individual bugs without addressing design guarantees recurrence.
 
-See [fp-algebra-driven-design](./fp-algebra-driven-design.md) section 5 for algebraic contradiction analysis.
+See [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md) section 5 for algebraic contradiction analysis.
 
 ---
 
@@ -228,10 +228,10 @@ Does this module represent a feature domain?
 
 ## 12. Combining with Other Patterns
 
-**Design Elements + Algebraic Rules**: Each element's constraints ("a Controller can only call Services") are formalizable as algebraic rules, making constraints machine-checkable. See [fp-algebra-driven-design](./fp-algebra-driven-design.md). Example: `imports(controllerModule) intersect dbModules == empty`.
+**Design Elements + Algebraic Rules**: Each element's constraints ("a Controller can only call Services") are formalizable as algebraic rules, making constraints machine-checkable. See [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md). Example: `imports(controllerModule) intersect dbModules == empty`.
 
 **Navigability + Simple Rules**: Algebraic decomposition produces small, orthogonal operations with simple rules. Small operations are easy to name well. Example: `applyDiscount` and `calculateTax` are instantly searchable; `processOrder` is not.
 
-**Feature Organization + Domain Modeling**: Feature folders align with bounded contexts. Each feature owns its domain types and workflows. See [fp-domain-modeling](./fp-domain-modeling.md). Example: `order/types.fs`, `order/validate.fs`, `order/price.fs`.
+**Feature Organization + Domain Modeling**: Feature folders align with bounded contexts. Each feature owns its domain types and workflows. See [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md). Example: `order/types.fs`, `order/validate.fs`, `order/price.fs`.
 
 **Prescribed Testing + Property-Based Testing**: Design elements prescribe WHAT kind of test. PBT prescribes HOW to write those tests as properties. Example: Command objects get conservation properties (`forAll(order -> totalOf(applyDiscount(order)) <= totalOf(order))`). Controllers get round-trip properties.

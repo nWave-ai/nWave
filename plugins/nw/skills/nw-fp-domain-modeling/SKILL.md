@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Domain modeling with types. Make illegal states unrepresentable, workflows as pipelines, error handling at the type level.
 
-Cross-references: [fp-principles](./fp-principles.md) | [fp-hexagonal-architecture](./fp-hexagonal-architecture.md) | [fp-algebra-driven-design](./fp-algebra-driven-design.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) | [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md)
 
 ---
 
@@ -165,7 +165,7 @@ Each step may have its own error type. Define a common error choice type and use
 
 [ADVANCED]
 
-Standard bind short-circuits on first error. For validation where you want ALL errors, use Applicative style -- runs all validations and accumulates errors into a list. See [fp-principles](./fp-principles.md) section 5.
+Standard bind short-circuits on first error. For validation where you want ALL errors, use Applicative style -- runs all validations and accumulates errors into a list. See [fp-principles](../nw-fp-principles/SKILL.md) section 5.
 
 **When**: Form validation | batch input checking | any place user needs all errors at once.
 
@@ -186,7 +186,7 @@ GetProductPrice        : ProductCode -> Price
 
 **Public vs. internal**: Top-level workflow hides dependencies from callers. Internal steps make them explicit.
 
-See [fp-hexagonal-architecture](./fp-hexagonal-architecture.md) section 5 for full DI decision tree.
+See [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) section 5 for full DI decision tree.
 
 ---
 

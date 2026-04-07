@@ -48,7 +48,7 @@ Read these files NOW:
 ## Workflow
 
 ### Phase 1: Artifact Collection
-Read architecture document (`docs/architecture/architecture.md`)|all ADRs (`docs/adrs/`)|roadmap if present. Gate: all artifacts located and read.
+Read architecture document (`docs/product/architecture/brief.md`)|all ADRs (`docs/product/architecture/adr-*.md`)|roadmap if present. Gate: all artifacts located and read.
 
 ### Phase 2: Architecture Review
 Load: `critique-dimensions` — read it NOW before proceeding.

@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # FP in Scala 3 -- Functional Software Crafter Skill
 
-Cross-references: [fp-principles](./fp-principles.md) | [fp-domain-modeling](./fp-domain-modeling.md) | [pbt-jvm](./pbt-jvm.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [pbt-jvm](../nw-pbt-jvm/SKILL.md)
 
 ## When to Choose Scala
 
@@ -132,7 +132,7 @@ def placeOrder[F[_]: Monad](repo: OrderRepository[F])(raw: RawOrder): F[Either[O
 
 ## [INTERMEDIATE] Testing
 
-**Frameworks**: ScalaCheck (PBT) | ZIO Test (integrated PBT + unit) | ScalaTest (BDD) | MUnit (lightweight). See [pbt-jvm](./pbt-jvm.md) for detailed PBT patterns.
+**Frameworks**: ScalaCheck (PBT) | ZIO Test (integrated PBT + unit) | ScalaTest (BDD) | MUnit (lightweight). See [pbt-jvm](../nw-pbt-jvm/SKILL.md) for detailed PBT patterns.
 
 ### Property Test (ScalaCheck)
 

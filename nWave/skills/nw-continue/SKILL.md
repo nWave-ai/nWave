@@ -45,7 +45,7 @@ Check each wave's artifacts using Wave Detection Rules in `~/.claude/nWave/skill
 
 Check before showing progress:
 
-**Empty/corrupted artifacts:** Verify file size > 0 for each "complete" artifact. If empty, flag: "Warning: `requirements.md` exists but is empty (0 bytes). Recommend re-running DISCUSS wave."
+**Empty/corrupted artifacts:** Verify file size > 0 for each "complete" artifact. If empty, flag: "Warning: `user-stories.md` exists but is empty (0 bytes). Recommend re-running DISCUSS wave."
 
 **Non-adjacent waves (skipped):** If artifacts exist for non-consecutive waves (e.g., DISCUSS + DELIVER but no DESIGN/DISTILL), warn with options:
 1. Fill the gap — start from missing wave

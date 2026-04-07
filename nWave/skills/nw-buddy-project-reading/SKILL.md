@@ -102,4 +102,4 @@ When a wave fails due to missing prerequisites:
 | DISCUSS says "no recommendation" | `docs/features/{id}/recommendation.md` | Run `/nw-diverge {id}` first (if multiple approaches) |
 | Agent reads stale journey | Journey changelog date > 6 months | Re-run `/nw-discuss {id}` to refresh |
 
-> For authoritative detection rules and directory structure, read `docs/guides/wave-directory-structure.md`.
+> For authoritative detection rules and directory structure, read `docs/guides/wave-directory-structure/README.md`.

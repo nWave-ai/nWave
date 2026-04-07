@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Algebraic thinking for API design. Discover the right API before implementing by specifying rules (equations) that operations must satisfy.
 
-Cross-references: [fp-principles](./fp-principles.md) | [fp-domain-modeling](./fp-domain-modeling.md) | [fp-usable-design](./fp-usable-design.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [fp-usable-design](../nw-fp-usable-design/SKILL.md)
 
 ---
 
@@ -162,9 +162,9 @@ Is your domain about COMBINING things?
 
 **Rules + Property-Based Testing**: Rules ARE property tests. Algebraic constructors become PBT generators. Example: `empty merge x = x` becomes `forAll(x -> assertEquals(empty.merge(x), x))`.
 
-**Rules + Domain Modeling** (see [fp-domain-modeling](./fp-domain-modeling.md)): Domain wrappers with smart constructors are algebraic rules. State machine transitions are rules about valid sequences. Example: `items(addItem(cart, item))` contains `item` -- directly a property test.
+**Rules + Domain Modeling** (see [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md)): Domain wrappers with smart constructors are algebraic rules. State machine transitions are rules about valid sequences. Example: `items(addItem(cart, item))` contains `item` -- directly a property test.
 
-**Rules + Usable Design** (see [fp-usable-design](./fp-usable-design.md)): Simple algebraic rules map to simple, searchable, nameable operations -- improving navigability and learnability. Example: decomposing `processOrder` into `validate`, `price`, `confirm` gives three nameable functions instead of one opaque one.
+**Rules + Usable Design** (see [fp-usable-design](../nw-fp-usable-design/SKILL.md)): Simple algebraic rules map to simple, searchable, nameable operations -- improving navigability and learnability. Example: decomposing `processOrder` into `validate`, `price`, `confirm` gives three nameable functions instead of one opaque one.
 
 **Decomposition + Feature Organization**: When algebraic decomposition splits a monolithic operation into orthogonal pieces, organize by feature domain. Example: splitting `configureWidget(size, color, border)` into `resize`, `recolor`, `restyle` lets each live in its own feature module.
 

@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # FP in Clojure -- Functional Software Crafter Skill
 
-Cross-references: [fp-principles](./fp-principles.md) | [fp-domain-modeling](./fp-domain-modeling.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md)
 
 ## When to Choose Clojure
 

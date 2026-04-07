@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Core functional programming thinking patterns. Language-agnostic.
 
-Cross-references: [fp-domain-modeling](./fp-domain-modeling.md) | [fp-hexagonal-architecture](./fp-hexagonal-architecture.md) | [fp-algebra-driven-design](./fp-algebra-driven-design.md)
+Cross-references: [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) | [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md)
 
 ---
 
@@ -168,7 +168,7 @@ pendingTotals = orders
 | **Accumulator** (Writer) | Side-channel output | Logging, auditing, collecting metadata |
 | **Stateful** (State) | Sequential state changes | Counters, parsers, accumulators |
 
-These compose: real applications stack multiple patterns. See [fp-hexagonal-architecture](./fp-hexagonal-architecture.md) for DI patterns.
+These compose: real applications stack multiple patterns. See [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) for DI patterns.
 
 ---
 

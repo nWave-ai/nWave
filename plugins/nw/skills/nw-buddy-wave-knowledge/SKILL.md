@@ -75,11 +75,11 @@ Each wave can be skipped only if ALL items in its checklist are true.
 Each wave reads SSOT first, then prior wave delta:
 
 ```
-DISCOVER -> DIVERGE reads jobs.yaml
-DIVERGE  -> DISCUSS reads recommendation.md + jobs.yaml
-DISCUSS  -> DESIGN reads journeys/*.yaml + user-stories.md
-DESIGN   -> DEVOPS reads architecture/brief.md
-DEVOPS   -> DISTILL reads all 3 SSOT dimensions
+DISCOVER -> DIVERGE reads jobs.yaml + vision.md
+DIVERGE  -> DISCUSS reads recommendation.md + job-analysis.md + journeys/ + jobs.yaml + vision.md
+DISCUSS  -> DESIGN reads architecture/brief.md + journeys/*.yaml + user-stories.md
+DESIGN   -> DEVOPS reads architecture/brief.md + kpi-contracts.yaml + outcome-kpis.md
+DEVOPS   -> DISTILL reads all 3 SSOT dimensions (journeys + architecture + kpi-contracts)
 DISTILL  -> DELIVER reads acceptance-tests.feature
 ```
 
@@ -97,4 +97,4 @@ When a user asks "what should I do next?", walk through the Entry Points table a
 
 After DISTILL, always DELIVER.
 
-> For the full authoritative wave routing reference, read `docs/guides/wave-routing-and-entry-points.md`.
+> For the full authoritative wave routing reference, read `docs/guides/wave-routing-and-entry-points/README.md`.

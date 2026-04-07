@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # FP in Kotlin -- Functional Software Crafter Skill
 
-Cross-references: [fp-principles](./fp-principles.md) | [fp-domain-modeling](./fp-domain-modeling.md) | [pbt-jvm](./pbt-jvm.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [pbt-jvm](../nw-pbt-jvm/SKILL.md)
 
 ## When to Choose Kotlin
 
@@ -163,7 +163,7 @@ DI: constructor injection via Koin, Dagger/Hilt, or manual wiring.
 
 ## [INTERMEDIATE] Testing
 
-**Frameworks**: Kotest (test framework + PBT) | jqwik (PBT on JUnit 5) | MockK (coroutine-aware mocking). See [pbt-jvm](./pbt-jvm.md) for detailed PBT patterns.
+**Frameworks**: Kotest (test framework + PBT) | jqwik (PBT on JUnit 5) | MockK (coroutine-aware mocking). See [pbt-jvm](../nw-pbt-jvm/SKILL.md) for detailed PBT patterns.
 
 ### Property Test (Kotest)
 

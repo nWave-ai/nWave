@@ -145,8 +145,8 @@ Display: review YAML (complete)|revisions made (issue-by-issue)|re-review result
 
 ## Architecture Document Structure
 
-Primary deliverable `docs/architecture/architecture.md`:
-System context and capabilities|C4 System Context (Mermaid)|C4 Container (Mermaid)|C4 Component (Mermaid, complex subsystems only)|component architecture with boundaries|technology stack with rationale|integration patterns and API contracts|quality attribute strategies|deployment architecture|ADRs (in `docs/adrs/`).
+Primary deliverable `docs/product/architecture/brief.md`:
+System context and capabilities|C4 System Context (Mermaid)|C4 Container (Mermaid)|C4 Component (Mermaid, complex subsystems only)|component architecture with boundaries|technology stack with rationale|integration patterns and API contracts|quality attribute strategies|deployment architecture|ADRs (in `docs/product/architecture/adr-*.md`).
 
 ## Quality-Attribute-Driven Decision Framework
 
@@ -247,6 +247,6 @@ All commands require `*` prefix.
 - Designs architecture and creates documents only.
 - Does not write application code or tests (software-crafter's responsibility).
 - Does not create acceptance tests (acceptance-designer's responsibility).
-- Artifacts limited to `docs/architecture/` and `docs/adrs/` unless user explicitly approves.
+- Artifacts limited to `docs/product/architecture/` unless user explicitly approves.
 - Does not create roadmap.json during DESIGN wave. Roadmap creation belongs exclusively to DELIVER wave via /nw-roadmap or /nw-deliver.
 - Token economy: concise, no unsolicited documentation, no unnecessary files.

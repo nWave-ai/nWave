@@ -54,7 +54,7 @@ The nWave methodology implements a systematic approach to software development t
 
 ## Wave Directory Structure
 
-All wave outputs follow a unified pattern: `docs/feature/{feature-id}/{wave}/`. See the [Wave Directory Structure Guide](../docs/guides/wave-directory-structure.md) for the complete layout, handoff chain, and wave detection rules.
+All wave outputs follow a unified pattern: `docs/feature/{feature-id}/{wave}/`. See the [Wave Directory Structure Guide](../docs/guides/wave-directory-structure/) for the complete layout, handoff chain, and wave detection rules.
 
 ## Knowledge Preservation Guarantee
 

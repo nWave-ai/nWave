@@ -20,7 +20,7 @@ Plan and execute complex refactoring using the Mikado Method. Builds dependency 
 ## Context Files Required
 
 - src/\* - Codebase to refactor
-- docs/architecture/architecture-design.md - Target architecture (if available)
+- docs/product/architecture/brief.md - Target architecture (if available)
 
 ## Agent Invocation
 
@@ -30,7 +30,7 @@ Execute \*mikado for {refactoring-goal}.
 
 **Context Files:**
 - src/\*
-- docs/architecture/architecture-design.md
+- docs/product/architecture/brief.md
 
 **Configuration:**
 - refactoring_goal: "{goal description with business value}"

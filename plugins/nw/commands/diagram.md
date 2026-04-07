@@ -13,9 +13,7 @@ Generate architecture diagrams from design documents. Supports C4 model levels (
 
 ## Context Files Required
 
-- docs/architecture/architecture-design.md
-- docs/architecture/component-boundaries.md
-- docs/architecture/technology-stack.md
+- docs/product/architecture/brief.md (SSOT — component boundaries, technology stack, design decisions)
 
 ## Agent Invocation
 
@@ -23,13 +21,13 @@ Generate architecture diagrams from design documents. Supports C4 model levels (
 
 Execute \*create-diagrams for {architecture-component}.
 
-**Context Files:** docs/architecture/architecture-design.md | component-boundaries.md | technology-stack.md
+**Context Files:** docs/product/architecture/brief.md
 
 **Configuration:**
 - diagram_type: component (component|deployment|sequence|data|context)
 - format: mermaid (mermaid|plantuml|c4)
 - level: container (context|container|component)
-- output_directory: docs/architecture/diagrams/
+- output_directory: docs/product/architecture/
 
 ## Success Criteria
 
@@ -54,7 +52,7 @@ Morgan reads architecture docs and produces a Mermaid container diagram showing 
 ## Expected Outputs
 
 ```
-docs/architecture/diagrams/
+docs/product/architecture/
   system-context.{ext}
   component-architecture.{ext}
   deployment-architecture.{ext}
