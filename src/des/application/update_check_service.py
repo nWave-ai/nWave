@@ -65,7 +65,7 @@ class UpdateCheckResult:
 
 _DEFAULT_PYPI_URL = "https://pypi.org/pypi/nwave-ai/json"
 _DEFAULT_GITHUB_RELEASES_URL = (
-    "https://api.github.com/repos/nwave-ai/nwave/releases/latest"
+    "https://api.github.com/repos/nWave-ai/nWave/releases/latest"
 )
 _DEFAULT_TIMEOUT = 5  # seconds
 

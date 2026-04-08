@@ -4,7 +4,7 @@ Use for review and critique tasks - Research quality and evidence review special
 
 **Wave:** Other
 **Model:** haiku
-**Max turns:** 20
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, Task
 
 ## Commands

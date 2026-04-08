@@ -3,7 +3,6 @@ name: nw-agent-builder
 description: Use when creating new AI agents, validating agent specifications, optimizing command definitions, or ensuring compliance with Claude Code best practices. Creates focused, research-validated agents (200-400 lines) with Skills for domain knowledge. Also optimizes bloated command files into lean declarative definitions.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-design-patterns
   - nw-agent-testing

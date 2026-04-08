@@ -1,10 +1,10 @@
 name: nWave
-version: 3.6.0
+version: 3.7.0
 description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192DESIGN\u2192DEVOPS\u2192\
   DISTILL\u2192DELIVER methodology with visual architecture lifecycle management"
 author: nWave Team
 license: MIT
-documentation_url: https://github.com/your-org/nwave/nWave
+documentation_url: https://github.com/nWave-ai/nWave
 methodology: nWave
 wave_phases:
 - DISCOVER

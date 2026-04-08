@@ -4,7 +4,7 @@ Use for review and critique tasks - Platform design, CI/CD pipeline, infrastruct
 
 **Wave:** DESIGN
 **Model:** haiku
-**Max turns:** 30
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, Task
 
 ## Commands

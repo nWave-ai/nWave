@@ -4,7 +4,7 @@ Use for review and critique tasks - Acceptance criteria and BDD review specialis
 
 **Wave:** DISTILL
 **Model:** haiku
-**Max turns:** 15
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, Task
 
 ## Commands

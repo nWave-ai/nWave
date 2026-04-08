@@ -4,7 +4,7 @@ Use when creating new AI agents, validating agent specifications, optimizing com
 
 **Wave:** Other
 **Model:** inherit
-**Max turns:** 50
+**Max turns:** 0
 **Tools:** Read, Write, Edit, Glob, Grep, Task
 
 ## Commands

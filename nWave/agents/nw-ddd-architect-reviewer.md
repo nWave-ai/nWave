@@ -3,7 +3,6 @@ name: nw-ddd-architect-reviewer
 description: Use for reviewing DDD domain models. Validates bounded context boundaries, aggregate design, context mapping, ES/CQRS recommendations, and ubiquitous language consistency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 15
 skills:
   - nw-ddd-strategic
   - nw-ddd-tactical

@@ -4,7 +4,7 @@ Use as peer reviewer for nw-diverger outputs — validates JTBD rigor, research 
 
 **Wave:** Other
 **Model:** haiku
-**Max turns:** 30
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, Task
 
 ## Commands

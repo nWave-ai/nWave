@@ -130,7 +130,7 @@ class TestDevChangelog:
             "--version",
             "1.1.23.dev1",
             "--repo",
-            "nwave-ai/nwave-dev",
+            "nWave-ai/nwave-dev",
             "--output",
             output_file,
         )
@@ -162,7 +162,7 @@ class TestDevChangelog:
             "--version",
             "1.1.23.dev1",
             "--repo",
-            "nwave-ai/nwave-dev",
+            "nWave-ai/nwave-dev",
             "--output",
             output_file,
         )
@@ -171,7 +171,7 @@ class TestDevChangelog:
         notes = _read_output(output_file)
         assert "v1.1.23rc1" in notes
         assert (
-            "https://github.com/nwave-ai/nwave-dev/compare/v1.1.23rc1...v1.1.23.dev1"
+            "https://github.com/nWave-ai/nwave-dev/compare/v1.1.23rc1...v1.1.23.dev1"
         ) in notes
 
     def test_dev_changelog_has_no_install_section(self, tmp_path):
@@ -443,7 +443,7 @@ class TestCompareLink:
             "--version",
             "1.1.22rc2",
             "--repo",
-            "nwave-ai/nwave-dev",
+            "nWave-ai/nwave-dev",
             "--output",
             output_file,
         )
@@ -451,7 +451,7 @@ class TestCompareLink:
         assert result.returncode == 0, f"stderr: {result.stderr}"
         notes = _read_output(output_file)
         assert "v1.1.22rc1" in notes
-        assert "https://github.com/nwave-ai/nwave-dev/compare/" in notes
+        assert "https://github.com/nWave-ai/nwave-dev/compare/" in notes
         assert "**Changes since**" in notes
 
 

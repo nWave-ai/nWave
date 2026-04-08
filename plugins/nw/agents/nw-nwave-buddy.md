@@ -3,7 +3,6 @@ name: nw-nwave-buddy
 description: Use for any nWave question — methodology, project navigation, command help, wave status, migration, and troubleshooting. The first agent to consult when unsure about anything in nWave.
 model: sonnet
 tools: Read, Glob, Grep, WebFetch
-maxTurns: 20
 skills:
   - nw-buddy-wave-knowledge
   - nw-buddy-ssot-knowledge

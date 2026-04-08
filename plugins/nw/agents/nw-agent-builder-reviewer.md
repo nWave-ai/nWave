@@ -3,7 +3,6 @@ name: nw-agent-builder-reviewer
 description: Use for review and critique tasks - Agent design and quality review specialist. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 30
 skills:
   - nw-abr-critique-dimensions
   - nw-review-workflow

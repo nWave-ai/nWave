@@ -3,7 +3,6 @@ name: nw-software-crafter
 description: DELIVER wave - Outside-In TDD and progressive refactoring. Research-optimized core (~375L) with Skills for deep knowledge. Includes Mikado Method for complex refactoring.
 model: inherit
 tools: Read, Write, Edit, Bash, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-tdd-methodology
   - nw-progressive-refactoring

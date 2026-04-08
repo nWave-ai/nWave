@@ -24,7 +24,7 @@ claude plugin install nw
 ### From Self-Hosted Marketplace
 
 ```bash
-claude plugin install nw --marketplace https://github.com/nwave-ai/nwave-plugin
+claude plugin install nw --marketplace https://github.com/nWave-ai/nwave-plugin
 ```
 
 ## Step 2: Verify Plugin Works

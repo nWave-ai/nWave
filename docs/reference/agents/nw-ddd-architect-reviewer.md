@@ -4,7 +4,7 @@ Use for reviewing DDD domain models. Validates bounded context boundaries, aggre
 
 **Wave:** DESIGN
 **Model:** haiku
-**Max turns:** 15
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, Task
 
 ## Skills

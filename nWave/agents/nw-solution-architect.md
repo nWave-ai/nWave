@@ -3,7 +3,6 @@ name: nw-solution-architect
 description: Use for DESIGN wave - collaborates with user to define system architecture, component boundaries, technology selection, and creates architecture documents with business value focus. Hands off to acceptance-designer.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-architecture-patterns
   - nw-architectural-styles-tradeoffs

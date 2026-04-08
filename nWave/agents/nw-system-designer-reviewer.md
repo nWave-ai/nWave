@@ -3,7 +3,6 @@ name: nw-system-designer-reviewer
 description: Use to review system design architecture outputs. Validates trade-off analysis, estimation accuracy, pattern applicability, SPOF detection, and scalability claims. Pairs with system-designer.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 15
 skills:
   - nw-sd-framework
   - nw-sd-patterns

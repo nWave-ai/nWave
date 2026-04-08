@@ -4,7 +4,7 @@ Use for any nWave question — methodology, project navigation, command help, wa
 
 **Wave:** Other
 **Model:** sonnet
-**Max turns:** 20
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, WebFetch
 
 ## Commands

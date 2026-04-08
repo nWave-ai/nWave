@@ -4,7 +4,7 @@ Use before DISCUSS — runs JTBD analysis, competitive research, structured brai
 
 **Wave:** Other
 **Model:** inherit
-**Max turns:** 60
+**Max turns:** 0
 **Tools:** Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, Task
 
 ## Commands

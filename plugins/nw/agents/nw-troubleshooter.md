@@ -3,7 +3,6 @@ name: nw-troubleshooter
 description: Use for investigating system failures, recurring issues, unexpected behaviors, or complex bugs requiring systematic root cause analysis with evidence-based investigation.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, Bash, Task, WebSearch, WebFetch
-maxTurns: 30
 skills:
   - nw-five-whys-methodology
   - nw-investigation-techniques

@@ -3,7 +3,6 @@ name: nw-data-engineer-reviewer
 description: Use for review and critique tasks - Data architecture and pipeline review specialist. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 30
 skills:
   - nw-der-review-criteria
 ---

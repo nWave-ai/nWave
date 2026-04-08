@@ -3,7 +3,6 @@ name: nw-product-owner-reviewer
 description: Use as hard gate before DESIGN wave - validates journey coherence, emotional arc quality, shared artifact tracking, Definition of Ready checklist, LeanUX antipatterns, and story sizing. Blocks handoff if any critical issue or DoR item fails. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep
-maxTurns: 30
 skills:
   - nw-por-review-criteria
   - nw-dor-validation

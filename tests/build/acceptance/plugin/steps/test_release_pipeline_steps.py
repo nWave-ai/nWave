@@ -230,7 +230,7 @@ def manifest_has_download(build_result: dict[str, Any]):
 
     plugin_dir = build_result["plugin_dir"]
     test_download_url = (
-        "https://github.com/nwave-ai/nwave/releases/download/v1.0.0/nwave-plugin.zip"
+        "https://github.com/nWave-ai/nWave/releases/download/v1.0.0/nwave-plugin.zip"
     )
 
     # Regenerate with a download URL to verify the field is present

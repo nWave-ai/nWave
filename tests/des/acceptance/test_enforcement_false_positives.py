@@ -1,5 +1,5 @@
 """
-E2E Acceptance Tests: Enforcement Policy False Positives (nwave-ai/nwave#33)
+E2E Acceptance Tests: Enforcement Policy False Positives (nWave-ai/nWave#33)
 
 PERSONA: Orchestrator (Parent Agent)
 STORY: As an orchestrator launching non-DES agents, I want prompts containing

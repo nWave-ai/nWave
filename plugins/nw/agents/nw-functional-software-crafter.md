@@ -3,7 +3,6 @@ name: nw-functional-software-crafter
 description: DELIVER wave - Outside-In TDD with functional paradigm. Pure functions, pipeline composition, types as documentation, property-based testing. Use when the project follows a functional-first approach (F#, Haskell, Scala, Clojure, Elixir, or FP-heavy TypeScript/Python/Kotlin).
 model: inherit
 tools: Read, Write, Edit, Bash, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-tdd-methodology
   - nw-progressive-refactoring

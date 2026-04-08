@@ -2,7 +2,7 @@
 
 Tutorials and guides may include `curl -fsSL .../setup.sh | sh` style bootstrap
 commands. These need fully-qualified URLs to work for end users, but the URL
-must point at the *published* repo (nwave-ai/nwave), not nwave-dev — and
+must point at the *published* repo (nWave-ai/nWave), not nwave-dev — and
 nwave-dev is private, so hardcoded raw.githubusercontent.com URLs would 404
 anyway.
 
@@ -14,7 +14,7 @@ Allowed:
     sh -c "$(curl -fsSL {{NWAVE_RAW_URL}}/scripts/install/setup.sh)"
 
 Blocked:
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/nwave-ai/nwave/main/scripts/install/setup.sh)"
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/setup.sh)"
 
 Scope: scans markdown files under docs/guides/ only. Other docs (research,
 reports, internal) may legitimately reference real raw URLs as evidence.
@@ -88,7 +88,7 @@ def print_violations(violations: list[tuple[Path, int, str, str | None]]) -> Non
         f"\n"
         f"Why this is blocked:\n"
         f"  - nwave-dev is private; raw URLs to it return 404 for end users.\n"
-        f"  - The published repo (nwave-ai/nwave) lives at a different URL.\n"
+        f"  - The published repo (nWave-ai/nWave) lives at a different URL.\n"
         f"  - The release pipeline substitutes {PLACEHOLDER} → the correct\n"
         f"    URL per release channel (prod → nwave, rc → nWave-beta).\n"
         f"\n"

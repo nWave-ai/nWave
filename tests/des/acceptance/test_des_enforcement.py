@@ -268,7 +268,7 @@ class TestStepIdEnforcement:
 
 
 # =============================================================================
-# PHASE 1.5: Non-DES Task Passthrough (nwave-ai/nwave#9)
+# PHASE 1.5: Non-DES Task Passthrough (nWave-ai/nWave#9)
 # =============================================================================
 
 

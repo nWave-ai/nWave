@@ -3,7 +3,6 @@ name: nw-software-crafter-reviewer
 description: Use for review and critique tasks - Code quality and implementation review specialist. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 30
 skills:
   - nw-sc-review-dimensions
   - nw-tdd-review-enforcement

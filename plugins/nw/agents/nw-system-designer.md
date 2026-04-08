@@ -3,7 +3,6 @@ name: nw-system-designer
 description: Use for DESIGN wave infrastructure-level architecture. Designs distributed systems, scalability strategies, load balancing, caching, database sharding, message queues, back-of-envelope estimation, and trade-off analysis. Complements solution-architect (application-level) with infrastructure-level depth.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-sd-framework
   - nw-sd-patterns

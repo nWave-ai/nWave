@@ -3,7 +3,6 @@ name: nw-product-owner
 description: Conducts UX journey design and requirements gathering with BDD acceptance criteria. Use when defining user stories, emotional arcs, or enforcing Definition of Ready.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-discovery-methodology
   - nw-design-methodology

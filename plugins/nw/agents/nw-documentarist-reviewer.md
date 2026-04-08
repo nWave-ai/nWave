@@ -3,7 +3,6 @@ name: nw-documentarist-reviewer
 description: Use for reviewing documentarist assessments. Validates classification accuracy, validation completeness, collapse detection, and recommendation quality using Haiku model.
 model: haiku
 tools: [Read, Glob, Grep]
-maxTurns: 25
 skills:
   - nw-dr-review-criteria
   - nw-divio-framework

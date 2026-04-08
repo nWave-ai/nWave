@@ -9,7 +9,7 @@ These tests invoke the real hook adapter via subprocess, matching how Claude
 Code dispatches hooks in production. They capture stdout and verify the
 protocol contract.
 
-Issue: nwave-ai/nwave#34
+Issue: nWave-ai/nWave#34
 RCA: docs/analysis/rca-pretooluse-allow-stdout-hook-error.md
 """
 
@@ -483,7 +483,7 @@ def then_stdout_contains_error_response(ctx: dict[str, Any]) -> None:
 def then_stdout_contains_permissive_response(ctx: dict[str, Any]) -> None:
     """Verify empty stdin produces silent exit 0 (allow).
 
-    After fix for nwave-ai/nwave#34, all allow paths are silent —
+    After fix for nWave-ai/nWave#34, all allow paths are silent —
     including the empty stdin case. No stdout on exit 0.
     """
     result = ctx["result"]

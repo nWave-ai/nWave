@@ -26,7 +26,7 @@ None of these files are transmitted anywhere. You can delete them at any time.
 nWave makes **one optional network check** on session start to notify you of available updates:
 
 - `https://pypi.org/pypi/nwave-ai/json` — checks latest PyPI version
-- `https://api.github.com/repos/nwave-ai/nwave/releases/latest` — checks latest GitHub release
+- `https://api.github.com/repos/nWave-ai/nWave/releases/latest` — checks latest GitHub release
 
 **What is sent**: a standard HTTPS GET request with no user-identifiable information. These requests are anonymous and unauthenticated. If they fail (network unavailable, rate limit), nWave silently continues without blocking your session.
 **What is not sent**: no user data, no machine identifiers, no usage statistics.
@@ -51,7 +51,7 @@ Yes — like any Claude Code extension, nWave agents can read and analyze files 
 
 ## Open Source
 
-nWave is MIT licensed. The complete source code is available at [github.com/nwave-ai/nwave](https://github.com/nwave-ai/nwave) for audit and verification.
+nWave is MIT licensed. The complete source code is available at [github.com/nWave-ai/nWave](https://github.com/nWave-ai/nWave) for audit and verification.
 
 ## Contact
 

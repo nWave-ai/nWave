@@ -3,7 +3,6 @@ name: nw-acceptance-designer
 description: Use for DISTILL wave - designs E2E acceptance tests from user stories and architecture using Given-When-Then format. Creates executable specifications that drive Outside-In TDD development.
 model: inherit
 tools: Read, Write, Edit, Bash, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-bdd-methodology
   - nw-test-design-mandates

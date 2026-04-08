@@ -4,7 +4,7 @@ DELIVER wave - Outside-In TDD and progressive refactoring. Research-optimized co
 
 **Wave:** DELIVER
 **Model:** inherit
-**Max turns:** 50
+**Max turns:** 0
 **Tools:** Read, Write, Edit, Bash, Glob, Grep, Task
 
 ## Commands

@@ -4,7 +4,7 @@ Use for review and critique tasks - Code quality and implementation review speci
 
 **Wave:** DELIVER
 **Model:** haiku
-**Max turns:** 30
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, Task
 
 ## Commands

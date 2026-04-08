@@ -3,7 +3,6 @@ name: nw-solution-architect-reviewer
 description: Architecture design and patterns review specialist - Optimized for cost-efficient review operations using Haiku model.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 30
 skills:
   - nw-sar-critique-dimensions
   - nw-roadmap-review-checks

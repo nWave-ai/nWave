@@ -3,7 +3,6 @@ name: nw-diverger-reviewer
 description: Use as peer reviewer for nw-diverger outputs — validates JTBD rigor, research evidence quality, option structural diversity, taste application correctness, and recommendation coherence. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 30
 skills:
   - nw-diverger-review-criteria
 ---

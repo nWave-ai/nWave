@@ -19,7 +19,7 @@ Skipped:
 
 Special handling:
 - {{NWAVE_RAW_URL}}/<path> links: the placeholder is rewritten at release
-  time to https://raw.githubusercontent.com/nwave-ai/nwave/main/, so the
+  time to https://raw.githubusercontent.com/nWave-ai/nWave/main/, so the
   path component is validated against the project root. A tutorial that
   points at a missing script gets caught here, not by end users hitting 404.
 

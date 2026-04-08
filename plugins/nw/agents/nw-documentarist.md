@@ -3,7 +3,6 @@ name: nw-documentarist
 description: Use for documentation quality enforcement using DIVIO/Diataxis principles. Classifies documentation type, validates against type-specific criteria, detects collapse patterns, and provides actionable improvement guidance.
 model: haiku
 tools: Read, Write, Edit, Glob, Grep
-maxTurns: 30
 skills:
   - nw-divio-framework
   - nw-collapse-detection

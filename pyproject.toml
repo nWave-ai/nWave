@@ -19,7 +19,7 @@ packages = ["nwave_ai"]
 
 [project]
 name = "nwave-ai"
-version = "3.7.0"
+version = "3.7.1"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -110,10 +110,10 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nwave-ai/nwave"
-Documentation = "https://github.com/nwave-ai/nwave#readme"
-Repository = "https://github.com/nwave-ai/nwave"
-Issues = "https://github.com/nwave-ai/nwave/issues"
+Homepage = "https://github.com/nWave-ai/nWave"
+Documentation = "https://github.com/nWave-ai/nWave#readme"
+Repository = "https://github.com/nWave-ai/nWave"
+Issues = "https://github.com/nWave-ai/nWave/issues"
 
 [project.scripts]
 nwave-ai = "nwave_ai.cli:main"
@@ -283,7 +283,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "3.7.0"
+version = "3.7.1"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",

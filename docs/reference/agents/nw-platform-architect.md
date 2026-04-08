@@ -4,7 +4,7 @@ Use for DESIGN wave (infrastructure design) and DEVOPS wave (deployment executio
 
 **Wave:** DESIGN
 **Model:** inherit
-**Max turns:** 50
+**Max turns:** 0
 **Tools:** Read, Write, Edit, Bash, Glob, Grep, Task
 
 ## Commands

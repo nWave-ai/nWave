@@ -19,9 +19,9 @@ const DESCRIPTION = `nWave orchestrates 23 specialized AI agents through six dev
 
 const TARGET_PLATFORM = "Claude Code";
 
-const GITHUB_REPO = "https://github.com/nwave-ai/nwave";
+const GITHUB_REPO = "https://github.com/nWave-ai/nWave";
 
-const COMPANY_URL = "https://github.com/nwave-ai";
+const COMPANY_URL = "https://github.com/nWave-ai";
 
 const CONTACT_EMAIL = "hello@nwave.ai";
 

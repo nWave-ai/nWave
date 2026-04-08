@@ -4,7 +4,7 @@ Use for investigating system failures, recurring issues, unexpected behaviors, o
 
 **Wave:** Other
 **Model:** inherit
-**Max turns:** 30
+**Max turns:** 0
 **Tools:** Read, Write, Edit, Glob, Grep, Bash, Task, WebSearch, WebFetch
 
 ## Commands

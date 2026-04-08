@@ -233,10 +233,6 @@ def validate_agent(filepath: Path, result: ValidationResult) -> None:
             "Missing CLARIFICATION_NEEDED in subagent mode paragraph",
         )
 
-    # A15: maxTurns set
-    if "maxTurns" not in fm:
-        result.add("A15", "error", name, "Missing maxTurns in frontmatter")
-
     # A16: skill loading table
     if (
         "| Phase | Load | Trigger |" not in body

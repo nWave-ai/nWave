@@ -12,7 +12,7 @@
 Run from a directory where you want the tutorial project created (e.g. `~/projects`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nwave-ai/nwave/main/docs/guides/tutorial-mutation-testing/setup.py | python3
+curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/docs/guides/tutorial-mutation-testing/setup.py | python3
 ```
 
 Prefer to read first? See [manual-setup.md](./manual-setup.md).

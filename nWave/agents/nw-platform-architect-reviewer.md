@@ -3,7 +3,6 @@ name: nw-platform-architect-reviewer
 description: Use for review and critique tasks - Platform design, CI/CD pipeline, infrastructure, observability, deployment readiness, and production handoff review specialist. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 30
 skills:
   - nw-par-critique-dimensions
   - nw-review-output-format

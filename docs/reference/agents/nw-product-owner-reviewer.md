@@ -4,7 +4,7 @@ Use as hard gate before DESIGN wave - validates journey coherence, emotional arc
 
 **Wave:** DESIGN
 **Model:** haiku
-**Max turns:** 30
+**Max turns:** 0
 **Tools:** Read, Glob, Grep
 
 ## Commands

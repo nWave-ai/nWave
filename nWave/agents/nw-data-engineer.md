@@ -3,7 +3,6 @@ name: nw-data-engineer
 description: Use for database technology selection, data architecture design, query optimization, schema design, security implementation, and governance guidance. Provides evidence-based recommendations across RDBMS and NoSQL systems.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, Bash
-maxTurns: 30
 skills:
   - nw-database-technology-selection
   - nw-query-optimization

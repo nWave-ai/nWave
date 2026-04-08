@@ -4,7 +4,7 @@ Use for DESIGN wave domain modeling. Discovers bounded contexts, designs aggrega
 
 **Wave:** DESIGN
 **Model:** inherit
-**Max turns:** 50
+**Max turns:** 0
 **Tools:** Read, Write, Edit, Glob, Grep, Task
 
 ## Commands

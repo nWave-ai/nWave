@@ -3,7 +3,6 @@ name: nw-troubleshooter-reviewer
 description: Use for review and critique tasks - Risk analysis and failure mode review specialist. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 30
 skills:
   - nw-tr-review-criteria
 ---

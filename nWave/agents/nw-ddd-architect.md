@@ -3,7 +3,6 @@ name: nw-ddd-architect
 description: Use for DESIGN wave domain modeling. Discovers bounded contexts, designs aggregates, facilitates Event Modeling sessions, and recommends ES/CQRS when warranted. Writes to architecture SSOT.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-ddd-strategic
   - nw-ddd-tactical

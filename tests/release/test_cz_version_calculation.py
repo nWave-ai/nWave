@@ -940,7 +940,7 @@ class TestReleaseTrainVersionSync:
     def test_stable_changelog_targets_public_repo_not_private(self):
         """Given the stable release workflow at release-prod.yml,
         when the changelog generation step invokes generate_changelog.py,
-        then --repo is set to "nWave-ai/nwave" (public stable repo)
+        then --repo is set to "nWave-ai/nWave" (public stable repo)
         and does not reference the private nwave-dev repository.
 
         Regression: release-prod.yml used github.repository (private repo)
@@ -949,8 +949,8 @@ class TestReleaseTrainVersionSync:
         workflow_path = REPO_ROOT / ".github" / "workflows" / "release-prod.yml"
         content = workflow_path.read_text()
 
-        assert '--repo "nWave-ai/nwave"' in content, (
-            'release-prod.yml changelog must use --repo "nWave-ai/nwave" '
+        assert '--repo "nWave-ai/nWave"' in content, (
+            'release-prod.yml changelog must use --repo "nWave-ai/nWave" '
             "(public repo for stable releases)"
         )
 
@@ -968,7 +968,7 @@ class TestReleaseTrainVersionSync:
     def test_rc_changelog_targets_beta_repo_not_private(self):
         """Given the RC release workflow at release-rc.yml,
         when the changelog generation step invokes generate_changelog.py,
-        then --repo is set to "nWave-ai/nwave-beta" (public RC repo)
+        then --repo is set to "nWave-ai/nWave-beta" (public RC repo)
         and does not reference the private nwave-dev repository.
 
         Regression: release-rc.yml used github.repository (private repo)
@@ -977,8 +977,8 @@ class TestReleaseTrainVersionSync:
         workflow_path = REPO_ROOT / ".github" / "workflows" / "release-rc.yml"
         content = workflow_path.read_text()
 
-        assert '--repo "nWave-ai/nwave-beta"' in content, (
-            'release-rc.yml changelog must use --repo "nWave-ai/nwave-beta" '
+        assert '--repo "nWave-ai/nWave-beta"' in content, (
+            'release-rc.yml changelog must use --repo "nWave-ai/nWave-beta" '
             "(public repo for RC releases)"
         )
 

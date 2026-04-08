@@ -3,7 +3,6 @@ name: nw-diverger
 description: Use before DISCUSS — runs JTBD analysis, competitive research, structured brainstorming, and taste-filtered evaluation to produce 3-5 design directions before the team converges on one. Use when the team has a validated problem but hasn't chosen a solution approach.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, Task
-maxTurns: 60
 skills:
   - nw-jtbd-analysis
   - nw-brainstorming

@@ -3,7 +3,7 @@ Feature: Enforcement policy does not block non-step numeric patterns
   I want prompts containing dates, line ranges, version ranges, and similar patterns to pass through
   So that only genuine step execution work triggers DES enforcement
 
-  # Issue: nwave-ai/nwave#33
+  # Issue: nWave-ai/nWave#33
   # Root Cause: STEP_ID_PATTERN regex matches ANY NN-NN token, not just step IDs
 
   # --- FALSE POSITIVES: must NOT trigger enforcement (currently RED) ---

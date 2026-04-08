@@ -4,7 +4,7 @@ Use to review system design architecture outputs. Validates trade-off analysis, 
 
 **Wave:** DESIGN
 **Model:** haiku
-**Max turns:** 15
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, Task
 
 ## Skills

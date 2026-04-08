@@ -4,7 +4,7 @@ Architecture design and patterns review specialist - Optimized for cost-efficien
 
 **Wave:** DESIGN
 **Model:** haiku
-**Max turns:** 30
+**Max turns:** 0
 **Tools:** Read, Glob, Grep, Task
 
 ## Commands

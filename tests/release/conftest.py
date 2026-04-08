@@ -104,7 +104,7 @@ authors = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nwave-ai/nwave"
+Homepage = "https://github.com/nWave-ai/nWave"
 
 [build-system]
 requires = ["hatchling"]

@@ -3,7 +3,6 @@ name: nw-platform-architect
 description: Use for DESIGN wave (infrastructure design) and DEVOPS wave (deployment execution, production readiness, stakeholder sign-off). Transforms architecture into deployable infrastructure, then coordinates production delivery and outcome measurement.
 model: inherit
 tools: Read, Write, Edit, Bash, Glob, Grep, Task
-maxTurns: 50
 skills:
   - nw-cicd-and-deployment
   - nw-infrastructure-and-observability

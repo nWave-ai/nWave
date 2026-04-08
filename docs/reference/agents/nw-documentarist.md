@@ -4,7 +4,7 @@ Use for documentation quality enforcement using DIVIO/Diataxis principles. Class
 
 **Wave:** Other
 **Model:** haiku
-**Max turns:** 30
+**Max turns:** 0
 **Tools:** Read, Write, Edit, Glob, Grep
 
 ## Commands

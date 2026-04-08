@@ -3,7 +3,6 @@ name: nw-researcher
 description: Use for evidence-driven research with source verification. Gathers knowledge from web and files, cross-references across multiple sources, and produces cited research documents.
 model: inherit
 tools: Read, Write, Edit, Glob, Grep, WebFetch, WebSearch
-maxTurns: 50
 skills:
   - nw-research-methodology
   - nw-source-verification

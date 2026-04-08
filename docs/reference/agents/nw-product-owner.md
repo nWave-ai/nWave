@@ -4,7 +4,7 @@ Conducts UX journey design and requirements gathering with BDD acceptance criter
 
 **Wave:** Other
 **Model:** inherit
-**Max turns:** 50
+**Max turns:** 0
 **Tools:** Read, Write, Edit, Glob, Grep, Task
 
 ## Commands

@@ -3,7 +3,6 @@ name: nw-acceptance-designer-reviewer
 description: Use for review and critique tasks - Acceptance criteria and BDD review specialist. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 15
 skills:
   - nw-ad-critique-dimensions
   - nw-test-design-mandates
