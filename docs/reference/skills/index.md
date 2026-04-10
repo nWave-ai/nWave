@@ -70,15 +70,15 @@
 
 ## nw-buddy-project-reading
 
-- [nw-buddy-project-reading](../../../nWave/skills/nw-buddy-project-reading/SKILL.md) — How to read a project's nWave state — detect document model, determine wave progress, find feature artifacts. For the buddy agent to give contextual advice.
+- [nw-buddy-project-reading](../../../nWave/skills/nw-buddy-project-reading/SKILL.md) — How the nWave buddy agent reads a project to answer questions — detection, order of inspection, and citation discipline.
 
 ## nw-buddy-ssot-knowledge
 
-- [nw-buddy-ssot-knowledge](../../../nWave/skills/nw-buddy-ssot-knowledge/SKILL.md) — How the SSOT + Delta document model works — file locations, what each file contains, backward compatibility, migration. For the buddy agent to explain and navigate the document model.
+- [nw-buddy-ssot-knowledge](../../../nWave/skills/nw-buddy-ssot-knowledge/SKILL.md) — Single Source of Truth detection — where truth lives in an nWave repo and how to avoid contradicting it.
 
 ## nw-buddy-wave-knowledge
 
-- [nw-buddy-wave-knowledge](../../../nWave/skills/nw-buddy-wave-knowledge/SKILL.md) — How the 7-wave methodology works — wave graph, entry points, skip conditions, and handoff chain. For the buddy agent to explain methodology to users.
+- [nw-buddy-wave-knowledge](../../../nWave/skills/nw-buddy-wave-knowledge/SKILL.md) — Wave methodology knowledge for the buddy agent — what each wave does, its inputs and outputs, and how to route questions.
 
 ## nw-bugfix
 

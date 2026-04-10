@@ -26,15 +26,16 @@ Without the driving port, a crafter can write correct code that is never wired i
 
 Before writing any scenario, read SSOT and feature delta artifacts.
 
-**READING ENFORCEMENT**: You MUST read every file listed in steps 1-5 below using the Read tool before proceeding. After reading, output a confirmation checklist (`+ {file}` for each read, `- {file} (not found)` for missing). Do NOT skip files that exist.
+**READING ENFORCEMENT**: You MUST read every file listed in steps 1-6 below using the Read tool before proceeding. After reading, output a confirmation checklist (`+ {file}` for each read, `- {file} (not found)` for missing). Do NOT skip files that exist.
 
 1. **Read Journeys** — Read `docs/product/journeys/{name}.yaml`. Extract embedded Gherkin as starting scenarios, identify integration checkpoints and `failure_modes` per step. Gate: file read or marked missing.
 2. **Read Architecture Brief** — Read `docs/product/architecture/brief.md`. Identify driving ports (from `## For Acceptance Designer` section) for `@driving_port` tagged scenarios. Gate: file read or marked missing.
 3. **Read KPI Contracts** — Read `docs/product/kpi-contracts.yaml`. Identify behaviors needing `@kpi` tagged scenarios (soft gate — warn if missing, proceed). Gate: file read or marked missing.
 4. **Read DISCUSS Artifacts** — Read `docs/feature/{feature-id}/discuss/user-stories.md` (scope boundary and embedded acceptance criteria), `story-map.md` (walking skeleton priority and release slicing), and `wave-decisions.md` (quick check for upstream changes). Gate: files read or marked missing.
-5. **Read DEVOPS Artifacts** — Read `docs/feature/{feature-id}/devops/wave-decisions.md`. Check for infrastructure constraints affecting tests. Gate: file read or marked missing.
-6. **Check Migration Gate** — If `docs/product/` does not exist but `docs/feature/` has existing features, STOP. Guide the user to `docs/guides/migrating-to-ssot-model/README.md`. If greenfield, prior waves should have bootstrapped `docs/product/` already. Gate: migration confirmed or greenfield confirmed.
-7. **Reconcile Assumptions** — Check whether any acceptance test assumptions contradict prior wave decisions. Use `wave-decisions.md` files to detect upstream changes. Gate: zero contradictions or contradictions listed for user resolution.
+5. **Read SPIKE Findings** (if spike was run) — Read `docs/feature/{feature-id}/spike/findings.md`. Check what assumptions were validated, what failed, performance measurements. Update acceptance criteria if spike findings contradict DISCUSS. Gate: file read if present, marked as not found if absent.
+6. **Read DEVOPS Artifacts** — Read `docs/feature/{feature-id}/devops/wave-decisions.md`. Check for infrastructure constraints affecting tests. Gate: file read or marked missing.
+7. **Check Migration Gate** — If `docs/product/` does not exist but `docs/feature/` has existing features, STOP. Guide the user to `docs/guides/migrating-to-ssot-model/README.md`. If greenfield, prior waves should have bootstrapped `docs/product/` already. Gate: migration confirmed or greenfield confirmed.
+8. **Reconcile Assumptions** — Check whether any acceptance test assumptions contradict prior wave decisions or SPIKE findings. Use `wave-decisions.md` and `spike/findings.md` files to detect upstream changes. Gate: zero contradictions or contradictions listed for user resolution.
 
 DISTILL is the conjunction point — it reads all three SSOT dimensions plus the feature delta to translate prior wave knowledge into executable acceptance tests.
 
@@ -133,7 +134,7 @@ If the DESIGN document specifies a CLI entry point, HTTP endpoint, or hook adapt
 3. **Pipeline/service-level tests do NOT replace driving adapter tests.** A test that calls `generate_matrix()` directly proves the pipeline works but NOT that the CLI parses arguments, resolves PYTHONPATH, wires adapters, and produces correct exit codes. Both are needed.
 4. **Scan DESIGN for entry points**: grep design docs for `python -m`, `cli`, `endpoint`, `hook adapter`. Each match needs at least one subprocess/HTTP/hook scenario. Gate: zero uncovered entry points.
 
-This section exists because of a systematic pattern (RCA `docs/analysis/rca-user-port-gap.md`): acceptance tests entered from `generate_matrix()` instead of `python3 -m des.cli.matrix`, shipping features with working pipelines but broken CLIs.
+This section exists because of a systematic pattern (RCA `docs/analysis/rca-user-port-gap.md`): acceptance tests entered from application services instead of user-facing CLIs, shipping features with working pipelines but broken entry points.
 
 ## Adapter Scenario Coverage (Mandate 6 Enforcement)
 

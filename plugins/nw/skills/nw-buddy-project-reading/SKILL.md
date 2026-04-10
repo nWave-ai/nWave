@@ -1,105 +1,129 @@
 ---
 name: nw-buddy-project-reading
-description: How to read a project's nWave state — detect document model, determine wave progress, find feature artifacts. For the buddy agent to give contextual advice.
-user-invocable: false
-disable-model-invocation: true
+description: How the nWave buddy agent reads a project to answer questions — detection, order of inspection, and citation discipline.
 ---
 
-# Project State Reading
+# Project Reading for the Buddy Agent
 
-## Step 1: Detect Document Model
+The buddy agent answers questions about a project by *reading it*, not by guessing. Every answer must be traceable to a specific file and line. This skill is the reading protocol.
 
-```
-Glob for docs/product/ -> SSOT model active
-Glob for docs/features/ -> new delta files present
-Glob for docs/feature/ -> old model features present
-Neither exists -> greenfield project (no waves run yet)
-```
+## Goals
 
-## Step 2: List Features
+1. Understand the project's architecture, current state, and methodology enough to answer the user's question.
+2. Cite every claim (`path:line`) so the user can verify.
+3. Avoid reading more than necessary — tokens and time both cost.
+4. Never invent file contents, function names, or architecture claims.
 
-**SSOT model**: `ls docs/features/` -> each directory is a feature ID.
-**Old model**: `ls docs/feature/` -> each directory is a feature ID.
-**Both models**: features can coexist.
+## Order of inspection (cheap first)
 
-## Step 3: Determine Wave Progress Per Feature
+Read in this order. Stop as soon as you have enough context for the current question.
 
-### SSOT Model Detection
+### 1. Project identity (always, <1s)
 
-| Wave | Complete When |
-|------|--------------|
-| DISCOVER | `docs/product/jobs.yaml` has a validated job for this feature |
-| DIVERGE | `docs/features/{id}/recommendation.md` exists |
-| DISCUSS | `docs/features/{id}/user-stories.md` exists |
-| DESIGN | `docs/product/architecture/brief.md` updated for this feature (check changelog) |
-| DEVOPS | `docs/product/kpi-contracts.yaml` has contracts for this feature |
-| DISTILL | `docs/features/{id}/acceptance-tests.feature` exists AND `tests/acceptance/{id}/` has feature files |
-| DELIVER | `docs/features/{id}/roadmap.json` with all steps at COMMIT/PASS |
+- `README.md` — what is this project, for whom.
+- `CLAUDE.md` (project root) — how Claude-based tools should behave here.
+- `pyproject.toml` / `package.json` / `Cargo.toml` / equivalent — language, dependencies, versions, scripts.
+- `VERSION` or the version field in the package manifest.
 
-### Old Model Detection
+These four files tell you the project's name, language, purpose, and roughly how big it is. Skip nothing here.
 
-| Wave | Complete When |
-|------|--------------|
-| DISCOVER | `docs/feature/{id}/discover/problem-validation.md` exists |
-| DIVERGE | `docs/feature/{id}/diverge/recommendation.md` exists |
-| DISCUSS | `docs/feature/{id}/discuss/user-stories.md` exists |
-| DESIGN | `docs/feature/{id}/design/architecture-design.md` exists |
-| DEVOPS | `docs/feature/{id}/devops/platform-architecture.md` exists |
-| DISTILL | `docs/feature/{id}/distill/test-scenarios.md` exists |
-| DELIVER | `docs/feature/{id}/deliver/execution-log.json` with all steps at COMMIT/PASS |
+### 2. Planning and state
 
-## Step 4: Build Progress Dashboard
+- `BACKLOG.md` — the single source of truth for planned work (in nWave projects).
+- `CHANGELOG.md` — recent user-visible changes.
+- `git status` — what's in flight right now.
+- `git log --oneline -20` — recent direction of travel.
 
-For each feature, build a wave completion table:
+If the user's question is "what should I work on next" or "what did we just do", these four are usually the answer.
 
-```
-Feature: {id}
-Model: SSOT | Old | Mixed
+### 3. Architecture documentation
 
-| Wave     | Status     | Evidence |
-|----------|------------|----------|
-| DISCOVER | complete   | jobs.yaml has validated job JOB-003 |
-| DIVERGE  | complete   | recommendation.md exists |
-| DISCUSS  | complete   | user-stories.md exists |
-| DESIGN   | incomplete | architecture/brief.md has no entry for this feature |
-| DEVOPS   | skipped    | (check if skip conditions met) |
-| DISTILL  | not started| |
-| DELIVER  | not started| |
+- `docs/architecture/architecture-design.md` (or similar SSOT file).
+- `docs/adrs/` — Architecture Decision Records.
+- `docs/feature/` — feature specs with wave subdirectories.
 
-Next wave: DESIGN
-Recommended command: /nw-design {id}
-```
+The architecture doc is authoritative for design intent. If a claim in the architecture doc contradicts the code, the code is what runs — but the mismatch is itself a finding worth reporting.
 
-## Step 5: Recommend Next Action
+### 4. Source layout
 
-Based on progress:
-1. Find first incomplete wave (not skipped)
-2. Check if skip conditions are met for that wave
-3. If skip conditions met, move to next wave
-4. Recommend the command for the first required incomplete wave
-5. Provide rationale based on what's missing
+- `ls` the top-level dirs.
+- `ls src/` (or the project's source root).
+- Read the main entry point (`main.py`, `index.ts`, `Main.fs`, etc.).
 
-## Reading SSOT Files
+A project's directory layout tells you 80% of its architecture in a few seconds: `domain/`, `application/`, `adapters/`, `ports/`, `tests/` means hexagonal. `src/`, `views/`, `controllers/`, `models/` means MVC. `core/`, `api/`, `ui/` means layered.
 
-When the user asks about product state:
+### 5. Tests
 
-- **Jobs**: Read `docs/product/jobs.yaml` -> list validated jobs, opportunity scores
-- **Journeys**: Glob `docs/product/journeys/*.yaml` -> list current journeys
-- **Architecture**: Read `docs/product/architecture/brief.md` -> current components, driving ports
-- **ADRs**: Glob `docs/product/architecture/adr-*.md` -> list architectural decisions
-- **KPIs**: Read `docs/product/kpi-contracts.yaml` -> active measurement contracts
-- **Vision**: Read `docs/product/vision.md` -> product mission and principles
+- `tests/` or equivalent — top-level directories only, initially.
+- `conftest.py` / test config — tells you how tests are organized and marked.
+- A representative test file from each layer (unit, integration, acceptance, e2e).
 
-## Troubleshooting Missing Prerequisites
+Tests often document behavior more precisely than prose docs.
 
-When a wave fails due to missing prerequisites:
+### 6. Specific files (on demand)
 
-| Error Signal | Missing Prerequisite | Fix |
-|-------------|---------------------|-----|
-| DISTILL says "architecture missing" | `docs/product/architecture/brief.md` | Run `/nw-design {id}` first |
-| DISTILL says "no user stories" | `docs/features/{id}/user-stories.md` | Run `/nw-discuss {id}` first |
-| DELIVER says "no acceptance tests" | `docs/features/{id}/acceptance-tests.feature` | Run `/nw-distill {id}` first |
-| DISCUSS says "no recommendation" | `docs/features/{id}/recommendation.md` | Run `/nw-diverge {id}` first (if multiple approaches) |
-| Agent reads stale journey | Journey changelog date > 6 months | Re-run `/nw-discuss {id}` to refresh |
+Once the question is clear, read the specific files it touches. Don't pre-load.
 
-> For authoritative detection rules and directory structure, read `docs/guides/wave-directory-structure/README.md`.
+## Detection heuristics
+
+Answer these as you read:
+
+- **Is this a nWave project?** Clues: `nWave/` directory, `framework-catalog.yaml`, `BACKLOG.md` at root, agents/commands/skills layout, mentions of waves in docs.
+- **Is this greenfield or brownfield?** Clues: git history length, number of commits, presence of legacy folders, CHANGELOG age.
+- **What language(s)?** `pyproject.toml`, `package.json`, `.csproj`, `build.sbt`, etc.
+- **What architecture style?** Directory names (see section 4 above).
+- **What test strategy?** Marker definitions, CI config, presence of acceptance/e2e folders.
+- **What's the current branch?** `git status` or `git branch --show-current`. Branch name often encodes the current focus.
+- **Who owns what?** `CODEOWNERS` if present.
+
+Record the answers silently; draw on them when answering.
+
+## Wave progress detection
+
+When reading a feature to answer "what's next?", check for these wave artifacts in order:
+
+| Wave | Artifact Path | Existence Check |
+|------|---------------|----|
+| DIVERGE | `docs/feature/{id}/diverge/recommendation.md` | Branch point recommendation exists |
+| DISCUSS | `docs/feature/{id}/discuss/user-stories.md` | User stories written |
+| DESIGN | `docs/feature/{id}/design/wave-decisions.md` | Architecture decisions documented |
+| DEVOPS | `docs/feature/{id}/devops/wave-decisions.md` | CI/CD and deployment decisions documented |
+| DISTILL | `docs/feature/{id}/distill/test-scenarios.md` | BDD test scenarios written |
+| DELIVER | `docs/feature/{id}/deliver/roadmap.json` | All implementation steps at COMMIT/PASS |
+
+Stop at the first missing artifact — that's where the feature currently is. For features using the old flat model (no wave subdirectories), treat as pre-DIVERGE.
+
+## Citation discipline
+
+Every concrete claim in an answer must point to a source:
+
+- "The TDD cycle has 5 phases (`src/des/data/workflows/tdd-deliver.yaml:12`)"
+- "Hexagonal boundaries defined in `docs/architecture/architecture-design.md` section 3"
+- "Current branch is `feature/foo` (from `git status`)"
+
+If you're paraphrasing, still cite. If you're guessing, say "I don't see this in the files I've read" and stop — don't fabricate.
+
+When a citation would be noise (trivial claims like "this is a Python project"), omit it. When a claim is load-bearing, always cite.
+
+## What NOT to do
+
+- **Don't read the whole repo.** It's expensive and usually unnecessary.
+- **Don't read generated files.** `node_modules/`, `.venv/`, `build/`, `dist/`, `target/`, lock files (unless the question is about deps).
+- **Don't read test output or logs as primary sources.** They're stale by the time you see them.
+- **Don't invent file contents** when a grep returns nothing. Report "not found" and suggest where it might live.
+- **Don't answer without reading.** If you can't ground the answer in the repo, say so.
+
+## Escalation
+
+If the user's question requires reading more than ~15 files, or requires running commands, or touches a part of the codebase you can't reach, say so explicitly. Offer a plan: "to answer this I would need to read X, Y, Z — proceed?"
+
+## Example: "what is this project and where are we with it?"
+
+A well-formed answer:
+
+1. Read `README.md`, `pyproject.toml`, `CLAUDE.md` — get the elevator pitch and version.
+2. Read `BACKLOG.md` — get the current priorities.
+3. Run `git status` + `git log --oneline -10` — get the current branch and recent direction.
+4. Synthesize: "This is `<name>` v`<version>`, a `<one-sentence purpose>` written in `<language>`. The current branch is `<branch>`. Recent commits focus on `<summary>`. The backlog's top items are `<top 3>`. (citations for each claim)"
+
+Total reading: 4-5 files, under a minute. That's the standard to aim for.

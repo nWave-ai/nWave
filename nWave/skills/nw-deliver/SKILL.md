@@ -11,7 +11,7 @@ argument-hint: '[feature-description] - Example: "Implement user authentication 
 
 ## Overview
 
-Orchestrates complete DELIVER wave: feature description → production-ready code with mandatory quality gates. You (main Claude instance) coordinate by delegating to specialized agents via Task tool. Final wave (DISCOVER > DISCUSS > DESIGN > DEVOPS > DISTILL > DELIVER).
+Orchestrates complete DELIVER wave: feature description → production-ready code with mandatory quality gates. You (main Claude instance) coordinate by delegating to specialized agents via Task tool. Final wave (DISCOVER > DISCUSS > SPIKE > DESIGN > DEVOPS > DISTILL > DELIVER).
 
 Sub-agents cannot use Skill tool or `/nw-*` commands. You MUST:
 - Read the relevant command file and embed instructions in the Task prompt
