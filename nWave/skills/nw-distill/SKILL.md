@@ -124,6 +124,17 @@ Team needs different behavior in CI vs local development?
 - `@requires_external` -- scenario needs external system (skip if absent)
 - Walking skeleton under B/C/D: MUST have `@walking_skeleton @real-io`
 
+## Driving Adapter Verification (Mandatory — RCA fix P1, 2026-04-10)
+
+If the DESIGN document specifies a CLI entry point, HTTP endpoint, or hook adapter:
+
+1. **At least ONE walking skeleton scenario MUST invoke it via its protocol** — subprocess for CLI, HTTP request for API, hook JSON payload for hooks. Tag: `@driving_adapter @walking_skeleton`. Gate: scenario exists and exercises the user's actual invocation path.
+2. **The scenario MUST verify**: exit code (or HTTP status), output format (stdout/response body), and basic argument handling. Gate: all three verified.
+3. **Pipeline/service-level tests do NOT replace driving adapter tests.** A test that calls `generate_matrix()` directly proves the pipeline works but NOT that the CLI parses arguments, resolves PYTHONPATH, wires adapters, and produces correct exit codes. Both are needed.
+4. **Scan DESIGN for entry points**: grep design docs for `python -m`, `cli`, `endpoint`, `hook adapter`. Each match needs at least one subprocess/HTTP/hook scenario. Gate: zero uncovered entry points.
+
+This section exists because of a systematic pattern (RCA `docs/analysis/rca-user-port-gap.md`): acceptance tests entered from `generate_matrix()` instead of `python3 -m des.cli.matrix`, shipping features with working pipelines but broken CLIs.
+
 ## Adapter Scenario Coverage (Mandate 6 Enforcement)
 
 When designing adapter acceptance scenarios, EVERY driven adapter has at least one scenario with real I/O (or contract smoke for costly externals). This is not optional regardless of WS strategy. Tag adapter real-I/O scenarios with `@real-io @adapter-integration`.
@@ -155,6 +166,7 @@ Before handing off to reviewers, self-check each item:
 - [ ] 4. For InMemory doubles: documented what they CANNOT model
 - [ ] 5. Container preference documented if applicable
 - [ ] 6. **Mandate 7**: All production modules imported by tests have scaffold files
+- [ ] 10. **Driving Adapter**: Every CLI/endpoint/hook in DESIGN has at least one WS scenario exercising it via subprocess/HTTP/hook protocol (not just calling the service function)
 - [ ] 7. **Mandate 7**: All scaffolds include `__SCAFFOLD__` marker (or language equivalent)
 - [ ] 8. **Mandate 7**: All scaffold methods raise assertion error (not NotImplementedError)
 - [ ] 9. **Mandate 7**: Tests are RED (not BROKEN) when run against scaffolds
