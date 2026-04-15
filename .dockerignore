@@ -1,0 +1,14 @@
+.venv/
+.venv-mutation/
+.git/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+dist/
+build/
+*.egg-info/
+htmlcov/
+.claude/worktrees/
+tests/e2e/Dockerfile*

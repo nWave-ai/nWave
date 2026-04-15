@@ -1,5 +1,6 @@
 """Tests for scripts/shared/install_paths.py -- centralized path constants."""
 
+import sys
 from pathlib import Path
 
 from scripts.shared.install_paths import (
@@ -69,3 +70,70 @@ class TestPathHelpers:
         assert skills_dir(claude) == claude / "skills"
         assert des_dir(claude) == claude / "lib" / "python" / "des"
         assert manifest_path(claude) == claude / "nwave-manifest.txt"
+
+
+class TestResolvePythonCommandForSpawn:
+    """Tests for resolve_python_command_for_spawn() -- non-shell context.
+
+    Consumers pass the result to Bun.spawn / subprocess without shell=True,
+    so no shell variable expansion happens. Paths must be absolute and
+    forward-slash-normalized so they embed safely into TypeScript
+    double-quoted string literals without triggering escape sequences.
+    """
+
+    def test_linux_path_returned_unchanged(self, monkeypatch):
+        from scripts.shared.install_paths import resolve_python_command_for_spawn
+
+        monkeypatch.setattr(
+            sys,
+            "executable",
+            "/home/alex/.local/share/pipx/venvs/nwave-ai/bin/python",
+        )
+        result = resolve_python_command_for_spawn()
+        assert "$HOME" not in result
+        assert "\\" not in result
+        assert result == "/home/alex/.local/share/pipx/venvs/nwave-ai/bin/python"
+
+    def test_windows_path_normalized_to_forward_slash(self, monkeypatch):
+        from scripts.shared.install_paths import resolve_python_command_for_spawn
+
+        monkeypatch.setattr(
+            sys,
+            "executable",
+            r"C:\Users\tester\pipx\venvs\nwave-ai\Scripts\python.exe",
+        )
+        result = resolve_python_command_for_spawn()
+        assert "\\" not in result
+        assert result == "C:/Users/tester/pipx/venvs/nwave-ai/Scripts/python.exe"
+
+    def test_linux_venv_fallback(self, monkeypatch):
+        from scripts.shared.install_paths import resolve_python_command_for_spawn
+
+        monkeypatch.setattr(sys, "executable", "/home/alex/project/.venv/bin/python3")
+        assert resolve_python_command_for_spawn() == "python3"
+
+    def test_windows_venv_fallback(self, monkeypatch):
+        from scripts.shared.install_paths import resolve_python_command_for_spawn
+
+        monkeypatch.setattr(
+            sys,
+            "executable",
+            r"C:\Users\tester\project\.venv\Scripts\python.exe",
+        )
+        assert resolve_python_command_for_spawn() == "python3"
+
+
+class TestResolveDesLibPathForSpawn:
+    """Tests for resolve_des_lib_path_for_spawn() -- non-shell context."""
+
+    def test_returns_forward_slash_absolute_path(self, monkeypatch, tmp_path):
+        import scripts.shared.install_paths as ip
+
+        fake_home = tmp_path / "fake-home"
+        fake_home.mkdir()
+        monkeypatch.setattr(ip.Path, "home", lambda: fake_home)
+
+        result = ip.resolve_des_lib_path_for_spawn()
+        assert "$HOME" not in result
+        assert "\\" not in result
+        assert result.endswith("/.claude/lib/python")

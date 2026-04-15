@@ -11,7 +11,7 @@ All consumers should import from this module::
 from __future__ import annotations
 
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 
 # Relative path segments (appended to claude_dir by callers)
@@ -57,20 +57,61 @@ PYTHON_CMD_SUBSTITUTION = "$(command -v python3 || command -v python)"
 
 
 def resolve_python_command() -> str:
-    """Resolve the Python interpreter command for use in installed templates.
+    """Return the base Python command name for skill/command templates.
 
-    Returns the basename of sys.executable when it is a system/pipx Python,
-    or falls back to 'python3' when running inside a project-local .venv
-    (to avoid embedding machine-specific paths in installed files).
+    Returns 'python3' unconditionally. Templates that consume this value
+    are rendered into markdown documents that run in contexts with PATH
+    resolution, so the base command name is what callers want -- never
+    an absolute path.
 
-    This mirrors the logic in DESPlugin._resolve_python_path() but returns
-    only the command name (not a $HOME-prefixed path), suitable for
-    substitution into skill/command templates.
+    For contexts that need an absolute path (non-shell spawn), see
+    resolve_python_command_for_spawn(). For $HOME-prefixed paths in
+    shell-execution contexts (settings.json hook commands), see
+    DESPlugin._resolve_python_path().
+    """
+    return "python3"
+
+
+def resolve_python_command_for_spawn() -> str:
+    """Return an absolute forward-slash path to the current Python interpreter.
+
+    Use when the consuming code spawns the interpreter without a shell:
+    TypeScript Bun.spawn, Node child_process.spawn, Python subprocess.run
+    without shell=True, posix_spawn/CreateProcess directly.
+
+    Cross-platform safety: uses Path.as_posix() so the result contains no
+    backslashes on any platform. This lets the path embed safely into a
+    TypeScript double-quoted string literal without triggering escape-
+    sequence interpretation (e.g. \\U unicode escape, \\n newline).
+    Windows APIs accept forward-slash paths since Windows 2000.
+
+    The .venv fallback is preserved: when the installer runs from a
+    project-local virtual environment (development, CI), returns 'python3'
+    to avoid leaking development paths into user-installed artifacts.
+
+    For shell-execution contexts (settings.json hook commands, bash
+    scripts where $HOME is expanded), use the existing $HOME-based
+    pattern in DESPlugin._resolve_python_path() instead.
+    For markdown templates consumed by various runtimes, use
+    resolve_python_command() (basename-only) instead.
     """
     python_path = sys.executable
-
-    # Project-local .venv must not leak into installed files
     if "/.venv/" in python_path or "\\.venv\\" in python_path:
         return "python3"
+    return (
+        PureWindowsPath(python_path).as_posix()
+        if "\\" in python_path
+        else Path(python_path).as_posix()
+    )
 
-    return "python3"
+
+def resolve_des_lib_path_for_spawn() -> str:
+    """Return an absolute forward-slash path to the DES library directory.
+
+    Same rationale as resolve_python_command_for_spawn: consumers pass
+    this to non-shell contexts (Bun.spawn env vars setting PYTHONPATH,
+    Python subprocess.run without shell=True) where shell variable
+    expansion does NOT happen, so '$HOME' stays literal and must be
+    resolved at install time.
+    """
+    return (Path.home() / ".claude" / "lib" / "python").as_posix()

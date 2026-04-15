@@ -1,11 +1,9 @@
-"""Tests for session start and degraded mode warning in the OpenCode DES shim.
+"""Tests for session start in the OpenCode DES shim.
 
-Step 01-03: The TS shim handles session.created events by:
-1. Invoking the Python adapter with action 'session-start'
-2. Emitting a degraded mode warning to stderr (once per session)
-
-These tests verify the Python adapter contract for session-start and
-validate the behavioral expectations documented in the shim template.
+The TS shim handles session.created events by invoking the Python adapter
+with action 'session-start'. Per ADR-OC-004, the shim does NOT emit any
+degraded-mode warning — full DES enforcement applies to both primary and
+sub-agent tool calls via OpenCode's plugin hook pipeline.
 """
 
 import json
@@ -21,9 +19,13 @@ PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
 # The adapter module invoked by the TS shim
 ADAPTER_MODULE = "des.adapters.drivers.hooks.claude_code_hook_adapter"
 
-# Expected degraded mode warning text (must match TS template)
-DEGRADED_WARNING_TEXT = "degraded mode"
-ISSUE_REFERENCE = "5894"
+# Path to the TS shim template (regression guard source of truth)
+TEMPLATE_PATH = (
+    Path(__file__).resolve().parent.parent.parent
+    / "nWave"
+    / "templates"
+    / "opencode-des-plugin.ts.template"
+)
 
 
 def _run_adapter(
@@ -62,31 +64,31 @@ class TestSessionStartAdapter:
         )
 
 
-class TestDegradedModeWarningContract:
-    """Contract tests for the degraded mode warning text.
+class TestNoDegradedModeWarning:
+    """Regression guard: the TS shim must not carry legacy degraded-mode code.
 
-    The TS shim emits a warning to stderr containing 'degraded mode' and
-    referencing OpenCode Issue #5894. These tests validate the expected
-    text constants match between the TS template and our test expectations.
+    ADR-OC-004 superseded ADR-OC-002's "degraded mode" approach after an
+    empirical probe proved sub-agent hooks fire on OpenCode. These tests
+    assert the template contains no residual degraded-mode language so a
+    future revert or copy-paste can't silently reintroduce it.
     """
 
-    def test_degraded_warning_text_contains_required_phrases(self):
-        """The degraded warning must mention 'degraded mode' and issue #5894."""
-        # This is the canonical warning from the TS template
-        warning = (
-            "\u26a0 nWave DES: Running in degraded mode on OpenCode. "
-            "Sub-agent tool calls are not enforced (OpenCode Issue #5894)."
+    def test_template_has_no_degraded_mode_text(self):
+        """Template must not contain the string 'degraded mode'."""
+        template = TEMPLATE_PATH.read_text(encoding="utf-8")
+        assert "degraded mode" not in template.lower(), (
+            "Template still contains 'degraded mode' — ADR-OC-004 removed it"
         )
 
-        assert DEGRADED_WARNING_TEXT in warning.lower()
-        assert ISSUE_REFERENCE in warning
-
-    def test_degraded_warning_mentions_enforcement_limitation(self):
-        """Warning must explain WHAT is not enforced (sub-agent tool calls)."""
-        warning = (
-            "\u26a0 nWave DES: Running in degraded mode on OpenCode. "
-            "Sub-agent tool calls are not enforced (OpenCode Issue #5894)."
+    def test_template_has_no_obsolete_issue_reference(self):
+        """Template must not reference obsolete OpenCode Issue #5894."""
+        template = TEMPLATE_PATH.read_text(encoding="utf-8")
+        assert "5894" not in template, (
+            "Template still references obsolete Issue #5894 — ADR-OC-004 removed it"
         )
 
-        assert "sub-agent" in warning.lower()
-        assert "not enforced" in warning.lower()
+    def test_template_has_no_mutable_degraded_flag(self):
+        """Template must not carry the _degradedModeWarned module flag."""
+        template = TEMPLATE_PATH.read_text(encoding="utf-8")
+        assert "_degradedModeWarned" not in template
+        assert "emitDegradedModeWarning" not in template

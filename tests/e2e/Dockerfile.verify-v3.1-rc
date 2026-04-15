@@ -174,14 +174,17 @@ echo "[13/15] OC: DES shim protocol translation..."
 if [ -f "$SHIM" ]; then
     HAS_TASK=$(grep -c "Agent" "$SHIM" || true)
     HAS_WRITE=$(grep -c "pre-write" "$SHIM" || true)
-    HAS_DEGRADE=$(grep -c "5894\|degraded" "$SHIM" || true)
+    # ADR-OC-004: shim must NOT contain legacy degraded-mode warning
+    HAS_LEGACY_DEGRADED=$(grep -c "5894\|degraded mode" "$SHIM" || true)
     if [ "$HAS_TASK" -gt 0 ] && [ "$HAS_WRITE" -gt 0 ]; then
         ((PASS++)); echo "  PASS: task→Agent, write→pre-write translation"
     else
         ((FAIL++)); echo "  FAIL: missing translation rules"
     fi
-    if [ "$HAS_DEGRADE" -gt 0 ]; then
-        echo "    OK: degraded mode warning references #5894"
+    if [ "$HAS_LEGACY_DEGRADED" -gt 0 ]; then
+        ((FAIL++)); echo "  FAIL: shim still contains legacy degraded-mode references"
+    else
+        ((PASS++)); echo "  PASS: shim has no legacy degraded-mode code"
     fi
 else
     ((FAIL++)); echo "  FAIL: shim not found"

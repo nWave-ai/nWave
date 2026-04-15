@@ -15,6 +15,7 @@ CRITICAL: Tests follow hexagonal architecture - mocks only at port boundaries.
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -94,8 +95,8 @@ class TestFreshInstallCreatesShimAndManifest:
             lambda: opencode_dir,
         )
         monkeypatch.setattr(
-            "scripts.install.plugins.opencode_des_plugin.OpenCodeDESPlugin._resolve_python_path",
-            staticmethod(lambda: "/usr/bin/python3"),
+            "scripts.install.plugins.opencode_des_plugin.resolve_python_command_for_spawn",
+            lambda: "/usr/bin/python3",
         )
 
         plugin = OpenCodeDESPlugin()
@@ -145,16 +146,21 @@ class TestTemplateRenderedWithCorrectPaths:
             lambda: opencode_dir,
         )
         monkeypatch.setattr(
-            "scripts.install.plugins.opencode_des_plugin.OpenCodeDESPlugin._resolve_python_path",
-            staticmethod(lambda: "$HOME/.local/bin/python3"),
+            "scripts.install.plugins.opencode_des_plugin.resolve_python_command_for_spawn",
+            lambda: "/home/tester/.local/bin/python3",
+        )
+        monkeypatch.setattr(
+            "scripts.install.plugins.opencode_des_plugin.resolve_des_lib_path_for_spawn",
+            lambda: "/home/tester/.claude/lib/python",
         )
 
         plugin = OpenCodeDESPlugin()
         plugin.install(context)
 
         shim_content = (plugins_dir / "nwave-des.ts").read_text(encoding="utf-8")
-        assert "$HOME/.local/bin/python3" in shim_content
-        assert "$HOME/.claude/lib/python" in shim_content
+        assert "/home/tester/.local/bin/python3" in shim_content
+        assert "/home/tester/.claude/lib/python" in shim_content
+        assert "$HOME" not in shim_content
         assert "{{PYTHON_PATH}}" not in shim_content
         assert "{{PYTHONPATH}}" not in shim_content
 
@@ -174,8 +180,8 @@ class TestManifestContainsVersionAndHash:
             lambda: opencode_dir,
         )
         monkeypatch.setattr(
-            "scripts.install.plugins.opencode_des_plugin.OpenCodeDESPlugin._resolve_python_path",
-            staticmethod(lambda: "/usr/bin/python3"),
+            "scripts.install.plugins.opencode_des_plugin.resolve_python_command_for_spawn",
+            lambda: "/usr/bin/python3",
         )
 
         plugin = OpenCodeDESPlugin()
@@ -209,8 +215,8 @@ class TestReinstallOverwritesExistingShim:
             lambda: opencode_dir,
         )
         monkeypatch.setattr(
-            "scripts.install.plugins.opencode_des_plugin.OpenCodeDESPlugin._resolve_python_path",
-            staticmethod(lambda: "/usr/bin/python3"),
+            "scripts.install.plugins.opencode_des_plugin.resolve_python_command_for_spawn",
+            lambda: "/usr/bin/python3",
         )
 
         # First install
@@ -253,8 +259,8 @@ class TestUninstallRemovesShimAndManifest:
             lambda: opencode_dir,
         )
         monkeypatch.setattr(
-            "scripts.install.plugins.opencode_des_plugin.OpenCodeDESPlugin._resolve_python_path",
-            staticmethod(lambda: "/usr/bin/python3"),
+            "scripts.install.plugins.opencode_des_plugin.resolve_python_command_for_spawn",
+            lambda: "/usr/bin/python3",
         )
 
         # Install first
@@ -289,8 +295,8 @@ class TestVerifyPassesWhenShimExists:
             lambda: opencode_dir,
         )
         monkeypatch.setattr(
-            "scripts.install.plugins.opencode_des_plugin.OpenCodeDESPlugin._resolve_python_path",
-            staticmethod(lambda: "/usr/bin/python3"),
+            "scripts.install.plugins.opencode_des_plugin.resolve_python_command_for_spawn",
+            lambda: "/usr/bin/python3",
         )
 
         plugin = OpenCodeDESPlugin()
@@ -323,6 +329,87 @@ class TestVerifyFailsWhenShimMissing:
         assert (
             "shim" in result.message.lower() or "nwave-des.ts" in result.message.lower()
         )
+
+
+class TestNoHomeLiteralInRenderedShim:
+    """Regression: the rendered OpenCode DES shim must not contain any
+    literal '$HOME' string in substituted positions. Bun.spawn does not
+    invoke a shell, so a '$HOME' literal would be passed to posix_spawn
+    as a literal character sequence and fail with ENOENT.
+
+    Empirically reproduced by
+    tests/e2e/Dockerfile.smoke-opencode-subagent-hooks before this fix.
+    """
+
+    def test_rendered_shim_python_path_has_no_dollar_home(self, tmp_path, monkeypatch):
+        """
+        GIVEN: OpenCode DES plugin rendered with the real resolver functions
+        WHEN: the shim file is inspected
+        THEN: no occurrence of '$HOME' appears in the rendered content
+        """
+        context, opencode_dir, plugins_dir = _make_context(tmp_path)
+        monkeypatch.setattr(
+            "scripts.install.plugins.opencode_des_plugin._opencode_config_dir",
+            lambda: opencode_dir,
+        )
+
+        plugin = OpenCodeDESPlugin()
+        result = plugin.install(context)
+        assert result.success is True
+
+        shim_content = (plugins_dir / "nwave-des.ts").read_text(encoding="utf-8")
+        assert "$HOME" not in shim_content, (
+            f"Rendered shim contains '$HOME' literal -- will fail in "
+            f"Bun.spawn. Shim content:\n{shim_content}"
+        )
+
+    def test_rendered_shim_forward_slash_only_on_windows_shape(
+        self, tmp_path, monkeypatch
+    ):
+        """
+        GIVEN: a Windows-shape sys.executable (backslash-separated) and a
+               fake home directory
+        WHEN: install() renders the shim
+        THEN: the shim contains forward-slash-only paths with no '$HOME'
+              and no backslash (which would trigger TS escape sequences)
+        """
+        import scripts.shared.install_paths as ip
+
+        monkeypatch.setattr(
+            sys,
+            "executable",
+            r"C:\Users\tester\pipx\venvs\nwave-ai\Scripts\python.exe",
+        )
+        fake_home = tmp_path / "fake-home"
+        fake_home.mkdir()
+        monkeypatch.setattr(ip.Path, "home", lambda: fake_home)
+
+        context, opencode_dir, plugins_dir = _make_context(tmp_path)
+        monkeypatch.setattr(
+            "scripts.install.plugins.opencode_des_plugin._opencode_config_dir",
+            lambda: opencode_dir,
+        )
+
+        plugin = OpenCodeDESPlugin()
+        result = plugin.install(context)
+        assert result.success is True
+
+        shim_content = (plugins_dir / "nwave-des.ts").read_text(encoding="utf-8")
+        assert "$HOME" not in shim_content
+        # No backslash in the two substituted lines
+        python_line = next(
+            line for line in shim_content.splitlines() if "Python:" in line
+        )
+        pythonpath_line = next(
+            line for line in shim_content.splitlines() if "PYTHONPATH:" in line
+        )
+        assert "\\" not in python_line, (
+            f"PYTHON_PATH contains backslash: {python_line!r}"
+        )
+        assert "\\" not in pythonpath_line, (
+            f"PYTHONPATH contains backslash: {pythonpath_line!r}"
+        )
+        assert "C:/Users/tester/pipx/venvs/nwave-ai/Scripts/python.exe" in python_line
 
 
 class TestDESModuleNotInstalledFailsPrereq:

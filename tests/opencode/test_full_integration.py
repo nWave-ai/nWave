@@ -83,9 +83,10 @@ class TestTemplateRendering:
         # Must have the adapter invocation function
         assert "function invokeDESAdapter" in template
 
-        # Must have degraded mode warning
-        assert "degraded mode" in template.lower()
-        assert "5894" in template
+        # ADR-OC-004: degraded mode is obsolete — template must not contain
+        # the warning text or the obsolete issue reference.
+        assert "degraded mode" not in template.lower()
+        assert "5894" not in template
 
     def test_rendered_template_has_valid_typescript_structure(self):
         """Basic structural validation: balanced braces, no template artifacts."""

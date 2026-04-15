@@ -1,0 +1,193 @@
+# Smoke test: verifies that OpenCode fires `tool.execute.before` inside
+# sub-agent sessions. This regression gate protects ADR-OC-004
+# (full DES enforcement on OpenCode). If a future OpenCode version
+# breaks sub-agent hook propagation, this test fails and the release
+# does not ship.
+#
+# See docs/research/opencode-subagent-probe-2026-04.md for the empirical
+# basis and docs/feature/opencode-des-hooks/design/adrs/ADR-OC-004-*
+# for the architectural decision this test protects.
+
+FROM python:3.12-slim
+
+ARG OPENAI_API_KEY
+
+RUN pip install --no-cache-dir pipx && pipx ensurepath
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl git ca-certificates && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g opencode-ai
+
+RUN useradd -m -s /bin/bash tester
+USER tester
+WORKDIR /home/tester
+ENV PATH="/home/tester/.local/bin:${PATH}"
+
+RUN pipx install nwave-ai
+
+# Overlay local-branch source on top of the PyPI nwave-ai venv so the smoke
+# test validates the CURRENT BRANCH, not the last-released PyPI version.
+# The nwave-ai wheel ships `scripts/install/`, `scripts/shared/`, and
+# `nWave/templates/` as data files inside its site-packages; our two in-branch
+# fixes (a5ee3c97 $HOME fix, de00c2b8 degraded mode removal) touch exactly
+# those files. Copying them over the pipx venv is sufficient and avoids
+# needing a second pyproject.toml to pipx-install the dev repo directly.
+COPY --chown=tester:tester scripts/install/plugins/opencode_des_plugin.py /tmp/local-src/scripts/install/plugins/opencode_des_plugin.py
+COPY --chown=tester:tester scripts/shared/install_paths.py /tmp/local-src/scripts/shared/install_paths.py
+COPY --chown=tester:tester nWave/templates/opencode-des-plugin.ts.template /tmp/local-src/nWave/templates/opencode-des-plugin.ts.template
+RUN NWAVE_VENV="$(pipx environment --value PIPX_LOCAL_VENVS)/nwave-ai" && \
+    SITE_PKGS="$(${NWAVE_VENV}/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" && \
+    echo "Overlaying local fixes into ${SITE_PKGS}" && \
+    cp /tmp/local-src/scripts/install/plugins/opencode_des_plugin.py "${SITE_PKGS}/scripts/install/plugins/opencode_des_plugin.py" && \
+    cp /tmp/local-src/scripts/shared/install_paths.py "${SITE_PKGS}/scripts/shared/install_paths.py" && \
+    cp /tmp/local-src/nWave/templates/opencode-des-plugin.ts.template "${SITE_PKGS}/nWave/templates/opencode-des-plugin.ts.template" && \
+    find "${SITE_PKGS}/scripts" "${SITE_PKGS}/nWave/templates" -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
+
+RUN mkdir -p /home/tester/.config/opencode/plugins && \
+    echo '{"model": "openai/gpt-4o-mini"}' > /home/tester/.config/opencode/opencode.json
+
+# Install nWave (for realistic OpenCode+DES environment parity with users)
+RUN nwave-ai install --yes || nwave-ai install || true
+
+# Probe plugin (stable fixture — promoted from the original spike)
+COPY --chown=tester:tester tests/e2e/fixtures/opencode-subagent-hook-probe.ts \
+     /home/tester/.config/opencode/plugins/probe-plugin.ts
+
+RUN mkdir -p /home/tester/workspace/.opencode/plugins
+COPY --chown=tester:tester tests/e2e/fixtures/opencode-subagent-hook-probe.ts \
+     /home/tester/workspace/.opencode/plugins/probe-plugin.ts
+
+ENV OPENAI_API_KEY=${OPENAI_API_KEY}
+
+# Smoke-test harness: runs the probe scenario, then ASSERTS on the captured
+# JSONL. Unlike the spike version (which dumps the log and exits 0), this
+# script exits non-zero on any assertion failure — it is a CI gate.
+COPY --chown=tester:tester <<'SMOKE' /home/tester/smoke.sh
+#!/bin/bash
+set +e
+echo "=== Smoke: OpenCode Sub-Agent Hook Regression Gate ==="
+echo "node: $(node --version)"
+echo "opencode: $(opencode --version 2>&1)"
+echo "nwave-ai: $(nwave-ai version 2>&1)"
+echo ""
+
+FAIL() {
+    echo ""
+    echo "!!! SMOKE TEST FAILED: $1 !!!"
+    echo ""
+    echo "--- probe log tail ---"
+    [[ -f /tmp/opencode-probe.jsonl ]] && tail -30 /tmp/opencode-probe.jsonl
+    echo "--- opencode stdout tail ---"
+    [[ -f /tmp/opencode-stdout.log ]] && tail -30 /tmp/opencode-stdout.log
+    exit 1
+}
+
+# Register OpenAI credentials at runtime
+mkdir -p /home/tester/.local/share/opencode
+python3 -c "import json,os; json.dump({'openai':{'type':'api','key':os.environ['OPENAI_API_KEY']}}, open('/home/tester/.local/share/opencode/auth.json','w'))" || FAIL "could not write auth.json"
+chmod 600 /home/tester/.local/share/opencode/auth.json
+
+[[ -n "$OPENAI_API_KEY" ]] || FAIL "OPENAI_API_KEY not set"
+
+# Warm up OpenCode: the first invocation on a fresh image triggers a one-time
+# SQLite database migration that can take 60-120s. Without this warmup, the
+# migration eats into the timeout budget of the real run and `opencode run`
+# times out before the actual conversation starts. `opencode auth list` is
+# cheap and forces the migration to complete up-front.
+echo "=== warmup: opencode auth list (forces DB migration) ==="
+timeout 300 opencode auth list 2>&1 || true
+echo ""
+
+# Canary file — ground truth the sub-agent must read
+echo "CANARY_LINE_42" > /tmp/canary.txt
+
+: > /tmp/opencode-probe.jsonl
+
+cd /home/tester/workspace
+git init -q 2>&1 || true
+git config user.email "smoke@nwave.local"
+git config user.name "Smoke"
+echo "workspace" > README.md
+git add -A && git commit -q -m "init" 2>&1 || true
+
+PROMPT='Use the task tool to dispatch a subagent of type nw-nwave-buddy with the prompt: "Read the file /tmp/canary.txt using the read tool and report its first line verbatim." After the subagent finishes, tell me the exact line it reported.'
+
+echo "=== Invoking opencode run ==="
+timeout 240 opencode run --model openai/gpt-4o-mini "$PROMPT" 2>&1 | tee /tmp/opencode-stdout.log
+RC=${PIPESTATUS[0]}
+echo "=== opencode exit code: $RC ==="
+
+[[ -f /tmp/opencode-probe.jsonl ]] || FAIL "probe log file missing — plugin did not load"
+
+# --- Assertions ---
+python3 <<'PY' || FAIL "assertions failed"
+import json, sys
+entries = []
+with open("/tmp/opencode-probe.jsonl") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            pass
+
+# 1. Plugin loaded (at least one plugin.init)
+inits = [e for e in entries if e.get("hook_name") == "plugin.init"]
+assert inits, "ASSERT FAIL: no plugin.init events (plugin never loaded)"
+print(f"OK: plugin loaded ({len(inits)} init event(s))")
+
+# 2. Primary agent fired tool.execute.before for the 'task' tool
+def extract_session(e):
+    snap = e.get("snapshot") or {}
+    if isinstance(snap, dict):
+        inp = snap.get("input") or {}
+        if isinstance(inp, dict):
+            return inp.get("sessionID")
+    return None
+
+task_events = [e for e in entries if e.get("hook_name") == "tool.execute.before" and e.get("tool_name") == "task"]
+assert task_events, "ASSERT FAIL: no tool.execute.before events for 'task' tool — primary agent did not dispatch sub-agent"
+task_session_ids = {extract_session(e) for e in task_events if extract_session(e)}
+print(f"OK: primary 'task' tool.execute.before fired ({len(task_events)} events, sessions={task_session_ids})")
+
+# 3. Sub-agent fired tool.execute.before (for any tool other than 'task')
+#    with a session id DIFFERENT from every primary session id.
+subagent_events = [
+    e for e in entries
+    if e.get("hook_name") == "tool.execute.before"
+    and e.get("tool_name") not in (None, "task")
+    and extract_session(e)
+    and extract_session(e) not in task_session_ids
+]
+assert subagent_events, (
+    "ASSERT FAIL: no tool.execute.before events from a sub-agent session. "
+    "Either the sub-agent did not run, or OpenCode stopped firing hooks for "
+    "sub-agent tool calls (regression in OpenCode plugin hook propagation). "
+    "This is exactly the bug ADR-OC-004 protects against."
+)
+sub_tools = sorted({e.get("tool_name") for e in subagent_events})
+sub_sessions = {extract_session(e) for e in subagent_events}
+print(f"OK: sub-agent tool.execute.before fired (tools={sub_tools}, sessions={sub_sessions})")
+
+# 4. Sub-agent sessions are genuinely distinct from primary sessions
+assert not (task_session_ids & sub_sessions), (
+    "ASSERT FAIL: sub-agent and primary sessions share a session id — "
+    "correlation logic assumption violated"
+)
+print("OK: sub-agent sessions distinct from primary sessions")
+
+print("")
+print("=== SMOKE TEST PASSED ===")
+PY
+
+exit 0
+SMOKE
+RUN chmod +x /home/tester/smoke.sh
+
+CMD ["/home/tester/smoke.sh"]

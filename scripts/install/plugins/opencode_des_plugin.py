@@ -10,7 +10,6 @@ clean uninstallation and version tracking.
 
 import hashlib
 import json
-import sys
 from pathlib import Path
 
 from scripts.install.plugins.base import (
@@ -18,12 +17,15 @@ from scripts.install.plugins.base import (
     InstallContext,
     PluginResult,
 )
+from scripts.shared.install_paths import (
+    resolve_des_lib_path_for_spawn,
+    resolve_python_command_for_spawn,
+)
 
 
 _SHIM_FILENAME = "nwave-des.ts"
 _MANIFEST_FILENAME = ".nwave-des-manifest.json"
 _TEMPLATE_FILENAME = "opencode-des-plugin.ts.template"
-_PYTHONPATH_VALUE = "$HOME/.claude/lib/python"
 
 
 def _opencode_config_dir() -> Path:
@@ -145,9 +147,11 @@ class OpenCodeDESPlugin(InstallationPlugin):
             template_content = template_path.read_text(encoding="utf-8")
 
             # Resolve Python path and render template
-            python_path = self._resolve_python_path()
+            python_path = resolve_python_command_for_spawn()
             rendered = template_content.replace("{{PYTHON_PATH}}", python_path)
-            rendered = rendered.replace("{{PYTHONPATH}}", _PYTHONPATH_VALUE)
+            rendered = rendered.replace(
+                "{{PYTHONPATH}}", resolve_des_lib_path_for_spawn()
+            )
 
             # Write shim file
             plugins_dir = opencode_dir / "plugins"
@@ -315,28 +319,3 @@ class OpenCodeDESPlugin(InstallationPlugin):
                 return template
 
         return None
-
-    @staticmethod
-    def _resolve_python_path() -> str:
-        """Resolve the Python interpreter path for the shim template.
-
-        Same logic as DESPlugin._resolve_python_path(): captures
-        sys.executable and makes it portable by replacing the home
-        directory prefix with $HOME.
-
-        Falls back to 'python3' if the current Python is a project-local
-        .venv (to avoid embedding machine-specific paths).
-
-        Returns:
-            Portable Python path string (e.g. '$HOME/.local/bin/python3')
-        """
-        python_path = sys.executable
-
-        # Project-local .venv must not leak into the shim
-        if "/.venv/" in python_path or "\\.venv\\" in python_path:
-            return "python3"
-
-        home = str(Path.home())
-        if python_path.startswith(home):
-            python_path = "$HOME" + python_path[len(home) :]
-        return python_path
