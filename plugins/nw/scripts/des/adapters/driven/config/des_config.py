@@ -17,6 +17,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from des.domain.nwave_dir_gitignore import ensure_nwave_gitignore
+
 
 class DESConfig:
     """
@@ -284,6 +286,7 @@ class DESConfig:
         current_data["update_check"] = update_check
 
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_nwave_gitignore(self._config_path.parent)
         self._config_path.write_text(
             json.dumps(current_data, indent=2), encoding="utf-8"
         )

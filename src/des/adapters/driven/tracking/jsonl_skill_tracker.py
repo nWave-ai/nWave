@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from des.domain.nwave_dir_gitignore import ensure_nwave_gitignore
 from des.ports.driven_ports.skill_tracking_port import SkillTrackingPort
 
 
@@ -58,6 +59,7 @@ class JsonlSkillTracker(SkillTrackingPort):
     def _ensure_directory(self) -> None:
         """Create parent directory if it does not exist."""
         self._log_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_nwave_gitignore(self._log_path.parent)
 
     def _append_event(self, event: SkillLoadEvent) -> None:
         """Serialize and append event as a JSON line."""

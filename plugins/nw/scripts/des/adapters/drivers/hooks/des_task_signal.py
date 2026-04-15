@@ -20,6 +20,8 @@ import json
 import uuid
 from pathlib import Path
 
+from des.domain.nwave_dir_gitignore import ensure_nwave_gitignore
+
 
 # -----------------------------------------------------------------------
 # Default path constants — the single patch point for tests
@@ -58,6 +60,7 @@ def create_des_task_signal(
     task_correlation_id = str(uuid.uuid4())
     try:
         session_dir.mkdir(parents=True, exist_ok=True)
+        ensure_nwave_gitignore(session_dir)
         from datetime import datetime, timezone
 
         signal = json.dumps(
