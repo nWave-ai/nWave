@@ -1,6 +1,7 @@
 """Tests for [project.scripts] entries in pyproject.toml.
 
-Asserts that 5 DES CLI console scripts are declared with correct module mappings.
+Asserts that the nwave-ai installer entry point and 5 DES CLI console scripts
+are declared with correct module mappings.
 """
 
 from pathlib import Path
@@ -15,6 +16,7 @@ except ImportError:
 PYPROJECT_PATH = Path(__file__).parent.parent.parent / "pyproject.toml"
 
 EXPECTED_SCRIPTS = {
+    "nwave-ai": "nwave_ai.cli:main",
     "des-log-phase": "des.cli.log_phase:main",
     "des-init-log": "des.cli.init_log:main",
     "des-verify-integrity": "des.cli.verify_deliver_integrity:main",
@@ -28,11 +30,11 @@ def _load_pyproject() -> dict:
         return tomllib.load(f)
 
 
-def test_project_scripts_section_exists_with_5_entries() -> None:
+def test_project_scripts_section_exists_with_6_entries() -> None:
     data = _load_pyproject()
     scripts = data["project"]["scripts"]
-    assert len(scripts) == 5, (
-        f"Expected exactly 5 console script entries, got {len(scripts)}: {list(scripts.keys())}"
+    assert len(scripts) == 6, (
+        f"Expected exactly 6 console script entries, got {len(scripts)}: {list(scripts.keys())}"
     )
 
 
