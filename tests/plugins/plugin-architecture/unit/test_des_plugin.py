@@ -394,3 +394,46 @@ class TestDESPluginVerifyComplete:
             "module" in result.message.lower()
             or "verification" in result.message.lower()
         )
+
+
+class TestBootstrapDesConfigReadOnlyProjectDir:
+    """Regression: bootstrap must succeed when project dir is read-only.
+
+    Surfaced in validate-rc (run 24898963926) when nwave_ai was imported
+    via PYTHONPATH from a read-only mount; DES plugin then resolved
+    project_root to that mount and failed to write .nwave/des-config.json
+    with EROFS.  The install should NOT hard-fail on an optional config
+    file — built-in defaults cover the missing-config case.
+    """
+
+    def test_bootstrap_skips_on_read_only_project_dir(
+        self, test_logger, tmp_path: Path
+    ) -> None:
+        from scripts.install.plugins.base import InstallContext
+
+        # Build a read-only project_root (simulates /src mount in CI)
+        readonly_project = tmp_path / "readonly_project"
+        readonly_project.mkdir()
+        readonly_project.chmod(0o555)
+        try:
+            plugin = DESPlugin()
+            context = InstallContext(
+                claude_dir=tmp_path / "claude",
+                scripts_dir=tmp_path / "scripts",
+                templates_dir=tmp_path / "templates",
+                logger=test_logger,
+                project_root=readonly_project,
+                framework_source=tmp_path / "nwave-fs",
+            )
+
+            result = plugin._bootstrap_des_config(context)
+
+            # Must succeed (soft-skip), not fail.  DES runs on built-in
+            # defaults when project-level config file is absent.
+            assert result.success, (
+                f"Bootstrap must soft-skip on read-only project dir, got: "
+                f"success={result.success}, message={result.message}"
+            )
+            assert not (readonly_project / ".nwave" / "des-config.json").exists()
+        finally:
+            readonly_project.chmod(0o755)  # allow tmp_path cleanup

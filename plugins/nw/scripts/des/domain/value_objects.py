@@ -6,7 +6,12 @@ invalid states unrepresentable.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Self
+
+
+try:
+    from typing import Self
+except ImportError:  # pragma: no cover — only hit on Python 3.10
+    from typing_extensions import Self
 
 
 class PhaseStatus(str, Enum):

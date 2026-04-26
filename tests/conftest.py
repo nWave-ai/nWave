@@ -257,8 +257,86 @@ DOMAIN_MAP = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Top-level test-module guard (RCA Branch B structural defense).
+#
+# Tests must live under a tier subdirectory (tests/unit/, tests/installer/,
+# tests/des/, etc.). Top-level ``tests/test_*.py`` modules historically
+# drifted out of sync with their canonical siblings — the attribution
+# worktree-isolation bug surfaced because the stale top-level duplicate
+# carried tests that no longer matched the canonical version. Once the
+# duplicate is gone, this guard prevents future regressions.
+#
+# Allowlist holds top-level modules that already exist on master and are
+# scheduled for migration in a follow-up step. Adding a NEW top-level
+# test module is the violation this guard catches.
+# See docs/analysis/rca-attribution-plugin-worktree-isolation.md Branch B.
+# ---------------------------------------------------------------------------
+
+_TOP_LEVEL_TEST_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        # Pre-existing top-level modules awaiting migration to a tier subdir.
+        # Each of the following has a canonical sibling under tests/installer/
+        # or tests/build/ — they are duplicates and will be deleted in a
+        # follow-up step (out of scope for 02-01).
+        "test_attribution_cli.py",
+        "test_attribution_hook.py",
+        "test_measure_adoption.py",
+        "test_opencode_agents_skill_paths.py",
+        "test_plugin_home_env_hardening.py",
+        "test_python_path_resolution_in_skills.py",
+        "test_reinforce_skill_loading.py",
+        # No canonical sibling — keep at top level until migrated.
+        "test_docgen.py",
+    }
+)
+
+
+def _is_offending_top_level_test(rel_path: str) -> bool:
+    """True iff ``rel_path`` is a top-level ``test_*.py`` and not allowlisted.
+
+    Pure function. ``rel_path`` is normalized with forward slashes,
+    relative to the tests root.
+    """
+    parts = rel_path.split("/")
+    if len(parts) != 1:
+        return False
+    name = parts[0]
+    if not (name.startswith("test_") and name.endswith(".py")):
+        return False
+    return name not in _TOP_LEVEL_TEST_ALLOWLIST
+
+
 def pytest_collection_modifyitems(config, items):
-    """Auto-label tests with Allure labels and tier markers from file paths."""
+    """Auto-label tests with Allure labels and tier markers from file paths.
+
+    Also enforces the top-level test-module guard (RCA Branch B): any
+    ``tests/test_*.py`` not on the allowlist aborts collection with a
+    descriptive error.
+    """
+    # --- Top-level module guard (fail-fast before any other work) ---
+    tests_root = Path(__file__).parent
+    offenders: list[str] = []
+    for item in items:
+        try:
+            rel = Path(item.fspath).resolve().relative_to(tests_root.resolve())
+        except ValueError:
+            # Item lives outside the tests root (e.g. doctest in src/).
+            continue
+        rel_str = str(rel).replace(os.sep, "/")
+        if _is_offending_top_level_test(rel_str):
+            offenders.append(rel_str)
+
+    if offenders:
+        raise pytest.UsageError(
+            "Stale top-level test module(s) detected: "
+            + ", ".join(sorted(set(offenders)))
+            + ". Tests must live under a tier subdirectory "
+            + "(tests/unit/, tests/installer/, tests/des/, tests/build/, etc.). "
+            + "See docs/analysis/rca-attribution-plugin-worktree-isolation.md "
+            + "Branch B for the structural rationale."
+        )
+
     try:
         import allure
 

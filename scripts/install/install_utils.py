@@ -248,6 +248,19 @@ class PathUtils:
         return Path.home() / ".claude"
 
     @staticmethod
+    def get_opencode_config_dir() -> Path:
+        """Get OpenCode config directory path.
+
+        Honors the OPENCODE_CONFIG_DIR environment variable for test isolation
+        and non-standard installations (analogous to CLAUDE_CONFIG_DIR for Claude).
+        Defaults to the platform-standard ~/.config/opencode/.
+        """
+        config_dir = os.environ.get("OPENCODE_CONFIG_DIR")
+        if config_dir:
+            return Path(config_dir)
+        return Path.home() / ".config" / "opencode"
+
+    @staticmethod
     def get_project_root(script_path: Path) -> Path:
         """Get project root from script path."""
         # Assumes scripts are in scripts/ or scripts/install/

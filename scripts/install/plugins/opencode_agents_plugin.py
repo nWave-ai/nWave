@@ -11,6 +11,7 @@ user-created ones.
 """
 
 import json
+import os
 from pathlib import Path
 
 from scripts.install.plugins.base import (
@@ -36,7 +37,9 @@ def _opencode_agents_dir() -> Path:
     Returns:
         Path to ~/.config/opencode/agents/
     """
-    return Path.home() / ".config" / "opencode" / "agents"
+    override = os.environ.get("OPENCODE_CONFIG_DIR")
+    base = Path(override) if override else Path.home() / ".config" / "opencode"
+    return base / "agents"
 
 
 def _find_agents_source(context: InstallContext) -> Path | None:

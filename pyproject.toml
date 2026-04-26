@@ -20,7 +20,7 @@ packages = ["nwave_ai"]
 
 [project]
 name = "nwave-ai"
-version = "3.12.0"
+version = "3.12.1"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -64,7 +64,8 @@ dependencies = [
     "platformdirs>=4.2.0",
     "pyyaml>=6.0",
     "packaging>=21.0",
-    "tomli>=2.0.0; python_version < '3.11'"
+    "tomli>=2.0.0; python_version < '3.11'",
+    "typing_extensions>=4.0"
 ]
 
 [project.optional-dependencies]
@@ -295,7 +296,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "3.12.0"
+version = "3.12.1"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",

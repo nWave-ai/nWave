@@ -17,6 +17,7 @@ Behaviors tested:
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -469,16 +470,17 @@ class TestAttributionHookInstallation:
         git_hooks = tmp_path / ".git" / "hooks"
         git_hooks.mkdir(parents=True)
 
-        # Mock subprocess.run: all git config core.hooksPath calls return not-set
-        # Mock git rev-parse --show-toplevel to return tmp_path (repo root)
+        # Mock subprocess.run: all git config core.hooksPath calls return not-set.
+        # Mock git rev-parse --git-common-dir to return tmp_path/.git (the
+        # shared .git directory; worktree-aware sibling of --show-toplevel).
         def mock_subprocess_run(cmd, **kwargs):
             from subprocess import CompletedProcess
 
             cmd_str = " ".join(cmd)
             if "core.hooksPath" in cmd_str:
                 return CompletedProcess(cmd, 1, stdout="", stderr="")
-            if "rev-parse --show-toplevel" in cmd_str:
-                return CompletedProcess(cmd, 0, stdout=str(tmp_path) + "\n")
+            if "rev-parse --git-common-dir" in cmd_str:
+                return CompletedProcess(cmd, 0, stdout=str(tmp_path / ".git") + "\n")
             return CompletedProcess(cmd, 1, stdout="", stderr="")
 
         with patch(
@@ -515,8 +517,8 @@ class TestAttributionHookInstallation:
                 return CompletedProcess(cmd, 0, stdout="", stderr="")
             if "core.hooksPath" in cmd_str:
                 return CompletedProcess(cmd, 1, stdout="", stderr="")
-            if "rev-parse --show-toplevel" in cmd_str:
-                return CompletedProcess(cmd, 0, stdout=str(tmp_path) + "\n")
+            if "rev-parse --git-common-dir" in cmd_str:
+                return CompletedProcess(cmd, 0, stdout=str(tmp_path / ".git") + "\n")
             return CompletedProcess(cmd, 1, stdout="", stderr="")
 
         with patch(
@@ -529,6 +531,104 @@ class TestAttributionHookInstallation:
             f"install_attribution_hook() must NEVER set global core.hooksPath, "
             f"but called: {global_set_calls}"
         )
+
+    def test_install_succeeds_in_git_worktree(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression: install_attribution_hook() must work inside a git worktree.
+
+        In a worktree, ``.git`` is a pointer FILE (not a directory) that
+        contains ``gitdir: <main-checkout>/.git/worktrees/<name>``. The
+        previous resolver used ``git rev-parse --show-toplevel`` and
+        appended ``/.git/hooks``, which resolves to ``<worktree>/.git/hooks``
+        — but ``<worktree>/.git`` is a file, so the path is invalid and
+        the install fails with ``[Errno 20] Not a directory``.
+
+        The fix is to use ``git rev-parse --git-common-dir`` (worktree-aware,
+        returns the SHARED ``.git`` directory) and append ``/hooks``. This
+        test asserts the fix by setting up a real git worktree with real
+        subprocess calls and verifying the install lands in the shared
+        ``.git/hooks/`` directory.
+
+        See docs/analysis/rca-attribution-plugin-worktree-isolation.md.
+        """
+        import subprocess as sp
+
+        # Build a real main-checkout repo so `git rev-parse` actually works
+        main_repo = tmp_path / "main"
+        main_repo.mkdir()
+        sp.run(
+            ["git", "init", "-q", "-b", "main", str(main_repo)],
+            check=True,
+            capture_output=True,
+        )
+        # An initial commit is required before `git worktree add` can succeed
+        sp.run(
+            [
+                "git",
+                "-C",
+                str(main_repo),
+                "commit",
+                "--allow-empty",
+                "-q",
+                "-m",
+                "init",
+            ],
+            check=True,
+            capture_output=True,
+            env={
+                **os.environ,
+                "GIT_AUTHOR_NAME": "Test",
+                "GIT_AUTHOR_EMAIL": "test@example.com",
+                "GIT_COMMITTER_NAME": "Test",
+                "GIT_COMMITTER_EMAIL": "test@example.com",
+            },
+        )
+
+        # Create a real worktree at tmp_path/wt — git creates the pointer-file
+        # `.git` and the per-worktree gitdir under main/.git/worktrees/wt.
+        worktree_dir = tmp_path / "wt"
+        sp.run(
+            [
+                "git",
+                "-C",
+                str(main_repo),
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "feature",
+                str(worktree_dir),
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        # Sanity-check: the worktree's `.git` is a FILE (the bug surface).
+        assert (worktree_dir / ".git").is_file(), (
+            "Worktree setup failed: .git should be a pointer file"
+        )
+
+        # cd into the worktree so git rev-parse runs in worktree context.
+        monkeypatch.chdir(worktree_dir)
+
+        nwave_dir = tmp_path / ".nwave"
+
+        # No subprocess mocks — exercises the real resolver against a real
+        # worktree. This is the test that fails on --show-toplevel and passes
+        # with --git-common-dir.
+        result_path = install_attribution_hook(config_dir=nwave_dir)
+
+        # The shared hooks dir is <main_repo>/.git/hooks/. That is where the
+        # prepare-commit-msg trailer policy belongs (applies to all branches
+        # and worktrees) and where --git-common-dir resolves.
+        shared_hooks = main_repo / ".git" / "hooks"
+        assert result_path.parent == shared_hooks, (
+            f"Hook installed in {result_path.parent}, expected {shared_hooks}"
+        )
+        assert result_path.name == "prepare-commit-msg"
+        assert result_path.exists()
+        assert result_path.is_file()
 
     def test_explicit_git_dir_bypasses_git_probing(self, tmp_path: Path) -> None:
         """Passing git_dir=<path> writes to <path>/hooks/ without any git probe.

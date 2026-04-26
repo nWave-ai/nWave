@@ -94,7 +94,9 @@ def simulate_version(stage: str, force_bump: str | None = None) -> StepResult:
             [
                 sys.executable,
                 "-c",
-                "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])",
+                # Py3.10 fallback: tomllib is stdlib only on 3.11+
+                "try:\n import tomllib\nexcept ImportError:\n import tomli as tomllib\n"
+                "print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])",
             ],
             capture_output=True,
             text=True,

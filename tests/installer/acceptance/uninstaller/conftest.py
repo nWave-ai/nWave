@@ -7,6 +7,7 @@ output for assertion.
 
 import importlib
 import io
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -23,7 +24,7 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
-def _apply_patches(original_logger_init, claude_config_dir):
+def _apply_patches(original_logger_init, claude_config_dir, opencode_config_dir):
     """Apply shared patches: plain Logger, config dir redirect, subprocess mock.
 
     Returns a dict of originals for cleanup.
@@ -31,9 +32,11 @@ def _apply_patches(original_logger_init, claude_config_dir):
     originals = {
         "logger_init": Logger.__init__,
         "get_config": PathUtils.get_claude_config_dir,
+        "get_opencode": PathUtils.get_opencode_config_dir,
         "run_checks": PreflightChecker.run_all_checks,
         "subprocess_run": subprocess.run,
         "argv": sys.argv,
+        "opencode_env": os.environ.get("OPENCODE_CONFIG_DIR"),
     }
 
     # Force plain text Logger (no Rich)
@@ -43,8 +46,10 @@ def _apply_patches(original_logger_init, claude_config_dir):
 
     Logger.__init__ = plain_logger_init
 
-    # Config dir → temp
+    # Config dirs → temp (isolate installer from user's real ~/.claude + ~/.config/opencode)
     PathUtils.get_claude_config_dir = staticmethod(lambda: claude_config_dir)
+    PathUtils.get_opencode_config_dir = staticmethod(lambda: opencode_config_dir)
+    os.environ["OPENCODE_CONFIG_DIR"] = str(opencode_config_dir)
 
     # Preflight → all pass
     passing_results = [
@@ -82,9 +87,14 @@ def _restore_patches(originals, original_logger_init):
     """Restore all monkey-patches."""
     Logger.__init__ = original_logger_init
     PathUtils.get_claude_config_dir = originals["get_config"]
+    PathUtils.get_opencode_config_dir = originals["get_opencode"]
     PreflightChecker.run_all_checks = originals["run_checks"]
     subprocess.run = originals["subprocess_run"]
     sys.argv = originals["argv"]
+    if originals["opencode_env"] is None:
+        os.environ.pop("OPENCODE_CONFIG_DIR", None)
+    else:
+        os.environ["OPENCODE_CONFIG_DIR"] = originals["opencode_env"]
 
 
 @pytest.fixture(scope="module")
@@ -95,9 +105,12 @@ def uninstaller_result(project_root, tmp_path_factory):
     Only the uninstall stdout is captured; install runs silently.
     """
     claude_config_dir = tmp_path_factory.mktemp("claude_config_uninstall")
+    opencode_config_dir = tmp_path_factory.mktemp("opencode_config_uninstall")
     original_logger_init = Logger.__init__
 
-    originals = _apply_patches(original_logger_init, claude_config_dir)
+    originals = _apply_patches(
+        original_logger_init, claude_config_dir, opencode_config_dir
+    )
 
     try:
         # ── Phase 1: silent install to populate the config dir ──

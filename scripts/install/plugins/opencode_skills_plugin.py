@@ -13,6 +13,7 @@ so uninstall() can remove only nWave skills without touching user-created ones.
 """
 
 import json
+import os
 import re
 import shutil
 from collections import Counter
@@ -44,7 +45,9 @@ def _opencode_skills_dir() -> Path:
     Returns:
         Path to ~/.config/opencode/skills/
     """
-    return Path.home() / ".config" / "opencode" / "skills"
+    override = os.environ.get("OPENCODE_CONFIG_DIR")
+    base = Path(override) if override else Path.home() / ".config" / "opencode"
+    return base / "skills"
 
 
 def _find_skills_source(context: InstallContext) -> Path | None:

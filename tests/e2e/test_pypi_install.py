@@ -38,7 +38,12 @@ import re
 from pathlib import Path
 
 import pytest
-import tomllib
+
+
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]  # Python 3.10 fallback
 
 from tests.e2e.conftest import (
     _DOCKER_AVAILABLE,
@@ -120,7 +125,14 @@ def pypi_install_container():
             # 5. Minimal settings.json
             "mkdir -p /root/.claude && "
             'echo \'{"permissions": {}, "hooks": {}}\' > /root/.claude/settings.json && '
-            # 6. Run installer inside the venv (satisfies venv preflight check)
+            # 6. Run installer inside the venv.
+            # PYTHONPATH={_CONTAINER_SRC} is REQUIRED: nwave_ai/ is NOT
+            # in the wheel-packages whitelist (pyproject.toml:6 ships only
+            # src/des + scripts/install), so `pip install --no-deps /src`
+            # produces a venv without nwave_ai.  The read-only-write issue
+            # that PYTHONPATH=/src used to trigger was fixed in des_plugin
+            # (commits 010535c1 + 8647a8cc: OSError soft-skip).  Same
+            # pattern as tests/e2e/test_fresh_install.py:140-154.
             "source /opt/nwave-venv/bin/activate && "
             f"export PYTHONPATH={_CONTAINER_SRC} && "
             "echo y | python -m nwave_ai.cli install"

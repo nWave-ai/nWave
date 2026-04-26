@@ -11,6 +11,7 @@ user-created ones.
 """
 
 import json
+import os
 from pathlib import Path
 
 from scripts.install.plugins.base import (
@@ -42,7 +43,9 @@ def _opencode_commands_dir() -> Path:
     Returns:
         Path to ~/.config/opencode/commands/
     """
-    return Path.home() / ".config" / "opencode" / "commands"
+    override = os.environ.get("OPENCODE_CONFIG_DIR")
+    base = Path(override) if override else Path.home() / ".config" / "opencode"
+    return base / "commands"
 
 
 def _find_commands_source(context: InstallContext) -> Path | None:

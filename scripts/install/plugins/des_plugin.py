@@ -713,6 +713,12 @@ class DESPlugin(InstallationPlugin):
 
         The config lives in the project directory (.nwave/), not ~/.claude,
         because audit log paths are project-relative.
+
+        Resilience: when the resolved project directory is read-only (e.g.
+        running the installer from a read-only mount or a site-packages
+        dir that the user doesn't own), silently skip config creation.
+        DES runs with sensible built-in defaults when the config is absent;
+        blocking the install over an optional customization file is wrong.
         """
         try:
             project_root = context.project_root or Path.cwd()
@@ -724,6 +730,25 @@ class DESPlugin(InstallationPlugin):
 
             return self._create_config(config_file, nwave_dir, context)
 
+        except OSError as e:
+            # EROFS, EACCES, ENOSPC, etc. — directory not writable.
+            # Treat as soft-skip: DES operates on built-in defaults when
+            # the project-level config file is missing, so the install
+            # can continue safely.  The warning surfaces the condition
+            # without breaking the happy path.
+            context.logger.info(
+                f"  ⚠️  DES config skipped (read-only project dir): {e}. "
+                f"Built-in defaults apply; customize later via "
+                f"{config_file} when project dir is writable."
+            )
+            return PluginResult(
+                success=True,
+                plugin_name="des",
+                message=(
+                    f"DES config skipped (project dir not writable): {e}. "
+                    "Built-in defaults in effect."
+                ),
+            )
         except Exception as e:
             return PluginResult(
                 success=False,
@@ -1081,14 +1106,24 @@ class DESPlugin(InstallationPlugin):
                     "audit_logging_enabled": True,
                     "audit_log_dir": ".nwave/des/logs",
                 }
-                nwave_dir.mkdir(parents=True, exist_ok=True)
-                with open(config_file, "w", encoding="utf-8") as f:
-                    json.dump(default_config, f, indent=2)
-                    f.write("\n")
-                context.logger.info(
-                    f"  \u2705 DES config created (migration): {config_file}"
-                )
-                des_cfg = default_config
+                try:
+                    nwave_dir.mkdir(parents=True, exist_ok=True)
+                    with open(config_file, "w", encoding="utf-8") as f:
+                        json.dump(default_config, f, indent=2)
+                        f.write("\n")
+                    context.logger.info(
+                        f"  \u2705 DES config created (migration): {config_file}"
+                    )
+                    des_cfg = default_config
+                except OSError as e:
+                    # Read-only project dir (e.g. installer invoked from a
+                    # mounted source repo); built-in defaults apply.  Match
+                    # the _bootstrap_des_config soft-skip semantics.
+                    context.logger.info(
+                        f"  \u26a0\ufe0f  DES config skipped (read-only project "
+                        f"dir): {e}. Built-in defaults apply."
+                    )
+                    des_cfg = default_config
             else:
                 errors.append("DES config not found: .nwave/des-config.json")
         if not errors and config_file.exists():

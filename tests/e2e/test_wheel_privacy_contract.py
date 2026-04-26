@@ -41,22 +41,6 @@ import pytest
 from tests.e2e.conftest import exec_in_container, require_docker
 
 
-# Temporary xfail until the wheel-bloat fix (commits 43dfdea5 + d10bb0fb)
-# ships to PyPI.  The fixture below installs `pipx install --pre nwave-ai`
-# which resolves to PyPI 3.11.0 — the unfixed wheel.  These 5 tests will
-# flip GREEN once the next dev release (>= 1.1.23.dev1) reaches PyPI with
-# the corrected patch_pyproject.py force-include.  Remove the xfail on
-# each test AS the next dev wheel is published — do not remove before.
-_XFAIL_UNTIL_FIXED_WHEEL_SHIPS = pytest.mark.xfail(
-    reason=(
-        "Fixture installs `pipx install --pre nwave-ai` which still resolves "
-        "to PyPI 3.11.0 (pre-wheel-bloat-fix).  Flips GREEN after next dev "
-        "release (>= 1.1.23.dev1) ships the force-include fix to PyPI."
-    ),
-    strict=False,
-)
-
-
 _REPO_ROOT = Path(__file__).parent.parent.parent
 _IMAGE = "python:3.12-slim"
 
@@ -213,7 +197,6 @@ class TestWheelPrivacyContract:
         leaked = out.strip()
         assert leaked == "", f".github/ content leaked into wheel:\n{leaked}"
 
-    @_XFAIL_UNTIL_FIXED_WHEEL_SHIPS
     def test_no_des_source_in_wheel(self, wheel_privacy_container) -> None:
         """src/des/ must not ship inside the PyPI wheel.
 
@@ -282,7 +265,6 @@ class TestWheelPrivacyContract:
             f"pyproject.toml leaked into wheel (internal build config):\n{leaked}"
         )
 
-    @_XFAIL_UNTIL_FIXED_WHEEL_SHIPS
     def test_no_scripts_release_in_wheel(self, wheel_privacy_container) -> None:
         """scripts/release/ is release-automation tooling — must NOT ship to users.
 
@@ -306,7 +288,6 @@ class TestWheelPrivacyContract:
             f"scripts/release/ (release automation) leaked into wheel:\n{leaked}"
         )
 
-    @_XFAIL_UNTIL_FIXED_WHEEL_SHIPS
     def test_no_scripts_hooks_in_wheel(self, wheel_privacy_container) -> None:
         """scripts/hooks/ is pre-commit tooling for this repo — must NOT ship to users.
 
@@ -327,7 +308,6 @@ class TestWheelPrivacyContract:
             f"scripts/hooks/ (pre-commit tooling) leaked into wheel:\n{leaked}"
         )
 
-    @_XFAIL_UNTIL_FIXED_WHEEL_SHIPS
     def test_no_scripts_framework_in_wheel(self, wheel_privacy_container) -> None:
         """scripts/framework/ is framework build utilities — must NOT ship to users.
 
@@ -348,7 +328,6 @@ class TestWheelPrivacyContract:
             f"scripts/framework/ (build utilities) leaked into wheel:\n{leaked}"
         )
 
-    @_XFAIL_UNTIL_FIXED_WHEEL_SHIPS
     def test_no_scripts_validation_in_wheel(self, wheel_privacy_container) -> None:
         """scripts/validation/ is CI validator tooling — must NOT ship to users.
 

@@ -10,6 +10,7 @@ clean uninstallation and version tracking.
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from scripts.install.plugins.base import (
@@ -34,7 +35,8 @@ def _opencode_config_dir() -> Path:
     Returns:
         Path to ~/.config/opencode/
     """
-    return Path.home() / ".config" / "opencode"
+    override = os.environ.get("OPENCODE_CONFIG_DIR")
+    return Path(override) if override else Path.home() / ".config" / "opencode"
 
 
 def _get_framework_version(context: InstallContext) -> str:

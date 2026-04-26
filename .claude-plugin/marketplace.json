@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "nWave plugin marketplace \u2014 structured AI development with TDD enforcement for Claude Code",
-    "version": "3.12.0"
+    "version": "3.12.1"
   },
   "plugins": [
     {
       "name": "nw",
       "source": "./plugins/nw",
       "description": "nWave: AI-powered workflow framework \u2014 23 agents, 98+ skills, TDD enforcement, and wave-based development methodology",
-      "version": "3.12.0",
+      "version": "3.12.1",
       "category": "development-workflows",
       "tags": [
         "tdd",

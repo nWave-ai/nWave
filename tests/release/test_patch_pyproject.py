@@ -231,6 +231,43 @@ class TestCliEntryPoint:
         content = (tmp_path / "out.toml").read_text()
         assert content.count("[project.scripts]") == 1
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "GREEN in step 03-01 — patcher rewrite skip->merge per RCA Branch A "
+            "permanent (issue #41). Current _add_cli_entry_point skips when "
+            "[project.scripts] already exists, so foreign entries survive but "
+            "nwave-ai is never injected. The merge-if-exists rewrite in 03-01 "
+            "will make this assertion pass and remove this xfail marker."
+        ),
+    )
+    def test_patched_output_contains_nwave_ai_entry(self, tmp_path):
+        """Given source already has [project.scripts] with foreign entries
+        (no nwave-ai), when patching, then the patched output MUST contain
+        the nwave-ai console script entry.
+
+        Postcondition assertion absent from test_existing_scripts_not_duplicated
+        (which only asserted dedupe count). Codifies issue #41 RCA Branch D:
+        the existing test is satisfied by the bug, this one falsifies it.
+        """
+        toml_with_scripts = (
+            '[project]\nname = "nwave"\nversion = "1.0.0"\n\n'
+            '[project.urls]\nHomepage = "https://example.com"\n\n'
+            '[project.scripts]\nnwave = "nwave.cli:main"\n\n'
+            '[tool.hatch.build.targets.wheel]\npackages = ["nWave"]\n'
+        )
+        src = tmp_path / "src.toml"
+        src.write_text(toml_with_scripts)
+        output_path = str(tmp_path / "out.toml")
+        patch_pyproject(
+            input_path=str(src),
+            output_path=output_path,
+            target_name="nwave-ai",
+            target_version="1.1.22",
+        )
+        content = (tmp_path / "out.toml").read_text()
+        assert 'nwave-ai = "nwave_ai.cli:main"' in content
+
 
 class TestDevSectionRemoval:
     """Remove dev-only sections from the public pyproject.toml."""

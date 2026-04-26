@@ -13,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.shared.git_hooks_paths import resolve_hooks_dir
+
 
 _SHELL_UNSAFE = re.compile(r"[;&|`(){}]")
 
@@ -90,8 +92,9 @@ def _resolve_python_path() -> str:
 def _resolve_hooks_dir() -> Path:
     """Resolve effective git hooks directory.
 
-    Priority: unscoped (effective) > global-only > .git/hooks/ (git default).
-    Unscoped returns whichever scope is active (local shadows global).
+    Priority: ``core.hooksPath`` (unscoped, then global) > the shared
+    ``.git/hooks`` directory resolved by ``resolve_hooks_dir`` (the
+    worktree-aware default).
 
     Never returns ~/.nwave/hooks/ as default -- that would require setting
     global core.hooksPath which shadows pre-commit hooks in .git/hooks/.
@@ -116,21 +119,14 @@ def _resolve_hooks_dir() -> Path:
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             pass
 
-    # No hooksPath configured -- use git default: <repo-root>/.git/hooks/
+    # No hooksPath configured -- delegate to the shared primitive that
+    # resolves <git-common-dir>/hooks (worktree-aware). See
+    # scripts/shared/git_hooks_paths.py and RCA Branch C.
     try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return Path(result.stdout.strip()) / ".git" / "hooks"
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
-
-    # Last resort: .git/hooks/ relative to cwd
-    return Path(".git") / "hooks"
+        return resolve_hooks_dir()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        # Last resort: .git/hooks/ relative to cwd
+        return Path(".git") / "hooks"
 
 
 def _set_hooks_path(hooks_dir: Path) -> None:
@@ -261,17 +257,36 @@ def install_attribution_hook(
 def remove_attribution_hook(config_dir: Path | None = None) -> None:
     """Remove attribution hook and restore original if chained.
 
+    Resolves the hooks directory via the same shared primitive used at
+    install time (``_resolve_hooks_dir``, which honours ``core.hooksPath``
+    and otherwise delegates to the worktree-aware
+    ``scripts.shared.git_hooks_paths.resolve_hooks_dir``). The
+    ``attribution.hooks_dir`` value previously written into
+    ``~/.nwave/global-config.json`` is consulted only as a back-stop for
+    pre-existing installs whose absolute path was recorded there; if it
+    is missing or relative, the live resolution wins. This is the RCA
+    Branch C permanent fix: install and uninstall must agree on the
+    hooks directory regardless of what stale config holds.
+
     Args:
         config_dir: Override for ~/.nwave/ (testing).
     """
     if config_dir is None:
         config_dir = Path.home() / ".nwave"
 
-    # Read hooks_dir from config (deterministic uninstall)
-    config = read_global_config(config_dir)
-    hooks_dir_str = config.get("attribution", {}).get("hooks_dir")
+    # Authoritative resolution via the shared helper (worktree-aware).
+    hooks_dir = _resolve_hooks_dir()
 
-    hooks_dir = Path(hooks_dir_str) if hooks_dir_str else _resolve_hooks_dir()
+    # Back-stop: if a previous install recorded an ABSOLUTE hooks_dir
+    # in config and that directory still exists, prefer it. This guards
+    # against the rare case where the user reconfigured ``core.hooksPath``
+    # between install and uninstall, leaving the original shim orphaned.
+    config = read_global_config(config_dir)
+    recorded = config.get("attribution", {}).get("hooks_dir")
+    if recorded:
+        recorded_path = Path(recorded)
+        if recorded_path.is_absolute() and recorded_path.is_dir():
+            hooks_dir = recorded_path
 
     shim_path = hooks_dir / _HOOK_SHIM_NAME
     original_path = hooks_dir / f"{_HOOK_SHIM_NAME}{_HOOK_ORIGINAL_SUFFIX}"
