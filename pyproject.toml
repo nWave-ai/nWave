@@ -120,6 +120,7 @@ Repository = "https://github.com/nWave-ai/nWave"
 Issues = "https://github.com/nWave-ai/nWave/issues"
 
 [project.scripts]
+nwave-ai = "nwave_ai.cli:main"
 des-log-phase = "des.cli.log_phase:main"
 des-init-log = "des.cli.init_log:main"
 des-verify-integrity = "des.cli.verify_deliver_integrity:main"
