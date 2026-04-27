@@ -11,6 +11,7 @@ Usage: python install_nwave.py [--backup-only] [--restore] [--dry-run] [--help]
 import argparse
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 
 # Add project root to sys.path to enable imports from scripts package
@@ -110,6 +111,62 @@ def _get_version() -> str:
 
 
 __version__ = _get_version()
+
+
+def _component_synced(matched: int, expected: int) -> bool:
+    """Return True iff a verifier component is synced.
+
+    Pure equality predicate: a component is synced when the count of
+    files present in the target equals the count expected from the
+    source. The "no work needed" state (matched == 0 AND expected == 0)
+    is success, NOT failure.
+
+    Earlier inline expressions added a defensive `and expected > 0`
+    clause that turned legitimate zero-expected states into hard fails
+    (v3.12.1 install regression, RCA Bugs #2 and #5). The verifier's
+    job is to assert that everything-expected is present — it does not
+    decide what counts as suspicious.
+    """
+    return matched == expected
+
+
+class ComponentResult(NamedTuple):
+    """Per-component sync verification result.
+
+    Carries the four facts the failure aggregator needs:
+    - name      : human-readable component name (agents/commands/...)
+    - matched   : count of files found in the target
+    - expected  : count of files declared by the source
+    - ok        : whether matched == expected (cached for clarity)
+    """
+
+    name: str
+    matched: int
+    expected: int
+    ok: bool
+
+
+def _format_sync_mismatch(components: list[ComponentResult]) -> str:
+    """Format a per-component sync-mismatch failure message.
+
+    Pure data transformation: take the list of component results, keep
+    only the failures, render each as ``<name> (<matched>/<expected>)``,
+    and join them under the prefix ``sync mismatch: ``.
+
+    Replaces the legacy literal ``"agent/command sync mismatch"`` which
+    blamed agents/commands regardless of which component actually failed
+    (v3.12.1 install regression, RCA Bug #3). Mentioning only the failing
+    components avoids contradiction with the per-component checkmarks
+    printed above the aggregate failure line.
+    """
+    failing = [c for c in components if not c.ok]
+    if not failing:
+        # Defensive: caller should not invoke us when all components are
+        # green, but if it does we still want a sensible non-empty token.
+        return "sync mismatch: unknown"
+    parts = [f"{c.name} ({c.matched}/{c.expected})" for c in failing]
+    return f"sync mismatch: {', '.join(parts)}"
+
 
 # ASCII art logo (raw text, no Rich markup)
 _LOGO_ART = [
@@ -434,6 +491,7 @@ class NWaveInstaller:
         # Supports both dist/ layout (agents/nw/, commands/nw/) and
         # nWave/ source layout (agents/nw-*.md, tasks/nw/*.md)
         all_synced = True
+        components: list[ComponentResult] = []
 
         # Agents: dist/agents/nw/ or nWave/agents/
         # In dev_mode, all agents are installed; otherwise only public
@@ -461,6 +519,9 @@ class NWaveInstaller:
             agent_ok = agent_matched == agent_expected and agent_expected > 0
             if not agent_ok:
                 all_synced = False
+            components.append(
+                ComponentResult("agents", agent_matched, agent_expected, agent_ok)
+            )
             self.logger.info(
                 f"    {'✅' if agent_ok else '❌'} Agents verified ({agent_matched}/{agent_expected})"
             )
@@ -484,6 +545,9 @@ class NWaveInstaller:
         cmd_ok = cmd_matched == cmd_expected
         if not cmd_ok:
             all_synced = False
+        components.append(
+            ComponentResult("commands", cmd_matched, cmd_expected, cmd_ok)
+        )
         self.logger.info(
             f"    {'✅' if cmd_ok else '❌'} Commands verified ({cmd_matched}/{cmd_expected})"
         )
@@ -497,9 +561,12 @@ class NWaveInstaller:
                 1 for f in tmpl_files if (templates_target / f.name).exists()
             )
             tmpl_expected = len(tmpl_files)
-            tmpl_ok = tmpl_matched == tmpl_expected and tmpl_expected > 0
+            tmpl_ok = _component_synced(tmpl_matched, tmpl_expected)
             if not tmpl_ok:
                 all_synced = False
+            components.append(
+                ComponentResult("templates", tmpl_matched, tmpl_expected, tmpl_ok)
+            )
             self.logger.info(
                 f"    {'✅' if tmpl_ok else '❌'} Templates verified ({tmpl_matched}/{tmpl_expected})"
             )
@@ -518,9 +585,12 @@ class NWaveInstaller:
         script_files = [s for s in utility_scripts if (scripts_source / s).exists()]
         script_matched = sum(1 for s in script_files if (scripts_target / s).exists())
         script_expected = len(script_files)
-        script_ok = script_matched == script_expected and script_expected > 0
+        script_ok = _component_synced(script_matched, script_expected)
         if not script_ok:
             all_synced = False
+        components.append(
+            ComponentResult("scripts", script_matched, script_expected, script_ok)
+        )
         self.logger.info(
             f"    {'✅' if script_ok else '❌'} Scripts verified ({script_matched}/{script_expected})"
         )
@@ -562,7 +632,7 @@ class NWaveInstaller:
             if not schema_valid:
                 failures.append("schema validation failed")
             if not all_synced:
-                failures.append("agent/command sync mismatch")
+                failures.append(_format_sync_mismatch(components))
             if plugin_failures:
                 failures.append(
                     f"plugin verification failed: {', '.join(plugin_failures)}"

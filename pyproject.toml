@@ -16,11 +16,13 @@ packages = ["nwave_ai"]
 "nWave/README.md" = "nWave/README.md"
 "scripts/install" = "scripts/install"
 "scripts/shared" = "scripts/shared"
+"scripts/install_nwave_target_hooks.py" = "scripts/install_nwave_target_hooks.py"
+"scripts/validate_step_file.py" = "scripts/validate_step_file.py"
 "lib/python/des" = "nWave/lib/python/des"
 
 [project]
 name = "nwave-ai"
-version = "3.12.1"
+version = "3.12.2"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -296,7 +298,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "3.12.1"
+version = "3.12.2"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",

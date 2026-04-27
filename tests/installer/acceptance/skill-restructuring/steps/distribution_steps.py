@@ -143,7 +143,15 @@ def opencode_install_complete(
     (oc_target / ".nwave-manifest.json").write_text(
         json.dumps(manifest, indent=2), encoding="utf-8"
     )
+    # Aliased attribute set: `opencode_target` is the historical name used by
+    # this @given step; `opencode_install_dir` is the canonical name read by
+    # the @then steps below. Required for xdist `--dist=loadgroup` parallel
+    # safety: scenarios distribute across workers and don't share state, so
+    # every step that establishes the OpenCode install state MUST set both
+    # names. Long-term fix: replace pytest.X module attributes with proper
+    # fixture scoping. Tracked as test-infrastructure backlog.
     pytest.opencode_target = oc_target
+    pytest.opencode_install_dir = oc_target
 
 
 @given("an existing OpenCode installation with non-prefixed skill directories")
@@ -330,7 +338,12 @@ def opencode_plugin_installs(skills_source_dir: Path, tmp_path: Path):
     (oc_target / ".nwave-manifest.json").write_text(
         json.dumps(manifest, indent=2), encoding="utf-8"
     )
+    # See note above @given("the OpenCode skills plugin completes installation"):
+    # both `opencode_install_dir` (canonical, read by @then) and
+    # `opencode_target` (alias) must be set so any scenario combination is
+    # safe under xdist `--dist=loadgroup`.
     pytest.opencode_install_dir = oc_target
+    pytest.opencode_target = oc_target
 
 
 @when("the OpenCode skills plugin installs the new version")

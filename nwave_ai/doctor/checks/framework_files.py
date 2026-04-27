@@ -1,4 +1,4 @@
-"""FrameworkFilesCheck — verifies agents/, skills/, commands/ are present and populated."""
+"""FrameworkFilesCheck — verifies agents/ and skills/ are present and populated."""
 
 from __future__ import annotations
 
@@ -13,7 +13,11 @@ if TYPE_CHECKING:
     from nwave_ai.doctor.context import DoctorContext
 
 
-REQUIRED_DIRS: tuple[str, ...] = ("agents", "skills", "commands")
+# commands/ is intentionally excluded: since v2.8.0 the framework delivers
+# commands as skills under skills/nw-*/SKILL.md, and commands_plugin.py removes
+# any legacy commands/nw/ directory on every install. Requiring commands/ here
+# would yield a false-positive on every clean install.
+REQUIRED_DIRS: tuple[str, ...] = ("agents", "skills")
 
 
 def _count_markdown_files(directory: Path) -> int:
@@ -31,17 +35,16 @@ def _count_markdown_files(directory: Path) -> int:
 
 
 class FrameworkFilesCheck:
-    """Check that agents/, skills/, and commands/ exist and contain at least 1 .md file each.
+    """Check that agents/ and skills/ exist and contain at least 1 .md file each.
 
     Uses recursive search to handle real install layouts:
     - agents/nw/*.md (nested under subdirectory)
     - skills/*/SKILL.md (each skill is a directory)
-    - commands/*.md (direct files)
     """
 
     name: str = "framework_files"
     description: str = (
-        "Framework directories (agents/, skills/, commands/) exist and are populated"
+        "Framework directories (agents/, skills/) exist and are populated"
     )
 
     def run(self, context: DoctorContext) -> CheckResult:
@@ -85,6 +88,6 @@ class FrameworkFilesCheck:
             passed=True,
             error_code=None,
             message=f"Framework directories populated: agents={counts['agents']}, "
-            f"skills={counts['skills']}, commands={counts['commands']}",
+            f"skills={counts['skills']}",
             remediation=None,
         )
