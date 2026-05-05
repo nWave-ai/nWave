@@ -7,12 +7,15 @@ Tests verify that _install_des_shims() correctly:
 4. Is idempotent: repeated calls do not duplicate PATH or error
 5. validate_prerequisites fails when a shim source file is missing
 6. PATH is prepended even when an existing entry is a prefix of DES_BIN_PATH
-7. System paths (/usr/bin etc.) are included when settings.json starts empty
+7. The live install-time os.environ["PATH"] is preserved when settings.json
+   starts empty (so user-visible binaries in ~/.local/bin etc. remain reachable)
 8. env.PATH contains no $HOME literal (runtime resolvability guard)
 9. Shims are resolvable via shutil.which using the installed PATH value
 10. Pre-existing $HOME entries are normalized to absolute paths on prepend
+11. Settings written by older installer versions (the broken
+    '<des_bin>:<SYSTEM_PATH_FALLBACK>' signature) are auto-healed on re-install
 
-Test budget: 10 behaviors x 2 = 20 max tests. Using 10 (one per behavior).
+Test budget: 11 behaviors x 2 = 22 max tests. Using 11 (one per behavior).
 """
 
 import json
@@ -20,6 +23,8 @@ import shutil
 import stat
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 from scripts.install.plugins.base import InstallContext
 from scripts.install.plugins.des_plugin import DESPlugin
@@ -257,31 +262,72 @@ class TestInstallIsIdempotentForPathAndShims:
             )
 
 
-class TestSystemPathsIncludedWhenSettingsStartsEmpty:
-    """System directories must be reachable after install on a fresh machine.
+class TestLivePathPreservedWhenSettingsStartsEmpty:
+    """The user's live install-time PATH must be preserved on a fresh install.
 
     Behavior #7: when settings.json has no prior env.PATH, the installer must
-    write a complete PATH that includes POSIX system directories — not only
-    $HOME/.claude/bin — because Claude Code env entries REPLACE the shell PATH
-    rather than prepending to it.
+    seed env.PATH from os.environ["PATH"] (the live install-time PATH the user
+    invoked nwave-ai with), prepended with $HOME/.claude/bin. Claude Code
+    REPLACES env.PATH (no merge with the inherited shell PATH), so seeding
+    from a hardcoded minimum would strip user-visible directories such as
+    ~/.local/bin (where pipx-installed CLIs including claude/nwave-ai live),
+    ~/.deno/bin, /snap/bin, etc.
     """
 
-    def test_system_paths_present_when_settings_json_starts_empty(
-        self, tmp_path: Path
+    def test_live_install_time_path_preserved_when_settings_json_starts_empty(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """
         GIVEN: settings.json does not exist (fresh install, no prior env.PATH)
+          AND: os.environ["PATH"] contains user-visible dirs (~/.local/bin,
+               ~/.deno/bin, /snap/bin) alongside system dirs
         WHEN: _install_des_shims() is called
-        THEN: the resulting env.PATH contains /usr/local/bin, /usr/bin, /bin,
-              /usr/sbin, /sbin as colon-delimited segments so that system tools
-              remain reachable after install
-        AND: $HOME/.claude/bin is still the first segment (DES tools take priority)
+        THEN: settings.json env.PATH equals
+              "<des_bin>:<os.environ['PATH']>" verbatim — the live install-time
+              PATH is preserved so binaries the user's shell can find remain
+              reachable inside Claude Code sessions and hooks.
         """
         context, _shims_dir, claude_dir = _make_context(tmp_path)
-        # _make_context creates claude_dir but no settings.json — fresh install
         assert not (claude_dir / "settings.json").exists(), (
             "Pre-condition failed: settings.json must not exist before install"
         )
+
+        # Simulate a typical user PATH containing dirs that the legacy
+        # SYSTEM_PATH_FALLBACK constant would have stripped.
+        live_path = (
+            "/home/u/.local/bin:/home/u/.deno/bin:/home/u/bin:"
+            "/usr/local/bin:/usr/bin:/bin:/snap/bin"
+        )
+        monkeypatch.setenv("PATH", live_path)
+
+        plugin = DESPlugin()
+        plugin._install_des_shims(context)
+
+        settings_file = claude_dir / "settings.json"
+        config = json.loads(settings_file.read_text(encoding="utf-8"))
+        path_value = config.get("env", {}).get("PATH", "")
+
+        des_bin = str(claude_dir / "bin")
+        expected = f"{des_bin}:{live_path}"
+        assert path_value == expected, (
+            f"Expected env.PATH={expected!r}, got {path_value!r}. "
+            "On a fresh install the user's live install-time PATH must be "
+            "preserved verbatim and prefixed with the DES bin dir."
+        )
+
+    def test_falls_back_to_system_paths_when_env_path_is_unset(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        GIVEN: settings.json does not exist AND os.environ has no PATH at all
+        WHEN: _install_des_shims() is called
+        THEN: env.PATH falls back to "<des_bin>:<SYSTEM_PATH_FALLBACK>" so
+              that system tools (python3, grep, git) remain reachable. The
+              hardcoded fallback is a last resort — it is only used when the
+              installer cannot read a live PATH from the environment.
+        """
+        context, _shims_dir, claude_dir = _make_context(tmp_path)
+        monkeypatch.delenv("PATH", raising=False)
 
         plugin = DESPlugin()
         plugin._install_des_shims(context)
@@ -291,26 +337,15 @@ class TestSystemPathsIncludedWhenSettingsStartsEmpty:
         path_value = config.get("env", {}).get("PATH", "")
         path_segments = path_value.split(":")
 
-        required_system_paths = [
-            "/usr/local/bin",
-            "/usr/bin",
-            "/bin",
-            "/usr/sbin",
-            "/sbin",
-        ]
-        for system_path in required_system_paths:
-            assert system_path in path_segments, (
-                f"System path '{system_path}' missing from env.PATH after install "
-                f"on empty settings. PATH={path_value!r}. "
-                "Claude Code replaces PATH; omitting system dirs breaks all bare "
-                "command lookups (python3, grep, git, etc.)."
-            )
-
-        expected_des_bin = str(claude_dir / "bin")
-        assert path_segments[0] == expected_des_bin, (
-            f"DES bin dir must be the first PATH segment. "
-            f"Expected: {expected_des_bin!r}, got: {path_segments[0]!r}"
+        des_bin = str(claude_dir / "bin")
+        assert path_segments[0] == des_bin, (
+            f"DES bin dir must be first PATH segment. Got: {path_segments[0]!r}"
         )
+        for system_path in ["/usr/local/bin", "/usr/bin", "/bin"]:
+            assert system_path in path_segments, (
+                f"Fallback system path '{system_path}' missing from "
+                f"env.PATH={path_value!r} when os.environ has no PATH."
+            )
 
 
 class TestEnvPathContainsNoDollarHomeLiteral:
@@ -423,4 +458,60 @@ class TestExistingDollarHomeEntriesNormalizedOnPrepend:
         assert segments[0] == expected_des_bin, (
             f"DES bin path must be first segment. "
             f"Expected: {expected_des_bin!r}, got: {segments[0]!r}"
+        )
+
+
+class TestLegacyFabricatedPathAutoHealedOnReinstall:
+    """Settings written by older installer versions must be auto-healed.
+
+    Behavior #11: Older installer versions seeded env.PATH from a hardcoded
+    minimum (SYSTEM_PATH_FALLBACK) on fresh installs, producing the exact
+    value '<des_bin>:<SYSTEM_PATH_FALLBACK>'. That value stripped the user's
+    real PATH (~/.local/bin etc.) and broke bare-name resolution of binaries
+    like claude/nwave-ai. The idempotency guard would otherwise see
+    ~/.claude/bin already present and short-circuit, leaving affected users
+    stuck. This test asserts that re-running install rewrites the legacy
+    signature using the live os.environ["PATH"].
+    """
+
+    def test_legacy_fabricated_path_replaced_with_live_environment(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        GIVEN: settings.json env.PATH equals the legacy installer-fabricated
+               value '<absolute_des_bin>:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+          AND: os.environ["PATH"] contains the user's real shell PATH
+               including ~/.local/bin (which the legacy value stripped)
+        WHEN: _install_des_shims() is called
+        THEN: env.PATH is rewritten to "<des_bin>:<os.environ['PATH']>",
+              restoring access to the user's real PATH dirs.
+        """
+        context, _shims_dir, claude_dir = _make_context(tmp_path)
+        des_bin = str(claude_dir / "bin")
+
+        # Pre-seed settings.json with the exact legacy signature.
+        legacy_value = f"{des_bin}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        settings_file = claude_dir / "settings.json"
+        settings_file.write_text(
+            json.dumps({"env": {"PATH": legacy_value}}), encoding="utf-8"
+        )
+
+        # Simulate the user's real shell PATH at install time.
+        live_path = (
+            "/home/u/.local/bin:/home/u/.deno/bin:"
+            "/usr/local/bin:/usr/bin:/bin:/snap/bin"
+        )
+        monkeypatch.setenv("PATH", live_path)
+
+        plugin = DESPlugin()
+        plugin._install_des_shims(context)
+
+        config = json.loads(settings_file.read_text(encoding="utf-8"))
+        path_value = config.get("env", {}).get("PATH", "")
+
+        expected = f"{des_bin}:{live_path}"
+        assert path_value == expected, (
+            f"Auto-heal failed. Expected env.PATH={expected!r}, got "
+            f"{path_value!r}. Legacy installer-fabricated PATH value should be "
+            "rewritten from os.environ['PATH'] on re-install."
         )
