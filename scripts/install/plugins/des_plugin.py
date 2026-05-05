@@ -1,6 +1,7 @@
 """DES (Deterministic Execution System) installation plugin."""
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -36,10 +37,12 @@ class DESPlugin(InstallationPlugin):
         "des-health-check",
     ]
 
-    # Minimal POSIX system directories written as fallback when settings.json
-    # has no prior env.PATH. Claude Code REPLACES env.PATH entirely (no merge
-    # with the inherited shell PATH), so omitting these makes system tools
-    # (python3, grep, git) unreachable by bare name after install.
+    # Minimal POSIX system directories written as a last-resort fallback when
+    # settings.json has no prior env.PATH AND os.environ has no PATH at install
+    # time (highly unusual). Claude Code REPLACES env.PATH entirely (no merge
+    # with the inherited shell PATH), so on the normal path the installer
+    # seeds env.PATH from os.environ["PATH"] to preserve user-visible
+    # directories (~/.local/bin, ~/.deno/bin, /snap/bin, etc.).
     SYSTEM_PATH_FALLBACK = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
     # DES templates installed to ~/.claude/templates/
@@ -883,6 +886,20 @@ class DESPlugin(InstallationPlugin):
         Idempotent: skips prepend if des_bin_path is already a colon-delimited
         segment of the current PATH value.
 
+        When settings.json has no prior env.PATH, seeds it from the live
+        install-time PATH (os.environ["PATH"]) so user-visible directories
+        (~/.local/bin, ~/.deno/bin, ~/.cargo/bin, /snap/bin, ~/bin, etc.)
+        remain reachable. Claude Code REPLACES env.PATH (it does not merge
+        with the inherited shell PATH), so seeding from a hardcoded minimum
+        would strip the user's real PATH. Falls back to SYSTEM_PATH_FALLBACK
+        only when os.environ has no PATH (highly unusual).
+
+        Auto-heals settings written by older installer versions whose PATH
+        equals exactly '<des_bin>:<SYSTEM_PATH_FALLBACK>': those values
+        replaced the user's real PATH and broke bare-name resolution of
+        binaries in ~/.local/bin (where pipx-installed CLIs live, including
+        claude and nwave-ai itself).
+
         Normalizes pre-existing $HOME entries to absolute paths. Claude Code passes
         env.PATH verbatim to exec() without shell expansion, so $HOME literals never
         resolve to the actual filesystem directory. Re-running install on a settings.json
@@ -907,6 +924,20 @@ class DESPlugin(InstallationPlugin):
             segments = [s.replace("$HOME", home) for s in existing_path.split(":")]
             existing_path = ":".join(segments)
 
+        # Auto-heal settings written by older installer versions: detect the
+        # exact byte-for-byte signature of the prior fabricated value
+        # (des_bin + SYSTEM_PATH_FALLBACK only) and rewrite from the live
+        # install-time PATH. Probability of a user manually configuring
+        # exactly this value is effectively zero, so this is safe to assume
+        # is installer-fabricated.
+        legacy_fabricated_path = f"{des_bin_path}:{self.SYSTEM_PATH_FALLBACK}"
+        if existing_path == legacy_fabricated_path:
+            live_path = os.environ.get("PATH") or self.SYSTEM_PATH_FALLBACK
+            config["env"]["PATH"] = des_bin_path + ":" + live_path
+            if not context.dry_run:
+                self._save_settings(settings_file, config, context)
+            return
+
         if des_bin_path in existing_path.split(":"):
             if existing_path != config["env"].get("PATH", ""):
                 config["env"]["PATH"] = existing_path
@@ -917,7 +948,11 @@ class DESPlugin(InstallationPlugin):
         if existing_path:
             config["env"]["PATH"] = des_bin_path + ":" + existing_path
         else:
-            config["env"]["PATH"] = des_bin_path + ":" + self.SYSTEM_PATH_FALLBACK
+            # Seed from the user's live install-time PATH so binaries reachable
+            # from their shell (claude itself in ~/.local/bin, pnpm, node, etc.)
+            # remain reachable inside Claude Code sessions and hooks.
+            live_path = os.environ.get("PATH") or self.SYSTEM_PATH_FALLBACK
+            config["env"]["PATH"] = des_bin_path + ":" + live_path
 
         if not context.dry_run:
             self._save_settings(settings_file, config, context)
