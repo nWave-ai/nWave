@@ -481,7 +481,18 @@ class DESPlugin(InstallationPlugin):
         Returns:
             Complete command string with $HOME-based paths
         """
-        lib_path = "$HOME/.claude/lib/python"
+        # When the install target is the default ~/.claude/, keep the portable
+        # $HOME form so settings.json works across machines via a synced
+        # ~/.claude/. When the target is non-default (e.g. ~/.claude-nwave
+        # via `nwave-ai install --target`, or a project-scoped <repo>/.claude),
+        # emit the absolute path: Claude Code passes hook commands to a shell
+        # that resolves $HOME to the user's real home, NOT to the chosen
+        # target, so the portable form would point at the wrong directory.
+        # See ADR-002 (per-project-install feature).
+        if context.claude_dir == Path.home() / ".claude":
+            lib_path = "$HOME/.claude/lib/python"
+        else:
+            lib_path = str(context.claude_dir / "lib" / "python")
         python_path = self._resolve_python_path()
         return self.HOOK_COMMAND_TEMPLATE.format(
             lib_path=lib_path,
