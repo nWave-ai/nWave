@@ -1,7 +1,7 @@
 """CLI: Append a phase entry to execution-log.json with a real UTC timestamp.
 
 Usage:
-    PYTHONPATH=src python -m des.cli.log_phase \\
+    des-log-phase \\
       --project-dir docs/feature/build-pipeline-elimination \\
       --step-id 02-03 \\
       --phase GREEN \\

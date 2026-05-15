@@ -264,11 +264,48 @@ class RoadmapValidator:
         step_path: str,
     ) -> list[ValidationViolation]:
         violations: list[ValidationViolation] = []
-        criteria_str = step.get("criteria", "")
-        if not criteria_str or str(criteria_str).startswith("TODO"):
+        criteria_raw = step.get("criteria")
+
+        # Empty / unset / placeholder — nothing to validate.
+        if criteria_raw is None or criteria_raw in ("", []):
+            return violations
+        if isinstance(criteria_raw, str) and criteria_raw.startswith("TODO"):
             return violations
 
-        criteria_list = [c.strip() for c in str(criteria_str).split(";") if c.strip()]
+        # Schema contract (F-1): criteria is list[str]. Legacy string form is
+        # accepted with a single warning + migration hint — never errors.
+        if isinstance(criteria_raw, list):
+            criteria_list = [str(c).strip() for c in criteria_raw if str(c).strip()]
+        elif isinstance(criteria_raw, str):
+            violations.append(
+                ValidationViolation(
+                    path=f"{step_path}.criteria",
+                    rule="LEGACY_CRITERIA_STRING",
+                    message=(
+                        "Step.criteria is a string; the schema now expects "
+                        "list[str]. Convert to list: [criterion1, criterion2]"
+                    ),
+                    severity="warning",
+                )
+            )
+            # Skip word/count checks on legacy form — migration hint is enough.
+            return violations
+        else:
+            # Unknown type — single warning, do not error.
+            violations.append(
+                ValidationViolation(
+                    path=f"{step_path}.criteria",
+                    rule="LEGACY_CRITERIA_STRING",
+                    message=(
+                        f"Step.criteria has unsupported type "
+                        f"{type(criteria_raw).__name__}; expected list[str]. "
+                        "Convert to list: [criterion1, criterion2]"
+                    ),
+                    severity="warning",
+                )
+            )
+            return violations
+
         if len(criteria_list) > self._schema.max_criteria_per_step:
             violations.append(
                 ValidationViolation(

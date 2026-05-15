@@ -272,6 +272,61 @@ class TestPyPIInstall:
             f"Unexpected output from hook_definitions import check.\n{out}"
         )
 
+    def test_state_delta_assert_state_delta_importable(
+        self, pypi_install_container
+    ) -> None:
+        """state_delta public surface must be importable after wheel install.
+
+        DoD #9 smoke import: verifies that assert_state_delta ships in the
+        nwave-ai wheel via the force-include map in patch_pyproject.py.
+
+        Uses PYTHONPATH=/src because the dev wheel (nwave) does not
+        package nwave_ai/ directly — same pattern as the other smoke tests.
+        """
+        check_script = (
+            f"PYTHONPATH={_CONTAINER_SRC} "
+            "python3 -c '"
+            "from nwave_ai.state_delta import assert_state_delta; "
+            'print("OK: assert_state_delta importable")\''
+        )
+        code, out = exec_in_container(
+            pypi_install_container,
+            ["bash", "-c", check_script],
+        )
+        assert code == 0, (
+            "from nwave_ai.state_delta import assert_state_delta failed.\n"
+            "Ensure nwave_ai/state_delta is in the force-include map of "
+            "scripts/release/patch_pyproject.py.\n"
+            f"Output:\n{out}"
+        )
+        assert "OK:" in out, f"Unexpected output from smoke import.\n{out}"
+
+    def test_state_delta_path_strategy_importable(self, pypi_install_container) -> None:
+        """strategies subpackage must be importable even without hypothesis.
+
+        DoD #9 smoke import: verifies the strategies subpackage ships and
+        that the lazy-hypothesis boundary is preserved — importing the module
+        does not require hypothesis (a dev-dep); only calling path_strategy()
+        would require it.
+        """
+        check_script = (
+            f"PYTHONPATH={_CONTAINER_SRC} "
+            "python3 -c '"
+            "from nwave_ai.state_delta.strategies import path_strategy; "
+            'print("OK: path_strategy importable")\''
+        )
+        code, out = exec_in_container(
+            pypi_install_container,
+            ["bash", "-c", check_script],
+        )
+        assert code == 0, (
+            "from nwave_ai.state_delta.strategies import path_strategy failed.\n"
+            "Ensure nwave_ai/state_delta is in the force-include map and that "
+            "path_strategy.py uses TYPE_CHECKING guard for SearchStrategy.\n"
+            f"Output:\n{out}"
+        )
+        assert "OK:" in out, f"Unexpected output from strategies smoke import.\n{out}"
+
     def test_nwave_ai_install_succeeds(self, pypi_install_container) -> None:
         """``nwave-ai install`` (via dev CLI) must exit 0 and deploy assets.
 

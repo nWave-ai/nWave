@@ -112,13 +112,13 @@ Gate: verdict issued with all fields populated.
 ## Examples
 
 ### Example 1: Clean Implementation
-3 behaviors, 5 unit tests, all 5 phases logged, all gates pass. Budget 3x2=6, actual 5 -- PASS. APPROVED with good discipline noted.
+3 behaviors, 5 unit tests, all required phases logged (3-phase canon: RED/GREEN/COMMIT; or legacy 5-phase), all gates pass. Budget 3x2=6, actual 5 -- PASS. APPROVED with good discipline noted.
 
 ### Example 2: Test Budget Exceeded
 3 behaviors, 12 unit tests, 4 test internal UserValidator. Budget 6, actual 12 -- Blocker. Internal class testing -- Blocker. REJECTED with D1 (budget exceeded)|D2 (internal class testing), specific file/line refs.
 
 ### Example 3: Walking Skeleton
-is_walking_skeleton: true, 1 E2E test, RED_UNIT SKIPPED. Don't flag missing unit tests. Verify E2E proves wiring. APPROVED if wiring works.
+is_walking_skeleton: true, 1 E2E test, unit-test authoring inside RED skipped (3-phase canon) or RED_UNIT SKIPPED (legacy 5-phase logs). Don't flag missing unit tests. Verify E2E proves wiring. APPROVED if wiring works.
 
 ### Example 4: External Validity Failure
 All acceptance tests import internal TemplateValidator, none import DESOrchestrator entry point. External validity FAIL. NEEDS_REVISION: tests at wrong boundary, component not wired into entry point.
@@ -139,7 +139,7 @@ Agent reports GREEN but `git diff --name-only` shows only test files changed. Pr
 
 All commands require `*` prefix.
 
-`*review` - Full review workflow | `*validate-phases` - Validate 5-phase TDD from execution-log.json | `*count-budget` - Count test budget (behaviors vs actual) | `*check-gates` - Check quality gates G1-G9
+`*review` - Full review workflow | `*validate-phases` - Validate TDD phases from execution-log.json (3-phase canon per ADR-025; legacy 5-phase logs also supported) | `*count-budget` - Count test budget (behaviors vs actual) | `*check-gates` - Check quality gates G1-G9
 
 ## Constraints
 

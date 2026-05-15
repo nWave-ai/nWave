@@ -50,7 +50,7 @@ If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 
 ### Phase 1: Startup
 
-Read these files NOW:
+Read these files NOW (9 mandatory always-load):
 - `~/.claude/skills/nw-discovery-methodology/SKILL.md`
 - `~/.claude/skills/nw-design-methodology/SKILL.md`
 - `~/.claude/skills/nw-shared-artifact-tracking/SKILL.md`
@@ -60,11 +60,13 @@ Read these files NOW:
 - `~/.claude/skills/nw-jtbd-bdd-integration/SKILL.md`
 - `~/.claude/skills/nw-outcome-kpi-framework/SKILL.md`
 - `~/.claude/skills/nw-user-story-mapping/SKILL.md`
-- `~/.claude/skills/nw-ux-principles/SKILL.md`
-- `~/.claude/skills/nw-ux-web-patterns/SKILL.md`
-- `~/.claude/skills/nw-ux-desktop-patterns/SKILL.md`
-- `~/.claude/skills/nw-ux-tui-patterns/SKILL.md`
-- `~/.claude/skills/nw-ux-emotional-design/SKILL.md`
+
+**Conditional skills** (5 UX skills): load only when Phase 6 platform detection requires them (web/desktop/CLI-TUI variants). Do NOT load at Phase 1. The set is:
+- `~/.claude/skills/nw-ux-principles/SKILL.md` (web, desktop, CLI/TUI)
+- `~/.claude/skills/nw-ux-emotional-design/SKILL.md` (web, desktop)
+- `~/.claude/skills/nw-ux-web-patterns/SKILL.md` (web)
+- `~/.claude/skills/nw-ux-desktop-patterns/SKILL.md` (desktop)
+- `~/.claude/skills/nw-ux-tui-patterns/SKILL.md` (CLI/TUI)
 
 ## Workflow
 

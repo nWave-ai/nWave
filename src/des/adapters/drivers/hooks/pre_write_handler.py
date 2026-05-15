@@ -95,7 +95,7 @@ def handle_pre_write() -> int:
                     block_reason = (
                         "Direct creation of execution-log.json is blocked.\n\n"
                         "Use the CLI to initialize the execution log:\n\n"
-                        f"  python -m des.cli.init_log \\\n"
+                        f"  des-init-log \\\n"
                         f"    --project-dir {project_dir} \\\n"
                         "    --feature-id {feature-id}\n\n"
                         "IMPORTANT: The execution log must be created through the CLI "
@@ -105,7 +105,7 @@ def handle_pre_write() -> int:
                     block_reason = (
                         "Direct modification of execution-log.json is blocked.\n\n"
                         "Use the CLI to record phase outcomes after executing the step:\n\n"
-                        f"  python -m des.cli.log_phase \\\n"
+                        f"  des-log-phase \\\n"
                         f"    --project-dir {project_dir} \\\n"
                         "    --step-id {step-id} \\\n"
                         "    --phase {phase} \\\n"

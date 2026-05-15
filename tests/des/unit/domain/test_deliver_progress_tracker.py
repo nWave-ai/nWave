@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from io import StringIO
-from pathlib import Path  # noqa: TC003 -- used at runtime
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest

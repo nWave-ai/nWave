@@ -29,10 +29,23 @@ def _extract_home_resolution_code() -> str:
 
     statements = [s.strip() for s in _PLUGIN_DISCOVERY_SCRIPT.split(";") if s.strip()]
 
-    # Collect: imports + all 'h=' assignments
+    # Collect: HOME-resolution-relevant imports + all 'h=' assignments.
+    # Allow-list: only stdlib modules used by the HOME logic (os, sys, pwd, pathlib).
+    # Broader 'startswith("import ", "from ")' would sweep in unrelated runtime
+    # imports (e.g. `from des.adapters...`) that don't exist in test subprocess,
+    # causing ModuleNotFoundError before HOME logic runs.
+    allowed_import_prefixes = (
+        "import os",
+        "import sys",
+        "import pwd",
+        "from pathlib",
+        "from os",
+        "from sys",
+        "from pwd",
+    )
     code_lines: list[str] = []
     for stmt in statements:
-        if stmt.startswith(("import ", "from ")) or stmt.startswith("h="):
+        if stmt.startswith(allowed_import_prefixes) or stmt.startswith("h="):
             code_lines.append(stmt)
 
     # If no 'h=' lines found, the hardening hasn't been applied

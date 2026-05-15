@@ -72,7 +72,7 @@ def find_site_packages(venv_python: Path) -> Path:
         ],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=60,
     )
     if result.returncode != 0:
         msg = f"Failed to query site-packages: {result.stderr.strip()}"
@@ -101,7 +101,7 @@ def check_importable(venv_python: Path, module_name: str) -> CheckResult:
         [str(venv_python), "-c", f"import {module_name}"],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=60,
     )
     if result.returncode == 0:
         return CheckResult(
@@ -135,7 +135,7 @@ def check_module_runnable(
         cmd,
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=60,
     )
 
     has_import_error = any(

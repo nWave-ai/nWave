@@ -195,3 +195,29 @@ Consequence rules:
 - No contract or smoke test for an external system → flag as HIGH
 - Contract test is local-only for a CI-triggered adapter → flag as HIGH
 - Cost per run undocumented → flag as MEDIUM
+
+## Gate 12: Delta-First Paradigm Coverage (installer / sync / hook tests)
+
+**Gate name**: Delta-first paradigm coverage on state-mutating code.
+
+**Criterion**: Tests on installer-class, sync-class, or hook-registration code that mutate user-observable state in ≥2 slots MUST declare `universe` and `expected` deltas via `assert_state_delta`, OR explicitly document a bypass justification citing one of the named bypass conditions.
+
+**Why this gate exists**: bug #48 regression class — "test asserts post-state property without verifying surrounding state remained unchanged." Production code writes to additional state slots; tests that only assert on the primary output slot miss these mutations silently. Empirical evidence: 4/7 installer test files (57% hit rate) exposed previously-untracked mutations during migration, including:
+- `attribution.trailer` written silently — post-state test only checked `returncode`
+- `content.full` transitioned `None → str` — test never declared `content.full` in universe
+
+**Addressable scope**: ~28% of the suite (installer + sync + hook tests). NOT applied to pure-function tests, schema validators, or interaction tests — those retain standard assertion style. Gate does not block commits from the other 72%.
+
+**How to verify at review**:
+1. Check that tests under `tests/installer/`, `tests/des/integration/`, `tests/sync/` import `assert_state_delta`.
+2. If a test file in those directories does NOT import it: confirm the test only covers a single-slot assertion, a bypass condition is documented in a comment, or the test is an interaction test.
+3. PR reviewer flags undocumented exceptions as MEDIUM severity.
+
+**Bypass conditions** (any one sufficient to exempt a test):
+- Single-property assertion only (`assert result.returncode == 0`)
+- Pure-function / no-side-effect code
+- `validate_prerequisites()` failure path
+- Interaction test (`mock.assert_called_with(...)`)
+- AST / schema / YAML validator
+
+**Full details**: `nWave/skills/nw-tdd-methodology/SKILL.md` section "Delta-First Test Paradigm (state-mutating code)".

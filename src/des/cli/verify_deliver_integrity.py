@@ -1,7 +1,7 @@
 """CLI: Verify deliver integrity before finalize.
 
 Usage:
-    python -m des.cli.verify_deliver_integrity docs/feature/{project-id}/
+    des-verify-integrity docs/feature/{project-id}/
 
 Reads roadmap.json and execution-log.json from the project directory,
 cross-references step IDs against execution-log entries, and reports
@@ -15,10 +15,12 @@ Exit codes:
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
 
+from des.adapters.driven.config.des_config import DESConfig
 from des.domain._roadmap_helpers import (
     extract_step_ids as _extract_step_ids,
 )
@@ -53,42 +55,61 @@ def _parse_execution_log(exec_log: dict) -> dict[str, list[str]]:
     return entries
 
 
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="des-verify-integrity",
+        description=(
+            "Verify TDD phase completeness for all steps in a feature deliver. "
+            "Reads roadmap.json and execution-log.json, cross-references step IDs "
+            "against execution-log entries, and reports violations."
+        ),
+        epilog=(
+            "Exit codes: 0 = all steps verified | 1 = integrity violations | "
+            "2 = usage / format error."
+        ),
+    )
+    parser.add_argument(
+        "project_dir",
+        type=Path,
+        help=(
+            "Path to the feature deliver directory containing roadmap.json "
+            "and execution-log.json (e.g. docs/feature/<id>/deliver/)"
+        ),
+    )
+    parser.add_argument(
+        "--roadmap-only",
+        action="store_true",
+        help=(
+            "Validate roadmap.json only (RoadmapValidator); skip the "
+            "execution-log.json cross-reference. Intended for Phase 1 "
+            "hard-gate use before crafter dispatch has produced any "
+            "execution-log entries."
+        ),
+    )
+    return parser
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = sys.argv[1:] if argv is None else list(argv)
-    if args and args[0] in ("--help", "-h"):
-        print(
-            "Usage: python -m des.cli.verify_deliver_integrity <project-dir>\n\n"
-            "Verify TDD phase completeness for all steps in a feature deliver.\n\n"
-            "Arguments:\n"
-            "  project-dir   Path to the feature directory containing roadmap.json\n"
-            "                and execution-log.json (e.g. docs/feature/<id>/deliver/)\n\n"
-            "Exit codes:\n"
-            "  0  All steps have complete DES traces\n"
-            "  1  Integrity violations found\n"
-            "  2  Usage error"
-        )
-        return 0
-    if len(args) < 1:
-        print("Usage: python -m des.cli.verify_deliver_integrity <project-dir>")
-        return 2
+    # F-2 (RC-B, ADR-025): argparse replaces hand-rolled args[0] loop. The
+    # legacy loop silently swallowed `--roadmap-only` (treating it as the
+    # positional path) which made the Phase 1 hard gate in
+    # `nw-deliver/SKILL.md:153` non-functional. argparse natively raises
+    # SystemExit on unknown flags with the usage banner.
+    raw_args = sys.argv[1:] if argv is None else list(argv)
+    parser = _build_parser()
+    args = parser.parse_args(raw_args)
 
-    project_dir = Path(args[0])
-
+    project_dir: Path = args.project_dir
     roadmap_path = project_dir / "roadmap.json"
-    exec_log_path = project_dir / "execution-log.json"
 
     if not roadmap_path.exists():
         print(f"Error: roadmap.json not found at {roadmap_path}")
         return 2
 
-    if not exec_log_path.exists():
-        print(f"Error: execution-log.json not found at {exec_log_path}")
-        return 2
-
     roadmap = json.loads(roadmap_path.read_text())
-    exec_log = json.loads(exec_log_path.read_text())
 
-    # Structural pre-check: validate roadmap format before extracting IDs
+    # Structural pre-check: validate roadmap format. In --roadmap-only mode
+    # this is the ONLY check; execution-log.json is never opened.
     try:
         roadmap_schema = get_roadmap_schema()
         validator = RoadmapValidator(roadmap_schema)
@@ -102,12 +123,49 @@ def main(argv: list[str] | None = None) -> int:
             return 1
     except Exception as e:
         print(f"Warning: roadmap format pre-check skipped: {e}")
+        if args.roadmap_only:
+            # In --roadmap-only mode the validator IS the verdict — surface
+            # the failure rather than silently continuing past it.
+            return 2
+
+    if args.roadmap_only:
+        print(
+            f"Roadmap format OK: {roadmap_path} "
+            f"(validator: no errors). --roadmap-only: execution-log skipped."
+        )
+        return 0
+
+    exec_log_path = project_dir / "execution-log.json"
+    if not exec_log_path.exists():
+        print(f"Error: execution-log.json not found at {exec_log_path}")
+        return 2
+
+    exec_log = json.loads(exec_log_path.read_text())
 
     step_ids = _extract_step_ids(roadmap)
     entries = _parse_execution_log(exec_log)
 
     schema = TDDSchemaLoader().load()
-    verifier = DeliverIntegrityVerifier(required_phases=list(schema.tdd_phases))
+
+    # F-3 (RC-C, ADR-025): the integrity verifier honours the rigor-profile
+    # phase set declared in `.nwave/des-config.json`, intersected with the
+    # canonical TDDSchema phase set. This lets 3-phase ADR-025 projects pass
+    # integrity without spurious "missing PREPARE/RED_ACCEPTANCE/RED_UNIT"
+    # errors, while legacy 5-phase projects continue to verify unchanged.
+    rigor_phases = DESConfig().rigor_tdd_phases
+    effective_phases = tuple(p for p in schema.tdd_phases if p in rigor_phases)
+    if not effective_phases:
+        print(
+            f"ERROR: rigor.tdd_phases contains no phases recognised by the "
+            f"canonical TDDSchema. Misconfigured rigor phases: "
+            f"{list(rigor_phases)!r}; canonical phases: "
+            f"{list(schema.tdd_phases)!r}.",
+            file=sys.stderr,
+        )
+        return 2
+
+    required_phases = list(effective_phases)
+    verifier = DeliverIntegrityVerifier(required_phases=required_phases)
     result = verifier.verify(step_ids, entries)
 
     if result.is_valid:
@@ -117,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"INTEGRITY VIOLATIONS: {result.reason}")
         for v in result.violations:
             print(
-                f"  - {v.step_id}: {v.phase_count}/{len(schema.tdd_phases)} phases, "
+                f"  - {v.step_id}: {v.phase_count}/{len(required_phases)} phases, "
                 f"missing: {v.missing_phases}"
             )
         return 1

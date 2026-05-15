@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from io import StringIO
-from pathlib import Path  # noqa: TC003
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 

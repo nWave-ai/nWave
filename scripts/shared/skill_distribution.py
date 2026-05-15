@@ -109,11 +109,53 @@ def filter_public_skills(
     Command-skills (user-invocable slash commands) are always included.
     When public_agents is empty, returns all entries (backward compatibility).
     """
-    return [
-        entry
-        for entry in entries
-        if is_public_skill(entry.name, public_agents, ownership_map, command_skills)
-    ]
+    kept, _ = filter_public_skills_with_reasons(
+        entries, public_agents, ownership_map, command_skills
+    )
+    return kept
+
+
+def filter_public_skills_with_reasons(
+    entries: list[SkillEntry],
+    public_agents: set[str],
+    ownership_map: dict[str, set[str]],
+    command_skills: set[str] | None = None,
+) -> tuple[list[SkillEntry], list[tuple[str, str]]]:
+    """Filter entries + return parallel list of (excluded_name, reason).
+
+    Reason vocabulary:
+        - "uncatalogued"                          — no owning agent in ownership_map
+        - "private-owned by {comma-separated}"    — all owning agents are private
+
+    When ``public_agents`` is empty (catalog not loaded / dev_mode), no entry
+    is excluded and the reasons list is empty. This preserves backward
+    compatibility with ``filter_public_skills`` callers.
+
+    Bug #fix-installer-silent-template-skip: pre-fix this filter silently
+    dropped skills with zero diagnostic. The reasons list lets the caller
+    emit a "Skipped {name}: {reason}" line per dropped skill so authors of
+    new skills see why their skill never reached ``~/.claude/``.
+    """
+    if not public_agents:
+        return list(entries), []
+
+    kept: list[SkillEntry] = []
+    excluded: list[tuple[str, str]] = []
+    for entry in entries:
+        if is_public_skill(entry.name, public_agents, ownership_map, command_skills):
+            kept.append(entry)
+            continue
+        excluded.append((entry.name, _exclusion_reason(entry.name, ownership_map)))
+    return kept, excluded
+
+
+def _exclusion_reason(skill_name: str, ownership_map: dict[str, set[str]]) -> str:
+    """Derive a human-readable reason explaining why a skill was filtered out."""
+    lookup_key = skill_name if skill_name.startswith("nw-") else f"nw-{skill_name}"
+    owners = ownership_map.get(lookup_key)
+    if not owners:
+        return "uncatalogued"
+    return f"private-owned by {', '.join(sorted(owners))}"
 
 
 def copy_skills_to_target(

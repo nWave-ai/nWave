@@ -8,7 +8,7 @@ contract.
 
 from __future__ import annotations
 
-from pathlib import Path  # noqa: TC003  # used in fixture bodies
+from pathlib import Path  # used in fixture bodies
 
 import yaml
 from pytest_bdd import scenarios, then, when

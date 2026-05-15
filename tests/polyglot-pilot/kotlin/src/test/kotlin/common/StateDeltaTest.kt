@@ -1,0 +1,191 @@
+// StateDeltaTest.kt — pilot copy of the Kotest contract tests for the
+// Kotlin state-delta port. Canonical template lives at
+// `nWave/templates/polyglot/kotlin/StateDeltaTest.kt.template`.
+
+package nwave.polyglot.statedelta
+
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain as stringShouldContain
+import io.kotest.property.Arb
+import io.kotest.property.arbitrary.string
+import io.kotest.property.checkAll
+
+class StateDeltaTest : StringSpec({
+
+    "returns unit on a clean prepend transition" {
+        StateDelta.assert(
+            before = mapOf("PATH" to "/usr/bin"),
+            after = mapOf("PATH" to "/des/bin:/usr/bin"),
+            universe = setOf("PATH"),
+            expected = mapOf("PATH" to prependedWith("/des/bin")),
+        )
+    }
+
+    "throws StateDeltaException with full context on a predicate failure" {
+        val ex = shouldThrow<StateDeltaException> {
+            StateDelta.assert(
+                before = mapOf("PATH" to "/usr/bin"),
+                after = mapOf("PATH" to "/wrong"),
+                universe = setOf("PATH"),
+                expected = mapOf("PATH" to prependedWith("/des/bin")),
+            )
+        }
+        ex.violations shouldHaveSize 1
+        val v = ex.violations[0]
+        v.kind shouldBe ViolationKind.PREDICATE_FAILED
+        v.key shouldBe "PATH"
+        v.oldValue shouldBe "/usr/bin"
+        v.newValue shouldBe "/wrong"
+        v.predicateName shouldBe "prepended_with(/des/bin)"
+        ex.message!!.stringShouldContain("PATH")
+        ex.message!!.stringShouldContain("predicate_name='prepended_with(/des/bin)'")
+    }
+
+    "implicit-unchanged catches an undeclared change" {
+        val ex = shouldThrow<StateDeltaException> {
+            StateDelta.assert(
+                before = mapOf("PATH" to "/u/bin", "HOME" to "/home/u"),
+                after = mapOf("PATH" to "/des/bin:/u/bin", "HOME" to "/home/changed"),
+                universe = setOf("PATH", "HOME"),
+                expected = mapOf("PATH" to prependedWith("/des/bin")),
+            )
+        }
+        ex.violations shouldHaveSize 1
+        val v = ex.violations[0]
+        v.kind shouldBe ViolationKind.UNDECLARED_CHANGE
+        v.key shouldBe "HOME"
+        v.oldValue shouldBe "/home/u"
+        v.newValue shouldBe "/home/changed"
+    }
+
+    "collects multiple violations into a single StateDeltaException (A7)" {
+        val ex = shouldThrow<StateDeltaException> {
+            StateDelta.assert(
+                before = mapOf("PATH" to "/u", "HOME" to "/h", "X" to "1"),
+                after = mapOf("PATH" to "/wrong", "HOME" to "/h2", "X" to "1"),
+                universe = setOf("PATH", "HOME", "X"),
+                expected = mapOf(
+                    "PATH" to prependedWith("/des"),
+                    "HOME" to unchanged(),
+                ),
+            )
+        }
+        ex.violations shouldHaveSize 2
+        ex.violations.map { it.key }.sorted() shouldBe listOf("HOME", "PATH")
+    }
+
+    "strict mode flags keys present in before|after but missing from universe" {
+        val ex = shouldThrow<StateDeltaException> {
+            StateDelta.assert(
+                before = mapOf("PATH" to "/u", "EXTRA" to "x"),
+                after = mapOf("PATH" to "/des:/u", "EXTRA" to "x2"),
+                universe = setOf("PATH"),
+                expected = mapOf("PATH" to prependedWith("/des")),
+                strict = true,
+            )
+        }
+        ex.violations.map { it.kind to it.key } shouldContain
+            (ViolationKind.STRICT_UNIVERSE_MISMATCH to "EXTRA")
+    }
+
+    "unchanged() passes iff old deep-equals next" {
+        checkAll(Arb.string()) { s ->
+            unchanged()(s, s).ok shouldBe true
+        }
+        unchanged()(1, 2).ok shouldBe false
+        unchanged()(mapOf("a" to 1), mapOf("a" to 1)).ok shouldBe true
+        unchanged()(mapOf("a" to 1), mapOf("a" to 2)).ok shouldBe false
+    }
+
+    "prependedWith(prefix, sep) passes iff next == prefix + sep + old (string)" {
+        prependedWith("/des/bin")("/usr/bin", "/des/bin:/usr/bin").ok shouldBe true
+        prependedWith("/des/bin")("/usr/bin", "/wrong").ok shouldBe false
+        checkAll(Arb.string()) { tail ->
+            prependedWith("PRE")(tail, "PRE:$tail").ok shouldBe true
+        }
+    }
+
+    "appendedWith(suffix, sep) passes iff next == old + sep + suffix" {
+        appendedWith(".bak")("/etc/hosts", "/etc/hosts:.bak").ok shouldBe true
+        appendedWith(".bak")("/etc/hosts", "/etc/hosts").ok shouldBe false
+    }
+
+    "setTo(value) ignores old and matches next" {
+        setTo("active")("inactive", "active").ok shouldBe true
+        setTo("active")("anything", "active").ok shouldBe true
+        setTo("active")("inactive", "pending").ok shouldBe false
+        setTo(mapOf("k" to 1))(null, mapOf("k" to 1)).ok shouldBe true
+    }
+
+    "containing(sub) checks substring (string) or list element" {
+        containing("/usr/bin")("", "/des/bin:/usr/bin").ok shouldBe true
+        containing("/usr/bin")("", "/des/bin:/opt/bin").ok shouldBe false
+        containing(mapOf("id" to 1))(null, listOf(mapOf("id" to 1), mapOf("id" to 2))).ok shouldBe true
+        containing(mapOf("id" to 9))(null, listOf(mapOf("id" to 1), mapOf("id" to 2))).ok shouldBe false
+    }
+
+    "normalizedTo(fn) compares under a normaliser" {
+        val expandHome: (Any?) -> Any? = { v ->
+            if (v is String) v.replace("\$HOME", "/home/u") else v
+        }
+        normalizedTo(expandHome)("/home/u/.local/bin", "\$HOME/.local/bin").ok shouldBe true
+        normalizedTo(expandHome)("/home/u/.local/bin", "\$HOME/.other/bin").ok shouldBe false
+    }
+
+    "idempotentAfter(prefix) checks first segment of next" {
+        idempotentAfter("DES_BIN")("anything", "DES_BIN:/usr/bin").ok shouldBe true
+        idempotentAfter("DES_BIN")("anything", "/usr/bin:/opt/bin").ok shouldBe false
+    }
+
+    "legacyHealed(det, heal) implements the 4-case paper-trace" {
+        val legacy = "DES_BIN:SYSTEM_PATH_FALLBACK"
+        val pred = legacyHealed(
+            detector = { it == legacy },
+            healedCheck = { it is String && it != legacy && it.startsWith("DES_BIN:") },
+        )
+        pred(legacy, "DES_BIN:/usr/bin").ok shouldBe true
+        pred(legacy, legacy).ok shouldBe false
+        pred("/usr/bin", "DES_BIN:/usr/bin").ok shouldBe false
+    }
+
+    "arrayPrepended(item) matches next == [item, ...old]" {
+        arrayPrepended("a")(emptyList<String>(), listOf("a")).ok shouldBe true
+        arrayPrepended("a")(listOf("x"), listOf("a", "x")).ok shouldBe true
+        arrayPrepended("a")(listOf("x"), listOf("x", "a")).ok shouldBe false
+        arrayPrepended("a")(listOf("x"), listOf("a")).ok shouldBe false
+    }
+
+    "arrayAppended(item) matches next == [...old, item]" {
+        arrayAppended("z")(emptyList<String>(), listOf("z")).ok shouldBe true
+        arrayAppended("z")(listOf("x"), listOf("x", "z")).ok shouldBe true
+        arrayAppended("z")(listOf("x"), listOf("z", "x")).ok shouldBe false
+    }
+
+    "forbids hidden mutation on adjacent slot (implicit-unchanged)" {
+        checkAll(Arb.string(minSize = 1), Arb.string(minSize = 1)) { oldHome, newHome ->
+            if (oldHome != newHome) {
+                shouldThrow<StateDeltaException> {
+                    StateDelta.assert(
+                        before = mapOf("PATH" to "/u", "HOME" to oldHome),
+                        after = mapOf("PATH" to "/des:/u", "HOME" to newHome),
+                        universe = setOf("PATH", "HOME"),
+                        expected = mapOf("PATH" to prependedWith("/des")),
+                    )
+                }
+            }
+        }
+    }
+
+    "permits mutation only on slots with matching predicates" {
+        StateDelta.assert(
+            before = mapOf("PATH" to "/u", "HOME" to "/h"),
+            after = mapOf("PATH" to "/des:/u", "HOME" to "/h"),
+            universe = setOf("PATH", "HOME"),
+            expected = mapOf("PATH" to prependedWith("/des")),
+        )
+    }
+})

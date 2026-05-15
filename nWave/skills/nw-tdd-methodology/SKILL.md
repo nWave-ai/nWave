@@ -7,6 +7,134 @@ disable-model-invocation: true
 
 # Outside-In TDD Methodology
 
+## TDD cycle — 3-phase canonical (ADR-025, 2026-05-07)
+
+**Current canonical**: DELIVER cycle is 3-phase: **RED → GREEN → COMMIT**.
+
+- **RED** absorbs PREPARE + RED_ACCEPTANCE + RED_UNIT (legacy 5-phase). Writes PBT unit tests targeting production code; unskips the corresponding AT scenario authored upstream by DISTILL. Exits via the **fail-for-right-reason gate** — both PBT unit + AT must fail with a semantically-correct error (AssertionError / expected-exception-not-thrown), not a collection error / import error / skip marker. The gate preserves RED→GREEN discipline atomically without separate phase boundaries.
+- **GREEN**: implement minimum production code making PBT unit + AT pass. Exit gate `all-tests-pass`.
+- **COMMIT**: stage + commit with `Step-Id:` trailer. Pre-commit hooks enforce style; F-DES-COMMIT-PHASE-CRAFTER-DEAD-PATH guidance in commit.yaml addresses adapter-probe annotation requirement.
+
+**DISTILL retains canonical AT authorship** (per `nw-distill` Mandate 7). RED phase in DELIVER does NOT write acceptance scenarios from scratch — it only unskips the scaffolds DISTILL produced.
+
+**Legacy (5-phase v4 contract, ADR-024 era)** — PREPARE / RED_ACCEPTANCE / RED_UNIT / GREEN / COMMIT — preserved for audit-log replay of pre-2026-05-07 commits. Future features use 3-phase canon. References to RED_ACCEPTANCE / RED_UNIT below describe the legacy contract; new work treats them as merged inside RED.
+
+## Paradigm Mandate — Property-Based + State-Delta (STANDING, 2026-05-05)
+
+**Default test-writing paradigm for UNIT + ACCEPTANCE tests — not optional, not "when applicable".**
+
+### Test-level applicability matrix
+
+| Level | Default paradigm | Rationale |
+|---|---|---|
+| **Unit** | Property-based + state-delta — single-example is FALLBACK only | Property tests cover equivalence classes; the state-delta universe forbids hidden mutations on adjacent slots |
+| **Acceptance (Gherkin)** | `Property:` framing with quantified preconditions; classic `Scenario:` is FALLBACK | Acceptance tests document system invariants; properties express the spec better than picked examples |
+| **Integration** | UNCHANGED — single-example test verifies WIRING | The contract is "wires connect correctly", not "all input shapes succeed". One representative call suffices |
+| **E2E** | UNCHANGED — single-example end-to-end happy path | The contract is "complete flow connects", not "all flows are equivalent". One golden walkthrough suffices |
+
+### Mandate (unit + acceptance levels)
+
+Every unit and acceptance test you write MUST be:
+
+1. **Property-based by default** — use Hypothesis `@given` strategies to explore equivalence classes, NOT single-fixture examples. A property test asserting an invariant over N generated inputs replaces N example tests with stronger semantic coverage.
+
+2. **State-delta over single-property assertion** — capture the FULL observable state surface (universe), declare the expected delta with predicates (`prepended_with`, `set_to`, `unchanged`, `containing`, `idempotent_after`, `legacy_healed`, `normalized_to`, `appended_with`), and call `assert_state_delta(before, after, universe, expected, strict=True)`. `strict=True` forbids hidden mutations on adjacent slots — this is what catches bugs that pinned-fixture asserts miss.
+
+```python
+from hypothesis import given, settings, strategies as st
+from nwave_ai.state_delta import assert_state_delta, set_to, unchanged
+
+@given(domain_input=domain_specific_strategy())
+@settings(max_examples=100, deadline=None)
+def test_pbt_invariant(domain_input):
+    before = capture_full_state()
+    perform_action(domain_input)
+    after = capture_full_state()
+    assert_state_delta(
+        before, after,
+        universe={"slot.a", "slot.b", "slot.c", "slot.d"},
+        expected={"slot.a": set_to(expected_from(domain_input)), "slot.b": unchanged()},
+        strict=True,
+    )
+```
+
+3. **Acceptance tests express PROPERTIES of the system** — Gherkin scenarios should be framed as `Property: <invariant statement>` with quantified preconditions ("a set of N tasks with arbitrary timestamps") and invariant outcomes ("monotonically descending by timestamp"), instead of single-example `Scenario:` blocks. Step definitions internally use `@given` strategies + state-delta assertions.
+
+**OLD pattern (banned by default)**:
+```gherkin
+Scenario: Operator sees three tasks ordered by recency
+  Given tasks A, B, C with timestamps T1 < T2 < T3
+  When the operator runs `prism board`
+  Then the board shows: B (T2), C (T3), A (T1) — wait, ordered descending: C, B, A
+```
+
+**NEW pattern (required default)**:
+```gherkin
+Property: Board column order reflects recency
+  Given a set of N tasks with arbitrary timestamps
+  When the operator runs `prism board`
+  Then the column order is monotonically descending by timestamp
+  And no task appears twice in the column
+  And every input task appears exactly once in the output
+```
+
+**Fallback** — when property-framing genuinely cannot express the contract (e.g., flow-specific UI tests with puntual outcomes, golden-file diffs, error messages with exact strings):
+- Write classic example-based test
+- Document WHY property-framing failed in a one-line `# bypass:` comment
+- Compensate by adding stronger PBT at unit/integration level
+
+**Forbidden bypass paths** (insufficient justification):
+- "Single-property is enough" — NO. Always declare the universe, even if only one slot is checked. `unchanged()` predicate covers the rest.
+- "Mock-based interaction test" — NO. Mocks are still observable state; their call-recording surface is part of the universe (`mock.call_count`, `mock.last_call_args`).
+
+**Exempt categories** (still apply paradigm where it adds value, but not mandatory):
+- Pure-function tests with single output and no side effects
+- Schema/AST validators with single output
+- Smoke imports
+
+### Goals
+
+| Goal | Old paradigm | New paradigm |
+|---|---|---|
+| Number of tests | N example-tests per contract | 1 PBT covers N+ examples |
+| Token consumption | High (N test bodies, N test names) | Low (one body, one strategy) |
+| Coverage | Pinned by chosen examples | Discovered via Hypothesis shrinking |
+| Bug-finding | Limited to imagined cases | Includes edge cases author didn't think of |
+| Documentation value | Examples may diverge from spec | Property = invariant = living spec |
+| Speed | Slower (more tests to run) | Faster (fewer tests, same coverage) |
+
+### Empirical efficacy framework — debt-payoff curve (NOT instantaneous hit rate)
+
+**Reframing (Ale 2026-05-05)**: paradigm efficacy is measured via the **debt-payoff curve over a surface's lifetime**, not via instantaneous hit rate snapshots.
+
+#### Three stages
+
+| Stage | Surface state | Expected hit rate | Meaning |
+|---|---|---|---|
+| **Stage 0** | New code, paradigm-from-day-zero | N/A — debt never accumulates | **Healthy by construction**. Tests catch hidden mutations as they emerge |
+| **Stage 1** | Bug-prone, debt-accumulated, never-cured | 33–75% (state-delta migration) | **Debt-payoff phase**. High yield = years of single-property-asserts being unmasked |
+| **Stage 2a** | Stage-1-completed surface, PBT amplification | ~0% by design | **Maintenance mode**. Debt is paid; PBT now catches in-flight regressions, not retroactive ones |
+| **Stage 2b** | Bug-prone, never-migrated, PBT amplification | ~75% (per hardening empirical) | Same as Stage 1 — surface still has accumulated assumptions |
+
+#### Empirical evidence (2026-05-05 pilot, 2 instances)
+
+| Pilot | Stage | Surface | Hit rate | Source |
+|---|---|---|---|---|
+| Stage 1 state-delta migration | Stage 1 | installer plugin tests, never cured | 4/9 = 44% |
+| Stage 2a PBT amplification | Stage 2a | plugin code post Stage 1 | 0/3 = 0% (post commit `29daeb102`) |
+
+**Reading the data correctly**: the master 0% is NOT failure — it's confirmation that Stage 1 already extracted the debt. Stage 2a on a cured surface validates the surface stays healthy. Stage 2b on an uncured surface re-confirms paradigm yield on debt-accumulated code.
+
+#### Implication for AI delegation (the deeper point)
+
+Humans accumulate test debt (single-property-asserts, missed-universe-keys, post-state-only). Machines applying the paradigm **from day zero** (Stage 0) do NOT accumulate debt by construction. Therefore: **AI-written code under paradigm enforcement has lower debt-rate than human-written code**, given equivalent specification quality.
+
+This is why paradigm-as-default for NEW unit tests (the mandate above) matters more than migration: migrations are one-time cleanup; the long-term value is **never accumulating debt to migrate**.
+
+**The paradigm is the environment modification that lets machines build software with lower debt over time** (Ale 2026-05-05).
+
+---
+
 ## Double-Loop TDD Architecture
 
 Outer loop: ATDD/E2E Tests (customer view) - business requirements, hours-days to green.
@@ -69,6 +197,24 @@ def test_order_service_processes_payment():
     assert result.is_confirmed()
     payment_gateway.verify_charge_called(amount=100.00)
 ```
+
+### Layered test discipline — Universe per layer
+
+Each layer is port-to-port at its scope. The PBT + state-delta paradigm applies at all layers; the **Universe** is layer-specific (port-exposed names only, never internal field names — refactoring stays GREEN).
+
+| Layer | Surface | Speed target | Universe shape |
+|---|---|---|---|
+| **Unit** | Port boundary at unit-of-behaviour scope | <1ms | port-exposed observable states (return values, captured port-call args, state-delta over port-level slots) |
+| **Acceptance (general)** | Driving port invoked **directly**; driven ports = in-memory doubles | ~10ms | use-case observable outcomes (events emitted on port, state on driven-port double, error class returned) |
+| **Integration** | Adapter ↔ real external dependency (FS, DB, network, subprocess) | ~100ms | adapter-to-dep round-trip (file written and re-read, row inserted and queried, HTTP call and response shape) |
+| **Walking Skeleton + `@wiring_e2e`** | CLI subprocess / HTTP / real composition root + real driven I/O | ~1-3s | user-visible end-to-end output (stdout, exit code, FS side-effects) |
+| **E2E** | Full system with real environment | seconds | full pipeline assurance |
+
+**Walking Skeleton subset rule**: WS / `@wiring_e2e` scenarios go through real subprocess + real I/O. Use **sparingly** — 1-2 per slice. The rest of acceptance scenarios run through driving-port direct invocation with in-memory doubles for driven ports. Mandate 1 ("subprocess invocation real I/O") in `walking-skeleton.feature` is for WS only, not all acceptance.
+
+**Universe construction rule**: derive Universe from the layer's *observable surface*, never from internal struct/field names. A Universe entry like `composition.startup_status` is correct (port-exposed); `fold._rows_cells_dict` is wrong (internal mutation detail — refactor will red the test).
+
+**Refactoring resilience smoke check**: rename a private helper → suite stays GREEN. If red, the test was coupling to impl. Eliminate or refactor port-to-port at the right layer.
 
 ## No Code Without a Requiring Test
 
@@ -151,7 +297,7 @@ Every InMemory test double MUST enforce the same input preconditions as the real
 - Enum fields contain valid values
 - Complex objects have required nested fields populated
 
-**Why**: DES 3.0 dogfood found 3 wiring bugs that 96 acceptance tests missed — because InMemoryVendorAdapter accepted None config, empty prompt file, and wrong field names. The real ClaudeCliAdapter crashed on all 3. The tests were green but the system was broken.
+**Why**: dogfood empirics found 3 wiring bugs that 96 acceptance tests missed — because InMemoryVendorAdapter accepted None config, empty prompt file, and wrong field names. The real adapter crashed on all 3. The tests were green but the system was broken.
 
 **Example**:
 ```python
@@ -311,3 +457,129 @@ Every driven adapter has at least ONE integration test with real I/O. This is no
 - Scenarios using real adapters: `@real-io`
 - Scenarios using InMemory: `@in-memory`
 - Walking skeleton: `@walking_skeleton` + `@real-io` (for strategies B/C/D)
+
+## Delta-First Test Paradigm (state-mutating code)
+
+**Scope**: ~28% of the test suite (419 test files audited). Applies to installer-class, sync-class, and hook-registration code that mutates user-observable state. NOT universal. Pure-function tests, schema validators, and interaction tests retain standard assertion style.
+
+### Trigger — apply delta-first when ALL of these hold
+
+1. The test mutates user-observable state in **2 or more** distinct slots (e.g. filesystem path + config key + env setting).
+2. OR the test implicitly asserts "preserve X" semantics — i.e., the correctness claim is partly about what did NOT change.
+3. The code under test is in `scripts/install/`, `scripts/sync/`, or any hook-registration path.
+
+### Bypass — do NOT apply delta-first when
+
+- Pure-function tests with a single return value (no side effects).
+- Single-property assertion (`assert result.returncode == 0`).
+- `validate_prerequisites()` failure paths (returncode / boolean / exception only).
+- Interaction tests (`mock.assert_called_with(...)`) — no universe to declare.
+- AST / schema / YAML validators.
+- Adding 3-5× ceremony for zero additional detection gain vs. a direct `assert`.
+
+### Pattern
+
+```python
+from nwave_ai.state_delta import (
+    assert_state_delta,
+    prepended_with,
+    unchanged,
+    set_to,
+    containing,
+)
+
+def test_des_plugin_installs_hook(tmp_path):
+    before = capture_state(tmp_path)   # snapshot before action
+
+    plugin.install(context_for(tmp_path))
+
+    after = capture_state(tmp_path)    # snapshot after action
+
+    assert_state_delta(
+        before,
+        after,
+        universe={
+            "hooks.pre_tool_use",      # every slot that COULD change
+            "hooks.post_tool_use",
+            "config.rigor",
+        },
+        expected={
+            "hooks.pre_tool_use": prepended_with("des_hook.py"),
+            "hooks.post_tool_use": unchanged(),
+            "config.rigor": set_to("standard"),
+        },
+        # implicit-unchanged: any universe slot NOT in expected must be identical
+    )
+```
+
+Full API: `assert_state_delta(before, after, universe, expected, *, strict=False)`.
+
+Available predicate factories: `prepended_with`, `appended_with`, `unchanged`, `set_to`, `containing`, `normalized_to`, `idempotent_after`, `legacy_healed`.
+
+Import: `from nwave_ai.state_delta import assert_state_delta, <predicates>`.
+
+### Empirical justification
+
+Migration of 7 installer test files: **4/7 (57%) exposed previously-untracked mutations** that post-state-property assertions had missed.
+
+Hidden mutations caught:
+- `attribution.trailer` written silently (`test_attribution_plugin`) — post-state test only checked `returncode`.
+- `content.full` transitioned `None → str` (`test_opencode_des_plugin`) — old assertion never declared `content.full` in universe.
+
+### Reusable helpers that emerged from migration
+
+- `_flatten_config(path)` — flattens a JSON/YAML config into dotted key paths.
+- `_skill_filesystem_state(target_dir, track=)` — snapshots skills directory into slot dict.
+- `_*_content_state(target_dir, name)` — snapshots a named agent/command content file.
+
+### References
+
+- Source: `nwave_ai/state_delta/matcher.py`
+- Canonical migrated example: `tests/installer/unit/plugins/test_attribution_plugin.py`
+- D-12 hard gate examples: `tests/state_delta/integration/test_pilot_bug48.py`
+
+## PBT Anti-Patterns
+
+- **A13: Stateful PBT without command-precondition encoding** — when generating commands for state-machine PBT, encode constraints as `precondition/2` callbacks, NOT just inside the generator. PropEr/Hypothesis shrinking REQUIRES preconditions to drop invalid commands during shrinking; without them, shrunk counter-examples point at ghost bugs (Hebert ch.10 bookstore case study spent half a chapter chasing this exact symptom).
+
+## PBT Priorities
+
+- **P6: Stateful command preconditions** — When the SUT is a state machine (per Hebert ch.11 framing: model-shape-is-state-machine, not user-perceived states), encode all command validity constraints in `precondition/2` callbacks. Required for shrinking correctness. Without P6, A13 fires.
+
+## PBT Thinking — Property-Finding Strategies
+
+### Hebert's four strategies (ch.3)
+
+When you don't know what property to write, walk Hebert's ch.3 catalogue first. These are the **Tier 1 (Hebert ch.3 core)** strategies:
+
+- **Modeling** — SUT vs simpler-but-obviously-correct reference (maps to skill's "Oracle" pattern). Build a simpler reference implementation, compare outputs.
+- **Generalizing example tests** — parameterizing existing example tests with strategies; take a known correct answer, embed it in the input, predict where it should appear in the output.
+- **Invariants** — output property holds regardless of input (maps to skill's "Invariant" pattern). Combine multiple — a single invariant is rarely enough.
+- **Symmetric properties** — reversible sequence of actions: applying both yields the original input (maps to skill's "Roundtrip" pattern, e.g., encode/decode, push/pop).
+
+Other patterns commonly cited (Commutativity, Idempotence, Hard-to-compute-easy-to-verify, Induction, Metamorphic relation, Test oracle as standalone) are **Tier 2 (Link extension)**, not Hebert. Keep them as a supplemental pattern library; Tier 1 is the minimum.
+
+## Shrinking — Hebert's Two Mechanisms (ch.7)
+
+Hebert ch.7 documents only TWO shrinking mechanisms:
+
+- `?SHRINK(Generator, FallbackGenerators)` — re-center on a smaller value. Provides simpler-but-domain-relevant alternative generators used during shrinking. Hypothesis equivalent: explicit `min_value=`, `min_size=`, or `st.from_regex` constraining to the domain's natural range.
+- `?LETSHRINK([Generators])` — divide-and-shrink each independently. Use to enable structural pruning of recursive generators; `?LET` shrinks contents but not structure.
+
+Any other shrinking mechanism mentioned elsewhere (e.g., adaptive shrinking, integrated shrinkers as a separate concept) is **community-extension, not core Hebert**.
+
+## Targeted PBT (Hebert ch.8)
+
+Search-based PBT replaces random search with simulated annealing: report a *utility value* per test case, and the framework biases the next input toward inputs that improved the utility.
+
+- `?USERNF(Generator, Next)` custom-neighbor function — controls how the search moves between samples. Hebert ch.8 sidebar "Considering Temperature" reports temperature-scaled custom neighbors are *"almost fifty times more effective"* than the same neighbor without temperature on tree-skewing search. The 50× claim is conditional on temperature usage, not on raw custom neighbors.
+- `?EXISTS(Vars, Generator, Property)` and `?NOT_EXISTS(Vars, Generator, Property)` — search-macro family underlying `?FORALL_TARGETED`.
+
+**Two hard limitations** (Hebert ch.8):
+
+1. No recursive generators with `?LAZY` under targeted (infinite loops).
+2. No `collect/2` / `aggregate/2` statistics under targeted (instrumentation incompatible with the search loop).
+
+**Tuning parameter** (not a limitation): default search budget for targeted properties is 1000 steps (vs 100 for regular `?FORALL`); configurable via `-s` / `--search_steps`.
+
+Hypothesis equivalent: `target()` registers a quantity; the engine biases toward maximising it. Same limitations apply in spirit (recursive strategies + statistics interplay poorly with `target()`).

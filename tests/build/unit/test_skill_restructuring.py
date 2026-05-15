@@ -204,7 +204,9 @@ BULK_HASHES = {
     "nw-buddy-command-catalog": "403ff4bf5cc44e73183e6021e0e3147d",
     "nw-buddy-project-reading": "be990dabaac7ca5b8492283fc5abdd1f",
     "nw-buddy-ssot-knowledge": "7a801cc1b1ab7379a258f621a08a71f5",
-    "nw-buddy-wave-knowledge": "a6ac94dcca543dc426e22d47dffcdb28",
+    # Hash updated 2026-05-14: TDD 3-phase canon (ADR-025) propagation —
+    # DELIVER wave description now cites 3-phase RED→GREEN→COMMIT with legacy fallback.
+    "nw-buddy-wave-knowledge": "333d14f2b678d5f9450f9e801051daf9",
     "nw-cialdini-outreach": "90aea943d1a2eb313561ecbd0f2c5915",
     "nw-cicd-and-deployment": "2195ace1646b4c0ced64070d57bb542a",
     "nw-cognitive-load-management": "3e06303c46182b62288a7bffeb342909",
@@ -293,16 +295,19 @@ BULK_HASHES = {
     "nw-production-readiness": "d94eaa53a822fb6ca220a442cb0782f9",
     "nw-production-safety": "2a9b76c9a548a9986b06a6b6c99437c4",
     "nw-progressive-refactoring": "35e590c9df632bcfa04098d6246e5bd9",
-    "nw-property-based-testing": "5f07746e743c026c59102f476e3ae77a",
+    "nw-property-based-testing": "670ef9279f11f4754ce50e4898d9a649",
     "nw-proposal-structure": "6703c77e63466b6e911b02afeddc4514",
     "nw-psychological-safety": "106382f562186d415f5b5ad1430542b7",
-    "nw-quality-framework": "080bcb5384fb6509512846939cbb55cb",
+    "nw-quality-framework": "c539c9288c26d9e3ec64075e63982175",
     "nw-quality-validation": "41cee9327afa9d4e579b7c0699eb544d",
     "nw-query-optimization": "17959230c1a5f619b4a172e5e8196068",
     "nw-research-methodology": "e4910ea40aefc82f421640138986f300",
     "nw-review-output-format": "459675d5bf34cb0e3385133bdba87f58",
     "nw-review-workflow": "caa53b43f091166167e49b98f40af1f8",
-    "nw-roadmap-design": "4d00e7a6794a81e4ffbe4bafad5895b8",
+    # Hash updated 2026-05-15: F-1 (fix-roadmap-json-drift, step 01-01) —
+    # examples aligned to roadmap-schema.json vocabulary (name | criteria |
+    # files_to_modify) to resolve schema-vs-implementation drift.
+    "nw-roadmap-design": "c1595008c448f43e567ebb374a4c31b0",
     "nw-roadmap-review-checks": "9470251073ac44ffc154c57e53e867a5",
     "nw-sd-case-studies": "d55bf7d35ffe48db3a04425b3e8596c1",
     "nw-sd-framework": "4e5958639f9e4eb9117d581f165a7e5a",
@@ -319,9 +324,12 @@ BULK_HASHES = {
     "nw-stress-analysis": "ad5e1b64848a4343e749ec99c61f3517",
     "nw-taste-evaluation": "93f3f75be13aae0ec1a260ca68af94b7",
     "nw-tbr-methodology": "40e44f3c469968c140bd7c107b536644",
-    "nw-tdd-methodology": "c7a8c61b0c6155198c919cbe16ae2baa",
-    "nw-tdd-review-enforcement": "0bff90d97c6c449555a7415b8d829a80",
-    "nw-test-design-mandates": "aa32545c69f8fc8634cc7637a813e800",
+    "nw-tdd-methodology": "b41cc4b1887b19e461144d055ff1753c",
+    # Hash updated 2026-05-15: closed-source refs scrubbed (3ab776967).
+    # Prior hash updated 2026-05-14: TDD 3-phase canon (ADR-025) propagation —
+    # gates table now maps RED phase to legacy RED_ACCEPTANCE/RED_UNIT for backward compat.
+    "nw-tdd-review-enforcement": "bea906b833ed2b4c299b10af249a0a8d",
+    "nw-test-design-mandates": "d212bbaa1305e4c5ca5e86905649c3b0",
     "nw-test-organization-conventions": "64778077de4b55a493e89cf0e06ce681",
     "nw-test-refactoring-catalog": "9dd4d17224b32058386f4413027253bd",
     "nw-tlaplus-verification": "39ba15e1845e237a9d2014c467aa56ff",

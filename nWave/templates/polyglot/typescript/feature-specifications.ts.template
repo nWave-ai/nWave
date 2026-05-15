@@ -1,0 +1,110 @@
+/**
+ * {Feature}.specifications.ts — step-method module backing the scenarios.
+ *
+ * Responsibilities:
+ *   - Construct the SUT through the PRODUCTION composition root
+ *     (`ProductionApp`). Swap only external / non-deterministic ports with
+ *     fakes (clock, RNG, paid APIs).
+ *   - Capture the universe via `app.captureUniverse(...)`.
+ *   - Assert via `assertStateDelta` from `tests/common/state-delta.ts`.
+ *
+ * No domain language leaks into the production-app wiring; no production-app
+ * details leak into the scenarios.
+ */
+
+import { beforeEach, expect } from "vitest";
+
+import {
+  assertStateDelta,
+  arrayAppended,
+  unchanged,
+  StateDeltaViolation,
+} from "../common/state-delta";
+
+import { ProductionApp } from "../../src/app";
+
+// ---------------------------------------------------------------------------
+// Per-scenario fixture — vitest's `beforeEach` resets the SUT.
+// ---------------------------------------------------------------------------
+
+let app: ProductionApp;
+let stateBefore: Record<string, unknown>;
+
+// Universe for the signup feature — port-exposed observables only:
+//   - registry.users : list of registered user records (driven-port state)
+//   - audit.events   : append-only audit trail (driven-port state)
+// Do NOT add internal fields here; refactoring would break the test.
+const SIGNUP_UNIVERSE = ["registry.users", "audit.events"] as const;
+
+beforeEach(async () => {
+  app = new ProductionApp({
+    // Swap external / non-deterministic ports here if needed (none for this
+    // toy feature; signup uses purely in-memory driven ports).
+  });
+  stateBefore = await app.captureUniverse([...SIGNUP_UNIVERSE]);
+});
+
+// ---------------------------------------------------------------------------
+// Step methods — Given / When / Then
+// ---------------------------------------------------------------------------
+
+export async function Given_aFreshSignupRegistry(): Promise<void> {
+  // Precondition only — the fresh registry is established by ProductionApp's
+  // constructor. Re-capture the baseline so subsequent Whens delta against
+  // *this* moment, not the test-file startup.
+  stateBefore = await app.captureUniverse([...SIGNUP_UNIVERSE]);
+}
+
+export async function When_userSignsUpWithEmail(email: string): Promise<void> {
+  await app.signup({ email });
+}
+
+export async function Then_userIsAddedToRegistryAndAuditedOnce(
+  email: string,
+): Promise<void> {
+  const stateAfter = await app.captureUniverse([...SIGNUP_UNIVERSE]);
+  assertStateDelta({
+    before: stateBefore,
+    after: stateAfter,
+    universe: [...SIGNUP_UNIVERSE],
+    expected: {
+      "registry.users": arrayAppended({ email }),
+      "audit.events": arrayAppended({ type: "UserSignedUp", email }),
+    },
+  });
+}
+
+export async function When_userAttemptsDuplicateSignup(email: string): Promise<void> {
+  // Re-baseline before the duplicate attempt so the state-delta assertion
+  // measures the change *caused by the duplicate*, not the original signup.
+  stateBefore = await app.captureUniverse([...SIGNUP_UNIVERSE]);
+  try {
+    await app.signup({ email });
+  } catch {
+    // Expected rejection — swallowed here; Then_ asserts the rejection's
+    // observable consequence (zero state delta).
+  }
+}
+
+export async function Then_secondSignupIsRejectedAndStateIsUnchanged(): Promise<void> {
+  const stateAfter = await app.captureUniverse([...SIGNUP_UNIVERSE]);
+  // Both slots must be unchanged — the duplicate must produce zero delta.
+  try {
+    assertStateDelta({
+      before: stateBefore,
+      after: stateAfter,
+      universe: [...SIGNUP_UNIVERSE],
+      expected: {
+        "registry.users": unchanged(),
+        "audit.events": unchanged(),
+      },
+    });
+  } catch (err) {
+    // Surface the rich violation message via vitest's expect — preserves the
+    // multi-violation aggregate for debugging.
+    if (err instanceof StateDeltaViolation) {
+      expect.fail(err.message);
+    }
+    throw err;
+  }
+}

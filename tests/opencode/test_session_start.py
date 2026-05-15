@@ -33,7 +33,9 @@ def _run_adapter(
 ) -> subprocess.CompletedProcess:
     """Invoke the Python DES adapter as a subprocess."""
     env = os.environ.copy()
-    env["PYTHONPATH"] = PROJECT_ROOT
+    # Src-layout: include both src/ and PROJECT_ROOT for subprocess PYTHONPATH
+    # (pytest's pythonpath setting does NOT propagate to subprocesses).
+    env["PYTHONPATH"] = os.pathsep.join([str(Path(PROJECT_ROOT) / "src"), PROJECT_ROOT])
     if env_extra:
         env.update(env_extra)
 

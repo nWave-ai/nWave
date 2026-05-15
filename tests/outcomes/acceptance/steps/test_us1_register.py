@@ -8,7 +8,7 @@ under tmp_path (Strategy C — real local).
 from __future__ import annotations
 
 import re
-from pathlib import Path  # noqa: TC003  # used in fixture bodies
+from pathlib import Path  # used in fixture bodies
 
 import yaml
 from pytest_bdd import given, parsers, scenarios, then, when

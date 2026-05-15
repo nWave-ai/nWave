@@ -17,11 +17,11 @@ For greenfield projects (no src/ code, no docs/feature/ history), Luna proposes 
 
 ## Output Tiers (per D2)
 
-Provenance: feature `lean-wave-documentation` — D2 (schema-typed sections), DDD-7 (DISCUSS pilot wave). The DISCUSS wave emits a single `feature-delta.md` whose headings are typed `[REF]` (always emitted) or `[WHY]/[HOW]` (lazy expansions). Tier-1 is the always-on baseline; Tier-2 is the lazily-rendered expansion catalog.
+Provenance: feature `lean-wave-documentation` — D2 (schema-typed sections), D10 (one-line expansion descriptions), DDD-7 (DISCUSS pilot wave), D6 (install-time pedagogical prompt). Tier-1 [REF] sections (always emitted) + Tier-2 EXPANSION CATALOG items (lazy, on-demand) are the two output bands. Full contract: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
 
 ### Tier-1 [REF] — always emitted
 
-Tier-1 sections constitute the lean-default baseline. Every DISCUSS run emits at minimum these sections under `## Wave: DISCUSS / [REF] <Section>` headings:
+Under `## Wave: DISCUSS / [REF] <Section>` headings:
 
 - Persona ID — one-line user identifier mapped to the journey
 - JTBD one-liner — single-sentence Job-to-be-Done statement
@@ -36,7 +36,7 @@ Tier-1 sections constitute the lean-default baseline. Every DISCUSS run emits at
 
 ### Tier-2 EXPANSION CATALOG — lazy, on-demand (per D10)
 
-Tier-2 items are NOT emitted by default. They are rendered only when explicitly requested via `--expand <id>` (DDD-2) or via the wave-end interactive prompt when `expansion_prompt = "ask"`. Each item has a one-line description (per D10) so the menu fits in a single render. Each emitted Tier-2 section is headed `## Wave: DISCUSS / [WHY] <Section>` or `## Wave: DISCUSS / [HOW] <Section>`.
+Rendered under `## Wave: DISCUSS / [WHY|HOW] <Section>` only when requested via `--expand <id>` (DDD-2), the wave-end menu (`expansion_prompt = "ask"` or `"ask-intelligent"`), `mode = "full"` auto-expansion, or an ad-hoc user request mid-session.
 
 | Expansion ID | Tier label | One-line description |
 |---|---|---|
@@ -51,100 +51,27 @@ Tier-2 items are NOT emitted by default. They are rendered only when explicitly 
 
 ## Density resolution (per D12)
 
-Provenance: D12 (rigor cascade), DDD-5 (density resolver shared utility), Decision 4 (2026-04-28: lean+ask-intelligent default with explicit triggers). Before emitting any Tier-1 section, resolve the active documentation density:
-
-1. **Read** `~/.nwave/global-config.json`. Treat missing/malformed config as empty dict (fall back to defaults).
-2. **Call** `resolve_density(global_config)` from `scripts/shared/density_config.py`. The function returns a `Density` value object with fields `mode` (`"lean"` | `"full"`), `expansion_prompt` (`"ask"` | `"always-skip"` | `"always-expand"` | `"smart"` | `"ask-intelligent"`), and `provenance` (the cascade branch that produced this result).
-3. **Branch on `density.mode`**:
-   - `lean` → emit ONLY Tier-1 `[REF]` sections under `## Wave: DISCUSS / [REF] <Section>` headings. Do NOT auto-render Tier-2 items.
-   - `full` → emit Tier-1 `[REF]` sections PLUS all Tier-2 expansion items rendered under their `[WHY]` / `[HOW]` headings. This is auto-expansion (no menu).
-4. **At wave end**, branch on `density.expansion_prompt`:
-   - `"ask"` → present the FULL expansion menu (Tier-2 catalog above with one-line descriptions per D10) and append user-selected items as `## Wave: DISCUSS / [WHY|HOW] <Section>` headings.
-   - `"ask-intelligent"` → run trigger detection (see table below). If NO trigger fires, emit no menu (silent lean). If 1+ trigger fires, present a SCOPED menu containing ONLY the suggested expansions for the triggers that fired. This is the fresh-install hard default per Decision 4.
-   - `"always-skip"` → no menu, no extra sections (idempotent re-runs, CI mode).
-   - `"always-expand"` → equivalent to `mode = "full"` for this run; auto-render every Tier-2 item.
-   - `"smart"` → out of scope for v1 (per OQ-3); treat as `"ask-intelligent"` until heuristic is empirically tuned.
-
-The resolver itself encodes the D12 cascade: explicit `documentation.density` override > `rigor.profile` mapping (`lean`→`lean`+`always-skip`, `standard`→`lean`+`ask-intelligent`, `thorough`→`full`+`always-expand`, `exhaustive`→`full`+`always-expand`, `custom`→`lean`+`ask-intelligent`) > hard default `lean`+`ask-intelligent`. This skill MUST NOT replicate the cascade locally — call `resolve_density(global_config)` and trust its output.
+Call `resolve_density(global_config)` from `scripts/shared/density_config.py` after reading `~/.nwave/global-config.json` (missing/malformed = empty dict). Returns `mode` (`"lean"` | `"full"`) + `expansion_prompt` (`"ask"` | `"ask-intelligent"` | `"always-skip"` | `"always-expand"` | `"smart"`) per the D12 cascade (resolver-internal, DDD-5 — do NOT replicate locally). DISCUSS hard default is `lean`+`ask-intelligent` per Decision 4 (2026-04-28). Branch on `density.mode` (lean = Tier-1 only; full = Tier-1 + all Tier-2) and at wave end on `density.expansion_prompt`. Full cascade detail, branch semantics, ad-hoc override workflow: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
 
 ### Trigger detection (`ask-intelligent` mode, per Decision 4)
 
-When `expansion_prompt = "ask-intelligent"`, evaluate ALL triggers below against the wave artifacts produced so far. Each trigger that fires contributes its suggested expansion to a scoped menu shown to the user. If NO trigger fires, emit no menu — strict lean output.
+DISCUSS-specific extension on top of the shared contract. When `expansion_prompt = "ask-intelligent"`, evaluate ALL triggers below against the wave artifacts produced so far. Each trigger that fires contributes its suggested expansion to a scoped menu. If NO trigger fires, emit no menu — strict lean output.
 
 | Trigger | Detection criterion | Suggested expansion |
 |---------|--------------------|--------------------|
-| AC ambiguity | ≥2 user stories share an AC where reasonable readers could disagree on the outcome (e.g. underspecified state, missing precondition, vague verb) | `gherkin-scenarios` |
+| AC ambiguity | ≥2 user stories share an AC where reasonable readers could disagree on the outcome | `gherkin-scenarios` |
 | Cross-context complexity | Feature touches ≥3 bounded contexts (per DDD glossary) OR ≥3 distinct technologies | `alternatives-considered` |
 | Multi-stakeholder need | ≥3 distinct personas referenced across the user stories | `persona-narrative` |
-| Compliance / regulatory | ACs reference regulatory terms (GDPR, HIPAA, SOX, audit, retention, encryption, PII, data residency) | `migration-playbook` (if data migration) OR `journey-deep-dive` (if user-facing compliance journey) |
+| Compliance / regulatory | ACs reference regulatory terms (GDPR, HIPAA, SOX, audit, retention, encryption, PII, data residency) | `migration-playbook` (data migration) OR `journey-deep-dive` (user-facing) |
 | WS strategy = D | Walking Skeleton strategy is "Configurable" (env-switching) | `alternatives-considered` |
 
-Menu presentation when 1+ trigger fires:
-
-```
-Suggested expansions for this feature (triggered by: {trigger names}):
-  - {expansion-id-1}: {one-line description}
-  - {expansion-id-2}: {one-line description}
-Apply? [Y/n/all/none/custom]
-```
-
-Do NOT show the generic 8-item Tier-2 expansion catalog in `ask-intelligent` mode — only the triggered items. The user retains the ad-hoc override path ("expand <X>") for any catalog item even when not triggered.
-
-Emit one `DocumentationDensityEvent` per scoped-menu choice (telemetry section below). When NO trigger fires, emit one `choice = "skip"` event with `expansion_id = "*"` to record the silent-lean opportunity.
-
-**Section heading prefix convention (per D2)**: every emitted section starts with `## Wave: DISCUSS / [REF] <Section>` for Tier-1; `## Wave: DISCUSS / [WHY] <Section>` or `## Wave: DISCUSS / [HOW] <Section>` for Tier-2. Validator `scripts/validation/validate_feature_delta.py` enforces the regex `^## Wave: \w+ / \[(REF|WHY|HOW)\] .+$` on every wave heading.
-
-### Ad-hoc override — user request mid-session
-
-Even when `density.mode = "lean"` and `density.expansion_prompt = "always-skip"`, the user may ask DURING the wave session for specific expansions:
-
-- "expand jtbd" / "expand jtbd-narrative" / "more on jtbd"
-- "add alternatives considered"
-- "show migration playbook"
-- "tell me why" (interpretive — append the WHY rationale section relevant to the most recent decision)
-- "more on <X>" (where `<X>` is one of the expansion catalog items for this wave)
-
-When the user makes such a request:
-
-1. Append the corresponding `[WHY]` or `[HOW]` section to `feature-delta.md` under the current wave's heading.
-2. Emit a `DocumentationDensityEvent` with `choice="expand"` and `expansion_id=<the requested item>` to `JsonlAuditLogWriter`.
-3. Do NOT modify `~/.nwave/global-config.json`. The override is ONE-SHOT for this wave only.
-
-If the user's request matches NO item in this wave's Expansion Catalog, respond with the catalog list (one-line description per item per D10) and ask for clarification — do NOT improvise an expansion outside the catalog.
+Menu when 1+ trigger fires: `Suggested expansions for this feature (triggered by: {trigger names}): - {id}: {description} ... Apply? [Y/n/all/none/custom]`. Do NOT show the generic 8-item Tier-2 catalog in `ask-intelligent` mode — only triggered items. Ad-hoc override path ("expand <X>") still works for any catalog item. Telemetry: one event per scoped-menu choice; when NO trigger fires, one `choice = "skip"` event with `expansion_id = "*"` records the silent-lean opportunity.
 
 ## Telemetry (per D4 + DDD-6)
 
-Provenance: D4 (telemetry schema instrumented day-one), D6 (first-install pedagogical prompt creates audit signal), DDD-6 (telemetry event class lives in DES domain, writer reused). Every expansion choice — whether the user expanded an item or skipped the menu — emits a structured event to the existing `JsonlAuditLogWriter` driven adapter.
+Every expansion choice emits a `DocumentationDensityEvent` (dataclass at `src/des/domain/telemetry/documentation_density_event.py`) via `event.to_audit_event()` → `JsonlAuditLogWriter().log_event(...)`. Schema fields per D4: `feature_id`, `wave`, `expansion_id`, `choice`, `timestamp`. For this wave the schema declares `"wave": "DISCUSS"`. Use helper `scripts/shared/telemetry.py:write_density_event(...)` — do NOT write JSONL directly.
 
-**Event type**: `DocumentationDensityEvent` (dataclass at `src/des/domain/telemetry/documentation_density_event.py`).
-
-**Schema fields** (per D4):
-
-```
-{
-  "feature_id": "<feature-id>",
-  "wave": "DISCUSS",
-  "expansion_id": "<id-from-catalog-or-'*'-for-skip-all>",
-  "choice": "skip" | "expand",
-  "timestamp": "<ISO-8601 datetime>"
-}
-```
-
-**Emission pattern**:
-
-1. Construct a `DocumentationDensityEvent(feature_id=..., wave="DISCUSS", expansion_id=..., choice=..., timestamp=...)`.
-2. Call `event.to_audit_event()` to convert to the open `AuditEvent` shape (`event_type="DOCUMENTATION_DENSITY"` and the schema fields nested under `data`).
-3. Dispatch via `JsonlAuditLogWriter().log_event(audit_event)`.
-
-The wave-skill harness invokes the helper `scripts/shared/telemetry.py:write_density_event(...)` which performs all three steps. This skill MUST NOT bypass the helper or write JSONL directly — every density telemetry event flows through the shared helper to keep the audit-log schema consistent.
-
-**When to emit**:
-- One event per user choice in the expansion menu when `expansion_prompt = "ask"` (`choice = "expand"` for selected items, `choice = "skip"` with `expansion_id = "*"` if the user skips the entire menu).
-- One synthetic `choice = "skip"` event with `expansion_id = "*"` when `expansion_prompt = "always-skip"` (records the skipped menu opportunity).
-- One `choice = "expand"` event per Tier-2 item rendered when `mode = "full"` or `expansion_prompt = "always-expand"`.
-- For `expansion_prompt = "ask-intelligent"` (Decision 4): one `choice = "expand"` event per scoped-menu item the user accepts; one `choice = "skip"` event with `expansion_id = "*"` when no triggers fire (silent-lean opportunity); one `choice = "skip"` event with `expansion_id = "*"` when triggers fire but the user declines all suggestions.
-
-This telemetry feeds the DDD-7 pilot success metric (4): "downstream agent regression — DESIGN consumes lean DISCUSS feature-delta.md and produces no `--expand` invocation". The `JsonlAuditLogWriter` persists the trail; no new driven port is introduced.
+Wave-specific signal: feeds DDD-7 pilot success metric (4) — "downstream agent regression — DESIGN consumes lean DISCUSS feature-delta.md and produces no `--expand` invocation". `ask-intelligent` emission rules: one expand event per scoped-menu acceptance; one skip event for no-trigger silent-lean; one skip event for triggers fired but user declined. Full emission rules + per-mode patterns: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
 
 ## Interactive Decision Points
 

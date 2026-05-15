@@ -9,9 +9,45 @@ Usage: python install_nwave.py [--backup-only] [--restore] [--dry-run] [--help]
 """
 
 import argparse
+import hashlib
 import sys
 from pathlib import Path
 from typing import NamedTuple
+
+
+_HASH_CHUNK_BYTES = 65536  # 64 KiB chunked read keeps SKILL.md etc. memory-bounded
+
+
+def _file_md5(path: Path) -> str | None:
+    """Compute md5 of *path* read in 64 KiB chunks; return None on read error.
+
+    Returning ``None`` (vs. raising) lets the verifier treat "unreadable" the
+    same as "drifted" — both reach the operator via the same diagnostic line
+    naming the file, instead of crashing the verifier mid-walk.
+    """
+    try:
+        digest = hashlib.md5()
+        with path.open("rb") as fh:
+            while True:
+                chunk = fh.read(_HASH_CHUNK_BYTES)
+                if not chunk:
+                    break
+                digest.update(chunk)
+        return digest.hexdigest()
+    except OSError:
+        return None
+
+
+def _files_content_equal(source: Path, target: Path) -> bool:
+    """Return True only when both files exist AND their md5 digests match.
+
+    Used by the verifier to detect content drift between an installer source
+    file and its installed counterpart. Existence check alone misses the
+    silent-template-skip bug class (RCA fix-installer-silent-template-skip).
+    """
+    if not target.exists():
+        return False
+    return _file_md5(source) == _file_md5(target)
 
 
 # Add project root to sys.path to enable imports from scripts package
@@ -36,6 +72,9 @@ try:
     from scripts.install.plugins.agents_plugin import AgentsPlugin
     from scripts.install.plugins.attribution_plugin import AttributionPlugin
     from scripts.install.plugins.base import InstallContext
+    from scripts.install.plugins.codex_agents_plugin import CodexAgentsPlugin
+    from scripts.install.plugins.codex_des_plugin import CodexDESPlugin
+    from scripts.install.plugins.codex_skills_plugin import CodexSkillsPlugin
     from scripts.install.plugins.commands_plugin import CommandsPlugin
     from scripts.install.plugins.des_plugin import DESPlugin
     from scripts.install.plugins.opencode_agents_plugin import OpenCodeAgentsPlugin
@@ -62,6 +101,8 @@ except ImportError:
     from plugins.agents_plugin import AgentsPlugin
     from plugins.attribution_plugin import AttributionPlugin
     from plugins.base import InstallContext
+    from plugins.codex_des_plugin import CodexDESPlugin
+    from plugins.codex_skills_plugin import CodexSkillsPlugin
     from plugins.commands_plugin import CommandsPlugin
     from plugins.des_plugin import DESPlugin
     from plugins.opencode_agents_plugin import OpenCodeAgentsPlugin
@@ -340,6 +381,16 @@ class NWaveInstaller:
             opencode_commands.set_dependencies(["opencode-skills"])
             opencode_des = OpenCodeDESPlugin()
             registry.register(opencode_des)
+        # Codex CLI plugins (registered when codex detected)
+        if target_platforms and "codex" in target_platforms:
+            codex_skills = CodexSkillsPlugin()
+            registry.register(codex_skills)
+            codex_agents = CodexAgentsPlugin()
+            codex_agents.set_dependencies(["codex-skills"])
+            registry.register(codex_agents)
+            codex_des = CodexDESPlugin()
+            codex_des.set_dependencies(["des", "codex-skills"])
+            registry.register(codex_des)
         return registry
 
     def install_framework(self) -> bool:
@@ -513,6 +564,7 @@ class NWaveInstaller:
             logger=self.logger,
             project_root=self.project_root,
             framework_source=self.framework_source,
+            dry_run=self.dry_run,
             dev_mode=self.dev_mode,
         )
         plugin_results = plugin_registry.verify_all(plugin_context)
@@ -586,13 +638,21 @@ class NWaveInstaller:
         )
 
         # Templates from framework_source/templates/
+        #
+        # Content-aware verify (M1 fix-installer-silent-template-skip): replace
+        # the existence-only check with a md5 compare so a stale target that
+        # diverges from source is reported as drift instead of "verified".
         templates_source = self.framework_source / "templates"
         templates_target = self.claude_config_dir / "templates"
         if templates_source.exists():
             tmpl_files = [f for f in templates_source.iterdir() if f.is_file()]
-            tmpl_matched = sum(
-                1 for f in tmpl_files if (templates_target / f.name).exists()
-            )
+            tmpl_drifted: list[str] = []
+            tmpl_matched = 0
+            for f in tmpl_files:
+                if _files_content_equal(f, templates_target / f.name):
+                    tmpl_matched += 1
+                else:
+                    tmpl_drifted.append(f.name)
             tmpl_expected = len(tmpl_files)
             tmpl_ok = _component_synced(tmpl_matched, tmpl_expected)
             if not tmpl_ok:
@@ -603,6 +663,11 @@ class NWaveInstaller:
             self.logger.info(
                 f"    {'✅' if tmpl_ok else '❌'} Templates verified ({tmpl_matched}/{tmpl_expected})"
             )
+            for drifted in tmpl_drifted:
+                self.logger.error(
+                    f"      ❌ Content drift: templates/{drifted} differs from source "
+                    f"(re-run `python -m nwave_ai.cli install` to refresh)"
+                )
 
         # Scripts: dist/scripts/ or project_root/scripts/
         dist_scripts = self.framework_source / "scripts"
@@ -805,7 +870,7 @@ def _resolve_platform_override(platform_flag: str) -> set[str] | None:
     """Resolve CLI --platform flag to a platform override set.
 
     Args:
-        platform_flag: One of "auto", "claude-code", "opencode", "all".
+        platform_flag: One of "auto", "claude-code", "opencode", "codex", "all".
 
     Returns:
         None for auto-detect, or a set of platform string values.
@@ -814,7 +879,8 @@ def _resolve_platform_override(platform_flag: str) -> set[str] | None:
         "auto": None,
         "claude-code": {"claude_code"},
         "opencode": {"opencode"},
-        "all": {"claude_code", "opencode"},
+        "codex": {"codex"},
+        "all": {"claude_code", "opencode", "codex"},
     }
     return platform_map[platform_flag]
 
@@ -832,7 +898,7 @@ def main():
     parser.add_argument("--help", "-h", action="store_true", help="Show help")
     parser.add_argument(
         "--platform",
-        choices=["auto", "claude-code", "opencode", "all"],
+        choices=["auto", "claude-code", "opencode", "codex", "all"],
         default="auto",
         help="Target platform (default: auto-detect)",
     )
@@ -913,6 +979,18 @@ def main():
     # This prevents circular dependency where validation fails because
     # manifest doesn't exist yet
     installer.create_manifest()
+
+    # Dry-run preview: install_framework + create_manifest already returned
+    # without side effects (each plugin honors context.dry_run). Skip the
+    # post-install verifier — it asserts real installation state which by
+    # definition does not exist in a dry-run preview. Fix for v1.1.14+
+    # regression where --dry-run exited 1 with "DES config not found".
+    if installer.dry_run:
+        installer.logger.info("")
+        installer.logger.info(
+            "  🍾 Dry-run preview complete (no changes made, verifier skipped)"
+        )
+        return 0
 
     if installer.validate_installation():
         installer.logger.info("")

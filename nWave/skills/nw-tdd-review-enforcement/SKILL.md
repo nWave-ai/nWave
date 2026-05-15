@@ -1,13 +1,13 @@
 ---
 name: nw-tdd-review-enforcement
-description: Test design mandate enforcement, test budget validation, 5-phase TDD validation, and external validity checks for the software crafter reviewer
+description: Test design mandate enforcement, test budget validation, TDD phase validation (3-phase canon per ADR-025), and external validity checks for the software crafter reviewer
 user-invocable: false
 disable-model-invocation: true
 ---
 
 # TDD Review Enforcement
 
-Domain knowledge for reviewing TDD implementations against 5 test design mandates, test budget, 5-phase validation, and external validity.
+Domain knowledge for reviewing TDD implementations against 5 test design mandates, test budget, TDD phase compliance (3-phase canon per ADR-025), and external validity.
 
 ---
 
@@ -88,34 +88,36 @@ Required: delete internal tests, consolidate via parametrize, re-submit
 
 ---
 
-## 5-Phase TDD Validation
+## TDD Phase Validation (3-phase canon, ADR-025)
 
-Verify all 5 phases in execution-log.json: PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN, COMMIT.
+Verify TDD phases in execution-log.json. **Current canonical (ADR-025, 2026-05-07): 3-phase cycle — RED → GREEN → COMMIT.** RED absorbs the legacy PREPARE / RED_ACCEPTANCE / RED_UNIT phases — it unskips the AT scaffold authored by DISTILL, verifies fail-for-right-reason, and writes PBT unit tests ONLY when the AT requires them to reach GREEN.
+
+**Legacy 5-phase contract (ADR-024 era)**: PREPARE / RED_ACCEPTANCE / RED_UNIT / GREEN / COMMIT — preserved for audit-log replay of pre-2026-05-07 commits. Existing execution-log.json files using the 5-phase contract remain valid; the gates below apply equivalently to merged phases under the 3-phase canon.
 
 ### Phase Checks
-- Completeness: all 5 present (Blocker if missing) | Outcomes: all PASS (Blocker if FAIL)
+- Completeness: all phases present per the schema version in use (Blocker if missing) | Outcomes: all PASS (Blocker if FAIL)
 - Sequential execution: correct order by timestamps | Test discipline: 100% green after GREEN, COMMIT
 
 ### Quality Gates
 
-| Gate | Description | Phase |
-|------|-------------|-------|
-| G1 | Exactly one acceptance test active | PREPARE |
-| G2 | Acceptance test fails for valid reason | RED_ACCEPTANCE |
-| G3 | Unit test fails on assertion | RED_UNIT |
-| G4 | No mocks inside hexagon | RED_UNIT |
-| G5 | Business language in tests | GREEN |
-| G6 | All tests green | GREEN |
-| G7 | 100% passing before commit | COMMIT |
-| G8 | Test count within budget | RED_UNIT |
-| G9 | No test modifications to accommodate implementation | GREEN |
+| Gate | Description | Phase (3-phase canon) | Legacy phase (5-phase) |
+|------|-------------|-----------------------|------------------------|
+| G1 | Exactly one acceptance test active | RED | PREPARE |
+| G2 | Acceptance test fails for valid reason | RED | RED_ACCEPTANCE |
+| G3 | Unit test fails on assertion (when authored) | RED | RED_UNIT |
+| G4 | No mocks inside hexagon | RED | RED_UNIT |
+| G5 | Business language in tests | GREEN | GREEN |
+| G6 | All tests green | GREEN | GREEN |
+| G7 | 100% passing before commit | COMMIT | COMMIT |
+| G8 | Test count within budget | RED | RED_UNIT |
+| G9 | No test modifications to accommodate implementation | GREEN | GREEN |
 
 Gates G2, G4, G7, G8, G9 are Blockers if not verified.
 
 Note: Review/refactoring quality verified at deliver-level Phase 4 (Adversarial Review).
 
 ### Walking Skeleton Override
-When `is_walking_skeleton: true`: don't flag missing unit tests | verify exactly one E2E test | thinnest slice OK (hardcoded values) | RED_UNIT and GREEN may be SKIPPED with "NOT_APPLICABLE: walking skeleton"
+When `is_walking_skeleton: true`: don't flag missing unit tests | verify exactly one E2E test | thinnest slice OK (hardcoded values) | unit-test authoring inside RED may be skipped (3-phase canon) or RED_UNIT/GREEN entries SKIPPED with "NOT_APPLICABLE: walking skeleton" (5-phase legacy logs).
 
 ---
 
@@ -273,7 +275,7 @@ When a crafter gets stuck, the correct action is to escalate -- not to silently 
 ## Approval Decision Logic
 
 ### Approved
-All 5 phases present, all PASS, all gates satisfied (G1-G9), zero defects, budget met, no internal class tests, no test modifications, no testing theater.
+All required phases present per schema version (3-phase canon: RED/GREEN/COMMIT; legacy 5-phase: PREPARE/RED_ACCEPTANCE/RED_UNIT/GREEN/COMMIT), all PASS, all gates satisfied (G1-G9), zero defects, budget met, no internal class tests, no test modifications, no testing theater.
 
 ### Rejected
 Missing phases | any FAIL | any defect | budget exceeded | internal class tested | test modified to accommodate implementation (G9) | testing theater detected | silent test modification without escalation. Zero tolerance.

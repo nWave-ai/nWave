@@ -116,7 +116,7 @@ The deliver orchestrator creates a minimal roadmap with 2 steps:
 - Run ALL tests — regression test must now PASS
 - Existing tests must not regress
 
-The crafter handles the 5-phase TDD cycle (PREPARE → RED → GREEN → COMMIT) with DES monitoring.
+The crafter handles the TDD cycle (3-phase canon RED → GREEN → COMMIT per ADR-025, or legacy 5-phase PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT for pre-2026-05-07 audit-log replay) with DES monitoring.
 
 ## Progress Tracking
 

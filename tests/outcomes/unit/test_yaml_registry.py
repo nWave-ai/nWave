@@ -8,7 +8,7 @@ adapter as integration-style real-IO.
 
 from __future__ import annotations
 
-from pathlib import Path  # noqa: TC003  # used in fixture bodies via tmp_path
+from pathlib import Path  # used in fixture bodies via tmp_path
 
 import yaml
 from nwave_ai.outcomes.adapters.yaml_registry import YamlRegistryAdapter

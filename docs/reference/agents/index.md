@@ -18,7 +18,7 @@
 
 | Name | Description | Skills |
 | --- | --- | --- |
-| [nw-acceptance-designer](nw-acceptance-designer.md) | Use for DISTILL wave - designs E2E acceptance tests from user stories and architecture using Given-When-Then format. Creates executable specifications that drive Outside-In TDD development. | 4 |
+| [nw-acceptance-designer](nw-acceptance-designer.md) | Use for DISTILL wave - designs E2E acceptance tests from user stories and architecture using Given-When-Then format. Creates executable specifications that drive Outside-In TDD development. | 6 |
 | [nw-acceptance-designer-reviewer](nw-acceptance-designer-reviewer.md) | Use for review and critique tasks - Acceptance criteria and BDD review specialist. Runs on Haiku for cost efficiency. | 3 |
 
 ## DELIVER
@@ -56,7 +56,7 @@
 
 | Name | Wave | Description | Skills |
 | --- | --- | --- | --- |
-| [nw-acceptance-designer](nw-acceptance-designer.md) | DISTILL | Use for DISTILL wave - designs E2E acceptance tests from user stories and architecture using Given-When-Then format. Creates executable specifications that drive Outside-In TDD development. | 4 |
+| [nw-acceptance-designer](nw-acceptance-designer.md) | DISTILL | Use for DISTILL wave - designs E2E acceptance tests from user stories and architecture using Given-When-Then format. Creates executable specifications that drive Outside-In TDD development. | 6 |
 | [nw-acceptance-designer-reviewer](nw-acceptance-designer-reviewer.md) | DISTILL | Use for review and critique tasks - Acceptance criteria and BDD review specialist. Runs on Haiku for cost efficiency. | 3 |
 | [nw-agent-builder](nw-agent-builder.md) | Other | Use when creating new AI agents, validating agent specifications, optimizing command definitions, or ensuring compliance with Claude Code best practices. Creates focused, research-validated agents (200-400 lines) with Skills for domain knowledge. Also optimizes bloated command files into lean declarative definitions. | 6 |
 | [nw-agent-builder-reviewer](nw-agent-builder-reviewer.md) | Other | Use for review and critique tasks - Agent design and quality review specialist. Runs on Haiku for cost efficiency. | 2 |

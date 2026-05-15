@@ -186,6 +186,85 @@ def opencode_container():
 
 
 # ---------------------------------------------------------------------------
+# Codex CLI container fixture — exercises the auto-detect path triggered by
+# the presence of ~/.codex/ alone (no codex binary required per
+# scripts/install/context_detector.py:_detect_codex).
+#
+# Lighter than opencode_container: skips the npm + nodejs + binary install
+# step because the installer's Codex detection accepts the directory-only
+# signal.  Tests verify the same contract surface (skills land at
+# ~/.agents/skills/, agents at ~/.codex/agents/ as TOML, hooks.json wired,
+# manifests present, Claude install parity preserved).
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def codex_container():
+    """Session-scoped container with ~/.codex/ directory + nWave installed.
+
+    Mirrors codex auto-detect behaviour: Codex CLI is presumed available
+    whenever ~/.codex/ exists, so the fixture just creates the directory
+    and runs the installer.
+
+    Reused across all tests that only need the installer side-effects
+    (skills, agents, hooks, manifests).  No actual codex runtime is
+    started — that would belong to a Codex subagent-hooks suite (deferred).
+    """
+    if not _is_docker_available():
+        pytest.skip("Docker daemon not available")
+
+    from testcontainers.core.container import (
+        DockerContainer,  # type: ignore[import-untyped]
+    )
+
+    repo_root = Path(__file__).parent.parent.parent
+    container = DockerContainer(image="python:3.12-slim")
+    container.with_volume_mapping(str(repo_root), "/src", "ro")
+    container.with_env("HOME", "/home/tester")
+    container.with_env("DEBIAN_FRONTEND", "noninteractive")
+    container._command = "tail -f /dev/null"
+
+    with container:
+        setup_script = (
+            "set -e && "
+            "apt-get update -qq && "
+            "apt-get install -y --no-install-recommends git -qq && "
+            "rm -rf /var/lib/apt/lists/* && "
+            "useradd -m tester && "
+            "mkdir -p /home/tester/.codex && "
+            "chown -R tester:tester /home/tester"
+        )
+        code, out = exec_in_container(container, ["bash", "-c", setup_script])
+        assert code == 0, f"Codex container setup failed (exit {code}).\n{out[-800:]}"
+
+        # Copy repo to writable tester location (install needs to write relative-to-source)
+        copy_script = (
+            "set -e && "
+            "cp -r /src /home/tester/nwave-dev && "
+            "chown -R tester:tester /home/tester/nwave-dev"
+        )
+        code, out = exec_in_container(container, ["bash", "-c", copy_script])
+        assert code == 0, f"Repo copy failed (exit {code}).\n{out[-500:]}"
+
+        install_script = (
+            "set -e && "
+            "python -m venv /tmp/venv && "
+            "/tmp/venv/bin/pip install --quiet pyyaml rich typer pydantic "
+            "pydantic-settings httpx platformdirs packaging && "
+            "chown -R tester:tester /tmp/venv && "
+            "su tester -c 'cd /home/tester/nwave-dev && "
+            "VIRTUAL_ENV=/tmp/venv PATH=/tmp/venv/bin:$PATH "
+            "python scripts/install/install_nwave.py' 2>&1"
+        )
+        code, out = exec_in_container(container, ["bash", "-c", install_script])
+        # Install may exit non-zero if optional plugins fail; outcome asserted
+        # per-test against core markers (mirrors the Dockerfile `|| true` pattern).
+        container._install_stdout = out  # type: ignore[attr-defined]
+
+        yield container
+
+
+# ---------------------------------------------------------------------------
 # PyPI-shape wheel build — shared by test_pypi_shape_install_chain.py and
 # test_wheel_privacy_contract.py
 #

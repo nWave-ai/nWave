@@ -40,7 +40,8 @@ def _run_adapter(
             temp dir rather than the test runner's repo root.
     """
     env = os.environ.copy()
-    env["PYTHONPATH"] = PROJECT_ROOT
+    # Src-layout: include both src/ and PROJECT_ROOT for subprocess PYTHONPATH.
+    env["PYTHONPATH"] = os.pathsep.join([str(Path(PROJECT_ROOT) / "src"), PROJECT_ROOT])
     if env_extra:
         env.update(env_extra)
 

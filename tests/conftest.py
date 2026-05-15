@@ -39,6 +39,44 @@ def restore_working_directory():
 
 
 # ---------------------------------------------------------------------------
+# Class B regression guard — editable install health check (RCA 2026-05-13).
+#
+# Symptom: subprocess-based tests fail with
+# `ModuleNotFoundError: No module named 'nwave_ai'` when run from a sandboxed
+# cwd, because Python's `sys.path` no longer contains `''` and the editable
+# install .pth file is missing/corrupted. Catching this at session start
+# gives a clear actionable message instead of dozens of identical cryptic
+# failures across `tests/outcomes/acceptance/`, `tests/feature_delta/...`.
+#
+# RCA: docs/feature/fix-outcomes-acceptance/discuss/rca.md.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _verify_nwave_ai_subprocess_importable():
+    """Fast-fail if nwave_ai cannot be imported from a clean-cwd subprocess."""
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-c", "import nwave_ai"],
+        cwd="/tmp",
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    if result.returncode != 0:
+        pytest.exit(
+            "FATAL: nwave_ai not importable from a clean-cwd subprocess. "
+            "Class B regression — editable install .pth missing or corrupted.\n"
+            f"  python: {sys.executable}\n"
+            f"  stderr: {result.stderr.strip()}\n"
+            "Fix: `pipenv install -e .` (or run `nwave-doctor` if available).",
+            returncode=1,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Layer 1 — repo-wide GIT_CEILING_DIRECTORIES (Fix 1 from RCA).
 # Function-scoped so pytest-xdist workers each get their own env, and so the
 # var is cleaned up after every test (no global env mutation).

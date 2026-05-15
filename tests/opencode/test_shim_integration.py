@@ -36,7 +36,12 @@ def _run_adapter(
         CompletedProcess with stdout, stderr, returncode
     """
     env = os.environ.copy()
-    env["PYTHONPATH"] = PROJECT_ROOT
+    # Src-layout: `des/` lives under PROJECT_ROOT/src/, not PROJECT_ROOT.
+    # Pytest's `pythonpath = ["src", "."]` covers in-process imports but does
+    # NOT propagate to subprocesses. Without `src/` here, the subprocess
+    # gets ModuleNotFoundError: No module named 'des.adapters' → exit 1
+    # instead of the expected policy exit code (0 allow / 2 block).
+    env["PYTHONPATH"] = os.pathsep.join([str(Path(PROJECT_ROOT) / "src"), PROJECT_ROOT])
     if env_extra:
         env.update(env_extra)
 

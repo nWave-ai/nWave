@@ -27,7 +27,7 @@ Dispatch a single roadmap step to an agent. Orchestrator extracts step context f
 Before dispatching the agent, read rigor config from `.nwave/des-config.json` (key: `rigor`). If absent, use standard defaults.
 
 - **`agent_model`**: Pass as `model` parameter to Agent tool. If `"inherit"`, omit `model` (inherits from session).
-- **`tdd_phases`**: If `["RED_UNIT", "GREEN"]` (lean), modify the TDD_PHASES section in the DES template to only include those 2 phases. Remove PREPARE/RED_ACCEPTANCE/COMMIT instructions.
+- **`tdd_phases`**: Modify the TDD_PHASES section in the DES template to match the configured phases. The 3-phase canon (ADR-025) is `[RED, GREEN, COMMIT]`; the lean variant is `[RED, GREEN]`. Legacy 5-phase contract (`[PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN, COMMIT]`) and its lean variant (`[RED_UNIT, GREEN]`) remain supported for audit-log replay of pre-2026-05-07 commits. Remove omitted phases' instructions from the template.
 - **`refactor_pass`**: If `false`, skip COMMIT phase refactoring instructions.
 
 ## Dispatcher Workflow
@@ -60,7 +60,7 @@ Agent: {agent-name}
 # SKILL_LOADING
 Before starting TDD phases, read your skill files for methodology guidance.
 Skills path: ~/.claude/skills/nw/{agent-name}/
-Always load at PREPARE: tdd-methodology.md, quality-framework.md
+Always load before RED: tdd-methodology.md, quality-framework.md (3-phase canon, ADR-025) — legacy 5-phase logs reference loading at PREPARE.
 Load on-demand per phase as specified in your Skill Loading Strategy table.
 
 # TASK_CONTEXT
@@ -70,27 +70,26 @@ Load on-demand per phase as specified in your Skill Loading Strategy table.
 {Summary of architectural decisions relevant to this step, extracted by the orchestrator from design wave artifacts (architecture-design.md, component-boundaries.md, wave-decisions.md). Include: component structure, dependency boundaries, technology choices, and any design constraints that affect implementation. If no design artifacts exist, write "No design artifacts available — use project conventions."}
 
 # TDD_PHASES
-Execute in order:
-0. PREPARE - Load context, verify prerequisites
-1. RED_ACCEPTANCE - Activate or write acceptance test (PRIMARY TBU DEFENSE)
-   If TASK_CONTEXT includes test_file: locate it, remove @skip/@ignore/@pending/xit/.skip/[Ignore] marker
-   from the target scenario, run it — must fail for business logic reason (not import/syntax error).
-   If no test_file in TASK_CONTEXT: write a new failing acceptance test from acceptance_criteria.
+3-phase canon (ADR-025, 2026-05-07). Execute in order:
+
+1. RED - Activate the pre-authored acceptance test (PRIMARY TBU DEFENSE); write PBT unit tests ONLY if the AT cannot reach GREEN without them.
+   AT activation: If TASK_CONTEXT includes test_file, locate it and remove the @skip/@ignore/@pending/xit/.skip/[Ignore] marker from the target scenario (the AT scaffold was authored by DISTILL — DELIVER does NOT re-author ATs). Run it — must fail for business logic reason (not import/syntax error). Fail-for-right-reason gate: collected ≥ 1, failures ≥ 1, no collection errors, semantic AssertionError / expected-exception-not-thrown.
    PORT-TO-PORT PRINCIPLE: The acceptance test exercises the scenario through
    the driving port (application service, orchestrator, CLI handler, API controller),
    not a decomposed helper or internal class. A correctly-written port-to-port test
    makes TBU structurally impossible — if a new function were missing or unwired,
    THIS test stays RED. That is the entire point: GREEN is unreachable without wiring.
    Litmus test: "If I delete the call-site that wires the new code, does this test fail?"
-   If no → the test is at the wrong level. Fix it before proceeding.
-2. RED_UNIT - Write failing unit test (or integration test for adapter/infrastructure
-   code — adapters use real infrastructure, never mocked unit tests)
-3. GREEN - Minimal code to pass tests
+   If no → the test is at the wrong level. Stop and flag to orchestrator (DISTILL re-author needed).
+   Conditional unit-test authoring: write PBT unit tests (or integration tests for adapter/infrastructure code — adapters use real infrastructure, never mocked unit tests) ONLY when the AT requires them to reach GREEN. If the AT can pass via direct minimal implementation, skip unit-test authoring inside RED.
+
+2. GREEN - Minimal code to pass AT + any unit tests authored in RED.
    After GREEN: run FULL test suite. If all pass, proceed to COMMIT immediately.
    Smell test: if any new function is only called from test code, your acceptance
-   test is at the wrong abstraction level — go back to RED_ACCEPTANCE and fix it.
+   test is at the wrong abstraction level — stop and flag.
    Never move to new task or stop without committing green code.
-4. COMMIT - Stage and commit with conventional message
+
+3. COMMIT - Stage and commit with conventional message.
    Include git trailer: `Step-ID: {step-id}` (required for DES verification)
    Example:
    ```
@@ -98,6 +97,8 @@ Execute in order:
 
    Step-ID: 02-01
    ```
+
+LEGACY 5-PHASE CONTRACT (ADR-024 era, pre-2026-05-07): PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT. Preserved for audit-log replay only — new work uses the 3-phase canon above. Audit-log entries referencing RED_ACCEPTANCE/RED_UNIT/PREPARE represent merged sub-steps now folded into RED.
 
 # QUALITY_GATES
 - All tests pass before COMMIT
@@ -164,11 +165,11 @@ If GREEN complete (all tests pass), MUST commit before returning — even at tur
 
 When subagent times out:
 
-| Last Completed Phase | Action | Rationale |
-|---------------------|--------|-----------|
-| GREEN (or later) | Resume | Only COMMIT remains (~5 turns) |
-| RED_UNIT with partial GREEN | Resume | Preserves implementation progress |
-| PREPARE or RED_ACCEPTANCE | Restart | Little context worth replaying |
+| Last Completed Phase (3-phase canon) | Legacy phase (5-phase) | Action | Rationale |
+|--------------------------------------|------------------------|--------|-----------|
+| GREEN (or later) | GREEN | Resume | Only COMMIT remains (~5 turns) |
+| RED with partial GREEN | RED_UNIT with partial GREEN | Resume | Preserves implementation progress |
+| RED only (pre-GREEN) | PREPARE or RED_ACCEPTANCE | Restart | Little context worth replaying |
 
 Resume costs ~50% more tokens/call due to context replay (measured: 3.7K vs 2.5K tokens/call). For <5 remaining turns, resume is efficient. For 15+ turns, restart is cheaper.
 

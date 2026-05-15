@@ -19,11 +19,11 @@ Sub-agents cannot use Skill tool or `/nw-*` commands. You MUST:
 
 ## Output Tiers (per D2)
 
-Provenance: feature `lean-wave-documentation` — D2 (schema-typed sections), D10 (one-line expansion descriptions). The DELIVER wave emits a single `feature-delta.md` whose headings are typed `[REF]` (always emitted) or `[WHY]/[HOW]` (lazy expansions). Tier-1 is the always-on baseline; Tier-2 is the lazily-rendered expansion catalog. Implementation details live in code; the wave-delta sections are pointers + structured summaries.
+Provenance: feature `lean-wave-documentation` — D2 (schema-typed sections), D10 (one-line expansion descriptions). Tier-1 [REF] sections (always emitted) + Tier-2 EXPANSION CATALOG items (lazy, on-demand) are the two output bands. Implementation details live in code; the wave-delta sections are pointers + structured summaries. Full contract: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
 
 ### Tier-1 [REF] — always emitted
 
-Tier-1 sections constitute the lean-default baseline. Every DELIVER run emits at minimum these sections under `## Wave: DELIVER / [REF] <Section>` headings:
+Under `## Wave: DELIVER / [REF] <Section>` headings:
 
 - Implementation summary — one-paragraph description of what shipped (no design rationale)
 - Files modified — categorized list (production, tests, docs) with one-line per file
@@ -35,7 +35,7 @@ Tier-1 sections constitute the lean-default baseline. Every DELIVER run emits at
 
 ### Tier-2 EXPANSION CATALOG — lazy, on-demand (per D10)
 
-Tier-2 items are NOT emitted by default. They are rendered only when explicitly requested via `--expand <id>` (DDD-2) or via the wave-end interactive prompt when `expansion_prompt = "ask"`. Each item has a one-line description (per D10) so the menu fits in a single render. Each emitted Tier-2 section is headed `## Wave: DELIVER / [WHY] <Section>` or `## Wave: DELIVER / [HOW] <Section>`.
+Rendered under `## Wave: DELIVER / [WHY|HOW] <Section>` only when requested via `--expand <id>` (DDD-2), the wave-end menu (`expansion_prompt = "ask"`), `mode = "full"` auto-expansion, or an ad-hoc user request mid-session.
 
 | Expansion ID | Tier label | One-line description |
 |---|---|---|
@@ -50,79 +50,19 @@ Tier-2 items are NOT emitted by default. They are rendered only when explicitly 
 
 ## Density resolution (per D12)
 
-Provenance: D12 (rigor cascade), DDD-5 (density resolver shared utility). Before emitting any Tier-1 section, resolve the active documentation density:
-
-1. **Read** `~/.nwave/global-config.json`. Treat missing/malformed config as empty dict (fall back to defaults).
-2. **Call** `resolve_density(global_config)` from `scripts/shared/density_config.py`. The function returns a `Density` value object with fields `mode` (`"lean"` | `"full"`), `expansion_prompt` (`"ask"` | `"always-skip"` | `"always-expand"` | `"smart"`), and `provenance` (the cascade branch that produced this result).
-3. **Branch on `density.mode`**:
-   - `lean` → emit ONLY Tier-1 `[REF]` sections under `## Wave: DELIVER / [REF] <Section>` headings. Do NOT auto-render Tier-2 items.
-   - `full` → emit Tier-1 `[REF]` sections PLUS all Tier-2 expansion items rendered under their `[WHY]` / `[HOW]` headings. This is auto-expansion (no menu).
-4. **At wave end**, branch on `density.expansion_prompt`:
-   - `"ask"` → present the expansion menu (Tier-2 catalog above with one-line descriptions per D10) and append user-selected items as `## Wave: DELIVER / [WHY|HOW] <Section>` headings.
-   - `"always-skip"` → no menu, no extra sections (idempotent re-runs, CI mode).
-   - `"always-expand"` → equivalent to `mode = "full"` for this run; auto-render every Tier-2 item.
-   - `"smart"` → out of scope for v1 (per OQ-3); treat as `"ask"` until heuristic is empirically tuned.
-
-The resolver itself encodes the D12 cascade: explicit `documentation.density` override > `rigor.profile` mapping (`lean`→`lean`, `standard`→`lean`+`ask`, `thorough`→`full`, `exhaustive`→`full`+all-expansions, `custom`→`lean`+`ask`) > hard default `lean`+`ask`. This skill MUST NOT replicate the cascade locally — call `resolve_density(global_config)` and trust its output.
-
-**Section heading prefix convention (per D2)**: every emitted section starts with `## Wave: DELIVER / [REF] <Section>` for Tier-1; `## Wave: DELIVER / [WHY] <Section>` or `## Wave: DELIVER / [HOW] <Section>` for Tier-2. Validator `scripts/validation/validate_feature_delta.py` enforces the regex `^## Wave: \w+ / \[(REF|WHY|HOW)\] .+$` on every wave heading.
-
-### Ad-hoc override — user request mid-session
-
-Even when `density.mode = "lean"` and `density.expansion_prompt = "always-skip"`, the user may ask DURING the wave session for specific expansions:
-
-- "expand jtbd" / "expand jtbd-narrative" / "more on jtbd"
-- "add alternatives considered"
-- "show migration playbook"
-- "tell me why" (interpretive — append the WHY rationale section relevant to the most recent decision)
-- "more on <X>" (where `<X>` is one of the expansion catalog items for this wave)
-
-When the user makes such a request:
-
-1. Append the corresponding `[WHY]` or `[HOW]` section to `feature-delta.md` under the current wave's heading.
-2. Emit a `DocumentationDensityEvent` with `choice="expand"` and `expansion_id=<the requested item>` to `JsonlAuditLogWriter`.
-3. Do NOT modify `~/.nwave/global-config.json`. The override is ONE-SHOT for this wave only.
-
-If the user's request matches NO item in this wave's Expansion Catalog, respond with the catalog list (one-line description per item per D10) and ask for clarification — do NOT improvise an expansion outside the catalog.
+Call `resolve_density(global_config)` from `scripts/shared/density_config.py` after reading `~/.nwave/global-config.json` (missing/malformed = empty dict). Returns `mode` (`"lean"` | `"full"`) + `expansion_prompt` (`"ask"` | `"always-skip"` | `"always-expand"` | `"smart"`) per the D12 cascade (resolver-internal, DDD-5 — do NOT replicate locally). Branch on `density.mode` for what to emit; branch on `density.expansion_prompt` at wave end for menu behaviour. Full cascade detail, branch semantics, ad-hoc override workflow: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
 
 ## Telemetry (per D4 + DDD-6)
 
-Provenance: D4 (telemetry schema instrumented day-one), D6 (first-install pedagogical prompt creates audit signal), DDD-6 (telemetry event class lives in DES domain, writer reused). Every expansion choice — whether the user expanded an item or skipped the menu — emits a structured event to the existing `JsonlAuditLogWriter` driven adapter.
+Every expansion choice emits a `DocumentationDensityEvent` (dataclass at `src/des/domain/telemetry/documentation_density_event.py`) via `event.to_audit_event()` → `JsonlAuditLogWriter().log_event(...)`. Schema fields per D4: `feature_id`, `wave`, `expansion_id`, `choice`, `timestamp`. For this wave the schema declares `"wave": "DELIVER"`. Use helper `scripts/shared/telemetry.py:write_density_event(...)` — do NOT write JSONL directly.
 
-**Event type**: `DocumentationDensityEvent` (dataclass at `src/des/domain/telemetry/documentation_density_event.py`).
-
-**Schema fields** (per D4):
-
-```
-{
-  "feature_id": "<feature-id>",
-  "wave": "DELIVER",
-  "expansion_id": "<id-from-catalog-or-'*'-for-skip-all>",
-  "choice": "skip" | "expand",
-  "timestamp": "<ISO-8601 datetime>"
-}
-```
-
-**Emission pattern**:
-
-1. Construct a `DocumentationDensityEvent(feature_id=..., wave="DELIVER", expansion_id=..., choice=..., timestamp=...)`.
-2. Call `event.to_audit_event()` to convert to the open `AuditEvent` shape (`event_type="DOCUMENTATION_DENSITY"` and the schema fields nested under `data`).
-3. Dispatch via `JsonlAuditLogWriter().log_event(audit_event)`.
-
-The wave-skill harness invokes the helper `scripts/shared/telemetry.py:write_density_event(...)` which performs all three steps. This skill MUST NOT bypass the helper or write JSONL directly — every density telemetry event flows through the shared helper to keep the audit-log schema consistent.
-
-**When to emit**:
-- One event per user choice in the expansion menu when `expansion_prompt = "ask"` (`choice = "expand"` for selected items, `choice = "skip"` with `expansion_id = "*"` if the user skips the entire menu).
-- One synthetic `choice = "skip"` event with `expansion_id = "*"` when `expansion_prompt = "always-skip"` (records the skipped menu opportunity).
-- One `choice = "expand"` event per Tier-2 item rendered when `mode = "full"` or `expansion_prompt = "always-expand"`.
-
-This telemetry feeds the post-deploy retrospective: a DELIVER wave that records `choice = "expand"` for `retrospective-notes` is a signal the team needed deeper learning capture; over time the data drives whether retrospective notes should be promoted to Tier-1.
+Wave-specific signal: a DELIVER wave recording `choice = "expand"` for `retrospective-notes` indicates the team needed deeper learning capture; over time the data drives whether retrospective notes should be promoted to Tier-1. Full emission rules: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
 
 ## CRITICAL BOUNDARY RULES
 
 1. **NEVER implement steps directly.** ALL implementation MUST be delegated to the selected crafter (@nw-software-crafter or @nw-functional-software-crafter per step 1.5) via Task tool with DES markers. You are ORCHESTRATOR — coordinate, not implement.
 2. **NEVER write phase entries to execution-log.json.** Only the crafter subagent that performed TDD work may append entries.
-3. **Extract step context from roadmap.json ONLY for Task prompt.** Grep roadmap for step_id ~50 lines context, extract (description|acceptance_criteria|files_to_modify), pass in DES template.
+3. **Extract step context from roadmap.json ONLY for Task prompt.** Grep roadmap for step_id ~50 lines context, extract (name|criteria|files_to_modify) per `nWave/templates/roadmap-schema.json`, pass in DES template.
 
 **DES monitoring is non-negotiable.** Circumventing DES — faking step IDs, omitting markers, or writing log entries manually — is a **violation that invalidates the delivery**. DES detects unmonitored steps and flags them; finalize **blocks** until every flagged step is re-executed through a properly instrumented Task. There is no workaround: unverified steps cannot pass integrity verification, and the delivery cannot be finalized. Without DES monitoring, nWave cannot **verify** TDD phase compliance. For non-deliver tasks (docs, research, one-off edits): `<!-- DES-ENFORCEMENT : exempt -->`.
 
@@ -138,7 +78,7 @@ Before dispatching any agent, read the rigor profile from `.nwave/des-config.jso
 | `reviewer_model` | Pass as `model` parameter to reviewer Task invocations. If `"skip"`, skip Phase 4 entirely. |
 | `review_enabled` | If `false`, skip Phase 4 (Adversarial Review). |
 | `double_review` | If `true`, run Phase 4 twice with separate review scopes. |
-| `tdd_phases` | Pass to crafter in DES template. Replace `# TDD_PHASES` section with the configured phases. If only `[RED_UNIT, GREEN]`, omit PREPARE/RED_ACCEPTANCE/COMMIT instructions. |
+| `tdd_phases` | Pass to crafter in DES template. Replace `# TDD_PHASES` section with the configured phases. The 3-phase canon (ADR-025) is `[RED, GREEN, COMMIT]`; legacy 5-phase contract is `[PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN, COMMIT]`. If lean profile (`[RED_UNIT, GREEN]` legacy or `[RED, GREEN]` canon), omit setup/commit instructions accordingly. |
 | `refactor_pass` | If `false`, skip Phase 3 (Complete Refactoring). |
 | `mutation_enabled` | If `false`, skip Phase 5 regardless of mutation strategy in CLAUDE.md. |
 
@@ -210,7 +150,7 @@ At the start of execution, create these tasks using TaskCreate and follow them i
    - a. Skip if `docs/feature/{feature-id}/deliver/roadmap.json` exists with `validation.status == "approved"`. If found in `design/` instead, move to `deliver/` and log warning.
    - b. Dispatch `@nw-solution-architect` to create `roadmap.json` (load `~/.claude/skills/nw-roadmap/SKILL.md`). Step IDs MUST match `NN-NN` format (01-01, 01-02). If `distill/` exists, architect MUST populate `test_file` and `scenario_name` per step.
    - c. Run automated quality gate (see Roadmap Quality Gate section below).
-   - c2. Run roadmap integrity verification (HARD GATE): `des-verify-integrity docs/feature/{feature-id}/deliver/ --roadmap-only`. BLOCK on any format error; fix before dispatching any crafter.
+   - c2. Run roadmap integrity verification (HARD GATE): `des-verify-integrity docs/feature/{feature-id}/deliver/ --roadmap-only` — validates `roadmap.json` against the schema only; execution-log cross-reference is skipped (no log entries exist yet pre-crafter). Exit 0 = roadmap OK; exit 1 = schema errors printed; exit 2 = file missing or usage error. BLOCK on any non-zero exit; fix before dispatching any crafter.
    - d. Dispatch `@nw-acceptance-designer-reviewer` to review roadmap (load `~/.claude/skills/nw-review/SKILL.md`): verify every DISTILL scenario has a step, flag orphan scenarios as BLOCKER; flag steps covering 8+ scenarios as `@sizing-review-needed`; verify walking skeleton scenarios map to Phase 1 steps.
    - e. Retry once on rejection → stop for manual intervention.
 
@@ -257,9 +197,10 @@ At the start of execution, create these tasks using TaskCreate and follow them i
 
 7. **Phase 6 — Deliver Integrity Verification** — Gate: `verify_deliver_integrity` exits 0.
    - a. Run: `des-verify-integrity docs/feature/{feature-id}/deliver/`.
-   - b. Exit 0 → proceed. Exit 1 → STOP, read output.
+   - b. Exit 0 → proceed. Exit 1 → STOP, read output. Exit 2 → rigor misconfiguration (see e).
    - c. No entries = not executed through DES. Partial = incomplete TDD.
    - d. Violations → re-execute via Task with DES markers. Proceed only after pass.
+   - e. **Rigor-aware integrity** (F-3, ADR-025): the verifier tracks the rigor-profile phase set declared in `.nwave/des-config.json` (`rigor.tdd_phases`), intersected with the canonical TDDSchema. 3-phase ADR-025 projects (`[RED, GREEN, COMMIT]`) verify cleanly. Legacy 5-phase projects continue to verify unchanged. Empty intersection → exit 2 with diagnostic naming the offending rigor phases (fix `.nwave/des-config.json` and rerun).
 
 8. **Phase 7 — Finalize** — Gate: evolution archived, session markers removed, commit pushed.
    - a. Dispatch `@nw-platform-architect` to archive to `docs/evolution/` (load `~/.claude/skills/nw-finalize/SKILL.md`).
@@ -313,7 +254,7 @@ Always load at PREPARE: tdd-methodology.md, quality-framework.md
 Load on-demand per phase as specified in your Skill Loading Strategy table.
 
 # TASK_CONTEXT
-{step context extracted from roadmap - name|description|acceptance_criteria|test_file|scenario_name|quality_gates|implementation_notes|dependencies|estimated_hours|deliverables|files_to_modify}
+{step context extracted from roadmap - name|criteria|test_file|scenario_name|implementation_notes|deps|files_to_modify (per nWave/templates/roadmap-schema.json)}
 
 # DESIGN_CONTEXT
 {Summarize key architectural decisions from design wave artifacts read at step 0.5.
@@ -374,7 +315,7 @@ Legacy multi-file outputs (`implementation-notes.md`, `commits.md`, `retrospecti
 
 ## Quality Gates
 
-Roadmap review (1 review, max 2 attempts)|Per-step 5-phase TDD (PREPARE→RED_ACCEPTANCE→RED_UNIT→GREEN→COMMIT)|Paradigm-appropriate crafter|L1-L6 refactoring (Phase 3)|Adversarial review + Testing Theater detection (Phase 4)|Mutation ≥80% if per-feature (Phase 5)|Integrity verification (Phase 6)|All tests passing per phase
+Roadmap review (1 review, max 2 attempts)|Per-step TDD cycle (3-phase canon RED→GREEN→COMMIT per ADR-025, or legacy 5-phase PREPARE→RED_ACCEPTANCE→RED_UNIT→GREEN→COMMIT for pre-2026-05-07 audit-log replay)|Paradigm-appropriate crafter|L1-L6 refactoring (Phase 3)|Adversarial review + Testing Theater detection (Phase 4)|Mutation ≥80% if per-feature (Phase 5)|Integrity verification (Phase 6)|All tests passing per phase
 
 ## Design Compliance Check (MANDATORY — RCA F-2 fix)
 
@@ -404,7 +345,7 @@ Violating this rule creates dead code, dual paths, and accumulated technical deb
 ## Success Criteria
 
 - [ ] Roadmap created and approved
-- [ ] All steps COMMIT/PASS (5-phase TDD)
+- [ ] All steps COMMIT/PASS (3-phase TDD canon per ADR-025, or legacy 5-phase for pre-2026-05-07 logs)
 - [ ] **Design compliance verified** per step (F-2 — no unauthorized new files)
 - [ ] **Wave sequence complete** (F-3 — no "DISTILL needed" at close)
 - [ ] L1-L6 refactoring complete (Phase 3)

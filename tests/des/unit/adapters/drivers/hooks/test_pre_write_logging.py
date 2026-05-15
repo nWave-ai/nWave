@@ -15,8 +15,8 @@ Behaviors:
 3. HOOK_PRE_WRITE_ALLOWED emitted for allowed paths
 4. HOOK_PRE_WRITE_BLOCKED emitted when guard blocks the write
 5. Exception in decision logging does not break handler (fail-open preserved)
-6. Execution log direct Write always blocked — guides to des.cli.init_log
-7. Execution log direct Edit always blocked — guides to des.cli.log_phase
+6. Execution log direct Write always blocked — guides to des-init-log
+7. Execution log direct Edit always blocked — guides to des-log-phase
 8. Write vs Edit block messages are different (init_log vs log_phase)
 """
 
@@ -240,11 +240,11 @@ def test_logging_exception_preserves_fail_open_behavior(monkeypatch, tmp_path):
     assert len(printed) == 0, f"Allow path should produce no output. Got: {printed}"
 
 
-# --- Test 6: Execution log Write always blocked — guides to des.cli.init_log ---
+# --- Test 6: Execution log Write always blocked — guides to des-init-log ---
 
 
 def test_execution_log_write_blocked_always(monkeypatch, tmp_path):
-    """Direct Write to execution-log.json is blocked and guides to des.cli.init_log."""
+    """Direct Write to execution-log.json is blocked and guides to des-init-log."""
     from des.adapters.drivers.hooks import claude_code_hook_adapter as adapter
 
     events = []
@@ -274,7 +274,7 @@ def test_execution_log_write_blocked_always(monkeypatch, tmp_path):
     response_json = json.loads(printed[-1][0])
     assert response_json["decision"] == "block"
     assert "execution-log.json" in response_json["reason"]
-    assert "des.cli.init_log" in response_json["reason"]
+    assert "des-init-log" in response_json["reason"]
 
     # Verify audit event
     blocked_events = [e for e in events if e.event_type == "HOOK_PRE_WRITE_BLOCKED"]
@@ -285,11 +285,11 @@ def test_execution_log_write_blocked_always(monkeypatch, tmp_path):
     assert blocked_events[0].data["reason"] == "execution_log_direct_write"
 
 
-# --- Test 7: Execution log Edit always blocked — guides to des.cli.log_phase ---
+# --- Test 7: Execution log Edit always blocked — guides to des-log-phase ---
 
 
 def test_execution_log_edit_blocked_always(monkeypatch, tmp_path):
-    """Direct Edit to execution-log.json is blocked and guides to des.cli.log_phase."""
+    """Direct Edit to execution-log.json is blocked and guides to des-log-phase."""
     from des.adapters.drivers.hooks import claude_code_hook_adapter as adapter
 
     events = []
@@ -319,7 +319,7 @@ def test_execution_log_edit_blocked_always(monkeypatch, tmp_path):
     response_json = json.loads(printed[-1][0])
     assert response_json["decision"] == "block"
     assert "execution-log.json" in response_json["reason"]
-    assert "des.cli.log_phase" in response_json["reason"]
+    assert "des-log-phase" in response_json["reason"]
 
     # Verify audit event
     blocked_events = [e for e in events if e.event_type == "HOOK_PRE_WRITE_BLOCKED"]
@@ -334,7 +334,7 @@ def test_execution_log_edit_blocked_always(monkeypatch, tmp_path):
 
 
 def test_write_and_edit_get_different_block_messages(monkeypatch, tmp_path):
-    """Write guides to des.cli.init_log, Edit guides to des.cli.log_phase."""
+    """Write guides to des-init-log, Edit guides to des-log-phase."""
     from des.adapters.drivers.hooks import claude_code_hook_adapter as adapter
 
     monkeypatch.setattr(
@@ -371,7 +371,7 @@ def test_write_and_edit_get_different_block_messages(monkeypatch, tmp_path):
     assert write_reason != edit_reason, (
         "Write and Edit should get different block messages"
     )
-    assert "init_log" in write_reason
-    assert "log_phase" in edit_reason
-    assert "init_log" not in edit_reason
-    assert "log_phase" not in write_reason
+    assert "des-init-log" in write_reason
+    assert "des-log-phase" in edit_reason
+    assert "des-init-log" not in edit_reason
+    assert "des-log-phase" not in write_reason

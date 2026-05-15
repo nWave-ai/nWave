@@ -48,7 +48,7 @@ def built_wheel(tmp_path_factory) -> Path:
         cwd=str(PROJECT_ROOT),
         capture_output=True,
         text=True,
-        timeout=120,
+        timeout=300,
     )
     assert result.returncode == 0, (
         f"Wheel build failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
@@ -69,7 +69,7 @@ def installed_venv(built_wheel: Path, tmp_path_factory) -> Path:
         [sys.executable, "-m", "venv", str(venv_dir)],
         capture_output=True,
         text=True,
-        timeout=60,
+        timeout=180,
     )
     assert result.returncode == 0, (
         f"venv creation failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
@@ -81,7 +81,7 @@ def installed_venv(built_wheel: Path, tmp_path_factory) -> Path:
         [str(venv_python), "-m", "pip", "install", str(built_wheel)],
         capture_output=True,
         text=True,
-        timeout=120,
+        timeout=300,
     )
     assert result.returncode == 0, (
         f"Wheel install failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"

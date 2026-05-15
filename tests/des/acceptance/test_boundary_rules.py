@@ -29,6 +29,8 @@ STATUS: RED (Outside-In TDD - awaiting DELIVER wave implementation)
 
 import json
 
+import pytest
+
 
 class TestBoundaryRulesInclusion:
     """
@@ -520,6 +522,28 @@ class TestScopeViolationAuditLogging:
     Validates that scope violations are logged as warnings in the audit trail
     for Priya's PR review.
     """
+
+    @pytest.fixture(autouse=True)
+    def _isolate_audit_log(self, tmp_path, monkeypatch):
+        """Isolate audit log to per-test tmp_path to prevent xdist cross-scenario
+        pollution.
+
+        Class D root cause (Rex RCA 2026-05-13): scenarios 010 + 011 instantiated
+        bare `JsonlAuditLogWriter()` which falls through `AuditLogPathResolver` to
+        the project-local shared file `.nwave/des/logs/audit-YYYY-MM-DD.log`.
+        Under pytest-xdist -n auto --dist=loadgroup, scenarios run concurrently
+        on different workers — scenario 010's 3 SCOPE_VIOLATION entries appeared
+        between scenario 011's before/after snapshots → false-positive assertion
+        ("Expected 0 NEW SCOPE_VIOLATION entries, got 3").
+
+        Fix: set DES_AUDIT_LOG_DIR (production-supported priority-2 override) to
+        per-test tmp_path. Zero production change; no test backdoor.
+
+        Refs: docs/feature/fix-scope-violation-pollution/discuss/rca.md
+        """
+        audit_dir = tmp_path / "audit"
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("DES_AUDIT_LOG_DIR", str(audit_dir))
 
     # =========================================================================
     # AC-007.5: Scope violations logged as warnings in audit trail

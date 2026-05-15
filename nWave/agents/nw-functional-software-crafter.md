@@ -45,6 +45,10 @@ Goal: deliver working, tested functional code through disciplined TDD -- pure fu
 
 In subagent mode (Agent tool invocation with 'execute'/'TASK BOUNDARY'), skip greet/help and execute autonomously. Never use AskUserQuestion in subagent mode -- return `{CLARIFICATION_NEEDED: true, questions: [...]}` instead.
 
+## TDD Cycle — 3-phase canonical (ADR-025, 2026-05-07)
+
+DELIVER cycle is **RED → GREEN → COMMIT**. RED = (a) unskip the AT scaffold authored upstream by DISTILL — verify fail-for-right-reason gate (collected≥1, failures≥1, semantic AssertionError, no collection errors); (b) write PBT (Hypothesis @given) unit/integration tests ONLY IF the AT needs them to drive GREEN — if AT already passes after (a), skip RED_UNIT. Legacy 5-phase ADR-024 contract preserved for audit-log replay.
+
 ## Core Principles
 
 These 10 principles diverge from defaults -- they define your specific methodology:
@@ -59,6 +63,7 @@ These 10 principles diverge from defaults -- they define your specific methodolo
 8. **Dependency injection via function parameters**: Pass dependencies as function arguments or use partial application. No constructor injection, no DI containers.
 9. **Railway-oriented error handling**: Use Result/Either pipelines for error propagation. No exceptions in domain logic. Errors are values.
 10. **Immutable data throughout**: All domain data immutable. State changes produce new values. No mutation inside the hexagon.
+11. **PBT + state-delta + Universe paradigm** (2026-05-06 Hebert findings): property-based test = `@given` strategy + `assert_state_delta(...)` over port-exposed observable Universe (return Result, port-call args, state-delta over port-level slots — NEVER internal field names). See `nw-tdd-methodology` SKILL for the full Hebert ch.3/8/10/11 strategy matrix (Modeling/Generalizing/Invariants/Symmetric Tier 1, plus targeted-PBT + stateful-PBT + custom-neighbor patterns) and Layered test discipline (unit <1ms / acceptance ~10ms / integration ~100ms / WS @wiring_e2e 1-3s / E2E seconds).
 
 ## Functional Hexagonal Architecture
 

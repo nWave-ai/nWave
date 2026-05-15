@@ -212,11 +212,13 @@ class TargetPlatform(Enum):
     """Target AI coding platforms for nWave installation.
 
     CLAUDE_CODE: Anthropic's Claude Code CLI
-    OPENCODE: OpenCode AI coding assistant
+    OPENCODE: OpenCode AI coding assistant (Charm Bracelet, ~/.config/opencode/)
+    CODEX: OpenAI Codex CLI (Rust, ~/.codex/)
     """
 
     CLAUDE_CODE = "claude_code"
     OPENCODE = "opencode"
+    CODEX = "codex"
 
 
 def _detect_claude_code() -> bool:
@@ -249,12 +251,28 @@ def _detect_opencode() -> bool:
     return opencode_binary or opencode_config_exists
 
 
+def _detect_codex() -> bool:
+    """Detect if Codex CLI is available for installation.
+
+    Checks two signals:
+    - `codex` binary in PATH (via shutil.which)
+    - ~/.codex/ directory exists
+
+    Returns:
+        True if any Codex CLI signal is detected.
+    """
+    codex_binary = shutil.which("codex") is not None
+    codex_config_exists = (Path.home() / ".codex").is_dir()
+    return codex_binary or codex_config_exists
+
+
 def detect_target_platforms() -> set[TargetPlatform]:
     """Auto-detect which AI coding platforms are available for installation.
 
     Detection signals:
     - Claude Code: ~/.claude/ directory exists OR CLAUDE_CODE env var set
     - OpenCode: `opencode` binary in PATH (shutil.which) OR ~/.config/opencode/ exists
+    - Codex CLI: `codex` binary in PATH OR ~/.codex/ directory exists
 
     Returns:
         Set of detected platforms. Defaults to {CLAUDE_CODE} if nothing detected.
@@ -266,6 +284,9 @@ def detect_target_platforms() -> set[TargetPlatform]:
 
     if _detect_opencode():
         platforms.add(TargetPlatform.OPENCODE)
+
+    if _detect_codex():
+        platforms.add(TargetPlatform.CODEX)
 
     # Default to Claude Code if nothing detected
     if not platforms:

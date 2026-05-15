@@ -1,0 +1,125 @@
+// {Feature}Specifications.cs — step-method partial class backing the scenarios.
+//
+// Responsibilities:
+//   - Construct the SUT through the PRODUCTION composition root
+//     (`ProductionApp`). Swap only external / non-deterministic ports with
+//     fakes (clock, RNG, paid APIs).
+//   - Capture the universe via `app.CaptureUniverseAsync(...)`.
+//   - Assert via `StateDelta.Assert` from `tests/Common/StateDelta.cs`.
+//
+// No domain language leaks into the production-app wiring; no production-app
+// details leak into the scenarios partial.
+//
+// xUnit lifecycle: per-test instance via the class constructor; xUnit creates
+// a fresh `{Feature}Tests` for every `[Fact]`, so instance fields reset
+// automatically (equivalent to vitest's `beforeEach`).
+
+#nullable enable
+
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using NWave.Polyglot.StateDelta;
+
+using static NWave.Polyglot.StateDelta.StateDelta;
+
+namespace NWave.Polyglot.{Feature}.Tests;
+
+public partial class {Feature}Tests
+{
+    // -----------------------------------------------------------------------
+    // Per-test fixture (xUnit instantiates {Feature}Tests per [Fact] — fields
+    // are reset automatically).
+    // -----------------------------------------------------------------------
+
+    private ProductionApp _app;
+    private Dictionary<string, object?> _stateBefore;
+
+    // Universe for the {feature} feature — port-exposed observables only:
+    //   - registry.users : list of registered user records (driven-port state)
+    //   - audit.events   : append-only audit trail (driven-port state)
+    // Do NOT add internal fields here; refactoring would break the test.
+    private static readonly HashSet<string> SIGNUP_UNIVERSE = new()
+    {
+        "registry.users",
+        "audit.events",
+    };
+
+    public {Feature}Tests()
+    {
+        _app = new ProductionApp();
+        _stateBefore = new Dictionary<string, object?>();
+    }
+
+    // -----------------------------------------------------------------------
+    // Step methods — Given / When / Then
+    // -----------------------------------------------------------------------
+
+    private async Task Given_AFreshSignupRegistry()
+    {
+        // Precondition only — the fresh registry is established by ProductionApp's
+        // constructor (already called from the test constructor above). Re-capture
+        // the baseline so subsequent Whens delta against *this* moment.
+        _app = new ProductionApp();
+        _stateBefore = await _app.CaptureUniverseAsync(SIGNUP_UNIVERSE);
+    }
+
+    private async Task When_UserSignsUpWithEmail(string email)
+    {
+        await _app.SignupAsync(email);
+    }
+
+    private async Task Then_UserIsAddedToRegistryAndAuditedOnce(string email)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        var stateAfter = await _app.CaptureUniverseAsync(SIGNUP_UNIVERSE);
+
+        var expectedUser = new Dictionary<string, object?> { ["Email"] = normalized };
+        var expectedEvent = new Dictionary<string, object?>
+        {
+            ["Type"] = "UserSignedUp",
+            ["Email"] = normalized,
+        };
+
+        Assert(
+            _stateBefore,
+            stateAfter,
+            SIGNUP_UNIVERSE,
+            new Dictionary<string, Predicate>
+            {
+                ["registry.users"] = ArrayAppended(expectedUser),
+                ["audit.events"] = ArrayAppended(expectedEvent),
+            });
+    }
+
+    private async Task When_UserAttemptsDuplicateSignup(string email)
+    {
+        // Re-baseline before the duplicate attempt so the state-delta assertion
+        // measures the change *caused by the duplicate*, not the original signup.
+        _stateBefore = await _app.CaptureUniverseAsync(SIGNUP_UNIVERSE);
+        try
+        {
+            await _app.SignupAsync(email);
+        }
+        catch (DuplicateSignupException)
+        {
+            // Expected rejection — swallowed here; Then_ asserts the rejection's
+            // observable consequence (zero state delta).
+        }
+    }
+
+    private async Task Then_SecondSignupIsRejectedAndStateIsUnchanged()
+    {
+        var stateAfter = await _app.CaptureUniverseAsync(SIGNUP_UNIVERSE);
+        // Both slots must be unchanged — the duplicate must produce zero delta.
+        Assert(
+            _stateBefore,
+            stateAfter,
+            SIGNUP_UNIVERSE,
+            new Dictionary<string, Predicate>
+            {
+                ["registry.users"] = Unchanged(),
+                ["audit.events"] = Unchanged(),
+            });
+    }
+}

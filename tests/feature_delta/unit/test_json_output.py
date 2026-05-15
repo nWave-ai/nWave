@@ -18,7 +18,7 @@ from __future__ import annotations
 import io
 import json
 import sys
-from pathlib import Path  # noqa: TC003  # used in fixture bodies and runtime calls
+from pathlib import Path  # used in fixture bodies and runtime calls
 
 import pytest  # noqa: TC002  # used at runtime via pytest.CaptureFixture
 

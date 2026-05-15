@@ -8,7 +8,7 @@ real adapter cheaper than fake here per nw-tdd-methodology Mandate 6).
 
 from __future__ import annotations
 
-from pathlib import Path  # noqa: TC003  # used in fixture bodies via tmp_path
+from pathlib import Path  # used in fixture bodies via tmp_path
 
 import pytest
 from nwave_ai.outcomes.adapters.yaml_registry import YamlRegistryAdapter

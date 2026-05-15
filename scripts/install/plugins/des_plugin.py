@@ -257,7 +257,14 @@ class DESPlugin(InstallationPlugin):
             else:
                 if target_dir.exists():
                     shutil.rmtree(target_dir)
-                shutil.copytree(source_dir, target_dir)
+                # Skip bytecode caches: source __pycache__ is build artefact,
+                # not module surface. Without ignore we hit Errno 17 when
+                # backup_manager raced on the same nested path.
+                shutil.copytree(
+                    source_dir,
+                    target_dir,
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+                )
 
                 # Skip rewriting if pre-built from dist/ (already done by build_dist.py)
                 if not using_prebuilt:
@@ -1084,6 +1091,18 @@ class DESPlugin(InstallationPlugin):
 
     def verify(self, context: InstallContext) -> PluginResult:
         """Verify DES installation."""
+        # Dry-run preview never wrote files, so verification has nothing to
+        # assert against. Defensive guard — the primary caller already skips
+        # validate_installation under dry_run, but any future caller (e.g. a
+        # standalone verifier) that forwards an InstallContext with dry_run
+        # must not be misled into reporting failure for a no-op preview.
+        if context.dry_run:
+            return PluginResult(
+                success=True,
+                plugin_name="des",
+                message="dry-run: verification skipped",
+            )
+
         errors = []
 
         # 1. Verify DES module importable under the SAME Python that hooks use

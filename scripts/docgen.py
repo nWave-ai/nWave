@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import shutil
 import sys
 from pathlib import Path
 from typing import TypedDict
@@ -566,9 +565,18 @@ def render(data: dict[str, list]) -> dict[str, str]:
 # Stage 5: Write
 # ---------------------------------------------------------------------------
 def write_pages(pages: dict[str, str], output_dir: Path) -> None:
-    """Write pages to output_dir, cleaning it first for deterministic output."""
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
+    """Write pages to output_dir surgically.
+
+    Files in pages.keys() are created or overwritten with the new content.
+    Files NOT in pages.keys() (foreign / hand-authored / out-of-band) are
+    left untouched. output_dir is created if it does not yet exist.
+
+    This replaces the prior shutil.rmtree-based regeneration which destroyed
+    any file under output_dir that the renderer did not reproduce. See
+    docs/analysis/rca-pre-push-hook-untracked-deletion-2026-05-06.md for the
+    RCA that motivated this surgical-write design.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
     for rel_path, content in pages.items():
         full_path = output_dir / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)

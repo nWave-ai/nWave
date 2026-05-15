@@ -41,6 +41,26 @@ The **GitHub repo** `nWave-ai/nWave` ships the full open-source tree (source, te
 
 **If something is leaking where it shouldn't** (e.g. private agent in public repo, unused script in the PyPI wheel), the fix path is usually: (a) update `framework-catalog.yaml` `public:` flags, (b) tighten rsync excludes, or (c) narrow `patch_pyproject.py` force-include. Do not modify the tests that guard these contracts.
 
+### Repository topology — separation contract (2026-05-15)
+
+Ale 2026-05-15 directive: **nwave-dev and nwave-software-factory are two independent repos**, each with own `.git/`, own origin remote. Worktree-sharing era pre-split (2026-04-09 to 2026-05-15) is decommissioned.
+
+**Hard invariants enforced mechanically**:
+
+1. **Origin URL contract** — this repo's `origin` MUST be `git@github.com:nWave-ai/nwave-dev.git`. Verified by `.git/hooks/pre-push` repo-separation guard (blocks pushes to URLs containing `nwave-software-factory`).
+2. **`.git/` independence** — no `git worktree` shared with nwave-software-factory. Each repo has own `.git/`.
+3. **No cross-tree code leak** — nwave-dev MUST NOT contain DES 3.0 / CPE / dispatch layer / expectations engine / license_runtime / cost-efficiency-determinism modules. Shared canonical agents+skills DO span both repos by design (most are non-IP-sensitive methodology assets).
+4. **Memory rule reinforcement** — `feedback_target_machine_independence_2026_05_15.md` + `feedback_branch_isolation.md` + `feedback_no_des_hardening_on_master.md` enforce zero references to closed-source artifacts in master commits.
+5. **CI/release pipeline filters** — release-prod.yml rsync `--exclude 'docs/*'` (catch-all) + framework-catalog `public:` flag + `patch_pyproject.py` force-include narrow gate. Pipeline already filters non-public docs; only `docs/guides/` + `docs/reference/` are public.
+
+**Workflow going forward**:
+
+- nwave-dev work → push `git@github.com:nWave-ai/nwave-dev.git`
+- nwave-software-factory work → done in sibling repo `~/Projects/nWave-software-factory/` (sister Lyra), origin = `git@github.com:nWave-ai/nWave-software-factory.git`
+- v3.15.0 PyPI release: cosmetic leak detected post-publish (2 references in `nWave/skills/nw-tdd-methodology/SKILL.md`, shared content per Ale, scrubbed via commit `3ab776967`). Re-evaluated as operational data, NOT IP disclosure. Routine 3.15.1 supersede planned.
+
+**Origin story**: 2026-04-09 → 2026-05-15 worktree-shared period mixed histories on nwave-dev remote. ~7 SF-only branches (feat/contract-architecture-test-directive-followup, determinism, feature/bas-core, feature/wave-events-projection-discuss, feature/prism-event-emission-completeness, feature/wave-lang-r1, wt-framework-rationalization-p6-exec) await branch cleanup epic #55.
+
 ---
 
 ## Project Structure
@@ -141,12 +161,19 @@ Claude Code Hooks (pre-tool-use, subagent-stop, post-tool-use)
 └────────────────────────────────────────────────────────────┘
 ```
 
-**TDD 5-Phase Cycle** (canonical, from `step-tdd-cycle-schema.json` v4.0):
+**TDD 3-Phase Canon** (ADR-025, 2026-05-07):
+1. RED — unskip the acceptance test scaffold authored by DISTILL (fail-for-right-reason gate: collected ≥ 1, failures ≥ 1, semantic AssertionError); write PBT unit tests ONLY when the AT cannot reach GREEN without them. DISTILL retains canonical AT authorship — DELIVER does NOT re-author ATs.
+2. GREEN — minimal implementation to make AT + any RED-authored unit tests pass.
+3. COMMIT — refactor, stage, conventional commit with `Step-Id:` trailer. No regressions.
+
+**Legacy 5-Phase Contract** (ADR-024 era, schema `step-tdd-cycle-schema.json` v4.0 — preserved for audit-log replay of pre-2026-05-07 commits):
 1. PREPARE — setup test fixtures
 2. RED_ACCEPTANCE — write failing acceptance test
 3. RED_UNIT — write failing unit tests
 4. GREEN — implement until all tests pass
 5. COMMIT — refactor, finalize, no regressions
+
+References to RED_ACCEPTANCE / RED_UNIT in existing execution logs describe the legacy contract; new work treats them as merged inside RED.
 
 ---
 

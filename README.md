@@ -56,7 +56,12 @@ Using pipx or OpenCode instead? [See alternative install methods](#alternative-i
 
 ---
 
-## What's New in v3.14
+## What's New in v3.15
+
+- **3-Phase TDD Canon (Default)** — New canonical TDD methodology (RED → GREEN → COMMIT) replaces the legacy 5-phase contract (PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT). Documented in ADR-025. Dual-canon backward compatibility: existing audit logs and pre-2026-05-07 executions replay correctly under v4 5-phase contract; new work uses 3-phase by default. Configured per rigor profile (lean mode uses RED → GREEN).
+- **Codex CLI support** — Full nWave DES enforcement now works with [OpenAI Codex CLI](https://platform.openai.com/docs/guides/codex). Pre-tool-use hooks wire automatically; every Bash and file action validates against your TDD phase gates. See **[Installing for Codex CLI](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installing-codex.md)**.
+
+## Previous Release (v3.14)
 
 - **Lean wave docs (L7 single-file)** — Each feature lives in one `feature-delta.md` with schema-typed section headings (`## Wave: <WAVE> / [REF|WHY|HOW] <name>`). Tier-1 `[REF]` is auto-produced; Tier-2 `[WHY]` and `[HOW]` are opt-in via `--expand`. Downstream agents grep section headings instead of reading whole subdirectories. See **[Feature Delta Format (L7)](https://github.com/nWave-ai/nWave/tree/main/docs/guides/feature-delta-l7-format.md)**.
 - **Feature-delta validator** — `nwave-ai validate-feature-delta <path>` checks structural rules (E1–E5) and emits JSON for CI integration. Vendor-neutral: no hooks auto-installed; pick a recipe from **[Enforcement Recipes](https://github.com/nWave-ai/nWave/tree/main/docs/guides/enforcement-recipes.md)** (12 platforms covered).
@@ -138,6 +143,23 @@ nwave-ai install
 
 OpenCode compatibility: about 67% of nWave features work natively. For full feature parity, Claude Code remains the primary environment. See [OpenCode compatibility notes](#opencode-support-alternative-ide) below.
 
+**Using Codex** (OpenAI CLI):
+```bash
+# Step 1: install Codex CLI if not already installed
+# (Download from https://platform.openai.com/docs/guides/codex)
+
+# Step 2: install nWave CLI
+uv tool install nwave-ai        # or: pipx install nwave-ai
+
+# Step 3: install nWave into Codex
+nwave-ai install --platform codex
+
+# Step 4: verify DES hooks are wired
+nwave-ai doctor
+```
+
+Codex integration: nWave's DES enforcement (TDD phase gates, validation hooks) fires when you run Codex sessions, just as it does on Claude Code. See **[Installing for Codex CLI](#installing-for-codex-cli)** below for details and troubleshooting.
+
 ### Plugin marketplace (not recommended)
 
 > **DES enforcement does not work via the plugin marketplace and never will.** The plugin marketplace install path is blocked on an upstream Claude Code limitation ([anthropics/claude-code#24529](https://github.com/anthropics/claude-code/issues/24529)) where `${CLAUDE_PLUGIN_ROOT}` is not populated in plugin hook execution contexts. Without DES hooks, you lose phase enforcement, TDD validation, rigor profiles, and audit logging, which are the core of what nWave does.
@@ -175,6 +197,60 @@ nwave-ai install
 - DES hooks integrate via OpenCode's `tool.execute.before` mechanism
 - Some advanced subagent coordination may differ from Claude Code. Use the core `/nw-discuss`, `/nw-design`, `/nw-distill`, `/nw-deliver` commands for best results
 - For full feature parity and support, Claude Code remains the primary environment
+
+### Installing for Codex CLI
+
+nWave integrates with the [OpenAI Codex CLI](https://platform.openai.com/docs/guides/codex) via pre-tool-use hooks. When installed, every Bash and file-edit action fires nWave's DES validation — the same enforcement that runs on Claude Code.
+
+**Prerequisites:**
+- OpenAI Codex CLI installed (`codex` binary on PATH) or `~/.codex/` directory exists
+- Python 3.10+
+
+**Auto-detect installation (recommended):**
+```bash
+pipx install nwave-ai
+nwave-ai install            # auto-detects Codex + installs hooks
+```
+
+**Explicit Codex installation:**
+```bash
+nwave-ai install --platform codex
+```
+
+**What gets written:** nWave creates `~/.codex/hooks.json` with an event-keyed structure:
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$|^apply_patch$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -m des.adapters.drivers.hooks.claude_code_hook_adapter pre-tool-use"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Verify installation succeeded:**
+```bash
+cat ~/.codex/hooks.json | jq '.hooks.PreToolUse | length'
+# Expected output: 1 (or higher if you have other hook entries)
+```
+
+**Troubleshooting:**
+
+- **"Codex not detected"** — Check `which codex` and `ls ~/.codex/`. To force install before the Codex binary exists, use `--platform codex`. You'll need to install Codex separately before hooks will fire.
+
+- **"Hook fires but audit log empty"** — Verify `~/.claude/des-audit.jsonl` is writable and `~/.claude/lib/python/des/` exists. Run a Codex action and check the log: `tail -5 ~/.claude/des-audit.jsonl | jq .`
+
+- **"Codex says hook not loaded"** — Ensure `hooks.json` uses the event-keyed format above (not a legacy top-level array). Reinstall with `nwave-ai install --platform codex --force` if in doubt.
+
+For detailed setup and workflow, see **[Installing for Codex CLI](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installing-codex.md)**.
 
 ### Which method?
 
@@ -245,9 +321,9 @@ nWave enforces proven engineering practices (TDD, peer review, mutation testing)
 | Profile | Agent | Reviewer | TDD | Mutation | Cost | Use When |
 |---------|-------|----------|-----|----------|------|----------|
 | **lean** | haiku | none | RED→GREEN | no | lowest | Spikes, config, docs |
-| **standard** (default) | sonnet | haiku | full 5-phase | no | moderate | Most features |
-| **thorough** | opus | sonnet | full 5-phase | no | higher | Critical features |
-| **exhaustive** | opus | opus | full 5-phase | ≥80% kill | highest | Production core |
+| **standard** (default) | sonnet | haiku | 3-phase (RED→GREEN→COMMIT) | no | moderate | Most features |
+| **thorough** | opus | sonnet | 3-phase (RED→GREEN→COMMIT) | no | higher | Critical features |
+| **exhaustive** | opus | opus | 3-phase (RED→GREEN→COMMIT) | ≥80% kill | highest | Production core |
 | **custom** | *you choose* | *you choose* | *you choose* | *you choose* | varies | Exact combination |
 
 Picked once, persists across sessions. Every `/nw-deliver`, `/nw-design`, `/nw-review` respects your choice. Need to mix profiles? `/nw-rigor custom` walks through each setting.

@@ -81,7 +81,9 @@ class TestInit:
         )
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
-        assert data["roadmap"]["phases"] == 3
+        # F-1: skeleton must NOT emit roadmap.phases int (collides with top-level
+        # `phases: array`). The array length below is the canonical phase count.
+        assert "phases" not in data["roadmap"]
         assert data["roadmap"]["total_steps"] == 6
         assert len(data["phases"]) == 3
         assert len(data["phases"][0]["steps"]) == 2
@@ -91,6 +93,8 @@ class TestInit:
         assert data["phases"][0]["steps"][0]["id"] == "01-01"
         assert data["phases"][1]["steps"][2]["id"] == "02-03"
         assert data["phases"][2]["steps"][0]["id"] == "03-01"
+        # F-1: step.criteria is a JSON list (empty placeholder), not a TODO string.
+        assert data["phases"][0]["steps"][0]["criteria"] == []
 
     def test_init_output_passes_validate(self, tmp_path):
         """Round-trip: init output passes validate."""
@@ -135,7 +139,8 @@ class TestInit:
         )
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
-        assert data["roadmap"]["phases"] == 3
+        # F-1: legacy roadmap.phases int field removed; array length is canonical.
+        assert "phases" not in data["roadmap"]
         assert len(data["phases"]) == 3
 
     def test_init_scaffold_includes_test_file_and_scenario_name(self, capsys):
@@ -184,13 +189,13 @@ class TestValidate:
         return path
 
     def _valid_roadmap(self):
-        """Return a minimal valid roadmap dict."""
+        """Return a minimal valid roadmap dict (F-1 schema: criteria as list)."""
         return {
             "roadmap": {
                 "project_id": "test",
                 "created_at": "2026-01-01T00:00:00Z",
                 "total_steps": 2,
-                "phases": 1,
+                # F-1: legacy roadmap.phases int omitted; array length below is canonical.
             },
             "phases": [
                 {
@@ -200,12 +205,12 @@ class TestValidate:
                         {
                             "id": "01-01",
                             "name": "Step one",
-                            "criteria": "criterion one",
+                            "criteria": ["criterion one"],
                         },
                         {
                             "id": "01-02",
                             "name": "Step two",
-                            "criteria": "criterion two",
+                            "criteria": ["criterion two"],
                         },
                     ],
                 }
@@ -263,17 +268,20 @@ class TestValidate:
         assert main(["validate", str(path)]) == 1
 
     def test_phases_count_mismatch_exit_1(self, tmp_path):
-        """Declared phases count mismatch returns exit 1."""
+        """Declared roadmap.phases int (legacy) mismatching array length errors."""
+        # F-1: skeleton no longer emits this field; validator still detects
+        # legacy-authored mismatches when present, preserving regression safety.
         data = self._valid_roadmap()
-        data["roadmap"]["phases"] = 5
+        data["roadmap"]["phases"] = 5  # array length is 1 → mismatch
         path = self._write_roadmap(tmp_path, data)
         assert main(["validate", str(path)]) == 1
 
     def test_criteria_word_count_warning(self, tmp_path, capsys):
         """Criteria exceeding word count produces warning but exit 0."""
         data = self._valid_roadmap()
+        # F-1: criteria is a list[str]; place the long criterion as one element.
         long_criteria = " ".join(["word"] * 35)
-        data["phases"][0]["steps"][0]["criteria"] = long_criteria
+        data["phases"][0]["steps"][0]["criteria"] = [long_criteria]
         path = self._write_roadmap(tmp_path, data)
         rc = main(["validate", str(path)])
         assert rc == 0  # Warnings don't fail validation
@@ -333,9 +341,10 @@ class TestValidate:
         assert rc == 2
 
     def test_too_many_criteria_warning(self, tmp_path, capsys):
-        """Too many criteria (>5 semicolons) produces warning."""
+        """Too many criteria (>5) produces warning."""
         data = self._valid_roadmap()
-        data["phases"][0]["steps"][0]["criteria"] = "a; b; c; d; e; f; g"
+        # F-1: criteria is list[str]; element count is counted against max.
+        data["phases"][0]["steps"][0]["criteria"] = ["a", "b", "c", "d", "e", "f", "g"]
         path = self._write_roadmap(tmp_path, data)
         rc = main(["validate", str(path)])
         assert rc == 0

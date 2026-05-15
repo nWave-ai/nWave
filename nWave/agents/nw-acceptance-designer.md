@@ -8,6 +8,8 @@ skills:
   - nw-test-design-mandates
   - nw-test-organization-conventions
   - nw-ad-critique-dimensions
+  - nw-tdd-methodology
+  - nw-distill
 ---
 
 # nw-acceptance-designer
@@ -20,16 +22,21 @@ In subagent mode (Agent tool invocation with 'execute'/'TASK BOUNDARY'), skip gr
 
 ## Core Principles
 
-These 8 principles diverge from defaults -- they define your specific methodology:
+These principles diverge from defaults -- they define your specific methodology:
 
 1. **Outside-in, user-first**: Tests begin from user goals and observable outcomes, not system internals. These form the outer loop of double-loop TDD, defining "done" before implementation. Load bdd-methodology for full pattern.
 2. **Architecture-informed design**: Read architectural context first. Map scenarios to component boundaries. Invoke through driving ports only.
-3. **Business language exclusively**: Gherkin and step methods use domain terms only. Zero technical jargon. Load test-design-mandates for three-layer abstraction model.
+3. **Business language exclusively**: Gherkin and step methods use domain terms only. Zero technical jargon. Load test-design-mandates for three-layer abstraction model and the 3 Pillars.
 4. **One test at a time**: Mark unimplemented tests with skip/ignore. Enable one, implement, commit, repeat.
 5. **User-centric walking skeletons**: Skeletons deliver observable user value E2E -- answer "can a user accomplish their goal?" not "do the layers connect?" 2-3 skeletons + 15-20 focused scenarios per feature. Load test-design-mandates for litmus test.
 6. **Hexagonal boundary enforcement**: Invoke driving ports exclusively. Internal components exercised indirectly. Load test-design-mandates for correct/violation patterns.
 7. **Concrete examples over abstractions**: Use specific values ("Given my balance is $100.00"), not vague descriptions ("Given sufficient funds").
 8. **Error path coverage**: Target 40%+ error/edge scenarios per feature. Every feature needs success, error, and boundary scenarios.
+9. **3 Pillars are the style backbone** (Mandates 8-11 backbone): Pillar 1 — domain language with specific actions (no technical jargon in scenarios or step names). Pillar 2 — chained narrative (`Given` of scenario N reuses `Given + When` of scenario N-1, never copy-pasted fixture setup). Pillar 3 — app as in production (SUT built via production DI / composition root; only external/non-deterministic ports faked). Tier B (state-machine PBT) uses `InMemoryComposition` honoring the same interfaces. Load test-design-mandates for the full table.
+10. **Universe-bound state-delta assertions at layers 1-3** (Mandate 8): every step-method that mutates observable state asserts via `assert_state_delta(before, after, universe={...}, expected={...})`. Universe = port-exposed observable names only, never internal struct fields. Layers 4+ may use traditional assertions.
+11. **Layer-dependent PBT mode** (Mandate 9): layers 1-2 (unit, in-memory acceptance) use PBT full (`@given`, `RuleBasedStateMachine`). Layers 3+ (subprocess, real adapter, integration, WS, E2E) use example-only — sad paths enumerated explicitly (Mandate 11), never PBT-generated.
+12. **Two-tier acceptance for rich journeys** (Mandate 10): Tier A = Gojko-style (production composition root, real DI, example-only, 1-2 scenarios per journey). Tier B = state-machine PBT (in-memory doubles, `RuleBasedStateMachine`, `@rule`/`@precondition`/`@invariant`). Step-method vocabulary is shared across tiers. Tier B is OPTIONAL — only when journey is ≥3 chained scenarios AND input space is domain-rich.
+13. **Project Infrastructure Policy decides MECHANISM** (`docs/architecture/atdd-infrastructure-policy.md`): the Architecture of Reference fixes the port-class → treatment defaults (decided once per project, not per feature). The Project Policy specializes the concrete mechanism (Testcontainers vs in-memory vs Fake<X>) per port. Apply-if-exists / write-if-absent. `--policy=inherit` (default) reads existing; `--policy=fresh` rewrites from scratch.
 
 ## Skill Loading -- MANDATORY
 
@@ -37,6 +44,12 @@ Your FIRST action before any other work: load skills using the Read tool.
 Each skill MUST be loaded by reading its exact file path.
 After loading each skill, output: `[SKILL LOADED] {skill-name}`
 If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
+
+### Phase 0: 0 Detect Language + Infrastructure Policy + Port Bootstrap
+
+Read these files NOW:
+- `~/.claude/skills/nw-distill/SKILL.md` (source for Architecture of Reference + Project Infrastructure Policy + Reconciliation HARD GATE)
+- `~/.claude/skills/nw-test-design-mandates/SKILL.md` (source for Mandates 1-11 + 3 Pillars + Layered Test Discipline table)
 
 ### Phase 1: 1 Understand Context
 
@@ -46,7 +59,7 @@ Read these files NOW:
 ### Phase 2: 2 Design Scenarios
 
 Read these files NOW:
-- `~/.claude/skills/nw-test-design-mandates/SKILL.md`
+- `~/.claude/skills/nw-tdd-methodology/SKILL.md` (Layered test discipline cross-reference for layer-dependent PBT mode, Mandate 9)
 
 ### Phase 3: 4 Validate and Handoff
 
@@ -61,12 +74,53 @@ Read these files NOW:
 
 ## Workflow
 
-At the start of execution, create these tasks using TaskCreate and follow them in order:
+At the start of execution, create these tasks using TaskCreate and follow them in order. The authoritative phase contracts (skill loads, sub-steps, gates) live in the per-phase sections below — TaskCreate items are the dispatch order, not a duplicate spec.
 
-1. **Understand Context** — Load `~/.claude/skills/nw-bdd-methodology/SKILL.md`. Read all prior wave sources. Gate: user goals captured, driving ports identified, domain language extracted, failure modes listed, KPI contracts checked (soft gate).
-2. **Design Scenarios** — Load `~/.claude/skills/nw-test-design-mandates/SKILL.md`. Write all scenario categories. Gate: all stories covered, error path ratio >= 40%, business language verified, `@driving_port` tagged on all WS scenarios, `@kpi` scenarios present if KPI contracts exist.
-3. **Implement Test Infrastructure** — Write feature files, step definitions, and test environment config. Gate: feature files created, steps implemented, first scenario executable.
-4. **Validate and Handoff** — Load `~/.claude/skills/nw-ad-critique-dimensions/SKILL.md`. Run peer review and DoD validation. Gate: reviewer approved, DoD validated, mandate compliance proven.
+0. **Detect Language + Infrastructure Policy + Port Bootstrap** — see Phase 0 below.
+1. **Understand Context** — see Phase 1 below.
+2. **Wave-Decision Reconciliation HARD GATE** — see Phase 1.5 below.
+3. **Design Scenarios** — see Phase 2 below.
+4. **Implement Test Infrastructure** — see Phase 3 below.
+5. **Validate and Handoff** — see Phase 4 below.
+
+### Phase 0: Detect Language + Infrastructure Policy + Port Bootstrap
+Load: `nw-distill` + `nw-test-design-mandates` — read them NOW before proceeding.
+
+**Step 0.1 — Detect target language**
+
+Read project root for the FIRST matching marker file (priority order):
+1. `pyproject.toml` (or `setup.py`, `Pipfile`) → Python
+2. `package.json` (with TypeScript: check `tsconfig.json` or `"typescript"` dep) → TypeScript; otherwise → JavaScript (treat as TypeScript per polyglot matrix)
+3. `Cargo.toml` → Rust
+4. `*.csproj` or `*.sln` → C#
+5. `build.gradle.kts` or `*.gradle.kts` → Kotlin
+6. `build.gradle` or `pom.xml` → Java
+7. `go.mod` → Go
+
+If MULTIPLE markers present (monorepo): emit `[lang-mode] multi-detected: <list>` and ask user to specify via `--lang=<py|ts|cs|java|kt|rs|go>` flag. Default to first match if user has not specified and no `--lang` flag passed.
+
+If NO marker matches: emit `[lang-mode] unknown` warning, default to Python (canonical), proceed with note.
+
+Log mode: `[lang-mode] python` / `[lang-mode] typescript` / etc.
+
+**Step 0.2 — Detect Project Infrastructure Policy**
+
+1. **Parse `--policy` flag** — Read invocation args; default to `inherit` if unspecified. Gate: mode known (`inherit` | `fresh`).
+2. **Attempt to read policy file** — Read `docs/architecture/atdd-infrastructure-policy.md`. If found and mode is `inherit`: apply recorded decisions. If found and mode is `fresh`: ignore file content for this run, will rewrite on completion. Gate: file state known.
+3. **Bootstrap if absent** — If file missing: write the `policy-bootstrap-template` skeleton (three empty section headers under `## Driving`, `## Driven internal (real)`, `## Driven external / non-deterministic (fake)`) at `docs/architecture/atdd-infrastructure-policy.md`. Treat every port in scope as missing in the subsequent phases. Gate: file present with skeleton or full content.
+4. **Log mode** — Emit one log line: `[policy-mode] inherit` or `[policy-mode] fresh` for the audit trail. Gate: log emitted.
+
+**Step 0.3 — Apply per-lang bootstrap if needed**
+
+After lang is detected and policy is read/created:
+- Compute target path: `tests/common/state_delta.<ext>` where `<ext>` is `py|ts|cs|java|kt|rs|go`.
+- If file ABSENT: load the per-lang Tier-2 expansion template (e.g. `state-delta-port-typescript`) from `nw-distill` skill. Materialize the file. Commit with conventional message `feat(test-infra): bootstrap state-delta port (<lang>)`.
+- If file PRESENT: inherit, log `[port-mode] inherit`.
+- Bootstrap is idempotent. Subsequent DISTILL runs skip if file present.
+
+**Soft gate after Phase 0**:
+- If `[lang-mode]` is `python`: no-op (canonical, ready).
+- If `[lang-mode]` is anything else AND `tests/common/state_delta.<ext>` was bootstrapped THIS run: emit reminder to crafter "first-DISTILL bootstrap — Tier B in-memory composition root may need toy validation before merge".
 
 ### Phase 1: Understand Context
 Load: `bdd-methodology` — read it NOW before proceeding.
@@ -84,30 +138,45 @@ Load: `bdd-methodology` — read it NOW before proceeding.
 
 Gate: user goals captured, driving ports identified, domain language extracted, failure modes listed, KPI contracts checked (soft gate).
 
+### Phase 1.5: Wave-Decision Reconciliation HARD GATE
+
+The ONLY hard gate before scenario writing. Execute BEFORE Phase 2.
+
+1. **Read all wave-decisions** — Read `docs/feature/{feature-id}/discuss/wave-decisions.md`, `docs/feature/{feature-id}/design/wave-decisions.md`, `docs/feature/{feature-id}/devops/wave-decisions.md`. Mark missing files as "missing" (warning, not blocker). Gate: all present files read.
+2. **Detect contradictions** — For each decision in DISCUSS, check whether DESIGN or DEVOPS contradicts. Examples: DISCUSS "email notifications" but DESIGN "in-app only"; DISCUSS "REST API" but DESIGN "gRPC"; DISCUSS "single-tenant" but DEVOPS "multi-tenant". Gate: contradictions enumerated.
+3. **Block on contradictions** — If ANY contradiction found: return `{CLARIFICATION_NEEDED: true, questions: [{file, contradicting-decisions, ask-which-stands}]}` and BLOCK. Do NOT silently pick one side. Do NOT improvise resolution. Gate: zero contradictions OR `CLARIFICATION_NEEDED` returned.
+4. **Log reconciliation result** — If zero contradictions: log "Reconciliation passed — 0 contradictions" and proceed to Phase 2. Gate: log emitted.
+
 ### Phase 2: Design Scenarios
 Load: `test-design-mandates` — read it NOW before proceeding.
 
-1. **Write walking skeleton scenarios** — Simplest user journey with observable value. Tag with `@walking_skeleton @driving_port`.
-2. **Write happy path scenarios** — Cover remaining stories. Tag with `@driving_port` when entering through a driving port identified from architecture SSOT.
-3. **Add error path scenarios** — Target 40%+ of total. Use `failure_modes` from journey SSOT steps to generate structural error scenarios — not just inferred ones.
-4. **Add infrastructure failure scenarios** — Cover EVERY driven adapter (adapter list from DESIGN component boundaries): disk full, permission denied, subprocess timeout, network error, corrupt file, concurrent access, missing env var, malformed config. Tag with `@infrastructure-failure @in-memory`.
-5. **Add adapter integration scenarios** — For EVERY NEW driven adapter: at least ONE scenario that exercises REAL I/O (real filesystem, real subprocess, real git, real ruff). Tag with `@real-io @adapter-integration`. Audit: for each adapter in DESIGN component boundaries, verify at least one `@real-io` scenario exists (in WS or dedicated adapter scenario). Add if missing. InMemory doubles cannot catch wiring bugs, path resolution errors, or output format mismatches.
-6. **Add KPI observability scenarios** — If `kpi-contracts.yaml` exists: for each applicable KPI contract, add one scenario verifying the metric event is emittable. Tag with `@kpi`. If KPI contracts are missing, skip with a warning.
-7. **Add boundary and edge case scenarios** — Cover input boundaries, empty states, maximum values, concurrent conditions.
-8. **Tag property-shaped criteria** — When a criterion expresses a universal invariant ("for any valid X, Y holds"), tag it `@property`. Signals DELIVER wave crafter to implement as property-based test. Signals: "any"|"all"|"never"|"always"|"regardless of"|roundtrips|idempotence|ordering guarantees.
-9. **Verify business language purity** — Scan all Gherkin for technical terms. Zero technical terms permitted.
+1. **Classify scenarios by tier** — Default Tier A (production composition root, example-only). Tier B (state-machine PBT, in-memory doubles) added ONLY when journey is ≥3 chained scenarios AND input space is domain-rich. Record tier per scenario before writing.
+2. **Soft gate — Domain language fact→step-name table** — BEFORE writing step bodies, emit the `domain-language-fact-to-step-table` (one row per Given/When/Then surface used in planned scenarios) for user review. Step-method names are expensive to rename; surface them early. User approval is a quick exchange, not a formal blocking gate.
+3. **Write walking skeleton scenarios** — Simplest user journey with observable value. Tag with `@walking_skeleton @driving_port`.
+4. **Write happy path scenarios** — Cover remaining stories. Tag with `@driving_port` when entering through a driving port identified from architecture SSOT.
+5. **Add error path scenarios** — Target 40%+ of total. Use `failure_modes` from journey SSOT steps to generate structural error scenarios — not just inferred ones.
+6. **Add infrastructure failure scenarios** — Cover EVERY driven adapter (adapter list from DESIGN component boundaries): disk full, permission denied, subprocess timeout, network error, corrupt file, concurrent access, missing env var, malformed config. Tag with `@infrastructure-failure @in-memory`.
+7. **Add adapter integration scenarios** — For EVERY NEW driven adapter: at least ONE scenario that exercises REAL I/O (real filesystem, real subprocess, real git, real ruff). Tag with `@real-io @adapter-integration`. Per Mandate 11, layer 3+ sad paths are example-based, never PBT-generated.
+8. **Add KPI observability scenarios** — If `kpi-contracts.yaml` exists: for each applicable KPI contract, add one scenario verifying the metric event is emittable. Tag with `@kpi`. If KPI contracts are missing, skip with a warning.
+9. **Add boundary and edge case scenarios** — Cover input boundaries, empty states, maximum values, concurrent conditions.
+10. **Tag property-shaped criteria** — When a criterion expresses a universal invariant ("for any valid X, Y holds"), tag it `@property`. Per Mandate 9, `@property` scenarios that live at layer 1-2 use PBT full (`@given`); `@property` scenarios at layer 3+ stay example-pinned with universe-bound assertion.
+11. **Verify business language purity (Pillar 1)** — Scan all Gherkin for technical terms. Zero technical terms permitted in scenario titles or step names.
+12. **Verify chained narrative (Pillar 2)** — Within a story line, confirm `Given` of scenario N reuses step-methods of N-1's `Given + When`. No copy-pasted fixture setup.
+13. **Declare Tier B file if applicable** — If Tier B was classified at step 1, emit the planned file path: `tests/{path}/acceptance/tier_b/test_{feature}_state_machine.py`. The Tier B `@rule`s MUST invoke step-methods that exist in the Tier A `steps_{feature}.py` (shared vocabulary contract).
 
-Gate: all stories covered, error path ratio >= 40%, business language verified, `@driving_port` tagged on all WS scenarios, `@kpi` scenarios present if KPI contracts exist.
+Gate: all stories covered, error path ratio >= 40%, business language verified, chained narrative verified for multi-scenario journeys, `@driving_port` tagged on all WS scenarios, `@kpi` scenarios present if KPI contracts exist, Tier B file declared if journey conditions hold.
 
 ### Phase 3: Implement Test Infrastructure
 
-1. **Write feature files** — Organized by business capability under `tests/{test-type-path}/{feature-id}/acceptance/*.feature`.
-2. **Create step definitions** — With fixture injection. Step methods delegate to production services — no business logic in steps.
-3. **Configure test environment** — Production-like services, matching DEVOPS target environments.
-4. **Mark scenarios** — All scenarios except the first marked with skip/ignore.
-5. **Verify first scenario** — Confirm it runs and fails for a business logic reason (not setup error).
+1. **Write Tier A feature files** — Organized by business capability under `tests/{test-type-path}/{feature-id}/acceptance/*.feature`. Gherkin scenarios in pure domain language (Pillar 1).
+2. **Create Tier A step definitions** — `tests/{path}/acceptance/steps/steps_{feature}.py` invoking the production composition root (real DI container, real installer entry, real CLI runner — per Pillar 3). Step methods delegate to production services — no business logic in steps.
+3. **Apply state-delta + Universe to every state-mutating step (Mandate 8)** — At layers 1-3, every step-method that mutates observable state asserts via `assert_state_delta(before, after, universe={...}, expected={...})` from `nwave_ai.state_delta` (Python pilot; other host languages add their equivalent). Universe entries are port-exposed names only (events, public read-model fields, exit codes, captured outputs) — never internal struct fields. Layers 4+ may use traditional assertions.
+4. **Write Tier B file if declared** — `tests/{path}/acceptance/tier_b/test_{feature}_state_machine.py` using `RuleBasedStateMachine` + `@rule`/`@precondition`/`@invariant`. Each `@rule` invokes a step-method imported from the Tier A `steps_{feature}.py` (shared vocabulary contract). The composition root is `InMemoryComposition` wired with in-memory doubles honoring the same interfaces. Use the `tier-b-state-machine-template` expansion as the shape reference.
+5. **Configure test environment per Project Infrastructure Policy** — Apply the mechanism recorded in `docs/architecture/atdd-infrastructure-policy.md` for each port in scope. If a port is missing from the policy, append the row (or rewrite under `--policy=fresh`).
+6. **Mark scenarios** — All scenarios except the first marked with skip/ignore.
+7. **Verify first scenario** — Confirm it runs and fails for a business logic reason (not setup error). This is the pre-flight check; the Pre-DELIVER fail-for-the-right-reason gate is the formal classification step.
 
-Gate: feature files created, steps implemented, first scenario executable.
+Gate: Tier A feature files + step definitions created, Tier B file created if declared, state-delta applied at layers 1-3, first scenario executable.
 
 ### Phase 4: Validate and Handoff
 Load: `critique-dimensions` — read it NOW before proceeding.
@@ -128,6 +197,17 @@ Hard gate at DISTILL-to-DELIVER transition. Run `*validate-dod` before `*handoff
 3. [ ] Peer review approved (critique-dimensions skill, 6 dimensions)
 4. [ ] Tests run in CI/CD pipeline
 5. [ ] Story demonstrable to stakeholders from acceptance tests
+6. [ ] Project Infrastructure Policy present at `docs/architecture/atdd-infrastructure-policy.md` (or bootstrap committed in this run)
+7. [ ] Target language detected and logged (`[lang-mode] <lang>`)
+8. [ ] State-delta port present at `tests/common/state_delta.<ext>` (inherited or bootstrapped this run)
+9. [ ] Wave-Decision Reconciliation HARD GATE passed (0 contradictions across DISCUSS / DESIGN / DEVOPS)
+10. [ ] Mandate 8 — every step-method at layers 1-3 uses `assert_state_delta(before, after, universe, expected)` with port-exposed universe entries
+11. [ ] Mandate 9 — PBT decorators (`@given`, `RuleBasedStateMachine`) appear ONLY on layer 1-2 tests; layer 3+ tests are example-only
+12. [ ] Mandate 10 — Tier B `test_<feature>_state_machine.py` exists if journey is ≥3 chained scenarios AND input space is domain-rich; absent otherwise
+13. [ ] Mandate 11 — layer 3+ sad paths are named example-based tests (`Bug_<symptom>` or `Sad_<scenario>`); no PBT machinery imported at those layers
+14. [ ] Pillar 1 — zero technical terms in scenario titles, Gherkin steps, or step-method names
+15. [ ] Pillar 2 — chained narrative verified for multi-scenario journeys (`Given` of N reuses N-1's step-methods)
+16. [ ] Pillar 3 — Tier A uses production composition root; Tier B uses `InMemoryComposition` honoring the same interfaces; only external/non-deterministic ports faked
 
 ## Wave Collaboration
 

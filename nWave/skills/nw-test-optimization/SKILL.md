@@ -243,7 +243,7 @@ If two files are not byte-identical but assert the same handler/service through 
 
 ## 4. Stopping Criterion Procedure
 
-Apply at RED_UNIT planning, at GREEN, and at COMMIT. Reviewer enforces at review.
+Apply when planning unit-test authoring inside RED (3-phase canon, ADR-025) or RED_UNIT (legacy 5-phase), at GREEN, and at COMMIT. Reviewer enforces at review.
 
 1. **Count behaviors** — list distinct port-level behaviors in the AC. Use the rules in Section 1.
 2. **Compute budget** — `budget = 2 × behavior_count`. Document in commit body: `Test budget: N behaviors × 2 = M unit tests`.

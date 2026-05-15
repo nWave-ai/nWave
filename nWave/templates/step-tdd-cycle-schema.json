@@ -1,9 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TDD Cycle Extension for Step Files",
-  "description": "Template for TDD cycle extension in step files. This schema extends existing step files without overwriting their content.",
+  "description": "Template for TDD cycle extension in step files. This schema extends existing step files without overwriting their content. Supports dual canon: v4 legacy (5-phase PREPARE/RED_ACCEPTANCE/RED_UNIT/GREEN/COMMIT) preserved for audit-log replay of pre-2026-05-07 commits, AND v5 canonical (3-phase RED/GREEN/COMMIT) per ADR-025 (2026-05-07). The active list below remains v4 to keep audit-log compatibility — v5 is exposed via `valid_tdd_phases_v5` and consumed by callers that opt in via schema_version='5.0'.",
   "version": "4.0.0",
   "schema_version": "4.0",
+  "canon_migration": {
+    "adr": "ADR-025",
+    "cutover_date": "2026-05-07",
+    "legacy_canon": "v4 (5-phase: PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN, COMMIT)",
+    "current_canon": "v5 (3-phase: RED, GREEN, COMMIT) — RED merges PREPARE+RED_ACCEPTANCE+RED_UNIT",
+    "default_for_new_logs": "v5",
+    "default_for_replay": "v4",
+    "rationale": "v4 retained as default JSON shape so that pre-2026-05-07 audit logs continue to validate. v5 canonical is consumed by callers that resolve via PhaseName.is_canonical() and by markdown methodology surfaces (nw-tdd-methodology, nw-deliver, nw-rigor)."
+  },
   "tdd_cycle": {
     "acceptance_test": {
       "scenario_name": "",
@@ -236,6 +245,14 @@
     "COMMIT",
     "COMPLETED"
   ],
+  "valid_tdd_phases_v5": [
+    "NOT_STARTED",
+    "RED",
+    "GREEN",
+    "COMMIT",
+    "COMPLETED"
+  ],
+  "valid_tdd_phases_v5_note": "Canonical 3-phase contract per ADR-025 (2026-05-07). RED absorbs PREPARE+RED_ACCEPTANCE+RED_UNIT — write PBT unit tests, unskip the AT scenario authored upstream by DISTILL, exit via fail-for-right-reason gate. GREEN: implement minimum production code. COMMIT: stage+commit with Step-Id trailer. Consumed by callers that opt into v5 via schema_version='5.0'.",
   "valid_transitions": {
     "NOT_STARTED": [
       "PREPARE"
@@ -252,6 +269,21 @@
     ],
     "GREEN": [
       "COMMIT"
+    ],
+    "COMMIT": [
+      "COMPLETED"
+    ]
+  },
+  "valid_transitions_v5": {
+    "NOT_STARTED": [
+      "RED"
+    ],
+    "RED": [
+      "GREEN"
+    ],
+    "GREEN": [
+      "COMMIT",
+      "RED"
     ],
     "COMMIT": [
       "COMPLETED"

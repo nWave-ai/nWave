@@ -1,0 +1,44 @@
+/**
+ * {Feature}.scenarios.ts — domain-language acceptance scenarios.
+ *
+ * Gojko Adzic Pillars 1+2:
+ *   - Pillar 1: scenarios written in the domain language, no infrastructure noise
+ *   - Pillar 2: chained narrative — each scenario's Given may be the
+ *               composition of the previous scenario's Given + When
+ *
+ * Step methods (`Given_*`, `When_*`, `Then_*`) are imported from
+ * `{Feature}.specifications.ts`. This file contains NO direct asserts and NO
+ * test doubles wiring — those live in the specifications module.
+ *
+ * Production composition (Tier A): step methods construct the SUT through the
+ * real composition root and swap only external / non-deterministic ports with
+ * fakes. State-delta assertions go through `tests/common/state-delta.ts`.
+ */
+
+import { describe, it } from "vitest";
+
+import {
+  Given_aFreshSignupRegistry,
+  When_userSignsUpWithEmail,
+  Then_userIsAddedToRegistryAndAuditedOnce,
+  When_userAttemptsDuplicateSignup,
+  Then_secondSignupIsRejectedAndStateIsUnchanged,
+} from "./signup.specifications";
+
+describe("{Feature} — signup", () => {
+  it("User signs up with a valid email and is added to the registry", async () => {
+    await Given_aFreshSignupRegistry();
+    await When_userSignsUpWithEmail("alice@example.com");
+    await Then_userIsAddedToRegistryAndAuditedOnce("alice@example.com");
+  });
+
+  it("Duplicate signup is rejected and leaves registry+audit unchanged", async () => {
+    // Pillar 2: this Given is the composition of the previous scenario's
+    // Given + When — start with a registry already containing alice.
+    await Given_aFreshSignupRegistry();
+    await When_userSignsUpWithEmail("alice@example.com");
+
+    await When_userAttemptsDuplicateSignup("alice@example.com");
+    await Then_secondSignupIsRejectedAndStateIsUnchanged();
+  });
+});

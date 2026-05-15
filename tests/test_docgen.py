@@ -6,6 +6,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from nwave_ai.state_delta import assert_state_delta, set_to, unchanged
 
 from scripts.docgen import (
     DocgenError,
@@ -511,3 +512,98 @@ class TestCheckLinks:
             pytest.skip("docs/guides not found")
         broken = check_links(root, ["README.md", "docs/guides", "docs/reference"])
         assert broken == [], "Broken links in repo:\n" + "\n".join(broken)
+
+
+# ---------------------------------------------------------------------------
+# Regression: write_pages MUST NOT delete foreign (hand-authored) files
+# ---------------------------------------------------------------------------
+def _snapshot_dir(output_dir: Path) -> dict[str, str]:
+    """Snapshot every file under output_dir as {relative_path: content}."""
+    snapshot: dict[str, str] = {}
+    if not output_dir.exists():
+        return snapshot
+    for path in output_dir.rglob("*"):
+        if path.is_file():
+            rel = path.relative_to(output_dir).as_posix()
+            snapshot[rel] = path.read_text(encoding="utf-8")
+    return snapshot
+
+
+class TestPreservesUserAuthoredDocs:
+    """write_pages MUST perform surgical writes — never delete foreign files.
+
+    Regression for RCA `docs/analysis/rca-pre-push-hook-untracked-deletion-2026-05-06.md`.
+    Predicate: delta(output_dir) ⊆ pages.keys(). Foreign files (hand-authored,
+    untracked, or tracked-but-not-in-page-set) are preserved untouched.
+    """
+
+    def test_foreign_files_preserved_via_state_delta(self, tmp_path: Path):
+        """State-delta predicate: only files in pages.keys() may change."""
+        output_dir = tmp_path / "reference"
+        output_dir.mkdir()
+
+        # Foreign top-level file (hand-authored, not in pages)
+        foreign_top = output_dir / "user-doc.md"
+        foreign_top.write_text("hand-authored top-level\n", encoding="utf-8")
+
+        # Foreign nested file
+        nested_dir = output_dir / "subdir"
+        nested_dir.mkdir()
+        foreign_nested = nested_dir / "user-deep.md"
+        foreign_nested.write_text("hand-authored deep\n", encoding="utf-8")
+
+        # Pages the renderer owns
+        pages = {
+            "index.md": "# generated index\n",
+            "agents/nw-foo.md": "# generated agent doc\n",
+        }
+
+        before = _snapshot_dir(output_dir)
+        write_pages(pages, output_dir)
+        after = _snapshot_dir(output_dir)
+
+        # Universe = (every slot present before) UNION (every page key)
+        universe = set(before.keys()) | set(pages.keys())
+
+        # Expected per-slot:
+        #   foreign files (in `before` but not in `pages`)  -> unchanged()
+        #   page files (in `pages`)                          -> set_to(content)
+        expected = {}
+        for slot in universe:
+            if slot in pages:
+                expected[slot] = set_to(pages[slot])
+            else:
+                expected[slot] = unchanged()
+
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected=expected,
+            strict=True,
+        )
+
+        # Concrete preservation assertions (defense in depth)
+        assert foreign_top.exists(), "foreign top-level file deleted by write_pages"
+        assert foreign_top.read_text(encoding="utf-8") == "hand-authored top-level\n"
+        assert foreign_nested.exists(), "foreign nested file deleted by write_pages"
+        assert foreign_nested.read_text(encoding="utf-8") == "hand-authored deep\n"
+
+        # Pages were written
+        assert (output_dir / "index.md").read_text(encoding="utf-8") == pages[
+            "index.md"
+        ]
+        assert (output_dir / "agents" / "nw-foo.md").read_text(
+            encoding="utf-8"
+        ) == pages["agents/nw-foo.md"]
+
+    def test_creates_output_dir_if_missing(self, tmp_path: Path):
+        """write_pages MUST create output_dir when it does not yet exist."""
+        output_dir = tmp_path / "fresh" / "reference"
+        assert not output_dir.exists()
+
+        pages = {"index.md": "# fresh\n"}
+        write_pages(pages, output_dir)
+
+        assert output_dir.is_dir()
+        assert (output_dir / "index.md").read_text(encoding="utf-8") == "# fresh\n"

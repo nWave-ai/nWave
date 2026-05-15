@@ -91,3 +91,56 @@ Quality ratchet: each technique exposes gaps others miss. Prioritize critical pa
 - Fast feedback: ~100 examples | CI/CD: ~1000 examples | Nightly builds: ~10000+ examples
 
 Modern frameworks allow configuring example count per context.
+
+## State-Delta + Hypothesis Integration
+
+Combines the delta-first paradigm (see `nw-tdd-methodology::Delta-First Test Paradigm`) with Hypothesis shrinking to cover production code that branches on input shape.
+
+### `path_strategy()` — composite Hypothesis strategy
+
+Location: `nwave_ai/state_delta/strategies/path_strategy.py`
+
+Generates realistic PATH string shapes covering 4 production branches:
+1. Empty string (no PATH set)
+2. `$HOME/bin` literal (unexpanded shell variable)
+3. Legacy fallback path (`/usr/local/bin` only)
+4. Idempotent case (target already present in PATH)
+
+**Lazy-import boundary**: `hypothesis` is NOT imported at `import nwave_ai.state_delta.matcher` time. It is loaded only when `path_strategy()` is called. This is verified by a subprocess-isolated test at `tests/state_delta/unit/test_lazy_import.py` — importing the matcher in a hypothesis-free environment must not raise `ImportError`.
+
+### Integration pattern
+
+```python
+from hypothesis import given, settings
+from nwave_ai.state_delta.strategies.path_strategy import path_strategy
+from nwave_ai.state_delta import assert_state_delta, prepended_with, unchanged
+
+@given(path_strategy())
+@settings(max_examples=500)
+def test_path_injection_all_shapes(initial_path):
+    before = {"env.PATH": initial_path, "env.OTHER": "x"}
+
+    result_path = inject_nwave_bin(initial_path)
+
+    after = {"env.PATH": result_path, "env.OTHER": "x"}
+
+    assert_state_delta(
+        before,
+        after,
+        universe={"env.PATH", "env.OTHER"},
+        expected={"env.PATH": prepended_with("/home/user/.nwave/bin"),
+                  "env.OTHER": unchanged()},
+    )
+```
+
+Hypothesis shrinking finds the minimal failing PATH shape automatically when a branch is broken.
+
+### When to use this combination
+
+- Production code has **multiple branches over input shape** (empty vs. populated, legacy vs. current format).
+- You want both shrinking (Hypothesis strength) and surrounding-state verification (delta-first strength).
+- Single `@given` replaces N parametrized example tests covering the same branches.
+
+### Reference
+
+- D-12 Part B hard gate: `tests/state_delta/integration/test_pilot_bug48.py::test_pilot_bug48_post_fix_validated` — 500 examples, GREEN in 0.88s.

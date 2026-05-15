@@ -1,8 +1,8 @@
 """CLI: Verify nWave installation health with 7 diagnostic checks.
 
 Usage:
-    PYTHONPATH=src python -m des.cli.health_check
-    PYTHONPATH=src python -m des.cli.health_check --json
+    des-health-check
+    des-health-check --json
 
 Checks:
     1. version         - Read VERSION file, report version

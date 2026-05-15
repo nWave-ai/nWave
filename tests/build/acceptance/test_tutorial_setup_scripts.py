@@ -100,7 +100,12 @@ class TestTutorialSetupScript:
         with tempfile.TemporaryDirectory() as td:
             workdir = Path(td)
             first = _run_setup(script, workdir)
-            assert first.returncode == 0, f"first run failed: {first.stderr}"
+            assert first.returncode == 0, (
+                f"first run of {script.parent.name} failed "
+                f"(returncode={first.returncode})\n"
+                f"STDOUT: {first.stdout}\n"
+                f"STDERR: {first.stderr}"
+            )
             second = _run_setup(script, workdir)
             assert second.returncode == 0, (
                 f"second run failed (not idempotent) with exit {second.returncode}\n"

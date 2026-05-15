@@ -11,15 +11,71 @@ The adapter must:
 2. Extract DES markers (project_id, step_id) via DesMarkerParser
 3. Non-DES agents (no markers) -> allow passthrough
 4. DES agents -> derive execution-log path and validate via SubagentStopService
+
+State-delta migration summary
+------------------------------
+CONVERTED (2 tests) — state-delta + implicit-unchanged invariant:
+  - test_des_subagent_with_incomplete_execution_log_blocked: multi-slot
+    response universe (response.decision, response.reason); set_to("block")
+    on decision; containing("Missing phases") on reason; implicit-unchanged
+    enforces no unexpected fields appear in the block response.
+  - test_des_subagent_missing_execution_log_blocked: same universe;
+    set_to("block") on decision; containing("not found") on reason.
+
+KEPT as-is (10 tests) — no state-delta benefit:
+  - TestExtractDesContextFromTranscript (7 tests): pure return-value tests
+    on a stateless function; no mutable universe to exploit.
+  - test_non_des_subagent_allowed: exit-code + empty-stdout check only;
+    single-slot, no hidden-mutation surface.
+  - test_des_subagent_with_valid_execution_log: exit-code + empty-stdout;
+    same rationale.
+  - test_block_response_contains_only_claude_code_recognized_fields:
+    structural protocol allowlist check (set algebra on response.keys());
+    state-delta does not improve the key-set constraint.
+
+Hidden mutations found: none. Block response universe is tightly constrained
+to {decision, reason} — no undeclared slots observed.
+
+Tests: 12 total. Hit rate update: 5/10 files exposed hidden mutations.
 """
 
 import json
 import os
 
+from nwave_ai.state_delta import assert_state_delta, containing, set_to
+
 from des.adapters.drivers.hooks.claude_code_hook_adapter import (
     extract_des_context_from_transcript,
     handle_subagent_stop,
 )
+
+
+# ---------------------------------------------------------------------------
+# State-delta universe
+# ---------------------------------------------------------------------------
+
+#: Slots tracked for SubagentStop block-response assertions.
+BLOCK_RESPONSE_UNIVERSE: frozenset[str] = frozenset(
+    ["response.decision", "response.reason"]
+)
+
+
+def _capture_block_response(captured: list) -> dict[str, object]:
+    """Return a flat state dict for a block response captured via print-monkeypatch.
+
+    Slots:
+      "response.decision"  — value of response["decision"] (empty str if absent)
+      "response.reason"    — value of response["reason"] (empty str if absent)
+
+    Returns an absent-state dict (empty strings) when no output was captured.
+    """
+    if not captured:
+        return {"response.decision": "", "response.reason": ""}
+    response = json.loads(captured[0])
+    return {
+        "response.decision": response.get("decision", ""),
+        "response.reason": response.get("reason", ""),
+    }
 
 
 def _make_transcript(tmp_dir: str, prompt: str) -> str:
@@ -241,7 +297,11 @@ class TestSubagentStopWithClaudeCodeProtocol:
     def test_des_subagent_with_incomplete_execution_log_blocked(
         self, tmp_path, monkeypatch
     ):
-        """DES agent with missing phases should be blocked."""
+        """DES agent with missing phases should be blocked.
+
+        State universe: response.decision + response.reason.
+        Implicit-unchanged enforces no unexpected fields appear in block response.
+        """
         prompt = (
             "<!-- DES-VALIDATION: required -->\n"
             "<!-- DES-PROJECT-ID: test-project -->\n"
@@ -273,13 +333,21 @@ class TestSubagentStopWithClaudeCodeProtocol:
         captured = []
         monkeypatch.setattr("builtins.print", captured.append)
 
+        before = _capture_block_response([])
         exit_code = handle_subagent_stop()
+        after = _capture_block_response(captured)
 
         # Exit 0 so Claude Code processes JSON (exit 2 ignores stdout)
         assert exit_code == 0
-        response = json.loads(captured[0])
-        assert response["decision"] == "block"
-        assert "Missing phases" in response["reason"]
+        assert_state_delta(
+            before,
+            after,
+            universe=set(BLOCK_RESPONSE_UNIVERSE),
+            expected={
+                "response.decision": set_to("block"),
+                "response.reason": containing("Missing phases"),
+            },
+        )
 
     def test_block_response_contains_only_claude_code_recognized_fields(
         self, tmp_path, monkeypatch
@@ -337,7 +405,11 @@ class TestSubagentStopWithClaudeCodeProtocol:
         )
 
     def test_des_subagent_missing_execution_log_blocked(self, tmp_path, monkeypatch):
-        """DES agent where execution-log.json doesn't exist should be blocked."""
+        """DES agent where execution-log.json doesn't exist should be blocked.
+
+        State universe: response.decision + response.reason.
+        Implicit-unchanged enforces no unexpected fields appear in block response.
+        """
         prompt = (
             "<!-- DES-VALIDATION: required -->\n"
             "<!-- DES-PROJECT-ID: no-such-project -->\n"
@@ -352,10 +424,18 @@ class TestSubagentStopWithClaudeCodeProtocol:
         captured = []
         monkeypatch.setattr("builtins.print", captured.append)
 
+        before = _capture_block_response([])
         exit_code = handle_subagent_stop()
+        after = _capture_block_response(captured)
 
         # Exit 0 so Claude Code processes JSON (exit 2 ignores stdout)
         assert exit_code == 0
-        response = json.loads(captured[0])
-        assert response["decision"] == "block"
-        assert "not found" in response["reason"].lower()
+        assert_state_delta(
+            before,
+            after,
+            universe=set(BLOCK_RESPONSE_UNIVERSE),
+            expected={
+                "response.decision": set_to("block"),
+                "response.reason": containing("not found"),
+            },
+        )

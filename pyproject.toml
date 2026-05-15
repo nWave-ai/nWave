@@ -23,7 +23,7 @@ packages = ["nwave_ai"]
 
 [project]
 name = "nwave-ai"
-version = "3.14.1"
+version = "3.15.1"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -157,6 +157,8 @@ markers = [
     "probe_test: Tests that exercise substrate probe wiring (opt-out from _silence_probe autouse)",
     "fast_gate: Fast source-level regression guards run pre-commit/pre-push",
     "live_api: Tests that call paid external APIs (e.g. OpenAI); skipped unless relevant API key env var is set",
+    "broken_schema_v0: Quarantined tests asserting internal pre-FM-1 (top-level array) hooks.json schema; superseded by tests/e2e/test_codex_real_boot.py per DDD-7 (codex-empirical-e2e-support / FM-4). Excluded by default CI selector via -m 'not broken_schema_v0'.",
+    "polyglot_smoke: Polyglot pilot smoke tests (per-pilot toolchain required: Node/npm for TS, dotnet for C#, cargo for Rust). Skipped automatically when toolchain absent.",
 ]
 norecursedirs = [
     ".venv",
@@ -167,6 +169,7 @@ norecursedirs = [
     "reports",
     "docs",
     ".nwave",
+    "target",
 ]
 asyncio_mode = "auto"
 
@@ -277,6 +280,8 @@ ignore = [
     "B007",     # unused loop variable
     "B008",     # function call in default argument (fixtures)
     "RUF001",   # ambiguous unicode
+    "TC003",    # stdlib Path in TYPE_CHECKING — test files use Path at runtime via tmp_path
+    "RUF005",   # list concatenation — acceptable in test code
 ]
 # Hook scripts may need inline imports
 "scripts/hooks/**/*.py" = [
@@ -305,7 +310,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "3.14.1"
+version = "3.15.1"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",

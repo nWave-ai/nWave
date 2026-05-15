@@ -6,6 +6,40 @@ Tests verify that:
 3. Hooks point to claude_code_hook_adapter module (not missing files)
 
 These tests MUST fail if claude_code_hook_adapter.py is deleted or not referenced.
+
+State-delta migration summary
+------------------------------
+CONVERTED (0 tests) — no filesystem-mutating tests present:
+  All 12 tests operate on read-only or in-memory surfaces:
+    - TestHookAdapterReference: module existence + import checks (filesystem read,
+      no write). hasattr() and callable() assertions have no state slot to capture.
+    - TestHookInstallerConfiguration: installer source-code text assertions (file
+      read, no write). "assert substring in source" has no before/after delta.
+    - TestHookConfigurationIntegrity: reads real ~/.claude/settings.json (skips if
+      absent). No install action is exercised — no state transition occurs.
+    - TestHookAdapterFunctionality: in-memory stdin/stdout redirections via StringIO.
+      Protocol decisions are returned as values, not written to disk. The
+      state-delta paradigm targets filesystem slots; there are none here.
+
+KEPT as-is (12 tests) — state-delta adds no hidden-mutation value:
+  - test_hook_adapter_module_exists: filesystem existence assertion
+  - test_hook_adapter_is_importable: import + hasattr assertions
+  - test_hook_adapter_has_main_entry_point: callable + SystemExit assertion
+  - test_standalone_installer_references_hook_adapter: text search in source file
+  - test_plugin_installer_references_hook_adapter: text search in source file
+  - test_hook_command_format_is_correct: text search in source file
+  - test_global_settings_json_has_des_hooks: read-only settings.json inspection
+  - test_installed_module_has_hook_adapter: filesystem existence assertion
+  - test_hook_adapter_accepts_schema_v2_input: hasattr assertion
+  - test_pre_tool_use_reads_tool_input_from_top_level: in-memory stdin/stdout
+  - test_pre_tool_use_blocks_incomplete_des_prompt: in-memory stdin/stdout
+  - test_hook_adapter_rejects_missing_required_fields: in-memory stdin/stdout
+
+Hidden mutations found: none — no filesystem-mutating SUT code exercised here.
+  Hook adapter tests have lower hit rate than filesystem-mutation tests, confirming
+  Tier A #1 insight.
+
+Tests: 12 total. Hit rate update: 5/11 files exposed hidden mutations.
 """
 
 import json

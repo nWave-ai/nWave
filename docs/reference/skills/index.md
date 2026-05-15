@@ -12,6 +12,10 @@
 
 - [nw-ad-critique-dimensions](../../../nWave/skills/nw-ad-critique-dimensions/SKILL.md) — Review dimensions for acceptance test quality - happy path bias, GWT compliance, business language purity, coverage completeness, walking skeleton user-centricity, priority validation, observable behavior assertions, traceability coverage, and walking skeleton boundary proof
 
+## nw-adoption-funnel-analysis
+
+- [nw-adoption-funnel-analysis](../../../nWave/skills/nw-adoption-funnel-analysis/SKILL.md) — Methodology for classifying adoption-friction evidence by funnel stage, selecting a behavior-grounded aha-moment (not a vanity metric), applying Balfour's Four Fits framework, and structuring friction-log records. Anchors interventions to verified pain location.
+
 ## nw-agent-creation-workflow
 
 - [nw-agent-creation-workflow](../../../nWave/skills/nw-agent-creation-workflow/SKILL.md) — Detailed 5-phase workflow for creating agents - from requirements analysis through validation and iterative refinement
@@ -124,6 +128,10 @@
 
 - [nw-competitive-analysis](../../../nWave/skills/nw-competitive-analysis/SKILL.md) — Porter's 5 Forces and SWOT analysis automation from public data sources, technology adoption analysis methods, and competitive landscape mapping.
 
+## nw-competitive-positioning
+
+- [nw-competitive-positioning](../../../nWave/skills/nw-competitive-positioning/SKILL.md) — Comparative methodology for positioning nWave against ECC, Superpowers, Gas Town, Cursor, Aider, Continue.dev using Dunford's 5-component positioning framework. Evidence-based — every comparison cell cites a source. Identifies and avoids the feature-without-value-anchor anti-pattern.
+
 ## nw-compliance-framework
 
 - [nw-compliance-framework](../../../nWave/skills/nw-compliance-framework/SKILL.md) — GDPR LIA template, CCPA thresholds, ethical OSINT principles, data retention policies, and clear boundaries for what CAN vs SHOULD NOT be collected.
@@ -196,6 +204,10 @@
 
 - [nw-deliver-orchestration](../../../nWave/skills/nw-deliver-orchestration/SKILL.md) — DELIVER wave orchestration workflow -- 9 phases from baseline to finalization. Load when user invokes *deliver command. Covers state tracking, smart skip logic, retry, resume, and quality gate enforcement.
 
+## nw-density-resolution-contract
+
+- [nw-density-resolution-contract](../../../nWave/skills/nw-density-resolution-contract/SKILL.md) — Shared density-resolution contract for wave skills. Canonical detail on the D12 cascade, density resolver call, ad-hoc override workflow, and DocumentationDensityEvent telemetry emission. Referenced from nw-discover / nw-discuss / nw-design / nw-devops / nw-distill / nw-deliver.
+
 ## nw-deployment-strategies
 
 - [nw-deployment-strategies](../../../nWave/skills/nw-deployment-strategies/SKILL.md) — Rollback procedures, risk assessment, pre/post-deployment validation, and contingency planning. Load when orchestrating deployment or preparing rollback plans. For deployment strategy details (canary, blue-green, rolling), see `cicd-and-deployment` skill.
@@ -215,6 +227,10 @@
 ## nw-design-patterns
 
 - [nw-design-patterns](../../../nWave/skills/nw-design-patterns/SKILL.md) — 7 agentic design patterns with decision tree for choosing the right pattern for each agent type
+
+## nw-developer-experience-principles
+
+- [nw-developer-experience-principles](../../../nWave/skills/nw-developer-experience-principles/SKILL.md) — Nielsen 10 heuristics applied to CLI/agent surfaces, with Fowler's cognitive-bandwidth framing and Krug/Norman cross-references. Cite by heuristic number, not by name-drop. Identifies the three Nielsen heuristics nWave currently violates (H6 Recognition vs Recall, H8 Aesthetic and Minimalist Design, H10 Help and Documentation).
 
 ## nw-devops
 
@@ -448,6 +464,10 @@
 
 - [nw-new](../../../nWave/skills/nw-new/SKILL.md) — Guided wizard to start a new feature. Asks what you want to build, recommends the right starting wave, and launches it.
 
+## nw-onboarding-design
+
+- [nw-onboarding-design](../../../nWave/skills/nw-onboarding-design/SKILL.md) — Diegetic teaching patterns (Stripe 4242, Vercel git push) and progressive disclosure applied to developer-tool onboarding. Targets sub-60s TTV. Documents when diegetic teaching applies and when explicit prompts are appropriate (post-2010 Yeoman → Vite shift).
+
 ## nw-online-facilitation-miro-boards
 
 - [nw-online-facilitation-miro-boards](../../../nWave/skills/nw-online-facilitation-miro-boards/SKILL.md) — Evidence-based methodology for designing online workshop sessions with correct duration/energy management, Miro board architecture, modality selection criteria, and complete artifact templates
@@ -527,6 +547,10 @@
 ## nw-persona-jtbd-analysis
 
 - [nw-persona-jtbd-analysis](../../../nWave/skills/nw-persona-jtbd-analysis/SKILL.md) — Structured persona creation and JTBD analysis methodology - persona templates, ODI job step tables, pain point mapping, success metric quantification, and multi-persona segmentation
+
+## nw-pitch-optimization
+
+- [nw-pitch-optimization](../../../nWave/skills/nw-pitch-optimization/SKILL.md) — AI-era epistemic-reassurance pitch framing for craftsman audiences. Combines Beck's "augmented coding" anchor [F6.1], Fowler's progressive-design alignment [F6.2], Dunford's 5-component positioning [F6.3], and the Eldon buyer-voice gap [F6.4]. Surfaces hypothesis-grade pitch candidate for A/B testing — not settled copy.
 
 ## nw-platform-engineering-foundations
 
@@ -688,6 +712,10 @@
 
 - [nw-source-verification](../../../nWave/skills/nw-source-verification/SKILL.md) — Source reputation tiers, cross-referencing methodology, bias detection, and citation format requirements
 
+## nw-speculative-dispatch
+
+- [nw-speculative-dispatch](../../../nWave/skills/nw-speculative-dispatch/SKILL.md) — Speculative parallel implementation methodology — dispatch N candidate implementations, audit all, score, pick best. Auditability mandate: ALL candidates logged (not just winner).
+
 ## nw-spike
 
 - [nw-spike](../../../nWave/skills/nw-spike/SKILL.md) — Runs a timeboxed PROBE to validate one core assumption, then optionally PROMOTES the probe into a walking skeleton — the first e2e thin slice of the feature, committed and demo-able. Use after DISCUSS when the feature involves a new mechanism, performance requirement, or external integration.
@@ -711,17 +739,21 @@
 ## nw-tbr-methodology
 
 
+## nw-tdd-cross-language
+
+- [nw-tdd-cross-language](../../../nWave/skills/nw-tdd-cross-language/SKILL.md) — Port the state-delta + property-based testing paradigm to languages other than Python. DIY recipes per language; canonical Python ref shipped in nwave_ai.state_delta.
+
 ## nw-tdd-methodology
 
 - [nw-tdd-methodology](../../../nWave/skills/nw-tdd-methodology/SKILL.md) — Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
 
 ## nw-tdd-review-enforcement
 
-- [nw-tdd-review-enforcement](../../../nWave/skills/nw-tdd-review-enforcement/SKILL.md) — Test design mandate enforcement, test budget validation, 5-phase TDD validation, and external validity checks for the software crafter reviewer
+- [nw-tdd-review-enforcement](../../../nWave/skills/nw-tdd-review-enforcement/SKILL.md) — Test design mandate enforcement, test budget validation, TDD phase validation (3-phase canon per ADR-025), and external validity checks for the software crafter reviewer
 
 ## nw-test-design-mandates
 
-- [nw-test-design-mandates](../../../nWave/skills/nw-test-design-mandates/SKILL.md) — Four design mandates for acceptance tests - hexagonal boundary enforcement, business language abstraction, user journey completeness, walking skeleton strategy, and pure function extraction
+- [nw-test-design-mandates](../../../nWave/skills/nw-test-design-mandates/SKILL.md) — Design mandates for acceptance tests - hexagonal boundary, business language abstraction, user journey completeness, pure function extraction, 3 Pillars (domain language / chained narrative / production composition), and the layered ATD discipline (Universe-bound assertion, layer-dependent PBT mode, two-tier acceptance, example-based sad paths)
 
 ## nw-test-optimization
 

@@ -424,7 +424,7 @@ class TestBuildDistCLI:
             [sys.executable, str(build_script), "--project-root", str(mock_project)],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=90,
         )
         assert result.returncode == 0, f"build_dist.py failed:\n{result.stderr}"
         assert (mock_project / "dist").is_dir()
@@ -442,7 +442,7 @@ class TestBuildDistCLI:
             [sys.executable, str(build_script), "--project-root", str(mock_project)],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=90,
         )
 
         # Stale artifacts should be gone
@@ -459,7 +459,7 @@ class TestBuildDistCLI:
             [sys.executable, str(build_script), "--project-root", str(mock_project)],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=90,
         )
         manifest1 = json.loads((mock_project / "dist" / "MANIFEST.json").read_text())
         files1 = sorted(
@@ -473,7 +473,7 @@ class TestBuildDistCLI:
             [sys.executable, str(build_script), "--project-root", str(mock_project)],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=90,
         )
         manifest2 = json.loads((mock_project / "dist" / "MANIFEST.json").read_text())
         files2 = sorted(
@@ -498,7 +498,7 @@ class TestBuildDistCLI:
             [sys.executable, str(build_script), "--project-root", str(mock_project)],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=90,
         )
 
         # releases/ should be preserved

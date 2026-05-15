@@ -33,6 +33,7 @@ _SOURCE_TO_TESTS: dict[str, list[str]] = {
     "scripts/framework/": ["tests/build/"],
     "scripts/build_dist.py": ["tests/build/"],
     "scripts/shared/": ["tests/plugins/", "tests/installer/"],
+    "scripts/observability/": ["tests/observability/"],
     "scripts/hooks/": [],
     "scripts/docgen.py": [],
     "nWave/": ["tests/build/"],
@@ -243,6 +244,15 @@ def main():
     except Exception as e:
         print(f"{RED}Error running tests: {e}{NC}")
         return 1
+
+    # Observation-only telemetry: collect runtime, never blocks
+    try:
+        from scripts.hooks.test_runtime_observe import observe_runtime
+
+        scope = "targeted" if isinstance(targeted, list) else "full"
+        observe_runtime(test_output, scope=scope, project_root=Path())
+    except Exception:
+        pass  # telemetry must never block the pipeline
 
     # Count tests using regex
     passed_match = re.search(r"(\d+) passed", test_output)

@@ -13,6 +13,31 @@ Behaviors tested:
 4. Existing preference -> prompt skipped (upgrade path)
 5. Missing config directory -> created automatically
 6. Plugin error -> never blocks core installation (exception-safe)
+
+State-delta migration summary
+------------------------------
+CONVERTED (9 tests) — state-delta + implicit-unchanged invariant:
+  - test_interactive_accept_default: multi-slot config write; catches undeclared mutations
+  - test_existing_preference_skips_prompt: implicit-unchanged; whole config universe frozen
+  - test_missing_config_dir_created: filesystem (dir) + config slot; multi-state
+  - test_upgrade_preserves_enabled: explicit "preserve" semantic; config unchanged before/after
+  - test_upgrade_preserves_disabled: same pattern, disabled=False
+  - test_upgrade_missing_preference_prompts: attribution created + rigor key preserved
+  - test_local_hooks_path_takes_precedence: filesystem slot; hook path is state output
+  - test_no_hooks_path_installs_to_git_default: same pattern, different hooks dir
+  - test_install_succeeds_in_git_worktree: filesystem slot; worktree shared hooks dir
+
+KEPT as-is (9 tests) — no state-delta benefit:
+  - test_install_never_prompts: primary assertion is mock.assert_not_called() (interaction)
+  - test_non_interactive_defaults_on: primary assertion is mock.assert_not_called() (interaction)
+  - test_never_blocks_core_install: asserts result fields on error path; no meaningful state written
+  - test_verify_passes_with_attribution_key: single property (result.success)
+  - test_verify_passes_without_config_file: single property (result.success)
+  - test_plugin_priority_is_200: single property (plugin.priority)
+  - test_plugin_name_is_attribution: single property (plugin.name)
+  - test_install_never_sets_global_hooks_path: pure interaction test (captured calls list)
+  - test_explicit_git_dir_bypasses_git_probing: primary assertion is subprocess_calls == [];
+    filesystem assertion converted inline
 """
 
 import hashlib
@@ -22,6 +47,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from nwave_ai.state_delta import assert_state_delta, set_to
 
 from scripts.install.attribution_utils import install_attribution_hook
 from scripts.install.plugins.attribution_plugin import AttributionPlugin
@@ -30,6 +56,49 @@ from scripts.install.plugins.base import InstallContext
 
 # Serialize tests touching .git/hooks/ to avoid xdist races on shared state.
 pytestmark = pytest.mark.xdist_group("git_hooks")
+
+
+# ---------------------------------------------------------------------------
+# State-delta helpers
+# ---------------------------------------------------------------------------
+
+
+def _flatten_config(config_path: Path) -> dict[str, object]:
+    """Return a flat dict with dotted-path keys for a JSON config file.
+
+    Example: {"attribution": {"enabled": True, "trailer": "..."}}
+    becomes  {"attribution.enabled": True, "attribution.trailer": "..."}.
+
+    Returns an empty dict when the file does not exist.
+    """
+    if not config_path.exists():
+        return {}
+    with open(config_path, encoding="utf-8") as f:
+        raw: dict[str, object] = json.load(f)
+
+    result: dict[str, object] = {}
+
+    def _recurse(node: object, prefix: str) -> None:
+        if isinstance(node, dict):
+            for k, v in node.items():
+                _recurse(v, f"{prefix}.{k}" if prefix else k)
+        else:
+            result[prefix] = node
+
+    _recurse(raw, "")
+    return result
+
+
+def _hook_filesystem_state(hooks_dir: Path) -> dict[str, object]:
+    """Return a flat state dict for the hooks directory.
+
+    Keys: "prepare-commit-msg.exists", "prepare-commit-msg.parent".
+    """
+    hook = hooks_dir / "prepare-commit-msg"
+    return {
+        "prepare-commit-msg.exists": hook.exists(),
+        "prepare-commit-msg.parent": str(hook.parent) if hook.exists() else None,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +149,7 @@ def guard_git_hooks():
         "Differences detected:\n"
         f"{_diff_snapshots(before, after)}\n\n"
         "This means the _isolate_hook_installation fixture failed to "
-        "prevent real hook file modifications. Fix the isolation fixture."
+        "prevent real git hook file modifications. Fix the isolation fixture."
     )
 
 
@@ -143,10 +212,13 @@ class TestAttributionPluginInstall:
     """Tests for AttributionPlugin.install() driving port."""
 
     def test_interactive_accept_default(self, tmp_path: Path) -> None:
-        """TTY present, empty input (default) -> attribution enabled."""
+        """TTY present, empty input (default) -> attribution enabled; no other keys mutated."""
         context = _make_context(tmp_path)
         nwave_dir = tmp_path / ".nwave"
         plugin = AttributionPlugin(config_dir=nwave_dir)
+        config_file = nwave_dir / "global-config.json"
+
+        before = _flatten_config(config_file)
 
         with (
             patch("sys.stdin") as mock_stdin,
@@ -156,10 +228,16 @@ class TestAttributionPluginInstall:
             result = plugin.install(context)
 
         assert result.success is True
-        config = _read_global_config(nwave_dir)
-        assert config["attribution"]["enabled"] is True
-        assert (
-            config["attribution"]["trailer"] == "Co-Authored-By: nWave <nwave@nwave.ai>"
+        after = _flatten_config(config_file)
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "attribution.enabled": set_to(True),
+                "attribution.trailer": set_to("Co-Authored-By: nWave <nwave@nwave.ai>"),
+            },
         )
 
     def test_install_never_prompts(self, tmp_path: Path) -> None:
@@ -205,7 +283,7 @@ class TestAttributionPluginInstall:
         mock_input.assert_not_called()
 
     def test_existing_preference_skips_prompt(self, tmp_path: Path) -> None:
-        """Config already has attribution key -> no prompt, preserve preference."""
+        """Config already has attribution key -> no prompt; whole config universe frozen."""
         context = _make_context(tmp_path)
         nwave_dir = tmp_path / ".nwave"
         nwave_dir.mkdir(parents=True)
@@ -219,20 +297,35 @@ class TestAttributionPluginInstall:
         config_file.write_text(json.dumps(existing_config), encoding="utf-8")
 
         plugin = AttributionPlugin(config_dir=nwave_dir)
+        before = _flatten_config(config_file)
 
         with patch("builtins.input") as mock_input:
             result = plugin.install(context)
 
         assert result.success is True
         mock_input.assert_not_called()
-        config = _read_global_config(nwave_dir)
-        assert config["attribution"]["enabled"] is True
+
+        after = _flatten_config(config_file)
+        universe = set(before.keys()) | set(after.keys())
+        # Implicit-unchanged: nothing in the universe should change
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={},
+        )
 
     def test_missing_config_dir_created(self, tmp_path: Path) -> None:
-        """Config directory does not exist -> created, preference stored."""
+        """Config directory does not exist -> created; attribution stored; no other mutations."""
         context = _make_context(tmp_path)
         nwave_dir = tmp_path / ".nwave-fresh"
         assert not nwave_dir.exists()
+        config_file = nwave_dir / "global-config.json"
+
+        before_fs: dict[str, object] = {
+            "nwave_dir.exists": nwave_dir.exists(),
+        }
+        before_config = _flatten_config(config_file)
 
         plugin = AttributionPlugin(config_dir=nwave_dir)
 
@@ -244,9 +337,31 @@ class TestAttributionPluginInstall:
             result = plugin.install(context)
 
         assert result.success is True
-        assert nwave_dir.exists()
-        config = _read_global_config(nwave_dir)
-        assert config["attribution"]["enabled"] is True
+
+        after_fs: dict[str, object] = {
+            "nwave_dir.exists": nwave_dir.exists(),
+        }
+        after_config = _flatten_config(config_file)
+
+        # Filesystem slot: directory must have been created
+        assert_state_delta(
+            before=before_fs,
+            after=after_fs,
+            universe={"nwave_dir.exists"},
+            expected={"nwave_dir.exists": set_to(True)},
+        )
+
+        # Config slots: only attribution keys written; no other mutations
+        universe = set(before_config.keys()) | set(after_config.keys())
+        assert_state_delta(
+            before=before_config,
+            after=after_config,
+            universe=universe,
+            expected={
+                "attribution.enabled": set_to(True),
+                "attribution.trailer": set_to("Co-Authored-By: nWave <nwave@nwave.ai>"),
+            },
+        )
 
     def test_never_blocks_core_install(self, tmp_path: Path) -> None:
         """Plugin error returns success with warning, never blocks install."""
@@ -322,7 +437,7 @@ class TestAttributionUpgradePreservation:
     """Tests for US-04: upgrade preserves attribution preference."""
 
     def test_upgrade_preserves_enabled(self, tmp_path: Path) -> None:
-        """Existing enabled preference -> no prompt, preference preserved."""
+        """Existing enabled preference -> no prompt; config universe frozen (implicit-unchanged)."""
         context = _make_context(tmp_path)
         nwave_dir = tmp_path / ".nwave"
         nwave_dir.mkdir(parents=True)
@@ -340,20 +455,29 @@ class TestAttributionUpgradePreservation:
         )
 
         plugin = AttributionPlugin(config_dir=nwave_dir)
+        before = _flatten_config(config_file)
 
         with patch("builtins.input") as mock_input:
             result = plugin.install(context)
 
         assert result.success is True
         mock_input.assert_not_called()
-        config = _read_global_config(nwave_dir)
-        assert config["attribution"]["enabled"] is True
         assert (
             "preserved" in result.message.lower() or "enabled" in result.message.lower()
         )
 
+        after = _flatten_config(config_file)
+        universe = set(before.keys()) | set(after.keys())
+        # Implicit-unchanged: preference preserved means the whole config is frozen
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={},
+        )
+
     def test_upgrade_preserves_disabled(self, tmp_path: Path) -> None:
-        """Existing disabled preference -> no prompt, preference preserved."""
+        """Existing disabled preference -> no prompt; disabled value preserved (implicit-unchanged)."""
         context = _make_context(tmp_path)
         nwave_dir = tmp_path / ".nwave"
         nwave_dir.mkdir(parents=True)
@@ -371,17 +495,26 @@ class TestAttributionUpgradePreservation:
         )
 
         plugin = AttributionPlugin(config_dir=nwave_dir)
+        before = _flatten_config(config_file)
 
         with patch("builtins.input") as mock_input:
             result = plugin.install(context)
 
         assert result.success is True
         mock_input.assert_not_called()
-        config = _read_global_config(nwave_dir)
-        assert config["attribution"]["enabled"] is False
+
+        after = _flatten_config(config_file)
+        universe = set(before.keys()) | set(after.keys())
+        # Implicit-unchanged: disabled=False must stay False; no extra key created
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={},
+        )
 
     def test_upgrade_missing_preference_prompts(self, tmp_path: Path) -> None:
-        """Config exists but no attribution key -> prompts like fresh install."""
+        """Config exists but no attribution key -> attribution created; rigor preserved."""
         context = _make_context(tmp_path)
         nwave_dir = tmp_path / ".nwave"
         nwave_dir.mkdir(parents=True)
@@ -393,6 +526,7 @@ class TestAttributionUpgradePreservation:
         )
 
         plugin = AttributionPlugin(config_dir=nwave_dir)
+        before = _flatten_config(config_file)
 
         with (
             patch("sys.stdin") as mock_stdin,
@@ -402,10 +536,20 @@ class TestAttributionUpgradePreservation:
             result = plugin.install(context)
 
         assert result.success is True
-        config = _read_global_config(nwave_dir)
-        assert config["attribution"]["enabled"] is True
-        # Rigor key preserved
-        assert config["rigor"]["level"] == "standard"
+
+        after = _flatten_config(config_file)
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                # attribution keys created from None
+                "attribution.enabled": set_to(True),
+                "attribution.trailer": set_to("Co-Authored-By: nWave <nwave@nwave.ai>"),
+            },
+            # rigor.level is NOT in expected -> implicit-unchanged enforced automatically
+        )
 
 
 class TestAttributionHookInstallation:
@@ -433,6 +577,8 @@ class TestAttributionHookInstallation:
 
         nwave_dir = tmp_path / ".nwave"
 
+        before = _hook_filesystem_state(local_hooks)
+
         # Mock subprocess.run to simulate:
         #   unscoped `git config core.hooksPath` -> local_hooks (effective)
         #   `git config --global core.hooksPath` -> ~/.nwave/hooks/ (shadowed)
@@ -453,10 +599,18 @@ class TestAttributionHookInstallation:
         ):
             result_path = install_attribution_hook(config_dir=nwave_dir)
 
-        # Hook shim must be in local_hooks, NOT in ~/.nwave/hooks/
-        assert result_path.parent == local_hooks
+        after = _hook_filesystem_state(local_hooks)
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "prepare-commit-msg.exists": set_to(True),
+                "prepare-commit-msg.parent": set_to(str(local_hooks)),
+            },
+        )
         assert result_path.name == "prepare-commit-msg"
-        assert result_path.exists()
 
     def test_no_hooks_path_installs_to_git_default(self, tmp_path: Path) -> None:
         """No core.hooksPath configured -> hook in .git/hooks/ (git default).
@@ -469,6 +623,8 @@ class TestAttributionHookInstallation:
         nwave_dir = tmp_path / ".nwave"
         git_hooks = tmp_path / ".git" / "hooks"
         git_hooks.mkdir(parents=True)
+
+        before = _hook_filesystem_state(git_hooks)
 
         # Mock subprocess.run: all git config core.hooksPath calls return not-set.
         # Mock git rev-parse --git-common-dir to return tmp_path/.git (the
@@ -489,10 +645,18 @@ class TestAttributionHookInstallation:
         ):
             result_path = install_attribution_hook(config_dir=nwave_dir)
 
-        # Hook must be in .git/hooks/ (git default), NOT ~/.nwave/hooks/
-        assert result_path.parent == git_hooks
+        after = _hook_filesystem_state(git_hooks)
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "prepare-commit-msg.exists": set_to(True),
+                "prepare-commit-msg.parent": set_to(str(git_hooks)),
+            },
+        )
         assert result_path.name == "prepare-commit-msg"
-        assert result_path.exists()
 
     def test_install_never_sets_global_hooks_path(self, tmp_path: Path) -> None:
         """install_attribution_hook() must NEVER call git config --global core.hooksPath.
@@ -615,6 +779,9 @@ class TestAttributionHookInstallation:
         monkeypatch.chdir(worktree_dir)
 
         nwave_dir = tmp_path / ".nwave"
+        shared_hooks = main_repo / ".git" / "hooks"
+
+        before = _hook_filesystem_state(shared_hooks)
 
         # No subprocess mocks — exercises the real resolver against a real
         # worktree. This is the test that fails on --show-toplevel and passes
@@ -624,12 +791,18 @@ class TestAttributionHookInstallation:
         # The shared hooks dir is <main_repo>/.git/hooks/. That is where the
         # prepare-commit-msg trailer policy belongs (applies to all branches
         # and worktrees) and where --git-common-dir resolves.
-        shared_hooks = main_repo / ".git" / "hooks"
-        assert result_path.parent == shared_hooks, (
-            f"Hook installed in {result_path.parent}, expected {shared_hooks}"
+        after = _hook_filesystem_state(shared_hooks)
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "prepare-commit-msg.exists": set_to(True),
+                "prepare-commit-msg.parent": set_to(str(shared_hooks)),
+            },
         )
         assert result_path.name == "prepare-commit-msg"
-        assert result_path.exists()
         assert result_path.is_file()
 
     def test_explicit_git_dir_bypasses_git_probing(self, tmp_path: Path) -> None:

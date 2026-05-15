@@ -1,7 +1,7 @@
 """CLI: Initialize execution-log.json for a deliver session.
 
 Usage:
-    PYTHONPATH=src python -m des.cli.init_log \\
+    des-init-log \\
       --project-dir docs/feature/my-feature/deliver \\
       --feature-id my-feature
 

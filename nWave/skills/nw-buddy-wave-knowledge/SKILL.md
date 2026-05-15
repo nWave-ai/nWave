@@ -79,7 +79,7 @@ Each wave has a slash command (`/nw-<wave>`) and a primary agent. Waves run top-
 - **Primary agent**: software-crafter.
 - **Inputs**: DISTILL output — scenarios and roadmap.
 - **Outputs**: working, tested, committed code.
-- **Typical artifacts**: commits following the TDD 5-phase cycle (PREPARE -> RED_ACCEPTANCE -> RED_UNIT -> GREEN -> COMMIT), updated tests, updated source files.
+- **Typical artifacts**: commits following the TDD 3-phase canon (RED -> GREEN -> COMMIT, ADR-025 2026-05-07; legacy 5-phase PREPARE -> RED_ACCEPTANCE -> RED_UNIT -> GREEN -> COMMIT preserved for pre-2026-05-07 audit-log replay), updated tests, updated source files.
 - **Common questions**: "is this feature done?", "what step are we on?", "is the test suite green?"
 
 ## Cross-wave agents

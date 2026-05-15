@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
-"""Check docs/reference/ freshness; auto-regenerate in local hooks, fail in CI.
+"""Check docs/reference/ freshness; fail loudly on stale.
 
 Usage:
     python scripts/hooks/check_documentation_freshness.py          # local hook
-    python scripts/hooks/check_documentation_freshness.py --check  # CI (no writes)
+    python scripts/hooks/check_documentation_freshness.py --check  # CI (alias)
 
 Exit codes:
-    0 - Documentation is fresh (or was auto-regenerated locally)
-    1 - Regeneration failed or docs are stale (CI mode)
+    0 - Documentation is fresh
+    1 - Pipeline error or docs are stale
+
+Local and CI behavior are identical: stale state fails the push with a clear
+remediation message. The previous "silent regenerate + git commit --amend"
+local mode was removed because it composed unsafely with write_pages's prior
+shutil.rmtree-based regeneration — silently deleting hand-authored files in
+docs/reference/ from the pushed commit. See
+docs/analysis/rca-pre-push-hook-untracked-deletion-2026-05-06.md.
 """
 
 import importlib.util
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -25,16 +30,10 @@ _docgen = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
 _spec.loader.exec_module(_docgen)  # type: ignore[union-attr]
 check_pages = _docgen.check_pages
 run_pipeline = _docgen.run_pipeline
-write_pages = _docgen.write_pages
-
-
-def _is_ci() -> bool:
-    return "--check" in sys.argv or os.environ.get("CI") == "true"
 
 
 def main() -> int:
     output_dir = _ROOT / "docs" / "reference"
-    ci_mode = _is_ci()
 
     try:
         pages = run_pipeline(_ROOT, output_dir)
@@ -47,25 +46,16 @@ def main() -> int:
         print("✓ docs/reference/ is up to date")
         return 0
 
-    if ci_mode:
-        print(
-            f"ERROR: docs/reference/ has {len(stale)} stale files: {', '.join(stale)}",
-            file=sys.stderr,
-        )
-        print("Run 'python scripts/docgen.py' locally and commit.", file=sys.stderr)
-        return 1
-
-    # Local hook: regenerate, stage, and amend
-    print(f"Regenerating docs/reference/ ({len(stale)} stale files)...")
-    write_pages(pages, output_dir)
-
-    subprocess.run(["git", "add", "docs/reference/"], check=True)
-    subprocess.run(
-        ["git", "commit", "--amend", "--no-edit"],
-        check=True,
+    print(
+        f"ERROR: docs/reference/ has {len(stale)} stale files: {', '.join(stale)}",
+        file=sys.stderr,
     )
-    print("✓ docs/reference/ regenerated and amended into commit")
-    return 0
+    print("Run the following to bring docs/reference/ up to date:", file=sys.stderr)
+    print("  python scripts/docgen.py", file=sys.stderr)
+    print("  git add docs/reference/", file=sys.stderr)
+    print("  git commit --amend --no-edit  # or a fresh commit", file=sys.stderr)
+    print("Then retry your push.", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":

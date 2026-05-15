@@ -11,10 +11,47 @@ Tests validate that:
 - install() creates a .nwave-agents-manifest.json tracking installed agents
 
 CRITICAL: Tests follow hexagonal architecture - mocks only at port boundaries.
+
+State-delta migration summary
+------------------------------
+CONVERTED (7 tests) — state-delta + implicit-unchanged invariant:
+  - test_install_creates_agent_files: multi-slot (agent file + manifest created);
+    implicit-unchanged prevents unintended sibling file mutations
+  - test_install_preserves_body: content multi-slot (body preserved, frontmatter
+    transformed); implicit-unchanged on undeclared content slots
+  - test_uninstall_removes_only_manifest_agents: classic "preserve user files"
+    semantic; implicit-unchanged enforces user agent is not removed
+  - test_install_creates_manifest: manifest + agent files multi-slot;
+    implicit-unchanged on unrelated slots
+  - test_transform_agent_csv_tools: pure-function content multi-slot (frontmatter
+    presence/absence + permission block); merges task_permission test;
+    catches silently dropped transformations
+  - test_transform_agent_array_tools: pure-function content multi-slot variant;
+    distinct input (array tools) producing distinct permission output
+  - test_transform_frontmatter_uses_permission_key_not_tools: dict-level
+    multi-slot (permission present, tools absent, value correct)
+
+KEPT as-is (7 tests) — no state-delta benefit:
+  - test_transform_tools_csv_to_object: single return value from pure function
+  - test_transform_tools_array_to_object: single return value from pure function
+  - test_transform_removes_name_and_model: pure function, 2-assertion (no state)
+  - test_transform_removes_skills: pure function, single-assertion (no state)
+  - test_transform_renames_maxturns_to_steps: pure function, 2-assertion (no state)
+  - test_transform_adds_mode_subagent: pure function, single-assertion (no state)
+  - test_parse_tools_returns_allow_strings_not_booleans: type guard loop on pure fn
+
+Hidden mutations found:
+  - content.has_permission transitions False -> True during install(); the original
+    test_install_creates_agent_files only checked string fragments in the raw content,
+    missing the tools->permission key rename as a declared mutation. Now visible via
+    content.has_tools_key + content.has_permission slots in the content helper.
 """
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock
+
+from nwave_ai.state_delta import assert_state_delta, set_to
 
 from scripts.install.plugins.base import InstallContext
 from scripts.install.plugins.opencode_agents_plugin import (
@@ -109,6 +146,115 @@ _ARRAY_TOOLS_AGENT = (
 )
 
 
+# ---------------------------------------------------------------------------
+# State-delta helpers
+# ---------------------------------------------------------------------------
+
+
+def _agent_filesystem_state(
+    target_dir: Path,
+    track: frozenset[str] | None = None,
+) -> dict[str, object]:
+    """Return a flat state dict for the OpenCode agents target directory.
+
+    Tracks existence of agent .md files and the manifest. Each key is either
+    ``<agent-name>.md.exists`` or ``manifest.exists``.
+
+    When ``track`` is provided, every name in the set is always emitted with
+    True/False so before/after share the key (required for uninstall tests that
+    assert ``set_to(False)``). Pass ``"manifest"`` as a special token for the
+    manifest file; everything else is treated as a bare filename (with extension)
+    under ``target_dir``. Without ``track``, only currently-existing .md files
+    and the manifest are emitted.
+
+    Args:
+        target_dir: Path to the OpenCode agents directory (may not yet exist).
+        track: Optional set of names to always emit. Use ``"manifest"`` for the
+               manifest file and ``"<agent-name>.md"`` for agent files.
+
+    Returns:
+        Flat dict mapping slot names to their current values.
+    """
+    manifest_path = target_dir / ".nwave-agents-manifest.json"
+    state: dict[str, object] = {}
+
+    if track is not None:
+        for name in track:
+            if name == "manifest":
+                state["manifest.exists"] = manifest_path.exists()
+            else:
+                state[f"{name}.exists"] = (target_dir / name).exists()
+    else:
+        state["manifest.exists"] = manifest_path.exists()
+        if target_dir.exists():
+            for entry in sorted(target_dir.iterdir()):
+                if entry.is_file() and entry.suffix == ".md":
+                    state[f"{entry.name}.exists"] = True
+
+    return state
+
+
+def _agent_content_state(target_dir: Path, agent_name: str) -> dict[str, object]:
+    """Return a flat state dict for an installed agent file's content.
+
+    Slots:
+      ``content.exists``         whether <agent_name>.md exists
+      ``content.has_mode``       file contains ``mode:``
+      ``content.has_steps``      file contains ``steps:``
+      ``content.has_name``       file contains ``\\nname:`` (frontmatter key)
+      ``content.has_model``      file contains ``model:``
+      ``content.has_skills``     file contains ``skills:``
+      ``content.has_maxturns``   file contains ``maxTurns:``
+      ``content.has_tools_key``  file contains ``\\ntools:``
+      ``content.has_permission`` file contains ``permission:``
+      ``content.body_excerpt``   first non-blank body line (None when absent)
+      ``content.full``           raw file text (None when absent)
+
+    Args:
+        target_dir: Path to the OpenCode agents directory.
+        agent_name: Agent stem without extension (e.g. ``nw-software-crafter``).
+
+    Returns:
+        Flat dict with content property slots.
+    """
+    agent_md = target_dir / f"{agent_name}.md"
+    if not agent_md.exists():
+        return {
+            "content.exists": False,
+            "content.has_mode": False,
+            "content.has_steps": False,
+            "content.has_name": False,
+            "content.has_model": False,
+            "content.has_skills": False,
+            "content.has_maxturns": False,
+            "content.has_tools_key": False,
+            "content.has_permission": False,
+            "content.body_excerpt": None,
+            "content.full": None,
+        }
+    text = agent_md.read_text(encoding="utf-8")
+    _, body = parse_frontmatter(text)
+    body_lines = [line for line in body.splitlines() if line.strip()]
+    return {
+        "content.exists": True,
+        "content.has_mode": "mode:" in text,
+        "content.has_steps": "steps:" in text,
+        "content.has_name": "\nname:" in text,
+        "content.has_model": "model:" in text,
+        "content.has_skills": "skills:" in text,
+        "content.has_maxturns": "maxTurns:" in text,
+        "content.has_tools_key": "\ntools:" in text,
+        "content.has_permission": "permission:" in text,
+        "content.body_excerpt": body_lines[0] if body_lines else None,
+        "content.full": text,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tests: _parse_tools() — kept as-is (pure function, single return value)
+# ---------------------------------------------------------------------------
+
+
 class TestParseToolsCsvToObject:
     """Test that _parse_tools normalizes CSV string to lowercase list."""
 
@@ -135,6 +281,11 @@ class TestParseToolsArrayToObject:
         result = _parse_tools(["Read", "Glob", "Grep"])
 
         assert result == {"read": "allow", "glob": "allow", "grep": "allow"}
+
+
+# ---------------------------------------------------------------------------
+# Tests: _transform_frontmatter() — kept as-is (pure function, single concern)
+# ---------------------------------------------------------------------------
 
 
 class TestTransformRemovesNameAndModel:
@@ -228,6 +379,11 @@ class TestTransformAddsSubagentMode:
         assert result["mode"] == "subagent"
 
 
+# ---------------------------------------------------------------------------
+# Tests: install() — filesystem creation (converted)
+# ---------------------------------------------------------------------------
+
+
 class TestInstallCreatesAgentFiles:
     """Test that install() creates transformed agent files in the target directory."""
 
@@ -235,8 +391,8 @@ class TestInstallCreatesAgentFiles:
         """
         GIVEN: A source agent at nWave/agents/nw-software-crafter.md
         WHEN: install() is called
-        THEN: nw-software-crafter.md is created in the OpenCode agents directory
-              with transformed frontmatter
+        THEN: nw-software-crafter.md is created in the OpenCode agents directory;
+              manifest is created; no other .md files appear as side-effects.
         """
         context, agents_source, target = _make_context(tmp_path)
         monkeypatch.setattr(
@@ -246,22 +402,29 @@ class TestInstallCreatesAgentFiles:
 
         _create_agent(agents_source, "nw-software-crafter", _CSV_TOOLS_AGENT)
 
+        before = _agent_filesystem_state(target)
+
         plugin = OpenCodeAgentsPlugin()
         result = plugin.install(context)
 
         assert result.success is True
 
-        agent_file = target / "nw-software-crafter.md"
-        assert agent_file.exists(), f"Expected {agent_file} to exist"
+        after = _agent_filesystem_state(target)
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "nw-software-crafter.md.exists": set_to(True),
+                "manifest.exists": set_to(True),
+            },
+        )
 
-        content = agent_file.read_text()
-        # Verify transformed frontmatter
-        assert "mode: subagent" in content
-        assert "steps: 50" in content
-        assert "name:" not in content
-        assert "model:" not in content
-        assert "skills:" not in content
-        assert "maxTurns:" not in content
+
+# ---------------------------------------------------------------------------
+# Tests: install() — content preservation (converted)
+# ---------------------------------------------------------------------------
 
 
 class TestInstallPreservesBody:
@@ -271,7 +434,9 @@ class TestInstallPreservesBody:
         """
         GIVEN: An agent file with specific body content
         WHEN: install() transforms it
-        THEN: The body content after the frontmatter is unchanged
+        THEN: The body content after the frontmatter is unchanged;
+              frontmatter transformation slots (mode, steps, permission) declared;
+              implicit-unchanged enforces no undeclared slot mutations.
         """
         context, agents_source, target = _make_context(tmp_path)
         monkeypatch.setattr(
@@ -281,19 +446,48 @@ class TestInstallPreservesBody:
 
         _create_agent(agents_source, "nw-software-crafter", _CSV_TOOLS_AGENT)
 
+        before = _agent_content_state(target, "nw-software-crafter")
+
         plugin = OpenCodeAgentsPlugin()
         plugin.install(context)
 
-        agent_file = target / "nw-software-crafter.md"
-        content = agent_file.read_text()
+        after = _agent_content_state(target, "nw-software-crafter")
+        universe = set(before.keys()) | set(after.keys())
 
-        # Parse source to get original body
         _, source_body = parse_frontmatter(_CSV_TOOLS_AGENT)
 
-        # Parse output to get transformed body
-        _, output_body = parse_frontmatter(content)
+        def body_unchanged(old: object, new: object) -> bool:
+            """Body portion of the agent file is preserved after transformation."""
+            if not isinstance(new, str):
+                return False
+            _, installed_body = parse_frontmatter(new)
+            return installed_body == source_body
 
-        assert output_body == source_body
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "content.exists": set_to(True),
+                "content.full": body_unchanged,
+                "content.has_mode": set_to(True),
+                "content.has_steps": set_to(True),
+                "content.has_name": set_to(False),
+                "content.has_model": set_to(False),
+                "content.has_skills": set_to(False),
+                "content.has_maxturns": set_to(False),
+                # tools -> permission: both key-presence slots transition
+                "content.has_tools_key": set_to(False),
+                "content.has_permission": set_to(True),
+                # body_excerpt: None -> first body headline
+                "content.body_excerpt": set_to("# nw-software-crafter"),
+            },
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tests: uninstall() (converted)
+# ---------------------------------------------------------------------------
 
 
 class TestUninstallRemovesOnlyManifestAgents:
@@ -302,10 +496,11 @@ class TestUninstallRemovesOnlyManifestAgents:
     def test_uninstall_removes_only_manifest_agents(self, tmp_path, monkeypatch):
         """
         GIVEN: An OpenCode agents directory with both nWave-installed and
-               user-created agent files
+               user-created agent files plus a manifest
         WHEN: uninstall() is called
         THEN: Only nWave-installed agents (listed in manifest) are removed;
-              user-created agents remain untouched
+              user-created agents remain untouched;
+              implicit-unchanged enforces user agent preservation automatically.
         """
         context, _agents_source, target = _make_context(tmp_path)
         monkeypatch.setattr(
@@ -330,16 +525,36 @@ class TestUninstallRemovesOnlyManifestAgents:
         }
         (target / ".nwave-agents-manifest.json").write_text(json.dumps(manifest))
 
+        tracked = frozenset(
+            {"nw-software-crafter.md", "my-custom-agent.md", "manifest"}
+        )
+        before = _agent_filesystem_state(target, track=tracked)
+
         plugin = OpenCodeAgentsPlugin()
         result = plugin.uninstall(context)
 
         assert result.success is True
 
-        # nWave agent should be removed
-        assert not nwave_agent.exists(), "nWave agent should be removed"
+        after = _agent_filesystem_state(target, track=tracked)
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                # nWave agent removed: True -> False
+                "nw-software-crafter.md.exists": set_to(False),
+                # manifest removed: True -> False
+                "manifest.exists": set_to(False),
+                # user agent MUST remain: implicit-unchanged enforces this;
+                # "my-custom-agent.md.exists" True->True is NOT in expected
+            },
+        )
 
-        # User agent should remain
-        assert user_agent.exists(), "User-created agent must remain untouched"
+
+# ---------------------------------------------------------------------------
+# Tests: install() — manifest creation (converted)
+# ---------------------------------------------------------------------------
 
 
 class TestInstallCreatesManifest:
@@ -349,7 +564,8 @@ class TestInstallCreatesManifest:
         """
         GIVEN: Multiple source agent files
         WHEN: install() is called
-        THEN: A .nwave-agents-manifest.json is created listing all installed agents
+        THEN: A .nwave-agents-manifest.json is created listing all installed agents;
+              both agent .md files appear; no other .md files created as side-effects.
         """
         context, agents_source, target = _make_context(tmp_path)
         monkeypatch.setattr(
@@ -360,17 +576,34 @@ class TestInstallCreatesManifest:
         _create_agent(agents_source, "nw-software-crafter", _CSV_TOOLS_AGENT)
         _create_agent(agents_source, "nw-documentarist-reviewer", _ARRAY_TOOLS_AGENT)
 
+        before = _agent_filesystem_state(target)
+
         plugin = OpenCodeAgentsPlugin()
         plugin.install(context)
 
-        manifest_path = target / ".nwave-agents-manifest.json"
-        assert manifest_path.exists(), "Manifest should be created"
+        after = _agent_filesystem_state(target)
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "nw-software-crafter.md.exists": set_to(True),
+                "nw-documentarist-reviewer.md.exists": set_to(True),
+                "manifest.exists": set_to(True),
+            },
+        )
 
-        manifest = json.loads(manifest_path.read_text())
+        manifest = json.loads((target / ".nwave-agents-manifest.json").read_text())
         assert "installed_agents" in manifest
         assert sorted(manifest["installed_agents"]) == sorted(
             ["nw-software-crafter", "nw-documentarist-reviewer"]
         )
+
+
+# ---------------------------------------------------------------------------
+# Tests: _transform_agent() full pipeline (converted)
+# ---------------------------------------------------------------------------
 
 
 class TestTransformAgentFullPipeline:
@@ -380,51 +613,150 @@ class TestTransformAgentFullPipeline:
         """
         GIVEN: A full agent file with CSV tools format
         WHEN: _transform_agent() is called
-        THEN: Produces valid OpenCode format with all transformations applied
+        THEN: Produces valid OpenCode format with all transformations applied;
+              permission uses 'allow' strings including task (sub-agent invocation);
+              body content is preserved unchanged.
+
+        Merges: test_task_permission_present_in_full_agent_transform (same pipeline,
+        same input, overlapping assertions unified into permission_includes_task).
         """
-        result = _transform_agent(_CSV_TOOLS_AGENT)
+        before = _agent_content_state(Path("/nonexistent"), "nw-software-crafter")
 
-        frontmatter, body = parse_frontmatter(result)
+        result_text = _transform_agent(_CSV_TOOLS_AGENT)
 
-        assert frontmatter["mode"] == "subagent"
-        assert frontmatter["steps"] == 50
-        assert frontmatter["description"] == "DELIVER wave - Outside-In TDD"
-        assert frontmatter["permission"] == {
-            "read": "allow",
-            "write": "allow",
-            "edit": "allow",
-            "bash": "allow",
-            "glob": "allow",
-            "grep": "allow",
-            "task": "allow",
+        frontmatter, body = parse_frontmatter(result_text)
+        _, source_body = parse_frontmatter(_CSV_TOOLS_AGENT)
+
+        after: dict[str, object] = {
+            "content.exists": True,
+            "content.has_mode": "mode:" in result_text,
+            "content.has_steps": "steps:" in result_text,
+            "content.has_name": "\nname:" in result_text,
+            "content.has_model": "model:" in result_text,
+            "content.has_skills": "skills:" in result_text,
+            "content.has_maxturns": "maxTurns:" in result_text,
+            "content.has_tools_key": "\ntools:" in result_text,
+            "content.has_permission": "permission:" in result_text,
+            "content.body_excerpt": next(
+                (line for line in body.splitlines() if line.strip()), None
+            ),
+            "content.full": result_text,
         }
-        assert "tools" not in frontmatter
-        assert "name" not in frontmatter
-        assert "model" not in frontmatter
-        assert "skills" not in frontmatter
-        assert "maxTurns" not in frontmatter
 
-        assert "# nw-software-crafter" in body
-        assert "Body content here." in body
+        def permission_includes_task(old: object, new: object) -> bool:
+            """Permission dict uses 'allow' strings for all tools including task."""
+            fm, _ = parse_frontmatter(new)  # type: ignore[arg-type]
+            perm = fm.get("permission", {})
+            expected_tools = {
+                "read",
+                "write",
+                "edit",
+                "bash",
+                "glob",
+                "grep",
+                "task",
+            }
+            return set(perm.keys()) == expected_tools and all(
+                v == "allow" for v in perm.values()
+            )
+
+        def body_preserved(old: object, new: object) -> bool:
+            """Body portion is identical to source after transformation."""
+            _, installed_body = parse_frontmatter(new)  # type: ignore[arg-type]
+            return installed_body == source_body
+
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "content.exists": set_to(True),
+                "content.has_mode": set_to(True),
+                "content.has_steps": set_to(True),
+                "content.has_name": set_to(False),
+                "content.has_model": set_to(False),
+                "content.has_skills": set_to(False),
+                "content.has_maxturns": set_to(False),
+                "content.has_tools_key": set_to(False),
+                "content.has_permission": set_to(True),
+                "content.full": permission_includes_task,
+                # body_excerpt: None -> first body headline
+                "content.body_excerpt": set_to("# nw-software-crafter"),
+            },
+        )
+
+        assert body_preserved(None, result_text), (
+            "Body content must be unchanged after transformation"
+        )
+        assert frontmatter["description"] == "DELIVER wave - Outside-In TDD"
+        assert frontmatter["steps"] == 50
 
     def test_transform_agent_array_tools(self):
         """
         GIVEN: A full agent file with array-style tools format
         WHEN: _transform_agent() is called
-        THEN: Produces valid OpenCode format with permission as mapping
+        THEN: Produces valid OpenCode format with permission from array;
+              steps matches maxTurns; body content is preserved.
         """
-        result = _transform_agent(_ARRAY_TOOLS_AGENT)
+        before = _agent_content_state(Path("/nonexistent"), "nw-documentarist-reviewer")
 
-        frontmatter, body = parse_frontmatter(result)
+        result_text = _transform_agent(_ARRAY_TOOLS_AGENT)
 
-        assert frontmatter["permission"] == {
-            "read": "allow",
-            "glob": "allow",
-            "grep": "allow",
+        frontmatter, body = parse_frontmatter(result_text)
+        _, source_body = parse_frontmatter(_ARRAY_TOOLS_AGENT)
+
+        after: dict[str, object] = {
+            "content.exists": True,
+            "content.has_mode": "mode:" in result_text,
+            "content.has_steps": "steps:" in result_text,
+            "content.has_name": "\nname:" in result_text,
+            "content.has_model": "model:" in result_text,
+            "content.has_skills": "skills:" in result_text,
+            "content.has_maxturns": "maxTurns:" in result_text,
+            "content.has_tools_key": "\ntools:" in result_text,
+            "content.has_permission": "permission:" in result_text,
+            "content.body_excerpt": next(
+                (line for line in body.splitlines() if line.strip()), None
+            ),
+            "content.full": result_text,
         }
-        assert "tools" not in frontmatter
+
+        def array_permission_correct(old: object, new: object) -> bool:
+            """Permission dict from array tools maps to 'allow' strings."""
+            fm, _ = parse_frontmatter(new)  # type: ignore[arg-type]
+            perm = fm.get("permission", {})
+            return perm == {"read": "allow", "glob": "allow", "grep": "allow"}
+
+        universe = set(before.keys()) | set(after.keys())
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "content.exists": set_to(True),
+                "content.has_mode": set_to(True),
+                "content.has_steps": set_to(True),
+                "content.has_name": set_to(False),
+                "content.has_model": set_to(False),
+                "content.has_skills": set_to(False),
+                "content.has_maxturns": set_to(False),
+                "content.has_tools_key": set_to(False),
+                "content.has_permission": set_to(True),
+                "content.full": array_permission_correct,
+                # body_excerpt: None -> first body headline
+                "content.body_excerpt": set_to("# nw-documentarist-reviewer"),
+            },
+        )
+
         assert frontmatter["steps"] == 25
-        assert "# nw-documentarist-reviewer" in body
+        assert body.strip().startswith("# nw-documentarist-reviewer")
+        assert source_body == body
+
+
+# ---------------------------------------------------------------------------
+# Tests: OpenCode permission format (mixed: 1 converted, 1 kept)
+# ---------------------------------------------------------------------------
 
 
 class TestOpenCodePermissionFormat:
@@ -449,14 +781,16 @@ class TestOpenCodePermissionFormat:
         assert result == {"read": "allow", "write": "allow", "task": "allow"}
         for tool_name, value in result.items():
             assert isinstance(value, str), (
-                f"Permission for '{tool_name}' must be string 'allow', got {type(value).__name__}"
+                f"Permission for '{tool_name}' must be string 'allow', "
+                f"got {type(value).__name__}"
             )
 
     def test_transform_frontmatter_uses_permission_key_not_tools(self):
         """
         GIVEN: A frontmatter dict with tools: "Read, Write, Edit, Bash, Task"
         WHEN: _transform_frontmatter() is called
-        THEN: Result has 'permission' key (not 'tools') with 'allow' string values
+        THEN: Result has 'permission' key (not 'tools') with 'allow' string values;
+              implicit-unchanged catches any undeclared key mutations.
         """
         frontmatter = {
             "name": "nw-software-crafter",
@@ -468,27 +802,35 @@ class TestOpenCodePermissionFormat:
 
         result = _transform_frontmatter(frontmatter)
 
-        assert "permission" in result, "Must use 'permission' key, not 'tools'"
-        assert "tools" not in result, "'tools' key must not be present in output"
-        assert result["permission"] == {
-            "read": "allow",
-            "write": "allow",
-            "edit": "allow",
-            "bash": "allow",
-            "task": "allow",
+        # State-delta on a synthetic dict derived from the pure-function output.
+        before: dict[str, object] = {
+            "has_permission": False,
+            "has_tools": True,
+            "permission_value": None,
         }
+        after: dict[str, object] = {
+            "has_permission": "permission" in result,
+            "has_tools": "tools" in result,
+            "permission_value": result.get("permission"),
+        }
+        universe = set(before.keys()) | set(after.keys())
 
-    def test_task_permission_present_in_full_agent_transform(self):
-        """
-        GIVEN: A full agent file with tools including Task
-        WHEN: _transform_agent() is called
-        THEN: Output frontmatter has permission.task = "allow" (critical for sub-agent invocation)
-        """
-        result = _transform_agent(_CSV_TOOLS_AGENT)
-        frontmatter, _ = parse_frontmatter(result)
+        def permission_is_allow_mapping(old: object, new: object) -> bool:
+            """Permission dict maps expected tools to 'allow' strings."""
+            if not isinstance(new, dict):
+                return False
+            expected_tools = {"read", "write", "edit", "bash", "task"}
+            return set(new.keys()) == expected_tools and all(
+                v == "allow" for v in new.values()
+            )
 
-        assert "permission" in frontmatter, "Must use 'permission' key"
-        assert "tools" not in frontmatter, "'tools' key must not be present"
-        assert frontmatter["permission"]["task"] == "allow", (
-            "Task permission must be 'allow' for sub-agent invocation"
+        assert_state_delta(
+            before=before,
+            after=after,
+            universe=universe,
+            expected={
+                "has_permission": set_to(True),
+                "has_tools": set_to(False),
+                "permission_value": permission_is_allow_mapping,
+            },
         )

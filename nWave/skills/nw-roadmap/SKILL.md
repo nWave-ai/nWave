@@ -53,6 +53,37 @@ Replace every TODO with real content. Do NOT change the YAML structure
 time estimates, dependencies, and implementation_scope paths.
 
 Goal: {goal-description}
+
+# Test paradigm mandate (STANDING 2026-05-05) — apply per test level
+
+For EVERY step's `implementation_notes`, include this directive verbatim
+unless the step is documented as exempt:
+
+  TEST PARADIGM (mandatory): Unit tests for this step MUST be written as
+  property-based tests using Hypothesis @given strategies + state-delta
+  matchers (assert_state_delta over a declared universe with strict=True).
+  Single-example unit tests are FALLBACK only — document why in a
+  `# bypass:` comment if used. Acceptance scenarios MUST be framed as
+  Property: blocks (quantified preconditions + invariant outcomes) where
+  the contract supports it; classic Scenario: is fallback. Integration
+  and E2E tests REMAIN single-example — they verify wiring, not
+  invariants. Universe declaration is mandatory even when only one slot
+  is checked: the unchanged() predicate covers the rest.
+
+  STAGE CONTEXT (cascade): NEW code = Stage 0 (paradigm-from-day-zero,
+  no debt accumulates). Bug-prone legacy code = Stage 1 first (state-
+  delta migration captures hidden mutations, 33-75% yield), THEN Stage 2
+  PBT amplification (low yield by design — surface is debt-paid). Don't
+  expect high hit rate on Stage-1-completed surfaces; that's healthy.
+  See nw-tdd-methodology::Paradigm Mandate for the full debt-payoff
+  framing.
+
+When a step's contract genuinely cannot be expressed as a property
+(e.g., golden-file diff, exact error string, single-shot UI flow),
+include in `implementation_notes`:
+
+  EXEMPT FROM PARADIGM: <one-sentence reason>. Compensate with
+  property-based test at <unit|integration> level on adjacent slot.
 ```
 
 Context to pass (if available): measurement baseline|mikado-graph.md|existing docs.

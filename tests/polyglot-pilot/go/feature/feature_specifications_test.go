@@ -1,0 +1,99 @@
+// feature_specifications_test.go — step functions backing the scenarios.
+//
+// Responsibilities:
+//   - Construct the SUT through the PRODUCTION composition root
+//     (`productionapp.App`). Swap only external / non-deterministic ports with
+//     fakes (clock, RNG, paid APIs).
+//   - Capture the universe via `app.CaptureUniverse(...)`.
+//   - Assert via `AssertStateDelta` from the project's `common/statedelta`
+//     package.
+//
+// No domain language leaks into the production-app wiring; no production-app
+// details leak into the scenarios.
+//
+// Go idiom note: Go test files cannot share state across compilations like
+// TypeScript's `beforeEach` — instead, each step function takes *testing.T
+// and the per-test state is rebuilt via the helper newSignupContext(t) called
+// from the first Given of each scenario. The result is bound to file-level
+// package variables so subsequent steps in the same goroutine pick them up.
+
+package feature_test
+
+import (
+	"polyglot-pilot-go/common/statedelta"
+	"polyglot-pilot-go/productionapp"
+	"testing"
+)
+
+// Universe for the signup feature — port-exposed observables only:
+//   - registry.users : list of registered user records (driven-port state)
+//   - audit.events   : append-only audit trail (driven-port state)
+// Do NOT add internal fields here; refactoring would break the test.
+var signupUniverse = []string{"registry.users", "audit.events"}
+
+// Per-test state. Go tests run sequentially within a single package by default
+// (parallel only on opt-in via t.Parallel), so file-level package state is
+// safe for the chained-narrative pattern. If a scenario needs parallel
+// execution, wrap the state in a struct returned by the first Given.
+var (
+	app         *productionapp.App
+	stateBefore statedelta.Snapshot
+)
+
+// ---------------------------------------------------------------------------
+// Step functions — Given / When / Then
+// ---------------------------------------------------------------------------
+
+func given_a_fresh_signup_registry(t *testing.T) {
+	t.Helper()
+	app = productionapp.New(productionapp.Options{
+		// Swap external / non-deterministic ports here if needed (none for
+		// this toy feature; signup uses purely in-memory driven ports).
+	})
+	stateBefore = app.CaptureUniverse(signupUniverse)
+}
+
+func when_user_signs_up_with_email(t *testing.T, email string) {
+	t.Helper()
+	if _, err := app.Signup(productionapp.SignupInput{Email: email}); err != nil {
+		t.Fatalf("signup failed unexpectedly for %q: %v", email, err)
+	}
+}
+
+func then_user_is_added_to_registry_and_audited_once(t *testing.T, email string) {
+	t.Helper()
+	stateAfter := app.CaptureUniverse(signupUniverse)
+	statedelta.AssertStateDelta(t,
+		stateBefore, stateAfter,
+		signupUniverse,
+		map[string]statedelta.Predicate{
+			"registry.users": statedelta.AppendedWithItem(productionapp.UserRecord{Email: email}),
+			"audit.events": statedelta.AppendedWithItem(productionapp.AuditEvent{
+				Type:  "UserSignedUp",
+				Email: email,
+			}),
+		})
+}
+
+func when_user_attempts_duplicate_signup(t *testing.T, email string) {
+	t.Helper()
+	// Re-baseline before the duplicate attempt so the state-delta assertion
+	// measures the change *caused by the duplicate*, not the original signup.
+	stateBefore = app.CaptureUniverse(signupUniverse)
+	if _, err := app.Signup(productionapp.SignupInput{Email: email}); err == nil {
+		t.Fatalf("expected duplicate signup to fail for %q, got nil error", email)
+	}
+}
+
+func then_second_signup_is_rejected_and_state_is_unchanged(t *testing.T) {
+	t.Helper()
+	stateAfter := app.CaptureUniverse(signupUniverse)
+	// Both slots must be unchanged — the duplicate must produce zero delta.
+	statedelta.AssertStateDelta(t,
+		stateBefore, stateAfter,
+		signupUniverse,
+		map[string]statedelta.Predicate{
+			"registry.users": statedelta.Unchanged(),
+			"audit.events":   statedelta.Unchanged(),
+		})
+}

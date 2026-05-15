@@ -1,0 +1,18 @@
+[package]
+name = "polyglot_pilot"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde_json = "1"
+
+[dev-dependencies]
+proptest = "1.4"
+
+[profile.dev]
+# Faster test compile — toy feature, no optimisation needed.
+opt-level = 0

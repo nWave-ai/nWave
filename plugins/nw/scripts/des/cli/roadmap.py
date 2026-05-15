@@ -1,8 +1,8 @@
 """CLI: Roadmap init and validate tool.
 
 Usage:
-    python -m des.cli.roadmap init --project-id ID --goal "Goal" [--phases N] [--steps "01:3,02:2"] [--output FILE]
-    python -m des.cli.roadmap validate ROADMAP_PATH
+    des-roadmap init --project-id ID --goal "Goal" [--phases N] [--steps "01:3,02:2"] [--output FILE]
+    des-roadmap validate ROADMAP_PATH
 
 Exit codes:
     0 = Success (init) or valid (validate, warnings OK)
@@ -53,7 +53,7 @@ def _build_skeleton(
                 {
                     "id": step_id,
                     "name": "TODO: step name",
-                    "criteria": "TODO: acceptance criteria",
+                    "criteria": [],
                     "test_file": "",
                     "scenario_name": "",
                 }
@@ -71,7 +71,10 @@ def _build_skeleton(
             "project_id": project_id,
             "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "total_steps": total_steps,
-            "phases": num_phases,
+            # Note: the legacy `phases: int` field is deliberately omitted (F-1).
+            # The top-level `phases: array` below is the canonical phase listing;
+            # an integer here collides with the array semantics and is forbidden
+            # by the roadmap-schema.json contract.
         },
         "phases": phases,
         "implementation_scope": {
@@ -150,7 +153,7 @@ def _cmd_validate(args: list[str]) -> int:
     if not args:
         print("Error: roadmap path required", file=sys.stderr)
         print(
-            "Usage: python -m des.cli.roadmap validate ROADMAP_PATH",
+            "Usage: des-roadmap validate ROADMAP_PATH",
             file=sys.stderr,
         )
         return 2
@@ -199,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if argv and argv[0] in ("--help", "-h"):
         print(
-            "Usage: python -m des.cli.roadmap {init|validate} [OPTIONS]\n\n"
+            "Usage: des-roadmap {init|validate} [OPTIONS]\n\n"
             "Subcommands:\n"
             "  init      Generate a roadmap.json skeleton\n"
             "  validate  Validate an existing roadmap.json\n\n"
@@ -220,7 +223,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not argv:
         print(
-            "Usage: python -m des.cli.roadmap {init|validate} [OPTIONS]",
+            "Usage: des-roadmap {init|validate} [OPTIONS]",
             file=sys.stderr,
         )
         return 2

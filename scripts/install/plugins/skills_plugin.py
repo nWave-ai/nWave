@@ -38,7 +38,7 @@ from scripts.shared.skill_distribution import (
     copy_skills_to_target,
     detect_layout,
     enumerate_skills,
-    filter_public_skills,
+    filter_public_skills_with_reasons,
 )
 
 
@@ -215,9 +215,11 @@ class SkillsPlugin(InstallationPlugin):
         command_skills = detect_command_skills(skills_source)
 
         entries = enumerate_skills(skills_source)
-        entries = filter_public_skills(
+        entries, excluded = filter_public_skills_with_reasons(
             entries, public_agents, ownership_map, command_skills
         )
+        for skipped_name, reason in excluded:
+            context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
         copy_skills_to_target(entries, skills_target, clean_existing=True)
 
         # Resolve Python command substitution in installed files
@@ -260,7 +262,11 @@ class SkillsPlugin(InstallationPlugin):
         ownership_map = build_ownership_map(context.project_root / "nWave" / "agents")
 
         entries = enumerate_skills(skills_source)
-        entries = filter_public_skills(entries, public_agents, ownership_map)
+        entries, excluded = filter_public_skills_with_reasons(
+            entries, public_agents, ownership_map
+        )
+        for skipped_name, reason in excluded:
+            context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
 
         # Only create target dir if there are skills to install
         if entries:
