@@ -1,5 +1,6 @@
 """nwave-ai CLI: thin wrapper around nWave install/uninstall scripts."""
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -158,6 +159,53 @@ def _get_config_dir() -> Path:
     return Path.home() / ".nwave"
 
 
+def _extract_target_flag(
+    args: list[str],
+) -> tuple[Path | None, list[str], str | None]:
+    """Parse and consume `--target <path>` (or `--target=<path>`) from args.
+
+    Returns (resolved_target_path | None, remaining_args, error_message | None).
+
+    The target is resolved via `Path.expanduser().resolve()` so that `~/...`,
+    relative paths, and symlinks all collapse to a single canonical form
+    before being applied as `CLAUDE_CONFIG_DIR` for the subprocess.
+
+    If the resolved target equals `realpath($HOME)`, returns an error so the
+    caller can exit 2 without mutating any filesystem state (the single
+    highest-impact misconfiguration guard).
+    """
+    remaining: list[str] = []
+    target: str | None = None
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--target":
+            if i + 1 >= len(args):
+                return (None, args, "--target requires a path argument")
+            target = args[i + 1]
+            i += 2
+            continue
+        if arg.startswith("--target="):
+            target = arg.split("=", 1)[1]
+            i += 1
+            continue
+        remaining.append(arg)
+        i += 1
+
+    if target is None:
+        return (None, remaining, None)
+
+    resolved = Path(target).expanduser().resolve()
+    if resolved == Path.home().resolve():
+        return (
+            None,
+            remaining,
+            "--target must point to a Claude config directory "
+            "(e.g. ~/.claude-nwave or ./.claude), not your home directory",
+        )
+    return (resolved, remaining, None)
+
+
 def _handle_install(args: list[str]) -> int:
     """Run the install pipeline with first-run density prompt (D6).
 
@@ -167,12 +215,22 @@ def _handle_install(args: list[str]) -> int:
     install on failure — at worst the CI default ("lean") is written.
 
     Flags handled here:
+        --target <path>    install into <path> instead of ~/.claude/
+                           (sets CLAUDE_CONFIG_DIR for the subprocess; see
+                           ADR-001). $HOME is refused with exit 2.
         --yes              non-interactive (CI / silent default)
         --density-only     run ONLY the density prompt and exit (test driving
                            port for acceptance tests; never a user flag)
 
     All other args pass through to install_nwave.py.
     """
+    target, args, error = _extract_target_flag(args)
+    if error is not None:
+        print(f"nwave-ai: {error}", file=sys.stderr)
+        return 2
+    if target is not None:
+        os.environ["CLAUDE_CONFIG_DIR"] = str(target)
+
     pass_through_args: list[str] = []
     non_interactive = False
     density_only = False
@@ -207,6 +265,25 @@ def _handle_install(args: list[str]) -> int:
         return 0
 
     return _run_script("install_nwave.py", pass_through_args)
+
+
+def _handle_uninstall(args: list[str]) -> int:
+    """Run the uninstall pipeline.
+
+    Flags handled here:
+        --target <path>    uninstall from <path> instead of ~/.claude/
+                           (sets CLAUDE_CONFIG_DIR for the subprocess; see
+                           ADR-001). $HOME is refused with exit 2.
+
+    All other args pass through to uninstall_nwave.py.
+    """
+    target, remaining, error = _extract_target_flag(args)
+    if error is not None:
+        print(f"nwave-ai: {error}", file=sys.stderr)
+        return 2
+    if target is not None:
+        os.environ["CLAUDE_CONFIG_DIR"] = str(target)
+    return _run_script("uninstall_nwave.py", remaining)
 
 
 def _handle_attribution(args: list[str]) -> int:
@@ -590,7 +667,7 @@ def main() -> int:
     if command == "install":
         return _handle_install(sys.argv[2:])
     elif command == "uninstall":
-        return _run_script("uninstall_nwave.py", sys.argv[2:])
+        return _handle_uninstall(sys.argv[2:])
     elif command == "attribution":
         return _handle_attribution(sys.argv[2:])
     elif command == "doctor":

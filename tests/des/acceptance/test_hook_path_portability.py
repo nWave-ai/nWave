@@ -88,8 +88,22 @@ def project_root() -> Path:
 
 
 @pytest.fixture
-def install_context(tmp_path, project_root, test_logger) -> InstallContext:
-    """Create InstallContext simulating a fresh installation."""
+def install_context(
+    tmp_path, project_root, test_logger, monkeypatch
+) -> InstallContext:
+    """Create InstallContext simulating a fresh DEFAULT-HOME installation.
+
+    The portability assertions in this file (e.g. "PYTHONPATH uses $HOME")
+    only apply when the install target is the user's default `~/.claude/`.
+    Non-default targets (`nwave-ai install --target ~/.claude-nwave`) emit
+    absolute paths by design — see ADR-002 of the per-project-install
+    feature.
+
+    To exercise the default-home code path under tmp_path, we redirect
+    `Path.home()` to tmp_path so `Path.home() / ".claude" == claude_dir`.
+    """
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir(parents=True)
     return InstallContext(
