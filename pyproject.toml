@@ -68,7 +68,8 @@ dependencies = [
     "pyyaml>=6.0",
     "packaging>=21.0",
     "tomli>=2.0.0; python_version < '3.11'",
-    "typing_extensions>=4.0"
+    "typing_extensions>=4.0",
+    "jsonschema>=4.0.0"
 ]
 
 [project.optional-dependencies]
@@ -108,9 +109,7 @@ dev = [
     "tiktoken>=0.7.0",
     # E2E container testing
     "testcontainers>=4.0.0",
-    "docker>=7.0.0",
-    # JSON Schema validation (used by tests/outcomes + tests/feature_delta)
-    "jsonschema>=4.0.0"
+    "docker>=7.0.0"
 ]
 test = [
     "pytest>=8.0.0",
@@ -118,8 +117,7 @@ test = [
     "pytest-asyncio>=0.23.0",
     "pytest-xdist>=3.5.0",
     "pytest-bdd>=7.0.0",
-    "respx>=0.20.0",
-    "jsonschema>=4.0.0"
+    "respx>=0.20.0"
 ]
 
 [project.urls]
