@@ -5,6 +5,7 @@ model: inherit
 tools: Read, Write, Edit, Bash, Glob, Grep, Task
 skills:
   - nw-tdd-methodology
+  - nw-tpp-methodology
   - nw-progressive-refactoring
   - nw-legacy-refactoring-ddd
   - nw-sc-review-dimensions
@@ -147,6 +148,7 @@ Read these files NOW:
 | `~/.claude/skills/nw-pbt-fundamentals/SKILL.md` | Properties for domain invariants (default for FP) |
 | `~/.claude/skills/nw-pbt-stateful/SKILL.md` | Stateful protocol testing |
 | `~/.claude/skills/nw-property-based-testing/SKILL.md` | General PBT patterns |
+| `~/.claude/skills/nw-tpp-methodology/SKILL.md` | RED: choosing which test to write next — prefer the test that needs the simplest transformation (TPP + ZOMBIES) |
 | `~/.claude/skills/nw-fp-algebra-driven-design/SKILL.md` | Algebraic structures (monoid, functor) |
 | `~/.claude/skills/nw-fp-usable-design/SKILL.md` | Readable naming, pipeline composition |
 | `~/.claude/skills/nw-collaboration-and-handoffs/SKILL.md` | Handoff context needed |

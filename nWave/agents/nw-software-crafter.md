@@ -5,6 +5,7 @@ model: inherit
 tools: Read, Write, Edit, Bash, Glob, Grep, Task
 skills:
   - nw-tdd-methodology
+  - nw-tpp-methodology
   - nw-progressive-refactoring
   - nw-legacy-refactoring-ddd
   - nw-sc-review-dimensions
@@ -183,6 +184,7 @@ Read these files NOW:
 |-------|---------|
 | `~/.claude/skills/nw-hexagonal-testing/SKILL.md` | Port/adapter boundary decisions |
 | `~/.claude/skills/nw-property-based-testing/SKILL.md` | AC tagged `@property` or domain invariants |
+| `~/.claude/skills/nw-tpp-methodology/SKILL.md` | RED: choosing which test to write next — prefer the test that needs the simplest transformation (TPP + ZOMBIES) |
 | `~/.claude/skills/nw-production-safety/SKILL.md` | Implementation choices |
 | `~/.claude/skills/nw-collaboration-and-handoffs/SKILL.md` | Handoff context needed |
 | `~/.claude/skills/nw-progressive-refactoring/SKILL.md` | `/nw-refactor` invocation |
