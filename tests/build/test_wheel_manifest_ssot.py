@@ -12,7 +12,7 @@ MUST be a superset of the canonical e2e privacy contract categories. Any
 new category added to the e2e contract is mechanically forced into the
 build-time validator too.
 
-Step-ID: 01-01
+Step-Id: 01-01
 """
 
 from __future__ import annotations

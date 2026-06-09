@@ -246,6 +246,8 @@ DISTILL reads this file to parametrize acceptance scenarios over target environm
 
 Per-wave Forge review is opt-in. Default: skip and proceed to DISTILL. The mandatory consolidated review covering DISCUSS+DESIGN+DEVOPS+DISTILL fires at end of DISTILL where Eclipse + Architect + Forge + Sentinel run in parallel against the full `feature-delta.md` (all 4 waves visible — catches cross-wave inconsistencies that per-wave review misses).
 
+**Structural-correctness reviewer never skips**: `rigor.reviewer_model: "skip"` applies to scale-sensitive cost-driven reviewers (Eclipse / Architect / Forge) only; the structural-correctness reviewer at the end of DISTILL (Sentinel / `@nw-acceptance-designer-reviewer`) ALWAYS dispatches — silent skip masks the bug class issue #52 fixed.
+
 Invoke per-wave Forge review explicitly via `/nw-review nw-platform-architect-reviewer` only if:
 - Novel deployment target not in prior coexistence matrix
 - New CI/CD framework introduced (e.g., switching from GitHub Actions to GitLab)

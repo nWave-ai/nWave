@@ -74,10 +74,26 @@ def _test_logger() -> logging.Logger:
 
 
 @pytest.fixture
-def _install_context(tmp_path: Path, _test_logger: logging.Logger):
-    """InstallContext wired to a temp ~/.claude directory."""
+def _install_context(
+    tmp_path: Path, _test_logger: logging.Logger, monkeypatch: pytest.MonkeyPatch
+):
+    """InstallContext wired to a temp ~/.claude directory simulating the
+    DEFAULT-HOME install path.
+
+    The hook-registration assertions in this file (e.g. command contains
+    `$HOME/.claude/lib/python`) only apply when the install target is
+    `~/.claude/`. Non-default targets (`nwave-ai install --target ...`,
+    per-project installs) emit absolute paths by design — see ADR-002 of
+    the per-project-install feature and the matching fixture pattern in
+    `tests/des/acceptance/test_hook_path_portability.py`.
+
+    To exercise the default-home code path under `tmp_path`, we redirect
+    `Path.home()` to `tmp_path` so `Path.home() / ".claude" == claude_dir`.
+    """
     from scripts.install.plugins.base import InstallContext
 
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir()
     project_root = Path(__file__).resolve().parents[4]

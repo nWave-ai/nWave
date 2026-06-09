@@ -27,27 +27,35 @@ If you upgrade from an earlier version, run the installer again to clean up old 
 
 - **Python 3.10+**
 - **Claude Code** installed
-- **pipx** (recommended) or pip
+- **uv** (recommended) — or **pipx** as a fallback
 
-If you need pipx:
+If you need uv:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+See [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/) for other platforms.
+
+If you prefer pipx (supported fallback):
 ```bash
 pip install pipx
 pipx ensurepath
 ```
 
-### Using pipx (Recommended)
+### Using uv (Recommended)
+
+```bash
+uv tool install nwave-ai
+nwave-ai install
+```
+
+### Using pipx (Fallback)
 
 ```bash
 pipx install nwave-ai
 nwave-ai install
 ```
 
-### Using pip
-
-```bash
-pip install nwave-ai
-nwave-ai install
-```
+> **Both installed?** `nwave-ai` auto-detects which tool installed it and uses the same one for plugin installs. Override with `NWAVE_INSTALLER=uv` (or `pipx`) if you need to force a choice.
 
 Then close and reopen Claude Code. The nWave agents and slash commands will appear in your command palette.
 
@@ -135,7 +143,13 @@ Settings here override global defaults for that project only.
 
 ## Updating
 
-**CLI method:**
+**CLI method (uv, recommended):**
+```bash
+uv tool upgrade nwave-ai
+nwave-ai install
+```
+
+**CLI method (pipx, fallback):**
 ```bash
 pipx upgrade nwave-ai
 nwave-ai install
@@ -161,7 +175,13 @@ nWave checks for new versions when you open Claude Code. Control check frequency
 
 ## Uninstalling
 
-**CLI method:**
+**CLI method (uv, recommended):**
+```bash
+nwave-ai uninstall              # Removes agents, commands, config, DES hooks from ~/.claude/
+uv tool uninstall nwave-ai     # Removes the nwave-ai Python package itself
+```
+
+**CLI method (pipx, fallback):**
 ```bash
 nwave-ai uninstall              # Removes agents, commands, config, DES hooks from ~/.claude/
 pipx uninstall nwave-ai        # Removes the nwave-ai Python package itself
@@ -235,9 +255,24 @@ chmod 755 ~/.claude/
 nwave-ai install --restore
 ```
 
+### uv Issues
+
+If `uv tool` commands fail:
+
+```bash
+# Verify uv is installed
+uv --version
+
+# Ensure the uv tool bin dir is on PATH
+uv tool update-shell      # then restart your shell
+
+# If uv is missing, reinstall it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 ### pipx Issues
 
-If pipx commands fail:
+If pipx commands fail (pipx is a supported fallback):
 
 ```bash
 # Verify pipx is installed
@@ -255,7 +290,15 @@ pip install --user pipx
 If you see import errors when running nWave commands:
 
 1. Ensure Claude Code is using the correct Python environment
-2. Reinstall nWave:
+2. Reinstall nWave (uv, recommended):
+
+```bash
+uv tool uninstall nwave-ai
+uv tool install nwave-ai
+nwave-ai install
+```
+
+Or via pipx (fallback):
 
 ```bash
 pipx uninstall nwave-ai

@@ -1,12 +1,10 @@
-"""Tests for the branch-conditional e2e pre-push wrapper.
+"""Tests for the unconditional e2e pre-push wrapper.
 
-The wrapper at ``scripts/hooks/run_e2e_if_master.py`` gates the e2e test
-hook on the current branch: only ``master`` invokes the full e2e suite
-locally on pre-push (developers push feature branches frequently and the
-~10-15 min e2e cost would dominate; e2e is run in CI on every PR).
-
-Decision (Ale 2026-04-28, RCA #31.2): e2e tests in pre-push only when
-on ``master`` branch. Feature branches -> CI-only.
+Per Ale 2026-05-19 mandate: e2e runs on EVERY push regardless of
+branch. Previous version (branch-conditional) had a bypass bug where
+`git push origin feature:master` skipped e2e because the LOCAL branch
+name was checked instead of the destination ref. The fix removes all
+conditional logic — e2e is unconditional on pre-push.
 """
 
 from __future__ import annotations
@@ -43,21 +41,20 @@ def wrapper():
     return _load_wrapper_module()
 
 
-def test_on_master_invokes_pytest(wrapper) -> None:
-    """When the current branch is ``master``, the wrapper invokes pytest."""
-    with (
-        patch.object(wrapper, "_current_branch", return_value="master"),
-        patch.object(wrapper.subprocess, "run") as mock_run,
-    ):
+def test_unconditional_invokes_pytest_on_any_push(wrapper) -> None:
+    """The wrapper invokes pytest unconditionally on every push.
+
+    Branch name is irrelevant — pre-push hook runs e2e always.
+    """
+    with patch.object(wrapper.subprocess, "run") as mock_run:
         mock_run.return_value.returncode = 0
         exit_code = wrapper.main([])
 
     assert exit_code == 0
-    assert mock_run.call_count == 1, "pytest must be invoked exactly once on master"
+    assert mock_run.call_count == 1, "pytest must be invoked on every push"
     cmd = mock_run.call_args.args[0]
-    # Real pytest invocation: pipenv run pytest -m "e2e and e2e_smoke" ...
-    # The pre-push gate runs only the smoke subset (4 critical-path files);
-    # full e2e remains on CI per PR. See e2e_smoke marker in pyproject.toml.
+    # Pre-push runs only the smoke subset (4 critical-path files);
+    # full e2e remains on CI per PR.
     assert "pipenv" in cmd[0] or "pytest" in " ".join(cmd), (
         f"Expected pytest invocation, got: {cmd}"
     )
@@ -68,30 +65,28 @@ def test_on_master_invokes_pytest(wrapper) -> None:
     )
 
 
-def test_on_feature_branch_skips_pytest(wrapper) -> None:
-    """On a feature branch, the wrapper exits 0 without invoking pytest."""
-    with (
-        patch.object(
-            wrapper, "_current_branch", return_value="feat/test-suite-optimization"
-        ),
-        patch.object(wrapper.subprocess, "run") as mock_run,
-    ):
-        exit_code = wrapper.main([])
+def test_pytest_failure_propagates_nonzero_exit(wrapper) -> None:
+    """If pytest returns non-zero, the wrapper exits non-zero.
 
-    assert exit_code == 0, "feature-branch path must exit 0 (skip)"
-    assert mock_run.call_count == 0, "pytest must NOT be invoked on a non-master branch"
-
-
-def test_git_error_propagates_nonzero_exit(wrapper) -> None:
-    """If ``git branch --show-current`` fails, the wrapper exits non-zero.
-
-    A failing git invocation could mean the worktree is in a bad state;
-    silently treating that as "not master" would let buggy branches push
-    without e2e validation. Better to fail loud.
+    A failed e2e suite must block the push — that's the whole point
+    of the gate.
     """
-    with patch.object(
-        wrapper, "_current_branch", side_effect=RuntimeError("git invocation failed")
-    ):
+    with patch.object(wrapper.subprocess, "run") as mock_run:
+        mock_run.return_value.returncode = 1
         exit_code = wrapper.main([])
 
-    assert exit_code != 0, "git error must propagate as non-zero exit code"
+    assert exit_code != 0, "pytest failure must propagate as non-zero exit code"
+
+
+def test_passes_through_argv_to_pytest(wrapper) -> None:
+    """Additional argv passes through to pytest invocation.
+
+    Allows callers to inject extra pytest flags (e.g. --tb=long).
+    """
+    with patch.object(wrapper.subprocess, "run") as mock_run:
+        mock_run.return_value.returncode = 0
+        wrapper.main(["--tb=long", "-x"])
+
+    cmd = mock_run.call_args.args[0]
+    assert "--tb=long" in cmd, "extra argv must pass through to pytest"
+    assert "-x" in cmd, "extra argv must pass through to pytest"

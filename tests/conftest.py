@@ -39,6 +39,30 @@ def restore_working_directory():
 
 
 # ---------------------------------------------------------------------------
+# Test-isolation guard: PR-22 (bootstrap_dev + git-hook templates) sets
+# `git config --global init.templateDir = ~/.nwave/git-template/` so any
+# subsequent `git init` (including in test tmp repos) inherits the project's
+# hook stages — gitlint then rejects ephemeral fixture commits (`init`,
+# `pr head`, `seed`, etc.) for not being Conventional Commits.
+#
+# Symptom: every fixture that creates a tmp git repo and commits hits
+# subprocess exit-1 in CI (passes locally only because dev machines may
+# not have the template set yet).
+#
+# Mitigation: override `GIT_TEMPLATE_DIR` to an empty value for ALL test
+# subprocess invocations. This overrides any `init.templateDir` config and
+# makes `git init` skip the template copy. Production behaviour is
+# untouched (the production install path runs outside pytest).
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_git_template(monkeypatch):
+    """Skip the user-global git template for every test's subprocess git calls."""
+    monkeypatch.setenv("GIT_TEMPLATE_DIR", "")
+
+
+# ---------------------------------------------------------------------------
 # Class B regression guard — editable install health check (RCA 2026-05-13).
 #
 # Symptom: subprocess-based tests fail with
@@ -738,6 +762,11 @@ TIER_MAP = {
     "tests/outcomes/acceptance/": "acceptance",
     # Bug regression tests
     "tests/bugs/": "acceptance",
+    # Feature delta tiers
+    "tests/feature_delta/unit/": "unit",
+    "tests/feature_delta/acceptance/": "e2e",  # calls nwave-ai CLI; runs at e2e stage
+    # Polyglot smoke tests (Kotlin/Rust/Go/Java/TS/C# builds) — not unit/acceptance
+    "tests/polyglot-pilot/": "polyglot_smoke",
     # Root-level tests
     "tests/validation/": "unit",
     "tests/e2e/": "e2e",  # testcontainers-driven Docker tests (post Phase 5 retirement of Dockerfiles)

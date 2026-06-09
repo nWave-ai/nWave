@@ -37,6 +37,39 @@ class CatalogParseError(ValueError):
 
 
 # ---------------------------------------------------------------------------
+# Public shared skills — load-bearing skills with no owning public agent
+# ---------------------------------------------------------------------------
+
+# Skill ownership is derived from agent frontmatter ``skills:`` lists. A skill
+# that is depended on by a public artifact (a public command-skill body, a
+# public agent's Skill Loading Strategy table, or a shared methodology
+# reference) but is NOT declared in any public agent's frontmatter would be
+# dropped by the ownership-only strip as "uncatalogued" — shipping a public
+# package with a dangling skill reference (RCA Q4,
+# docs/analysis/rca-installer-private-skill-leak-2026-05-20.md).
+#
+# This allow-list is the SSOT for those load-bearing public skills: every
+# entry here is public methodology that public installs depend on and that
+# the privacy strip MUST preserve. The strip removes private work; an
+# uncatalogued public-methodology skill is not private work.
+PUBLIC_SHARED_SKILLS: frozenset[str] = frozenset(
+    {
+        "nw-density-resolution-contract",
+        "nw-jtbd-core",
+        "nw-jtbd-interviews",
+        "nw-jtbd-opportunity-scoring",
+        "nw-jtbd-workflow-selection",
+        "nw-persona-jtbd-analysis",
+        "nw-roadmap-design",
+        "nw-spike-methodology",
+        "nw-speculative-dispatch",
+        "nw-tdd-cross-language",
+        "nw-wizard-shared-rules",
+    }
+)
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -358,6 +391,8 @@ def is_public_skill(
     if not public_agents:
         return True
     if skill_dir_name in ("common", "nw-canary"):
+        return True
+    if skill_dir_name in PUBLIC_SHARED_SKILLS:
         return True
     if command_skills and skill_dir_name in command_skills:
         return True

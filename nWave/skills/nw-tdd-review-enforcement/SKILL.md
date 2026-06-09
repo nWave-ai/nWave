@@ -90,9 +90,11 @@ Required: delete internal tests, consolidate via parametrize, re-submit
 
 ## TDD Phase Validation (3-phase canon, ADR-025)
 
-Verify TDD phases in execution-log.json. **Current canonical (ADR-025, 2026-05-07): 3-phase cycle — RED → GREEN → COMMIT.** RED absorbs the legacy PREPARE / RED_ACCEPTANCE / RED_UNIT phases — it unskips the AT scaffold authored by DISTILL, verifies fail-for-right-reason, and writes PBT unit tests ONLY when the AT requires them to reach GREEN.
+In `classic` mode, verify TDD phases in execution-log.json. **Current canonical (ADR-025, 2026-05-07): 3-phase cycle — RED → GREEN → COMMIT.** RED absorbs the legacy PREPARE / RED_ACCEPTANCE / RED_UNIT phases — it unskips the AT scaffold authored by DISTILL, verifies fail-for-right-reason, and writes PBT unit tests ONLY when the AT requires them to reach GREEN.
 
-**Legacy 5-phase contract (ADR-024 era)**: PREPARE / RED_ACCEPTANCE / RED_UNIT / GREEN / COMMIT — preserved for audit-log replay of pre-2026-05-07 commits. Existing execution-log.json files using the 5-phase contract remain valid; the gates below apply equivalently to merged phases under the 3-phase canon.
+**Phase record by `workflow.mode`**: `execution-log.json` is the phase record of the `classic` spine only. Under `workflow.mode: atdd_pure` there is no `execution-log.json` — the roadmap-free 7-phase A→G sibling spine (ADR-028) records each slice's progress in the **AT-completion ledger** (`.nwave/telemetry/atdd-pure/{feature_id}.jsonl`). When reviewing an `atdd_pure` delivery, read the AT-completion ledger for phase outcomes; the `classic`-mode gates below apply to the legacy and 3-phase `execution-log.json` contracts, not to the AT-completion ledger.
+
+**Legacy 5-phase contract (ADR-024 era, `classic` mode)**: PREPARE / RED_ACCEPTANCE / RED_UNIT / GREEN / COMMIT — preserved for audit-log replay of pre-2026-05-07 commits. Existing `classic`-mode execution-log.json files using the 5-phase contract remain valid; the gates below apply equivalently to merged phases under the 3-phase canon.
 
 ### Phase Checks
 - Completeness: all phases present per the schema version in use (Blocker if missing) | Outcomes: all PASS (Blocker if FAIL)
@@ -257,7 +259,7 @@ When a crafter gets stuck, the correct action is to escalate -- not to silently 
 
 ### What to Check
 
-1. **ESCALATION_NEEDED markers**: execution-log.json should contain `escalation_needed: true` with reason if the crafter hit a wall
+1. **ESCALATION_NEEDED markers**: in `classic` mode the execution-log.json should contain `escalation_needed: true` with reason if the crafter hit a wall (under `workflow.mode: atdd_pure` the equivalent marker is recorded in the AT-completion ledger)
 2. **Three-attempt rule**: evidence of at least 3 distinct implementation attempts before any test change (check GREEN phase attempts in execution log)
 3. **Product owner approval**: any requirement-driven test change must reference explicit PO approval (e.g., `po_approved: true` or `requirement_change: {ticket}` in execution log)
 

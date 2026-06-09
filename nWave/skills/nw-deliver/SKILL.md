@@ -9,6 +9,16 @@ argument-hint: '[feature-description] - Example: "Implement user authentication 
 
 **Wave**: DELIVER (wave 6 of 6)|**Agent**: Main Instance (orchestrator)|**Command**: `/nw-deliver "{feature-description}"`
 
+## LANGUAGE CONVENTION FRAME (read FIRST — overrides all examples below)
+
+**Code examples in this skill use Python syntax for illustration only.** They are NOT prescriptive about target language. nWave is language-agnostic per the "genericity and agnosticism" mandate (2026-05-24).
+
+**Before crafting**, detect the target project's language from manifest files: `package.json` → TypeScript/JS; `Cargo.toml` → Rust; `go.mod` → Go; `pyproject.toml`/`setup.py`/`Pipfile` → Python; `pom.xml`/`build.gradle` → Java/Kotlin; `*.csproj`/`*.fsproj` → C#/F#; `Gemfile` → Ruby; `Package.swift` → Swift.
+
+**When the target language is NOT Python**: adapt every code example to target conventions (imports, type system, test-framework idioms, file extensions, directory layout). Project conventions ALWAYS WIN over examples below.
+
+**Empirical anchor**: skill examples being Python-only caused LLM to emit Python code in greenfield TS project. Fix per F-SKILL-EXAMPLES-LANGUAGE-LEAK. Connects [[feedback_language_adapter_plugin_architecture_2026_05_24]].
+
 ## Overview
 
 Orchestrates complete DELIVER wave: feature description → production-ready code with mandatory quality gates. You (main Claude instance) coordinate by delegating to specialized agents via Task tool. Final wave (DISCOVER > DISCUSS > SPIKE > DESIGN > DEVOPS > DISTILL > DELIVER).
@@ -65,6 +75,193 @@ Wave-specific signal: a DELIVER wave recording `choice = "expand"` for `retrospe
 3. **Extract step context from roadmap.json ONLY for Task prompt.** Grep roadmap for step_id ~50 lines context, extract (name|criteria|files_to_modify) per `nWave/templates/roadmap-schema.json`, pass in DES template.
 
 **DES monitoring is non-negotiable.** Circumventing DES — faking step IDs, omitting markers, or writing log entries manually — is a **violation that invalidates the delivery**. DES detects unmonitored steps and flags them; finalize **blocks** until every flagged step is re-executed through a properly instrumented Task. There is no workaround: unverified steps cannot pass integrity verification, and the delivery cannot be finalized. Without DES monitoring, nWave cannot **verify** TDD phase compliance. For non-deliver tasks (docs, research, one-off edits): `<!-- DES-ENFORCEMENT : exempt -->`.
+
+## Workflow Mode Dispatch (classic vs atdd_pure)
+
+Before any phase work, read `.nwave/config.yaml` key `workflow.mode`. The DELIVER wave has **two sibling top-level workflows** — not one workflow with an inner swap. `workflow.mode` branches the **entire orchestration flow** at this single dispatch point, so the orchestrator cannot fall through from one spine into the other:
+
+| mode | Spine | Reference |
+|------|-------|-----------|
+| `classic` (default) | the ADR-025 roadmap-based DELIVER spine — `roadmap.json` + per-step `execution-log.json` + 3-phase `RED → GREEN → COMMIT` | §Orchestration Flow (the classic spine, below) |
+| `atdd_pure` (opt-in) | the ADR-028 roadmap-free, execution-log-free spine — per-slice carpaccio loop + 7-phase `A→G` + AT-completion ledger | §ATDD-Pure Roadmap-Free Spine, below |
+
+Read precedence: `.nwave/config.yaml:workflow.mode` → if missing, fall back to `classic`. Mid-feature mode switch is forbidden.
+
+**The classic spine (§Orchestration Flow) is a sibling top-level workflow, preserved byte-for-byte unchanged** — ADR-028 adds the `atdd_pure` spine ALONGSIDE it, never modifying the classic roadmap path. When `workflow.mode = classic` (or absent), run §Orchestration Flow exactly as written. When `workflow.mode = atdd_pure`, run §ATDD-Pure Roadmap-Free Spine instead — do NOT enter §Orchestration Flow Phase 1, and do NOT run step 1.a `des-init-log`.
+
+## ATDD-Pure Roadmap-Free Spine (workflow.mode = atdd_pure)
+
+Reference: ADR-028 D1/D2/D3/D5 · ADR-027 7-phase sequence (carried forward) · rollout feature-delta `docs/feature/atdd-pure-roadmap-free-rollout/feature-delta.md`.
+
+This spine is roadmap-free and execution-log-free. It creates **no roadmap.json** and **no execution-log.json** — step 1.a (`des-init-log`) and Phase 1 (Roadmap Creation + Review) of the classic spine are SKIPPED entirely, not run-then-discarded. Decomposition is carried by the feature-delta `## Wave: DISCUSS / [REF] Slice Plan` table; audit is carried by the AT-completion ledger + commit trailers.
+
+**Setup (atdd_pure).** Parse input, derive `feature-id`. In place of the skipped `des-init-log` step, provision the AT-completion ledger directory:
+
+```
+mkdir -p .nwave/telemetry/atdd-pure/
+```
+
+The DES sequencer creates `.nwave/telemetry/atdd-pure/{feature-id}.jsonl` on first append. The per-phase-boundary JSONL record uses `telemetry_schema_version` `1.1.0` (adds `slice_id` + `at_ids` over the classic `1.0.0` record — ADR-028 D5).
+
+**Per-slice carpaccio loop in place of Phase 1.** There is no whole-feature roadmap-step extraction. In place of Phase 1 roadmap creation, the spine runs the carpaccio entry_gate followed by a **per-slice** DISTILL→DELIVER A→G loop — one A→G pass per slice:
+
+1. Read the next `pending` slice from the feature-delta `[REF] Slice Plan` table; read its `Class` column.
+2. **`Class = C`** — run the carpaccio slice gate as the DES `entry_gate` in place of Phase 1 roadmap creation, before the first `A_GREEN_ATS` dispatch:
+   `python scripts/cli/carpaccio_slice_gate.py --feature-id {feature-id} --entering-slice {slice-NN}`.
+   Exit 0 → dispatch the per-slice 7-phase `A→G` sequence (see §ATDD-Pure 7-Phase Sequence). Exit 44/45 → halt with the gate payload.
+3. **`Class = P`** — the carpaccio entry_gate is SKIPPED; the spine runs the coherence check for the slice instead (see slice-04 spine routing note at the carpaccio entry_gate), then a single Phase G commit.
+4. At the slice's Phase G commit, flip the slice plan row `pending → shipped`; advance to the next slice. The feature is complete when every slice row is `shipped`.
+
+**Phase 6 — Deliver Integrity Verification (atdd_pure).** Under `atdd_pure`, Phase 6 verifies the AT-completion ledger + the slice-plan (every row `shipped`) + the commit-trailer chain — NOT roadmap/execution-log integrity. Run `des-verify-integrity` (mode-aware): a missing roadmap is the expected state; an absent ledger is a verification failure with a diagnostic. Refactor, review, and mutation phases run as written in §Orchestration Flow.
+
+### Feature-End Cycle (atdd_pure) — runs ONCE after the last slice
+
+Reference: ADR-028 D6 (ratified 2026-05-20).
+
+The per-slice carpaccio loop keeps each slice's cycle lean — a slice ships through `A_GREEN_ATS`, `B_COVERAGE_CLEANUP`, a light slice review, the terminating contract-gate run and `G_COMMIT`. Whole-feature refactoring and deep adversarial review are deliberately NOT run per slice: refactoring slice-1's code only for slice-2 to add more code is re-work, and a deep review per slice re-reviews code that is still changing. Per the batch-then-verify principle (`feedback_refactor_batch_when_test_suite_slow_2026_05_19`) those passes belong at FEATURE scope.
+
+`/nw-deliver` therefore runs ONE **feature-end cycle** after the last slice's `G_COMMIT` — once the slice-plan loop is exhausted (every `[REF] Slice Plan` row `shipped`) and the coherent feature exists on disk. The feature-end cycle has three steps, in order:
+
+1. **`E_BATCH_REFACTOR`** — L1-L6 refactoring across the WHOLE feature's code, batch-then-verify: all edits batched, ONE test run after the batch. Refactoring the finished, no-longer-changing feature once replaces N per-slice refactor passes.
+2. **Deep feature-end review** — collapses `C_REVIEWER_AUDIT` and `F_FINAL_REVIEW` into ONE adversarial review of the coherent finished feature: full AT-completeness audit, residuality / RPP stress, cross-slice architecture coherence. Because the code no longer changes, the review sees the whole and a cross-cutting gap can be diagnosed. The verdict carries the same HMAC `Reviewed-by:` verdict-hash trailer as a per-slice Phase F; the verdict-hash chain terminates here.
+3. **Final integrity verification** — one final integrity pass via `des-verify-integrity` (mode-aware, D4): the AT-completion ledger (every `.feature` scenario greened), the slice plan (every row `shipped`), the commit-trailer chain.
+
+The carpaccio `entry_gate` and the `G_COMMIT` `exit_gate` stay strictly per-slice — the feature-end cycle is a final pass *after* the last slice's exit gate; it adds no per-slice gate and removes none.
+
+**Feature-end-cycle checkpoint — `/nw-continue` resume cue.** A `/nw-deliver` run can be interrupted either *in the slice loop* (some slice rows still `pending` — `/nw-continue` restarts the `/nw-execute` loop at the first un-`shipped` slice) or *inside the multi-step feature-end cycle*, where ALL slice rows are already `shipped` and the Status column gives no signal. For the second case the resume cue is the **feature-end-cycle checkpoint**: at each feature-end-cycle step boundary the DES sequencer appends a `{"event": "FeatureEndCheckpoint", "step": ..., "status": ...}` record to the AT-completion ledger `.nwave/telemetry/atdd-pure/{feature-id}.jsonl`, with `step ∈ {E_BATCH_REFACTOR, DEEP_REVIEW, FINAL_INTEGRITY}` and `status ∈ {started, completed}`. `/nw-continue`, finding all slices `shipped`, reads the latest `FeatureEndCheckpoint`: no checkpoint → start the feature-end cycle at `E_BATCH_REFACTOR`; `<step> started` → resume at `<step>`; `<step> completed` → resume at the next step; `FINAL_INTEGRITY completed` → the feature is done. The checkpoint is the feature-end-cycle analogue of the slice-plan Status column — a mechanical resume signal, never agent memory.
+
+## ATDD-Pure 7-Phase Sequence (A→G) — invoked when workflow.mode = atdd_pure
+
+Reference: ADR-027 §Decision · plan v3 §4 §7 · domain types `src/des/domain/atdd_pure_phases.py`.
+
+Replace per-step `RED→GREEN→COMMIT` dispatch with this per-step A→G sequence. One Agent invocation per phase per step.
+
+**Entry gate (before `A_GREEN_ATS`, per slice).** For a `Class = C` slice the orchestrator MUST run the carpaccio slice gate as the DES `entry_gate` before dispatching the crafter into `A_GREEN_ATS`:
+
+```
+python scripts/cli/carpaccio_slice_gate.py --feature-id {feature-id} --entering-slice {slice-NN}
+```
+
+The gate is a pure-function CLI (no filesystem mutation) implementing ADR-028 D2-bis (carpaccio decomposition assertions 1-4: slice size ≤ `.nwave/config.yaml:atdd_pure.carpaccio_slice_max`, incremental total coverage, walking-skeleton-first ordering, value-annotation) + ADR-029 D5 (assertion 5: the AT-review verdict for the entering slice is present, `APPROVED`, HMAC-verified, and not stale). Exit `0` → dispatch the crafter into `A_GREEN_ATS`; exit `1` (missing slice plan) / `2` (malformed input) / `44` (`CARPACCIO_SLICE_TOO_LARGE`) / `45` (`AT_REVIEW_NOT_APPROVED`) → crafter dispatch REFUSED, halt with the gate's JSON payload. For a `Class = P` slice the carpaccio `entry_gate` is SKIPPED — the coherence check runs instead (see slice-04 spine routing).
+
+| Phase | Owner | Action | Gate |
+|-------|-------|--------|------|
+| A_GREEN_ATS | crafter (instance #1) | Make all DISTILL ATs pass, NO defensive code beyond AT-driven need | Carpaccio `entry_gate` exit 0 (above); all ATs green |
+| B_COVERAGE_CLEANUP | same crafter instance | Coverage-driven dead-code elimination | ≥90% line+branch OR justified misses in commit body |
+| C_REVIEWER_AUDIT | reviewer | 15-item AT-completeness audit via `nw-at-completeness-check` | `PhaseCReviewerVerdict` emitted |
+| D_GAP_ROUTING | orchestrator | Route per `ATGapKind` (see §Phase D Routing below) | one Routing decision recorded |
+| E_BATCH_REFACTOR | **crafter-B (separate instance)** | L1-L6 batch refactor per `feedback_refactor_batch_when_test_suite_slow_2026_05_19` | Tests stay green |
+| F_FINAL_REVIEW | reviewer | Code review + refactor green check | `PhaseFReviewerVerdict` with MANDATORY verdict_hash |
+| G_COMMIT | crafter | Conventional commit with `Step-Id:`/`Slice-Id:` + `Gate-Scope:` + `Reviewed-by:` (verdict_hash) trailers | HMAC trailer verified; `G_COMMIT` `exit_gate` exit 0 (below) |
+
+### G_COMMIT exit gate (after the commit, per slice)
+
+slice-14 of the atdd-pure-roadmap-free-rollout wires a DES `exit_gate` onto
+`G_COMMIT` — the exit-side symmetric counterpart of the carpaccio `entry_gate`.
+It closes the RCA-diagnosed "verification narrower than the contract" defect
+class (`docs/analysis/rca-slice-shipped-broken-verification-narrower-than-contract-2026-05-20.md`).
+For every slice (`Class = C` and `Class = P` alike) the orchestrator MUST run
+the exit gate AFTER the `G_COMMIT` commit and BEFORE marking the phase
+complete. It is ONE DES gate object with two assertions:
+
+```
+python -m des.cli.verify_slice_commit_completeness --repo . --commit HEAD
+python -m des.cli.run_contract_gate --repo . --commit HEAD --verify-gate-scope
+```
+
+- **E1 — slice-commit completeness** (`verify_slice_commit_completeness`,
+  pure-function, stdlib-only, no filesystem mutation): given the `G_COMMIT`
+  commit's `Slice-Id:`/`Step-Id:` trailer, asserts every `@slice-NN`-tagged
+  `.feature` AT file for that slice is present in the commit OR already
+  tracked-and-unmodified. Exit `0` complete · `1` incomplete (JSON names the
+  missing files) · `2` malformed input.
+- **E2 — terminating run == contract gate** (`run_contract_gate
+  --verify-gate-scope`): asserts the commit carries a `Gate-Scope:` digest that
+  matches a fresh `run_contract_gate --collect-only` digest of the whole-tree
+  contract suite (`pytest -m "unit or integration or acceptance"`). Exit `0`
+  verified · `1` absent/mismatching · `2` malformed input. `run_contract_gate`
+  is the SINGLE canonical contract gate — the crafter's terminating run, the
+  pre-commit wrapper, and CI all invoke this one definition, so verification
+  scope can never be a proper subset of the contract.
+
+The `G_COMMIT` phase completes iff BOTH E1 and E2 exit `0`. On any non-zero
+exit, DES blocks `G_COMMIT` phase completion and halts with the gate's JSON
+payload — the slice cannot reach `COMMIT`/`PASS` in the execution record.
+"Shipped" is then mechanically derivable from the DES log (the exit gate
+passed), never an agent's narrative claim.
+
+### Phase D Routing (orchestrator decision rules)
+
+Source: plan v3 §7.2. Decision sequence:
+
+1. **BLOCKER severity in any gap** → emit `DeliverBlocker`, halt exit 42 `ARCHITECTURE_GAP_ESCALATION`, return `HUMAN_ESCALATION`.
+2. **Cycle exhaustion** (`phase_d_cycle_count > 2`) → emit `DeliverCycleExhausted`, halt exit 42 `CYCLE_EXHAUSTION`, return `HUMAN_ESCALATION`.
+3. **Wall-clock timeout** (>14400s) → emit `DeliverTimeoutExceeded`, checkpoint state, halt exit 42 `DELIVER_TIMEOUT`, return `CHECKPOINT_TIMEOUT`. Resume via `/nw-resume-deliver`.
+4. **Second-order architecture-scope-miss** (≥2 gaps sharing a `scenario_class` mapping to a DESIGN-absent component) → emit `ArchitectureScopeMissDetected`, return `REROUTE_DESIGN`.
+5. **`SPECIFICATION_AMBIGUITY` gaps** → emit `SpecificationAmbiguityDetected`, route per category (C2→DISCUSS, C5→DESIGN, C7→DEVOPS), return `REROUTE_DISCUSS` | `REROUTE_DESIGN` | `REROUTE_DEVOPS`.
+6. **`AT_GAP_IN_DELIVERY_SCOPE` only** → emit `AcceptanceTestGapIdentified`, increment cycle counter, return `RELOOP_A`.
+7. **No gaps** → return `PROCEED_TO_E_BATCH_REFACTOR`.
+
+Sentinels map to `PhaseExit` enum in `src/des/domain/atdd_pure_phases.py` — use those names verbatim in audit-log events.
+
+### Separation Enforcement (Phase A vs Phase E)
+
+Phase E dispatch MUST use a SEPARATE crafter instance from Phase A (Ale 2026-05-19 mandate). Enforcement:
+
+1. Emit Phase E dispatch event with `agent_instance_id` distinct from Phase A.
+2. Pre-flight: refuse Phase E dispatch sharing `agent_instance_id` with the Phase A entry in `execution-log.json`.
+3. Rationale: review independence — refactor by original implementer rubber-stamps their own bias.
+
+### HMAC-SHA256 Verdict-Hash Trailer (Phase F → G)
+
+Plan v3 §8. Phase F reviewer verdict pairs with mechanical `Reviewed-by: <agent>:<hmac-sha256>` trailer; Phase G commit embeds verbatim.
+
+Canonical serialization: JSON sorted keys, no whitespace, UTF-8, fields `{verdict, timestamp, reviewer_agent_id, findings_summary}`. HMAC key precedence: env `NWAVE_REVIEWER_SIGNING_KEY` → file `.nwave/secrets/reviewer-signing.key`. Verification: `src/des/cli/verify_commit_trailers.py` (exit 4 on mismatch).
+
+### Telemetry per Phase Boundary
+
+Each phase A-G emits JSONL at PhaseEntered + PhaseCompleted to `nWave/telemetry/wave-time-token-telemetry/pilot/{feature_id}.jsonl`:
+
+```json
+{
+  "telemetry_schema_version": "1.0.0",
+  "source": "des_sequencer",
+  "event": "PhaseEntered",
+  "feature": "{feature_id}",
+  "phase": "C_REVIEWER_AUDIT",
+  "wall_clock_s": 42.3,
+  "token_cost": 8421,
+  "reviewer_findings": 3,
+  "cycle_n": 1,
+  "verdict_hash": "ab12cd34...",
+  "timestamp": "2026-05-19T18:42:13Z"
+}
+```
+
+`reviewer_findings`, `cycle_n`, `verdict_hash` null outside their phases. Validator: `scripts/validation/validate_atdd_pure_telemetry.py`.
+
+### Phase G Post-Commit: Falsifier-Gate Hook
+
+After Phase G commit completes, invoke `python scripts/automation/atdd_pure_falsifier_gate.py` (plan v3 §4.5 Phase 5 deliverable):
+
+- Reads N=3 latest pilot JSONL records.
+- ANY breach (median wall-clock > 1.3× target | findings median > 12 | defect rate > 2× classic | Phase D cycle rate median ≥ 2.0) → patch `.nwave/config.yaml:workflow.mode = classic`, emit `FalsifierGateTripped`, exit 42.
+- Otherwise → emit `FalsifierGateHealthy`, exit 0.
+
+Exit 42 blocks subsequent CI release steps; operator review required before next pilot feature.
+
+## Skill Loading (ATDD-pure additions)
+
+When `workflow.mode = atdd_pure`, orchestrator MUST embed skill-load directives in every dispatch prompt:
+
+| Phase | Skill | Path |
+|-------|-------|------|
+| A, B, E | `nw-crafter-discipline-atdd-pure` | `~/.claude/skills/nw-crafter-discipline-atdd-pure/SKILL.md` |
+| C | `nw-at-completeness-check` | `~/.claude/skills/nw-at-completeness-check/SKILL.md` |
+| E | `nw-refactor` | `~/.claude/skills/nw-refactor/SKILL.md` |
+| F | `nw-review` | `~/.claude/skills/nw-review/SKILL.md` |
+
+Classic mode skill loading is unchanged.
 
 ## Rigor Profile Integration
 
@@ -142,7 +339,7 @@ At the start of execution, create these tasks using TaskCreate and follow them i
 
 1.6. **Detect Mutation Testing Strategy** — Read same `CLAUDE.md`, search "## Mutation Testing Strategy".
    - Found → extract: `per-feature` | `nightly-delta` | `pre-release` | `disabled`.
-   - Not found → default `"per-feature"`.
+   - Not found → default `nightly-delta` (recommended mode — CI runs mutmut nightly on changed modules; keeps per-feature gates fast).
    - Log strategy for traceability. Note: strategy locks at deliver start; `CLAUDE.md` edits during delivery take effect next run.
    - Gate: strategy recorded.
 
@@ -202,9 +399,10 @@ At the start of execution, create these tasks using TaskCreate and follow them i
    - d. Violations → re-execute via Task with DES markers. Proceed only after pass.
    - e. **Rigor-aware integrity** (F-3, ADR-025): the verifier tracks the rigor-profile phase set declared in `.nwave/des-config.json` (`rigor.tdd_phases`), intersected with the canonical TDDSchema. 3-phase ADR-025 projects (`[RED, GREEN, COMMIT]`) verify cleanly. Legacy 5-phase projects continue to verify unchanged. Empty intersection → exit 2 with diagnostic naming the offending rigor phases (fix `.nwave/des-config.json` and rerun).
 
-8. **Phase 7 — Finalize** — Gate: evolution archived, session markers removed, commit pushed.
+8. **Phase 7 — Finalize** — Gate: evolution archived, session markers removed, commit pushed, hook offer made (if applicable).
    - a. Dispatch `@nw-platform-architect` to archive to `docs/evolution/` (load `~/.claude/skills/nw-finalize/SKILL.md`).
    - b. Commit + push. Run: `rm -f .nwave/des/deliver-session.json .nwave/des/des-task-active`.
+   - c. **One-time test-hook offer** — Check whether the project's pre-commit/pre-push test hooks are installed (absence of the pre-commit framework marker in `.git/hooks/pre-push`). If NOT installed AND not previously declined (no `.nwave/hook-offer-declined` marker): offer the user ONCE — suggest running `pre-commit install --hook-type pre-commit --hook-type pre-push` so tests also run automatically on commit/push. This is an OFFER, not enforcement; it does NOT replace the crafter's own mandatory terminating test run (the suite always runs at the end of every code modification regardless of hooks — `feedback_target_machine_independence_2026_05_15`). If the user declines, write `.nwave/hook-offer-declined` and do not re-offer.
 
 9. **Phase 8 — Retrospective (conditional)** — Skip if clean execution. Gate: 5 Whys documented or clean-run noted.
    - On issues found → dispatch `@nw-troubleshooter` for 5 Whys analysis.

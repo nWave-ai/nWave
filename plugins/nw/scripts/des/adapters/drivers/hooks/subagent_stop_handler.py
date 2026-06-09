@@ -31,6 +31,7 @@ from des.adapters.drivers.hooks.hook_protocol import (
     log_hook_invoked,
     read_and_parse_stdin,
 )
+from des.adapters.drivers.hooks.project_root_validator import validate_project_root
 from des.adapters.drivers.hooks.skill_tracking_hooks import (
     maybe_track_skill_loads as _maybe_track_skill_loads,
 )
@@ -83,7 +84,9 @@ def extract_des_context_from_transcript(transcript_path: str) -> dict | None:
         transcript_path: Absolute path to the agent's transcript JSONL file
 
     Returns:
-        dict with "project_id" and "step_id" if DES markers found, None otherwise
+        dict with "project_id", "step_id" and optional "project_root" if DES
+        markers found, None otherwise. "project_root" carries the raw marker
+        value (validation happens at the caller, before path resolution).
     """
     if not Path(transcript_path).exists():
         return None
@@ -112,6 +115,7 @@ def extract_des_context_from_transcript(transcript_path: str) -> dict | None:
                     return {
                         "project_id": markers.project_id,
                         "step_id": markers.step_id,
+                        "project_root": markers.project_root,
                     }
                 return None
 
@@ -130,15 +134,27 @@ def extract_des_context_from_transcript(transcript_path: str) -> dict | None:
 
 def _resolve_des_context(
     hook_input: dict,
-) -> tuple[str, str, str] | tuple[None, dict, int]:
-    """Resolve DES context (execution_log_path, project_id, step_id) from hook input.
+) -> tuple[str, str, str, str | None, str] | tuple[None, dict, int]:
+    """Resolve DES context from hook input.
 
     Supports two protocols:
     1. Direct DES format (CLI testing): {"executionLogPath", "projectId", "stepId"}
     2. Claude Code protocol (live hooks): {"agent_transcript_path", "cwd", ...}
 
+    Path-resolution priority for the Claude Code protocol:
+      - validated DES-PROJECT-ROOT marker  >  hook_input["cwd"]  (fallback)
+
+    Validation (project_root_validator): absolute path + exists + git work tree
+    + git-common-dir matches fallback cwd. Invalid marker degrades to cwd.
+
     Returns:
-        On success: (execution_log_path, project_id, step_id)
+        On success: (execution_log_path, project_id, step_id, project_root_marker,
+                     effective_cwd)
+            project_root_marker is the raw marker value when present (regardless
+            of validation outcome), None otherwise. Used for audit-log emission.
+            effective_cwd is the resolved working directory (validated marker
+            value or hook_input cwd fallback). Used for git-trailer commit
+            verification.
         On error/passthrough: (None, response_dict, exit_code)
     """
     execution_log_path = hook_input.get("executionLogPath")
@@ -166,7 +182,8 @@ def _resolve_des_context(
                 },
                 1,
             )
-        return execution_log_path, project_id, step_id
+        # Direct DES protocol has no cwd / no marker — use empty effective_cwd
+        return execution_log_path, project_id, step_id, None, ""
 
     # Claude Code protocol - extract DES context from transcript
     agent_transcript_path = hook_input.get("agent_transcript_path")
@@ -181,22 +198,36 @@ def _resolve_des_context(
 
     project_id = des_context["project_id"]
     step_id = des_context["step_id"]
+    raw_marker = des_context.get("project_root")
+
+    # Marker-aware effective cwd: validate marker → use; else fall back to cwd
+    effective_cwd = cwd
+    if raw_marker:
+        validated = validate_project_root(raw_marker, cwd)
+        if validated is not None:
+            effective_cwd = str(validated)
+
     try:
         from pathlib import Path as _Path
 
         resolved = resolve_execution_log_path(
             project_id,
-            base=_Path(cwd) / "docs" / "feature",
+            base=_Path(effective_cwd) / "docs" / "feature",
         )
         execution_log_path = str(resolved)
     except (FileNotFoundError, ValueError) as exc:
         # No log found or ambiguous — fall back to deliver/ path so downstream
         # validation produces a meaningful "not found" error message.
         execution_log_path = os.path.join(
-            cwd, "docs", "feature", project_id, "deliver", "execution-log.json"
+            effective_cwd,
+            "docs",
+            "feature",
+            project_id,
+            "deliver",
+            "execution-log.json",
         )
         _ = exc  # error surfaced by SubagentStopService when log not found
-    return execution_log_path, project_id, step_id
+    return execution_log_path, project_id, step_id, raw_marker, effective_cwd
 
 
 def _build_block_notification(
@@ -405,7 +436,29 @@ def handle_subagent_stop() -> int:
                     hook_id=hook_id,
                 )
                 return exit_code
-            execution_log_path, project_id, step_id = des_context_result
+            (
+                execution_log_path,
+                project_id,
+                step_id,
+                raw_marker,
+                effective_cwd,
+            ) = des_context_result
+
+            # Audit enrichment (Rex pre-req #5): record the resolved
+            # execution-log path and the DES-PROJECT-ROOT marker value so
+            # post-hoc analysis can trace why a particular log was chosen.
+            log_hook_invoked(
+                "subagent_stop_resolved",
+                {
+                    "agent_type": hook_input.get("agent_type"),
+                    "agent_id": hook_input.get("agent_id"),
+                    "execution_log_path": execution_log_path,
+                    "des_project_root_marker": raw_marker,
+                    "project_id": project_id,
+                    "step_id": step_id,
+                },
+                hook_id=hook_id,
+            )
 
             # Read task_start_time and task_correlation_id from signal BEFORE removing it
             task_start_time = ""
@@ -423,9 +476,11 @@ def handle_subagent_stop() -> int:
             from des.ports.driver_ports.subagent_stop_port import SubagentStopContext
 
             stop_hook_active = bool(hook_input.get("stop_hook_active", False))
-            # Pass cwd for commit verification from both protocols.
-            # Claude Code sends cwd in hook input JSON.
-            cwd = hook_input.get("cwd", "")
+            # Pass effective_cwd for commit verification: validated DES-PROJECT-
+            # ROOT marker (worktree) when present, else hook_input cwd. This
+            # ensures the commit-verifier inspects the repo where the crafter
+            # actually committed, not the orchestrator's startup CWD.
+            cwd = effective_cwd or hook_input.get("cwd", "")
             service = service_factory.create_subagent_stop_service()
             decision = service.validate(
                 SubagentStopContext(

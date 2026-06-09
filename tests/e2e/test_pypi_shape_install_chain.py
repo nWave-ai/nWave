@@ -80,7 +80,7 @@ Implementation notes
 RED -> GREEN proof recorded in commit message: reverting any of the 4 v3.12.2
 fix commits (585ace87, 88e2d53a, 1676aa96, 52b3369c) makes this test fail.
 
-Step-ID: regression-guard for fix-v3-12-2-install-regression
+Step-Id: regression-guard for fix-v3-12-2-install-regression
 """
 
 from __future__ import annotations
@@ -412,19 +412,22 @@ class TestPyPIShapeDoctorChain:
     Check count: was 7 in v3.12; v3.14 added an 8th (DensityCheck per D6/D12).
     The test asserts on the literal "{N}/{N} checks passed, 0 failed" pattern
     rather than a fixed count — survives future check additions.
+
+    `nwave-ai doctor` is read-only (nwave_ai/doctor/runner.py writes nothing),
+    so a single session-scoped subprocess capture is sufficient for all
+    assertion contracts.  Both original assertion blocks are preserved verbatim.
     """
 
-    def test_doctor_reports_all_passing(self, installed_console_script) -> None:
-        """`nwave-ai doctor` MUST exit 0 and report all checks passing.
+    @pytest.fixture(scope="session")
+    def _doctor_stdout(self, installed_console_script) -> str:
+        """Run `nwave-ai doctor` exactly once and return stdout.
 
-        Invokes the CONSOLE SCRIPT (not `python -m`) so a regression in
-        [project.scripts] would surface here too.
+        Session-scoped: amortizes the 30-120s subprocess across all
+        TestPyPIShapeDoctorChain assertions.  doctor/runner.py is read-only
+        (no writes between calls), so a single capture is safe.
         """
-        import re
-
         venv, fake_home, _ = installed_console_script
         console_script = venv / "bin" / "nwave-ai"
-
         env = {
             "HOME": str(fake_home),
             "PATH": f"{venv / 'bin'}:{os.environ.get('PATH', '')}",
@@ -437,6 +440,20 @@ class TestPyPIShapeDoctorChain:
         assert code == 0, (
             f"`nwave-ai doctor` failed (exit {code}).\n--- stdout ---\n{out}"
         )
+        return out
+
+    def test_doctor_all_checks_pass(self, _doctor_stdout: str) -> None:
+        """`nwave-ai doctor` MUST exit 0 and report all checks passing.
+
+        Merges contracts from former test_doctor_reports_all_passing (exit code,
+        N/N pattern, negative markers) and test_doctor_framework_files_passes
+        (framework_files line starts with ✅).  Invokes the CONSOLE SCRIPT (not
+        `python -m`) so a regression in [project.scripts] surfaces here too.
+        """
+        import re
+
+        out = _doctor_stdout
+
         # Match N/N where total >= 7 (Bug #4 floor) and 0 failures.
         match = re.search(r"(\d+)/(\d+) checks passed, 0 failed", out)
         assert match is not None, (
@@ -461,25 +478,8 @@ class TestPyPIShapeDoctorChain:
                 f"Doctor stdout contains forbidden marker {forbidden!r}.\n"
                 f"--- stdout ---\n{out}"
             )
-
-    def test_doctor_framework_files_passes(self, installed_console_script) -> None:
-        """Bug #4 specifically: framework_files check is ✅ (not ⚠️).
-
-        Pre-fix: `commands/: missing` warning. Post-fix: silent pass.
-        """
-        venv, fake_home, _ = installed_console_script
-        console_script = venv / "bin" / "nwave-ai"
-
-        env = {
-            "HOME": str(fake_home),
-            "PATH": f"{venv / 'bin'}:{os.environ.get('PATH', '')}",
-        }
-        code, out = _run(
-            [str(console_script), "doctor"],
-            env=env,
-            timeout=120,
-        )
-        assert code == 0
+        # Bug #4 specifically: framework_files check is ✅ (not ⚠️).
+        # Pre-fix: `commands/: missing` warning. Post-fix: silent pass.
         framework_lines = [
             line for line in out.splitlines() if "framework_files" in line
         ]

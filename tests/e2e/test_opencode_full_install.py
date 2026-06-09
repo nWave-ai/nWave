@@ -22,7 +22,7 @@ amortized with test_opencode_subagent_hooks.
 
 Requires a Docker daemon.  Skips gracefully when Docker is unavailable.
 
-Step-ID: 01-03
+Step-Id: 01-03
 """
 
 from __future__ import annotations

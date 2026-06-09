@@ -141,6 +141,8 @@ Before dispatching the architect agent, read rigor config from `.nwave/des-confi
 - **`reviewer_model`**: If design review is performed, use this model for the reviewer agent. If `"skip"`, skip design review.
 - **`review_enabled`**: If `false`, skip post-design review step.
 
+**Structural-correctness reviewer never skips**: `rigor.reviewer_model: "skip"` applies to scale-sensitive cost-driven reviewers (Eclipse / Architect / Forge here, plus their per-wave equivalents). The structural-correctness reviewer at the end of DISTILL (Sentinel / `@nw-acceptance-designer-reviewer`) ALWAYS dispatches — silent skip masks Gherkin antipatterns / boundary violations / contract drift, which is the bug class issue #52 fixed.
+
 ## Interactive Decision Points
 
 ### Decision 0: Design Scope (MANDATORY — do NOT skip)

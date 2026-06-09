@@ -261,13 +261,15 @@ def _given_empty_rigor_phases(
 def _given_no_rigor_override(
     scenario_state: _ScenarioState, tmp_path: Path
 ) -> _ScenarioState:
-    # No rigor override → DESConfig.rigor_tdd_phases returns the default tuple
-    # (legacy 5-phase, per des_config.py:167-174). Log must satisfy that set.
-    legacy_phases = ["PREPARE", "RED_ACCEPTANCE", "RED_UNIT", "GREEN", "COMMIT"]
+    # No rigor override → DESConfig.rigor_tdd_phases returns the default tuple.
+    # F6 sweep (2026-05-18): default is canonical 3-phase (RED/GREEN/COMMIT)
+    # per ADR-025. Log must satisfy that set. Legacy 5-phase replay is
+    # exercised separately by _given_5phase_rigor_5phase_log.
+    canonical_phases = ["RED", "GREEN", "COMMIT"]
     project_root, deliver_dir = _build_fixture(
         tmp_path,
         rigor=None,
-        log_phases=legacy_phases,
+        log_phases=canonical_phases,
     )
     scenario_state.project_root = project_root
     scenario_state.deliver_dir = deliver_dir

@@ -84,6 +84,8 @@ At the start of execution, create these tasks using TaskCreate and follow them i
 
 6. **User Story Crafting** — Load `~/.claude/skills/nw-leanux-methodology/SKILL.md`, `~/.claude/skills/nw-bdd-requirements/SKILL.md`, `~/.claude/skills/nw-jtbd-bdd-integration/SKILL.md`, `~/.claude/skills/nw-outcome-kpi-framework/SKILL.md`. Load platform UX skills on-demand: web → `ux-web-patterns`+`ux-principles`+`ux-emotional-design`|desktop → `ux-desktop-patterns`+`ux-principles`+`ux-emotional-design`|CLI/TUI → `ux-tui-patterns`+`ux-principles`. Create LeanUX stories from Phase 1-5 journey artifacts in `user-stories.md`. Add `## System Constraints` section at top for cross-cutting constraints. Derive AC from UAT scenarios — embed per story, no standalone `acceptance-criteria.md`. **JTBD traceability mandatory (per Decision 1, 2026-04-28)**: every user story MUST include a `job_id` field that either references an entry in `docs/product/jobs.yaml`, or equals `infrastructure-only` AND is accompanied by an `infrastructure_rationale` field. This is a hard-blocking DoR check enforced by `nw-product-owner-reviewer`. **Elevator Pitch mandatory** for every non-`@infrastructure` story (Before/After/Decision-enabled triplet — see `nw-discuss` SKILL.md Phase 3 Step 1b). If DIVERGE artifacts present: trace every story to the job from `job-analysis.md` (N:1 mapping). Apply Example Mapping with context/outcome questioning. Define outcome KPIs for each story/epic (measurable behavior change + target + measurement method). Produce `docs/feature/{feature-id}/discuss/outcome-kpis.md`. Use DIVERGE job-analysis.md for persona grounding if present. Detect and remediate anti-patterns. Gate: LeanUX template followed|anti-patterns remediated|stories right-sized|every story has `job_id`|every non-`@infrastructure` story has Elevator Pitch.
 
+   **`workflow.mode == atdd_pure` branch (ADR-028 D2 / ADR-029 D3).** When `.nwave/config.yaml:workflow.mode` is `atdd_pure`, Phase 6 authors a **carpaccio Slice Plan** instead of UAT-scenario user stories. The PO writes the `## Wave: DISCUSS / [REF] Slice Plan` section into the feature's `feature-delta.md` — a five-column fixed-order table (Slice, Value statement, Status, Annotation, Justification) per the *Slice Plan Template (atdd_pure)* below — carrying one value statement per slice plus the delivery ordering. The PO owns intent, value statements, and slice ordering; the per-slice executable ATs are authored downstream by the acceptance-designer in DISTILL (ADR-029 D1). In this mode the PO does NOT author `## UAT Scenarios (BDD)` or `## Acceptance Criteria` — the slice value statement plus the per-slice `.feature` ATs are the single Given-When-Then SSOT. After authoring, the PO runs `python scripts/validation/validate_feature_delta.py --require-slice-plan --format=json docs/feature/{feature-id}/feature-delta.md`; the structural check must return verdict `accepted` before handoff. Gate (atdd_pure): `[REF] Slice Plan` section present|five columns in fixed order|each slice has a domain-language value statement|walking-skeleton slice ordered `slice-01`|`validate_feature_delta.py --require-slice-plan` returns `accepted`.
+
 7. **Validate and Handoff** — Load `~/.claude/skills/nw-po-review-dimensions/SKILL.md`. Run DoR validation: each of the 9 items MUST pass with evidence|failed items get specific remediation. Run peer review via Task, max 2 iterations. Resolve all critical/high issues before handoff. Prepare handoff package for solution-architect (DESIGN wave). Gate: reviewer approved|DoR 9-item checklist passed|handoff package complete.
 
 ## LeanUX User Story Template
@@ -134,6 +136,30 @@ Then {persona} {observable outcome}
 
 Combined file (multiple stories in `user-stories.md`) — shift all headings down one level (`#` to `##`, `##` to `###`, etc.) and add `<!-- markdownlint-disable MD024 -->` at the top.
 
+## Slice Plan Template (atdd_pure)
+
+Used in place of the LeanUX User Story Template when `workflow.mode == atdd_pure` (ADR-028 D2). The PO writes this section directly into the feature's `feature-delta.md`:
+
+```markdown
+## Wave: DISCUSS / [REF] Slice Plan
+
+| Slice | Value statement | Status | Annotation | Justification |
+|-------|-----------------|--------|------------|---------------|
+| slice-01 | Operator can preview an install plan without touching disk | pending | @walking-skeleton | first end-to-end vertical; thin value accepted |
+| slice-02 | Operator sees the install plan persisted across a restart | pending | | |
+| slice-03 | Operator can apply a previewed plan | pending | | |
+```
+
+Five columns, fixed order — the order is the contract, a re-order is a malformed slice plan:
+
+- **Slice** — `slice-NN` identifier, unique, ordered (NN is the delivery order; the walking-skeleton slice MUST be `slice-01`).
+- **Value statement** — one PO-authored sentence in domain language naming the user-observable value the slice delivers.
+- **Status** — `pending` | `shipped`. DISCUSS writes every row `pending`; DELIVER flips a row to `shipped` at that slice's commit.
+- **Annotation** — empty (default value-delivering slice), `@walking-skeleton`, or `@infrastructure`.
+- **Justification** — required and non-empty when Annotation is non-empty (`value_exception_justification`); empty otherwise.
+
+A slice is a thin end-to-end vertical, NOT a horizontal layer. Validate with `validate_feature_delta.py --require-slice-plan --format=json` — verdict `accepted` is the gate.
+
 ## Anti-Pattern Detection
 
 | Anti-Pattern | Signal | Fix |
@@ -156,6 +182,13 @@ Combined file (multiple stories in `user-stories.md`) — shift all headings dow
 7. Technical notes: constraints/dependencies
 8. Dependencies resolved or tracked
 9. Outcome KPIs defined with measurable targets
+
+**`workflow.mode == atdd_pure` — DoR items 4-5 replaced (ADR-029 D3).** In `atdd_pure` mode the PO authors no UAT scenarios and no AC (the per-slice `.feature` ATs are the acceptance-criteria SSOT, authored by the acceptance-designer in DISTILL). Items 4-5 are therefore replaced:
+
+- **4 (atdd_pure)** — feature-delta carries a `## Wave: DISCUSS / [REF] Slice Plan` section, five columns in fixed order, each slice with a domain-language value statement.
+- **5 (atdd_pure)** — `validate_feature_delta.py --require-slice-plan --format=json` returns verdict `accepted` on the feature-delta (the slice plan passes the structural check).
+
+Items 1-3 and 6-9 apply unchanged.
 
 ## Task Types
 

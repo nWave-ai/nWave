@@ -24,7 +24,7 @@ the SSOT correctly (D3 fix: no hardcoded field lists in plugins).
 
 Requires a Docker daemon.  Skips gracefully when Docker is unavailable.
 
-Step-ID: 01-03
+Step-Id: 01-03
 """
 
 from __future__ import annotations

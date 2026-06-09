@@ -29,7 +29,7 @@ Uses shared helpers from ``tests/e2e/conftest.py``.
 
 Requires a Docker daemon.  Skips gracefully when docker is unavailable.
 
-Step-ID: 01-01
+Step-Id: 01-01
 """
 
 from __future__ import annotations

@@ -377,10 +377,16 @@ def then_reviewer_model_is(ctx: dict[str, Any], expected: str) -> None:
     assert ctx["des_config"].rigor_reviewer_model == expected
 
 
-@then("the active TDD phases are the full 5-phase cycle")
-def then_full_tdd_phases(ctx: dict[str, Any]) -> None:
-    """Verify all 5 TDD phases are active."""
-    expected = ("PREPARE", "RED_ACCEPTANCE", "RED_UNIT", "GREEN", "COMMIT")
+@then("the active TDD phases are the canonical 3-phase cycle")
+def then_canonical_tdd_phases(ctx: dict[str, Any]) -> None:
+    """Verify canonical 3-phase TDD cycle is active (ADR-025 default).
+
+    F6 sweep (2026-05-18): renamed from "full 5-phase cycle" and inverted
+    assertion from LEGACY_PHASES to CANONICAL_PHASES. Default rigor profile
+    follows ADR-025 canonical (RED/GREEN/COMMIT). Legacy 5-phase only via
+    explicit rigor.tdd_phases override.
+    """
+    expected = ("RED", "GREEN", "COMMIT")
     assert ctx["des_config"].rigor_tdd_phases == expected
 
 

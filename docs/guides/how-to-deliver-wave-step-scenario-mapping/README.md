@@ -12,7 +12,7 @@ Successfully execute a DELIVER wave where each roadmap step implements exactly o
 
 You will need:
 - A completed acceptance test file with scenarios (from DISTILL wave)
-- The nWave framework installed via `pipx install nwave-ai && nwave-ai install`
+- The nWave framework installed via `uv tool install nwave-ai && nwave-ai install` (or `pipx install nwave-ai && nwave-ai install`)
 - A project with user story identification (e.g., `us001`, `us002`)
 
 ## Step 1: Count Your Acceptance Test Scenarios

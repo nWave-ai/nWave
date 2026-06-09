@@ -179,13 +179,10 @@ class TestDESConfigRigorDefaults:
         assert cfg.rigor_double_review is False
         assert cfg.rigor_mutation_enabled is False
         assert cfg.rigor_refactor_pass is True
-        assert cfg.rigor_tdd_phases == (
-            "PREPARE",
-            "RED_ACCEPTANCE",
-            "RED_UNIT",
-            "GREEN",
-            "COMMIT",
-        )
+        # F6 sweep (2026-05-18): default rigor_tdd_phases follows ADR-025
+        # canonical (RED/GREEN/COMMIT). Legacy 5-phase only via explicit
+        # rigor.tdd_phases override (see TestDESConfigRigorExplicitProfiles).
+        assert cfg.rigor_tdd_phases == ("RED", "GREEN", "COMMIT")
 
     def test_missing_config_file_defaults_to_standard(self, tmp_path):
         """All rigor properties return standard defaults when config file missing."""
@@ -199,13 +196,9 @@ class TestDESConfigRigorDefaults:
 
         assert cfg.rigor_profile == "standard"
         assert cfg.rigor_agent_model == "sonnet"
-        assert cfg.rigor_tdd_phases == (
-            "PREPARE",
-            "RED_ACCEPTANCE",
-            "RED_UNIT",
-            "GREEN",
-            "COMMIT",
-        )
+        # F6 sweep (2026-05-18): default rigor_tdd_phases follows ADR-025
+        # canonical (RED/GREEN/COMMIT).
+        assert cfg.rigor_tdd_phases == ("RED", "GREEN", "COMMIT")
 
     def test_partial_rigor_fills_missing_with_standard_defaults(self, tmp_path):
         """Missing rigor sub-keys get standard defaults."""

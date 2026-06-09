@@ -155,7 +155,7 @@ class TestValidationErrorDetector:
             for keyword in ["add", "include", "update", "with", "should contain"]
         ), "Guidance should include action verbs"
 
-    def test_handles_partial_validation(self, tdd_phases):
+    def test_handles_partial_validation(self):
         """
         GIVEN a step file with some valid and some invalid data
         WHEN validation detector performs partial analysis
@@ -167,35 +167,44 @@ class TestValidationErrorDetector:
         - Distinguishes between valid and invalid phases
 
         Scenario: Phases 0-2 complete (EXECUTED), phase 3 incomplete (IN_PROGRESS),
-                 remaining phases missing
+                 remaining phases missing.
+
+        ADR-025 sweep follow-up (2026-05-18): canon default flipped to
+        3-phase (RED/GREEN/COMMIT); this test exercises partial-validation
+        semantics that need ≥4 phases, so it uses legacy 5-phase names
+        explicitly (canon-agnostic behavioural assertion). The validator
+        recognises legacy phase names via the dispatch path.
         """
+        from des.domain.tdd_schema import LEGACY_PHASES
         from des.domain.validation_error_detector import ValidationErrorDetector
 
         detector = ValidationErrorDetector()
 
-        # Build partially valid step using schema phases
+        # Build partially valid step using legacy 5-phase names — the test
+        # asserts partial-validation behaviour, not canon membership.
+        legacy_phases = LEGACY_PHASES
         partial_step = {
             "step_id": "02-03",
             "acceptance_criteria": "Detects missing fields",
             "tdd_cycle": {
                 "phase_execution_log": [
                     {
-                        "phase_name": tdd_phases[0],
+                        "phase_name": legacy_phases[0],
                         "status": "EXECUTED",
                         "phase_index": 0,
                     },
                     {
-                        "phase_name": tdd_phases[1],
+                        "phase_name": legacy_phases[1],
                         "status": "EXECUTED",
                         "phase_index": 1,
                     },
                     {
-                        "phase_name": tdd_phases[2],
+                        "phase_name": legacy_phases[2],
                         "status": "EXECUTED",
                         "phase_index": 2,
                     },
                     {
-                        "phase_name": tdd_phases[3],
+                        "phase_name": legacy_phases[3],
                         "status": "IN_PROGRESS",
                         "phase_index": 3,
                     },  # Valid, but incomplete

@@ -196,6 +196,7 @@ class TestDevChangelog:
         notes = _read_output(output_file)
         assert "Install" not in notes
         assert "pipx install" not in notes
+        assert "uv tool install" not in notes
 
     def test_dev_changelog_empty_history_shows_no_notable_changes(self, tmp_path):
         """Given only chore(release) commits,
@@ -347,7 +348,8 @@ class TestStableChangelog:
     def test_stable_changelog_install_command_has_no_pre_flag(self, tmp_path):
         """Given stable stage,
         when generating changelog,
-        then install command is 'pipx install nwave-ai' without --pre."""
+        then both uv and pipx install commands are present without --pre,
+        and uv is shown first as the recommended path."""
         _init_git_repo(tmp_path)
         _create_commit(tmp_path, "feat: initial")
 
@@ -364,7 +366,12 @@ class TestStableChangelog:
 
         assert result.returncode == 0, f"stderr: {result.stderr}"
         notes = _read_output(output_file)
+        assert "uv tool install nwave-ai" in notes
         assert "pipx install nwave-ai" in notes
+        # uv-first: uv snippet must appear before pipx snippet
+        assert notes.index("uv tool install nwave-ai") < notes.index(
+            "pipx install nwave-ai"
+        )
         assert "--pre" not in notes
         assert "# nWave Framework v1.1.23" in notes
 

@@ -96,15 +96,24 @@ class TestPhasesForDispatch:
 
 
 class TestBackwardCompatibility:
-    """tdd_phases (active field) preserves the legacy contract."""
+    """tdd_phases (active accessor) follows ADR-025 canonical default.
 
-    def test_tdd_phases_active_field_returns_five_phase(self):
-        """tdd_phases stays 5-phase so existing validators / audit-log
-        replay paths are unaffected by the dual-canon migration.
+    Backward-compat for legacy audit-log replay is preserved through the
+    explicit ``legacy_phases`` field + ``phases_for("4.0")`` dispatch
+    (see TestPhasesForDispatch above), not through the default getter.
+    """
+
+    def test_tdd_phases_active_field_returns_canonical_three_phase(self):
+        """tdd_phases (default getter) returns canonical 3-phase per ADR-025.
+
+        F6 sweep (2026-05-18): inverted from LEGACY_PHASES to CANONICAL_PHASES.
+        The previous assertion cemented doc-impl drift — schema declares
+        default_for_new_logs="v5" but the getter returned legacy 5-phase.
+        Legacy replay path remains intact via phases_for("4.0").
         """
         schema = TDDSchemaLoader().load()
-        assert schema.tdd_phases == LEGACY_PHASES
-        assert len(schema.tdd_phases) == 5
+        assert schema.tdd_phases == CANONICAL_PHASES
+        assert len(schema.tdd_phases) == 3
 
     def test_total_phases_field_remains_five(self):
         """total_phases stays 5 — JSON schema's active list is still v4."""

@@ -6,7 +6,7 @@ Learn nWave by building a complete feature end-to-end.
 
 **Prerequisites**:
 - **Platform**: Linux, macOS, or Windows (WSL2 required)
-- nWave installed: `pipx install nwave-ai && nwave-ai install` (in terminal, not Claude Code)
+- nWave installed: `uv tool install nwave-ai && nwave-ai install` (or `pipx install nwave-ai && nwave-ai install`) — in terminal, not Claude Code
 - Claude Code reopened after install
 - A Python project with pytest
 - Basic TDD familiarity

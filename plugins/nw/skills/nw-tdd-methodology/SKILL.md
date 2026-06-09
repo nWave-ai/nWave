@@ -7,6 +7,16 @@ disable-model-invocation: true
 
 # Outside-In TDD Methodology
 
+## LANGUAGE CONVENTION FRAME (read FIRST — overrides all examples below)
+
+**Code examples in this skill use Python syntax for illustration only.** They are NOT prescriptive about target language. nWave is language-agnostic per the "genericity and agnosticism" mandate (2026-05-24).
+
+**Before applying TDD cycle**, detect the target project's language from manifest files: `package.json` → TypeScript/JS (jest/vitest); `Cargo.toml` → Rust (cargo test/proptest); `go.mod` → Go (testing/ginkgo); `pyproject.toml`/`setup.py`/`Pipfile` → Python (pytest/hypothesis); `pom.xml`/`build.gradle` → Java/Kotlin (JUnit5/jqwik); `*.csproj`/`*.fsproj` → C#/F# (xUnit/FsCheck); `Gemfile` → Ruby (RSpec); `Package.swift` → Swift (XCTest/swift-testing).
+
+**When the target language is NOT Python**: adapt EVERY code example — replace Python imports, type hints, class/function syntax, test-framework specifics with target equivalents. Project conventions ALWAYS WIN over skill examples.
+
+**Empirical anchor**: skill examples being Python-only caused LLM to emit Python code in greenfield TS project despite language-agnostic mandate. Fix per F-SKILL-EXAMPLES-LANGUAGE-LEAK. Connects [[feedback_language_adapter_plugin_architecture_2026_05_24]].
+
 ## TDD cycle — 3-phase canonical (ADR-025, 2026-05-07)
 
 **Current canonical**: DELIVER cycle is 3-phase: **RED → GREEN → COMMIT**.

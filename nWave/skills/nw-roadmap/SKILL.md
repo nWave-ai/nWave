@@ -16,6 +16,8 @@ Dispatches expert agent to fill a pre-scaffolded YAML roadmap skeleton. CLI tool
 
 Output: `docs/feature/{feature-id}/deliver/roadmap.json`
 
+> **Scope (ADR-028):** `roadmap.json` is a classic mode only artifact. The classic ADR-025 roadmap-driven DELIVER spine consumes it; the `atdd_pure` workflow mode never reads or writes it (it is mechanically unreachable there, replaced by the feature-delta `[REF] Slice Plan` section + per-slice ATs). Use `nw-roadmap` only when `.nwave/config.yaml:workflow.mode` is `classic`.
+
 ## Usage
 
 ```bash

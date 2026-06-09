@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nwave.ai/schemas/atdd-pure-phase-sequence.schema.json",
+  "title": "ATDDPurePhaseSequence",
+  "description": "Validates the atdd_pure_phases block of a feature roadmap.json (ADR-027). Phase 1 scaffolding for the ATDD-pure 7-phase workflow extension.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_ref",
+    "workflow_mode",
+    "phase_sequence",
+    "adr_ref"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semver of this schema. Breaking changes bump major."
+    },
+    "source_ref": {
+      "type": "string",
+      "pattern": "^docs/architecture/adrs/adr-027",
+      "description": "Path to the ADR that authorises this block."
+    },
+    "adr_ref": {
+      "type": "string",
+      "const": "ADR-027",
+      "description": "Canonical ADR identifier. MUST equal 'ADR-027'."
+    },
+    "workflow_mode": {
+      "$ref": "#/$defs/WorkflowMode"
+    },
+    "cohort": {
+      "$ref": "#/$defs/Cohort",
+      "description": "Cohort pre-assignment per plan v3 §4.1. Required when workflow_mode=atdd_pure."
+    },
+    "phase_sequence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/PhaseEntry" },
+      "description": "Ordered execution log of phase entries (one per phase transition)."
+    },
+    "cycle_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2,
+      "description": "Count of Phase D re-loops. ≤2 enforces termination guard per plan v3 §7.2."
+    },
+    "verdict_hash_trailer": {
+      "$ref": "#/$defs/VerdictHashTrailer",
+      "description": "Required when ≥1 phase in phase_sequence is G_COMMIT (plan v3 §8)."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "workflow_mode": { "const": "atdd_pure" } },
+        "required": ["workflow_mode"]
+      },
+      "then": {
+        "required": ["cohort"]
+      }
+    }
+  ],
+  "$defs": {
+    "ATDDPurePhase": {
+      "type": "string",
+      "enum": [
+        "A_GREEN_ATS",
+        "B_COVERAGE_CLEANUP",
+        "C_REVIEWER_AUDIT",
+        "D_GAP_ROUTING",
+        "E_BATCH_REFACTOR",
+        "F_FINAL_REVIEW",
+        "G_COMMIT"
+      ],
+      "description": "The 7 canonical ATDD-pure phases (ADR-027)."
+    },
+    "WorkflowMode": {
+      "type": "string",
+      "enum": ["classic", "atdd_pure"],
+      "description": "Workflow dispatch selector. Only 'atdd_pure' activates this schema."
+    },
+    "Cohort": {
+      "type": "string",
+      "enum": ["S", "M", "L", "XL"],
+      "description": "Feature size cohort driving SLO calibration."
+    },
+    "Severity": {
+      "type": "string",
+      "enum": ["BLOCKER", "HIGH", "MEDIUM", "LOW"]
+    },
+    "ATGapKind": {
+      "type": "string",
+      "enum": ["at_gap_in_delivery_scope", "specification_ambiguity"]
+    },
+    "ATGap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_class",
+        "current_at_count",
+        "reason",
+        "kind",
+        "severity"
+      ],
+      "properties": {
+        "scenario_class": { "type": "string", "minLength": 1 },
+        "current_at_count": { "type": "integer", "minimum": 0 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "kind": { "$ref": "#/$defs/ATGapKind" },
+        "severity": { "$ref": "#/$defs/Severity" },
+        "source_at_path": {
+          "type": ["string", "null"],
+          "description": "Optional repo-relative path to the offending AT file (architect choice 1). Must not contain '..' segments; must not be absolute."
+        }
+      }
+    },
+    "PhaseEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "entered_at", "actor"],
+      "properties": {
+        "phase": { "$ref": "#/$defs/ATDDPurePhase" },
+        "entered_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 UTC timestamp."
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actor": {
+          "type": "string",
+          "enum": [
+            "crafter",
+            "crafter-B",
+            "reviewer",
+            "orchestrator"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ATGap" },
+          "description": "Reviewer-authored findings (Phase C/F only)."
+        },
+        "verdict_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "HMAC-SHA256 hex (64 chars). Mandatory on F, optional on C."
+        },
+        "cycle_n": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Phase D re-loop counter."
+        }
+      }
+    },
+    "VerdictHashTrailer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "verdict_hash",
+        "signed_at",
+        "reviewer_agent_id"
+      ],
+      "properties": {
+        "algorithm": { "type": "string", "const": "HMAC-SHA256" },
+        "verdict_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reviewer_agent_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+$"
+        }
+      }
+    },
+    "TransitionRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "legal_next"],
+      "properties": {
+        "from": { "$ref": "#/$defs/ATDDPurePhase" },
+        "legal_next": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "A_GREEN_ATS",
+              "B_COVERAGE_CLEANUP",
+              "C_REVIEWER_AUDIT",
+              "D_GAP_ROUTING",
+              "E_BATCH_REFACTOR",
+              "F_FINAL_REVIEW",
+              "G_COMMIT",
+              "RELOOP_A",
+              "REROUTE_DISCUSS",
+              "REROUTE_DESIGN",
+              "REROUTE_DEVOPS",
+              "HUMAN_ESCALATION",
+              "CHECKPOINT_TIMEOUT",
+              "TERMINAL"
+            ]
+          }
+        }
+      },
+      "description": "Informational mirror of LEGAL_TRANSITIONS table. Runtime validator may consult."
+    }
+  }
+}

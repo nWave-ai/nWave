@@ -529,14 +529,50 @@ KNOWN_PLUGINS: dict[str, str] = {
 }
 
 
+# Argv prefix per installer. The plugin handler appends `<action> <pkg>` to this.
+_INSTALLER_COMMANDS: dict[str, tuple[str, ...]] = {
+    "uv": ("uv", "tool"),
+    "pipx": ("pipx",),
+    "pip": ("pip",),
+}
+
+# PATH-availability hint emitted after a successful install if the plugin
+# binary isn't yet on PATH. Mirrors each tool's own remediation command.
+_INSTALLER_PATH_HINTS: dict[str, str] = {
+    "uv": "Run `uv tool update-shell` (or restart your shell) to refresh PATH.",
+    "pipx": "Restart your shell or run `pipx ensurepath`.",
+    "pip": "Ensure pip's user-bin dir is on PATH (see `python -m site --user-base`).",
+}
+
+
 def _resolve_installer() -> tuple[list[str], str] | None:
-    """Pick `pipx` if available (recommended for CLIs), else `pip`."""
+    """Pick a Python package installer for `nwave-ai plugin install`.
+
+    Delegates toolchain identity to the shared
+    ``des...package_manager_detector.detect_pm`` so the CLI and the
+    ``/nw-update`` self-update flow agree on which manager owns nwave-ai
+    (including honoring the ``NWAVE_INSTALLER`` override). When the detector
+    cannot identify the owner, falls back to a uv-first PATH scan.
+
+    Returns:
+        ``(cmd_prefix, tool_name)`` where ``cmd_prefix`` is the argv prefix
+        before ``<action> <pkg>``, or ``None`` if no installer is available.
+    """
     import shutil
 
-    if shutil.which("pipx"):
-        return (["pipx"], "pipx")
-    if shutil.which("pip"):
-        return (["pip"], "pip")
+    from des.adapters.driven.package_managers.package_manager_detector import (
+        detect_pm,
+    )
+
+    # 1 + 2: explicit override or the manager that owns this interpreter.
+    pm = detect_pm(Path(sys.executable))
+    if pm != "unknown" and shutil.which(pm):
+        return (list(_INSTALLER_COMMANDS[pm]), pm)
+
+    # 3: uv-first PATH scan when ownership is indeterminate.
+    for tool in ("uv", "pipx", "pip"):
+        if shutil.which(tool):
+            return (list(_INSTALLER_COMMANDS[tool]), tool)
     return None
 
 
@@ -583,16 +619,25 @@ def _handle_plugin(args: list[str]) -> int:
     installer = _resolve_installer()
     if installer is None:
         print(
-            "Neither pipx nor pip is available on PATH. Install one of them and retry.",
+            "No installer (uv, pipx, or pip) is available on PATH. "
+            "Install uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`) "
+            "or pipx and retry.",
             file=sys.stderr,
         )
         return 1
     cmd_prefix, tool = installer
 
     action = "install" if sub == "install" else "uninstall"
-    print(f"Running: {tool} {action} {pkg}")
+    cmd = [*cmd_prefix, action]
+    # `pip uninstall` prompts for confirmation by default; -y keeps it
+    # non-interactive so it can't hang when stdin is not a TTY (CI, subagents).
+    # uv tool / pipx uninstall are non-interactive already.
+    if tool == "pip" and action == "uninstall":
+        cmd.append("-y")
+    cmd.append(pkg)
+    print(f"Running: {' '.join(cmd)}")
     try:
-        result = subprocess.run([*cmd_prefix, action, pkg], check=False)
+        result = subprocess.run(cmd, check=False)
     except FileNotFoundError as exc:
         print(f"Failed to invoke {tool}: {exc}", file=sys.stderr)
         return 1
@@ -611,10 +656,10 @@ def _handle_plugin(args: list[str]) -> int:
 
         cli_name = pkg  # plugin CLI name == PyPI package name by convention
         if shutil.which(cli_name) is None:
+            hint = _INSTALLER_PATH_HINTS.get(tool, "")
             print(
                 f"Warning: {tool} reported success but '{cli_name}' is not on "
-                f"PATH yet. If you used pipx, you may need to restart your "
-                f"shell or run 'pipx ensurepath'.",
+                f"PATH yet. {hint}",
                 file=sys.stderr,
             )
             return 0

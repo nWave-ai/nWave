@@ -75,7 +75,23 @@ def handle_deliver_progress() -> int:
     project_id = des_context["project_id"]
     cwd = hook_input.get("cwd", "")
 
-    roadmap_path, exec_log_path, progress_path = _resolve_deliver_paths(cwd, project_id)
+    # Marker-aware effective cwd: validate DES-PROJECT-ROOT marker (if any),
+    # use it as the base for path resolution; fall back to hook_input cwd on
+    # missing/invalid marker. Rex RCA F-DES-WORKTREE-EXECUTION-LOG-RESOLUTION.
+    raw_marker = des_context.get("project_root")
+    effective_cwd = cwd
+    if raw_marker:
+        from des.adapters.drivers.hooks.project_root_validator import (
+            validate_project_root,
+        )
+
+        validated = validate_project_root(raw_marker, cwd)
+        if validated is not None:
+            effective_cwd = str(validated)
+
+    roadmap_path, exec_log_path, progress_path = _resolve_deliver_paths(
+        effective_cwd, project_id
+    )
 
     if not roadmap_path.exists():
         return 0

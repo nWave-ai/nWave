@@ -356,10 +356,14 @@ class TestCLIExitCodes:
     def test_exit_1_on_missing_test(self, tmp_path):
         backlog = tmp_path / "backlog.md"
         backlog.write_text("## High\n\n### Some Bug\n- Fixed via PR #99\n")
+        tests_root = tmp_path / "tests"
+        tests_root.mkdir()
         rc = _module.main(
             [
                 "--backlog",
                 str(backlog),
+                "--tests-root",
+                str(tests_root),
                 "--mode",
                 "no-run",
                 "--output",

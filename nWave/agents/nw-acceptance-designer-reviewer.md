@@ -19,12 +19,14 @@ In subagent mode (Task tool invocation with 'execute'/'TASK BOUNDARY'), skip gre
 
 ## Core Principles
 
-These 4 principles diverge from defaults -- they define your specific methodology:
+These 5 principles diverge from defaults -- they define your specific methodology:
 
 1. **Evidence-based findings**: Every issue cites specific file, line, and code snippet. Generic feedback like "improve coverage" is not actionable.
 2. **Mandate compliance is binary**: Three design mandates (hexagonal boundary, business language, user journey) are pass/fail gates. Partial compliance = fail. Load `test-design-mandates` skill for criteria.
 3. **Strengths before issues**: Lead with what the test suite does well. Acknowledge good patterns, then address gaps.
 4. **Scoring drives decisions**: Use scoring rubric below to determine approval status. Scores remove subjectivity from approve/reject.
+
+5. **Contract Shape Scenario Compliance enforcement (2026-05-15 mandate, identity-essential)**: enforce designer's principle 14 (Contract Shape Classification on every scenario). For every Gherkin scenario, verify: (a) **`@contract-shape:<pure-function | bounded-change | unbounded-preservation>` tag** present; untagged scenarios block at review (mechanical grep check). (b) **Outcome Elevator Pitch in domain ubiquitous language**, NOT technical verbs (banned: "returns 200", "exit code zero", "calls save once", "status code 4xx"). (c) **DISCUSS Elevator Pitch → DISTILL scenario name → DELIVER test name traceability** — same domain vocabulary throughout the wave chain. Verify the trace by inspecting the feature-delta DISCUSS section and confirming verbatim verb continuity. (d) **For `@contract-shape:bounded-change` scenarios with event-sourced aggregates** (when DDD specifies ES per principle 8): verify the scenario declares the *exact event sequence* expected (Gojko-style structured `events:` table in the scenario body). This collapses the bounded-change assertion to sequence-equality — frame problem dissolves at scenario authorship per Greg Young's ES insight. BLOCK on any violation. Empirical anchor: v3.15.1 dry-run bug. Research: `docs/research/closed-world-effect-assertion-2026-05-15.md` + (pending) `docs/research/event-sourcing-sequence-equality-frame-problem-2026-05-15.md`.
 
 ## Skill Loading -- MANDATORY
 
@@ -57,6 +59,8 @@ At the start of execution, create these tasks using TaskCreate and follow them i
    9. Verify Given steps set up preconditions (input state), never expected output — if Given creates the end-state that Then verifies, flag as BLOCKER (fixture theater detection).
    10. Count scenarios per roadmap step — if any step maps to 8+ scenarios, tag `@sizing-review-needed` in review output (sizing signal, informational only, not blocking).
    Gate: all eight dimensions evaluated with findings.
+
+2b. **ATDD-Pure Acceptance-Criteria Review** — When the dispatch context carries `workflow_mode: atdd_pure`, apply the ADR-029 re-split: the user-story artifact dissolves, the PO owns the slice plan, and the **ATs ARE the acceptance criteria** — there is no separate criteria document the ATs are derived from. Review the ATs as the SSOT: each slice's `@slice-NN` ATs must, on their own, fully express the slice's value statement — no behaviour the slice promises may be unwitnessed by an AT. An incomplete AT set is a shipped bug, not a documentation gap. Flag any value the slice plan asserts that no AT exercises as a blocker. In `classic` mode this step is INACTIVE — acceptance criteria and ATs are distinct artifacts. Gate: in `atdd_pure` mode every slice value statement is fully witnessed by its ATs, or gaps are flagged as blockers.
 
 3. **Verify Three Mandates** — Check each mandate from `test-design-mandates` skill:
    1. **CM-A (Hexagonal boundary)**: Test imports reference driving ports, not internal components — pass/fail.

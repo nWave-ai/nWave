@@ -208,7 +208,7 @@ nWave integrates with the [OpenAI Codex CLI](https://platform.openai.com/docs/gu
 
 **Auto-detect installation (recommended):**
 ```bash
-pipx install nwave-ai
+uv tool install nwave-ai     # or, as a fallback: pipx install nwave-ai
 nwave-ai install            # auto-detects Codex + installs hooks
 ```
 
@@ -290,7 +290,7 @@ nWave checks for new versions when you open Claude Code. When available, you'll 
 
 **CLI:**
 ```bash
-pipx upgrade nwave-ai        # or: uv tool upgrade nwave-ai
+uv tool upgrade nwave-ai     # or: pipx upgrade nwave-ai
 nwave-ai install
 ```
 
@@ -303,7 +303,7 @@ nwave-ai install
 
 ```bash
 nwave-ai uninstall              # Remove agents, commands, config, DES hooks
-pipx uninstall nwave-ai         # or: uv tool uninstall nwave-ai
+uv tool uninstall nwave-ai      # or: pipx uninstall nwave-ai
 ```
 
 Both methods remove agents, commands, and configuration from `~/.claude/`. Your project files are unaffected.
@@ -348,7 +348,7 @@ If `nwave-ai doctor` reports a problem at startup, you will see an advisory in y
 | **DES_MARKERS_MISSING** | Agent prompt mentions a step ID (01-01 pattern) but lacks DES markers. | Either: add DES markers for step execution, OR add `<!-- DES-ENFORCEMENT : exempt -->` comment if it's not actually step work. |
 | **Source write blocked** | You tried to edit a file during active `/nw-deliver` outside a DES task. | Edit requests must go through the active deliver session. If you need to make changes, finalize the current session first. |
 | **TDD phase incomplete** | Sub-agent returned without finishing all required TDD phases. | Re-dispatch the same agent to complete missing phases (typically COMMIT or refactoring steps). |
-| **nWave update available** | SessionStart detected a newer version available. | Optional. Run `pipx upgrade nwave-ai && nwave-ai install` when ready to upgrade, or dismiss and continue working. |
+| **nWave update available** | SessionStart detected a newer version available. | Optional. Run `uv tool upgrade nwave-ai && nwave-ai install` (or `pipx upgrade nwave-ai && nwave-ai install`) when ready to upgrade, or dismiss and continue working. |
 | **False positive blocks** | Your prompt accidentally matches step-ID pattern (e.g., dates like "2026-02-09"). | Add `<!-- DES-ENFORCEMENT : exempt -->` comment to exempt the agent call from step-ID enforcement. |
 
 These messages protect code quality but never prevent your work. They guide you toward the safe path.
@@ -392,7 +392,7 @@ These messages protect code quality but never prevent your work. They guide you 
 
 **Why?** Commands migrated from Claude Code's dynamic `commands/` directory to the stable `skills/` system to prevent commands from disappearing during long sessions.
 
-**To upgrade**: Run `pipx upgrade nwave-ai && nwave-ai install` (or `uv tool upgrade nwave-ai && nwave-ai install`). Old `/nw:` commands are automatically removed.
+**To upgrade**: Run `uv tool upgrade nwave-ai && nwave-ai install` (or `pipx upgrade nwave-ai && nwave-ai install`). Old `/nw:` commands are automatically removed.
 
 ## Privacy
 

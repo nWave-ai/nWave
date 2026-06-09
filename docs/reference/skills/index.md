@@ -40,6 +40,10 @@
 
 - [nw-assessment-kirkpatrick](../../../nWave/skills/nw-assessment-kirkpatrick/SKILL.md) — Kirkpatrick New World Model applied to workshop design — assessment checkpoints, behavioral commitment instruments, rubric design, and Level 3 required drivers
 
+## nw-at-completeness-check
+
+- [nw-at-completeness-check](../../../nWave/skills/nw-at-completeness-check/SKILL.md) — Canonical AT completeness gate — research-anchored 7-category taxonomy (C1-C7) + 15-item mechanical checklist. Paradigm-neutral. Drives acceptance-designer reviewer verdict deterministically.
+
 ## nw-authoritative-sources
 
 - [nw-authoritative-sources](../../../nWave/skills/nw-authoritative-sources/SKILL.md) — Domain-specific authoritative source databases, search strategies by topic category, and source freshness rules
@@ -147,6 +151,10 @@
 ## nw-copywriting-frameworks
 
 - [nw-copywriting-frameworks](../../../nWave/skills/nw-copywriting-frameworks/SKILL.md) — PAS, BAB, and AIDA copywriting frameworks for B2B outreach with decision tree for framework selection
+
+## nw-crafter-discipline-atdd-pure
+
+- [nw-crafter-discipline-atdd-pure](../../../nWave/skills/nw-crafter-discipline-atdd-pure/SKILL.md) — Crafter discipline contract for the ATDD-pure 7-phase workflow — what the slim crafter does in Phase A (GREEN-the-ATs), Phase B (coverage-driven dead-code elimination), and Phase E (batch L1-L6 refactor), plus hard prohibitions and the Phase B common-cuts taxonomy
 
 ## nw-css-implementation-recipes
 
@@ -298,7 +306,7 @@
 
 ## nw-execute
 
-- [nw-execute](../../../nWave/skills/nw-execute/SKILL.md) — Dispatches a single roadmap step to a specialized agent for TDD execution. Use when implementing a specific step from a roadmap.json plan.
+- [nw-execute](../../../nWave/skills/nw-execute/SKILL.md) — Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Use to run a step (classic workflow.mode, a roadmap.json plan) or one carpaccio slice (atdd_pure workflow.mode).
 
 ## nw-fast-forward
 

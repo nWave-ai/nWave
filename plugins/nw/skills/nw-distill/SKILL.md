@@ -9,6 +9,31 @@ argument-hint: '[story-id] - Optional: --test-framework=[cucumber|specflow|pytes
 
 This skill provides the acceptance designer's methodology for creating acceptance tests. The orchestrator controls the overall flow (agent dispatch, review gate, handoff) -- this skill focuses on HOW to create good acceptance tests.
 
+## LANGUAGE CONVENTION FRAME (read FIRST — overrides all examples below)
+
+**Code examples in this skill use Python syntax for illustration only.** They are NOT prescriptive about target language. nWave is language-agnostic per the "genericity and agnosticism" mandate (2026-05-24).
+
+**Before authoring ATs**, detect the target project's language from these manifest files (in order):
+- `package.json` → TypeScript / JavaScript (jest, vitest, cucumber-js, playwright)
+- `Cargo.toml` → Rust (cargo test, proptest, cucumber-rust)
+- `go.mod` → Go (testing, ginkgo, godog)
+- `pyproject.toml` / `setup.py` / `Pipfile` → Python (pytest, pytest-bdd, hypothesis)
+- `pom.xml` / `build.gradle` → Java / Kotlin (JUnit5, Cucumber-JVM, jqwik)
+- `*.csproj` / `*.fsproj` → C# / F# (xUnit, SpecFlow, FsCheck)
+- `Gemfile` → Ruby (RSpec, Cucumber-Ruby)
+- `Package.swift` → Swift (XCTest, swift-testing)
+
+**When the target language is NOT Python**:
+1. Adapt EVERY code example to the target language's conventions (naming, imports, type system, test-framework idioms, file extensions).
+2. Replace Python-specific imports (`from pytest_bdd import ...`, `from hypothesis import ...`, `import dataclasses`) with target-language equivalents (`import { Given, When, Then } from '@cucumber/cucumber'`, `import * as fc from 'fast-check'`, etc.).
+3. Replace Python type hints (`def f(x: int) -> str`) with target-language type syntax.
+4. Replace Python directory conventions (`tests/`, `__init__.py`) with target conventions (`test/`, `__tests__/`, no init files for TS/JS).
+5. Replace Python class/function syntax (`class Customer:`, `def given_port():`) with target equivalents.
+
+**Project conventions ALWAYS WIN** over examples below. If the user's repo has 50 TS files using `describe()/it()` blocks and zero Python files, ATs MUST be TypeScript with `describe()/it()` — never Python pytest-bdd regardless of how authoritative this skill's examples look.
+
+**Empirical anchor**: skill examples being Python-only caused LLM to infer Python conventions universal, leading to Python code emitted in greenfield TS project. Connects [[feedback_language_adapter_plugin_architecture_2026_05_24]] (genericity mandate) + F-LANGUAGE-ADAPTER-PLUGIN-INFRASTRUCTURE epic.
+
 ## ADR-025 (2026-05-07) — DISTILL is canonical AT author
 
 DISTILL produces ALL acceptance tests as scaffolded RED (skip/pending markers). DELIVER's 3-phase cycle (RED / GREEN / COMMIT, per ADR-025) does NOT re-author ATs in RED — it only unskips the scaffolds and writes PBT unit tests. Wave separation: DISTILL = "what should the system do" (ATs), DELIVER = "how" (PBT unit + impl). The pre-DELIVER fail-for-right-reason gate (described in this skill) becomes the RED phase entry/exit gate in DELIVER per ADR-025 D2.
@@ -403,6 +428,127 @@ Soft-gate table proposed to the user BEFORE step-methods are generated. One row 
 
 The table is emitted into `feature-delta.md` under `## Wave: DISTILL / [HOW] Domain language` when the user requests this expansion (or when `density.mode = "full"`).
 
+## DSL Emergence + SSOT via Types + Services (Mandate-12)
+
+**Mandate-12 — SSOT + Zero Duplication via Types + Services + DSL (2026-05-18, identity-essential; refined Opt 3 same day)**: domain concepts are expressed once via the type system; logic lives in services (composition root or driving-port methods) as single source of truth; step definitions, code, and tests reuse types and services to eliminate duplication. The DSL emerges from typed domain concepts — parameterized templates over enum-typed parameters, not 200+ unique step decorators. Domain types live in `tests/{path}/acceptance/steps/domain_types.py` (Python pilot); step methods invoke composition-root service methods, never inline business logic.
+
+### Four-criteria mechanical evidence (refined 2026-05-18)
+
+Compliance is mechanical, not ratio-based:
+
+1. **Domain types module exists** at `tests/{path}/acceptance/steps/domain_types.py` with typed enums / dataclasses / NewTypes for every domain noun used in Gherkin.
+2. **Composition methods consume typed parameters** — service signatures use the enums from `domain_types.py`; no raw `str` parameters where a domain enum already exists.
+3. **No business logic in step bodies** — AST mechanical check: each step function body has ≤2 statements, the final statement is `composition.<service>.<method>(...)`, and the body contains no control flow (`if`/`for`/`while`/`try`).
+4. **Step-reuse-ratio reported as informational** — `total_step_invocations / unique_step_decorators` measured per feature for natural-ceiling discovery. NOT a gate.
+
+**Natural-ceiling discovery (criterion 4)**: run the measurement formula below per feature and document the ratio in `distill/wave-decisions.md` alongside the feature shape. Config-shaped features (single-shot installer, schema validation) naturally cap below 4×; journey-rich features may exceed it. There is no target ratio — the empirical ceiling per feature is the data point. Substance is criteria (1)–(3); ratio is a symptom heuristic.
+
+**Empirical anchor**: F-ENTERPRISE-RELEASE-READINESS DISTILL pre-refactor 1.13× (227 occurrences / 201 decorators) → post-refactor 1.43× natural ceiling with all four mechanical criteria met (14 typed enums, 45 composition methods, zero step-body logic). The 1.43× MISS vs the original ≥4× hard target concealed the substantive SUBSTANCE WIN — refined per source-vs-symptom discipline (memory `feedback_lyra_failure_modes_2026_05_05`).
+
+### Refactor pattern — parameterized templates over enum-typed parameters
+
+```python
+# tests/{path}/acceptance/steps/domain_types.py
+from enum import Enum
+from dataclasses import dataclass
+
+class PortClass(Enum):
+    DRIVING = "driving"
+    DRIVEN_INTERNAL = "driven_internal"
+    DRIVEN_EXTERNAL = "driven_external"
+
+class CommitStatus(Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+@dataclass(frozen=True)
+class Customer:
+    id: int
+    email: str
+
+# tests/{path}/acceptance/steps/steps_<feature>.py
+from pytest_bdd import given, when, then, parsers
+from tests.<path>.acceptance.steps.domain_types import PortClass, CommitStatus, Customer
+from src.<your_app>.composition_root import build_app
+
+@given(parsers.parse('a {port_class:PortClass} port for {port_name}'))
+def given_port(port_class: PortClass, port_name: str):
+    # Single decorator handles ALL port-class scenarios — no decorator-per-class duplication.
+    # Body delegates to composition-root service method, NEVER inline business logic.
+    app = build_app()
+    app.register_port(port_class, port_name)
+
+@when(parsers.parse('the operator submits a commit with status {status:CommitStatus}'))
+def when_submit(status: CommitStatus):
+    app = build_app()
+    app.commit_service.submit(status)
+
+@then(parsers.parse('the commit status becomes {status:CommitStatus}'))
+def then_status(status: CommitStatus):
+    app = build_app()
+    assert app.commit_service.current_status() == status
+```
+
+Three Given/When/Then decorators cover the entire `port_class × status` cartesian — instead of 9 decorators (3 ports × 3 statuses), the DSL emerges from enum typing.
+
+### Anti-pattern — hard-coded literals + decorator proliferation
+
+```python
+# BAD — one decorator per literal value (200+ decorators when scaled across the feature)
+@given('a driving port for HTTP API')
+def given_http_api(): ...
+
+@given('a driving port for CLI')
+def given_cli(): ...
+
+@given('a driven_internal port for IUserRepository')
+def given_user_repo(): ...
+
+# BAD — step methods with inline business logic (logic SSOT violation)
+@when('the operator submits a commit with status approved')
+def when_submit_approved():
+    # business logic inlined in step — duplicates production code,
+    # diverges under refactor, breaks SSOT contract
+    audit_log = []
+    audit_log.append({"status": "approved", "timestamp": time.time()})
+    assert audit_log[-1]["status"] == "approved"
+```
+
+### Service consolidation guidance
+
+- **Composition-root service methods**: business logic lives in `src/<your_app>/<service>.py` (or `composition_root.py`), invoked by step methods via the production DI container (Pillar 3).
+- **Step decorators delegate, never inline**: the decorator body is ≤3 lines — fetch composition root, call service method, optionally capture observable for assertion.
+- **Domain types as decorator parameter coercers**: `parsers.parse` (pytest-bdd) with an enum type converts the literal token to the typed value at parse time. The decorator's body sees `port_class: PortClass`, not a string.
+- **Tier B reuse**: state-machine `@rule` methods import the SAME step methods from `steps_<feature>.py` — the domain types and service invocations are shared across Tier A (production composition) and Tier B (`InMemoryComposition`). Shared vocabulary contract per Mandate 10.
+
+### Empirical measurement (bash) — informational only
+
+Used for criterion (4) above. The output is recorded as the per-feature natural ceiling, NOT compared against a target threshold.
+
+```bash
+TOTAL_OCCURRENCES=$(grep -cE '^\s*(Given|When|Then|And|But) ' tests/<path>/acceptance/*.feature | awk -F: '{sum+=$2} END {print sum}')
+UNIQUE_DECORATORS=$(grep -cE '^@(given|when|then|step|when_then)' tests/<path>/acceptance/steps/steps_*.py)
+RATIO=$(echo "scale=2; $TOTAL_OCCURRENCES / $UNIQUE_DECORATORS" | bc)
+echo "step-reuse-ratio (informational): ${RATIO}x — natural ceiling for this feature shape"
+```
+
+Compliance is determined by criteria (1)–(3) (types module, typed signatures, no-logic-in-steps). The ratio informs natural-ceiling discovery; a low ratio on a config-shaped feature is expected and not a redesign signal.
+
+### Anti-pattern — forcing the ratio at the cost of Pillar 1
+
+Collapsing readable Gherkin into one parameterized step that sacrifices domain coherence purely to raise the ratio. Example: merging `Given the policy is approved` and `Given the artifact is published` into `Given the {noun:Object} is {verb:Action}` to gain reuse — the resulting Gherkin is harder for a stakeholder to read and the domain language is degraded. Pillar 1 (Gherkin readability) outranks the ratio. If criteria (1)–(3) are met and the ratio is below 4×, the feature is compliant — that is the calibrated outcome.
+
+### Scope guard
+
+Per [[feedback_target_machine_independence_2026_05_15]]: Mandate-12 applies to acceptance test infrastructure. Production code invariants live in core + plugin (`src/des/`, `scripts/install/plugins/`) and are out of scope for the step-reuse-ratio metric — they have their own SSOT discipline via hexagonal layering. Mandate-12 governs how tests EXPRESS contracts, not how production code STRUCTURES logic.
+
+### Retrofit scope
+
+- **Forward-only on new features**: every new DISTILL session MUST meet the four mechanical criteria (types module, typed signatures, no-logic-in-steps, ratio measured + documented).
+- **Retrofit on slow tests**: dogfooding scope per Ale 2026-05-18 — drastic suite-execution-time reduction goal. See backlog `F-ATDD-MANDATE-12-SSOT-DUPLICATION` + ADR-026.
+- **No retroactive enforcement** on existing tests beyond the hot-path slow-test set. Audit logs of pre-2026-05-18 features remain valid; the mandate is a forward-looking quality bar.
+
 ## Pre-DELIVER fail-for-the-right-reason gate
 
 Before handing acceptance scenarios to DELIVER, run them once and verify each scenario fails for the **right reason** — the implementation is missing — not for setup error, fixture bug, import error, or test infrastructure problem.
@@ -721,6 +867,8 @@ AFTER all DISTILL Tier-1 [REF] sections are appended to `feature-delta.md` and a
 5. **Block DELIVER handoff** — do not hand off to DELIVER until all four verdicts are APPROVED or CONDITIONALLY_APPROVED with documented action items in DELIVER scope. Gate: zero blockers, zero high (or accepted-with-conditions).
 
 **Cost**: 4 Haiku reviewers in parallel ≈ $0.05-0.20 per feature. Trades small cost for late-feedback-blast-radius reduction (full chain visible).
+
+**Structural-correctness reviewer never skips**: `rigor.reviewer_model: "skip"` applies to the three scale-sensitive cost-driven reviewers (Eclipse / Architect / Forge) only. Sentinel (`@nw-acceptance-designer-reviewer`) ALWAYS dispatches regardless of rigor cascade or scenario count fast-path — it is the structural-correctness reviewer (Gherkin antipatterns, hexagonal boundary, scaffold integrity), and silent skip masks the bug class issue #52 fixed.
 
 **Per-wave review trigger override**: even with this final gate, a wave-skill may have triggered its own per-wave review (DoR ambiguity, contested ADR, novel deployment target, etc.). Per-wave reviewer outputs are PR-ephemeral, not committed; they inform the wave's primary agent in real time but don't substitute for this final gate.
 

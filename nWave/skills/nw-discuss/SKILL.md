@@ -27,7 +27,8 @@ Under `## Wave: DISCUSS / [REF] <Section>` headings:
 - JTBD one-liner — single-sentence Job-to-be-Done statement
 - Locked decisions — D-numbered design decisions with verdicts
 - User stories with elevator pitches — every story has Before/After/Decision-enabled triplet
-- Acceptance criteria (ACs) — testable, embedded per story
+- Slice Plan — `## Wave: DISCUSS / [REF] Slice Plan`, a five-column fixed-order carpaccio table (Slice, Value statement, Status, Annotation, Justification). Emitted when `workflow.mode == atdd_pure` (ADR-028 D2 / ADR-029 D3); the PO authors it in place of UAT-scenario user stories, and it replaces the user-story + AC sections as the decomposition + value SSOT. Structurally checked by `validate_feature_delta.py --require-slice-plan` (verdict `accepted`).
+- Acceptance criteria (ACs) — testable, embedded per story (classic mode; under `atdd_pure` the per-slice `.feature` ATs are the AC SSOT, authored downstream in DISTILL)
 - Definition of Done (DoD) — 9-item checklist
 - Out-of-scope — explicit non-goals
 - WS strategy — A/B/C/D per Mandate 5
@@ -245,7 +246,7 @@ Gate: every non-`@infrastructure` story has a complete Elevator Pitch. Every sli
 3. **Requirements Completeness** — Calculate requirements completeness score. Gate: score > 0.95.
 4. **Outcome KPIs** — Define measurable outcome KPIs with targets. Gate: each KPI has a numeric target and measurement method.
 5. **DoR Validation** — Validate all 9 DoR items with evidence. Gate: DoR passed with evidence for all 9 items.
-6. **Peer Review (OPTIONAL — per-wave; mandatory at end of DISTILL)** — Per-wave Eclipse review is opt-in. Invoke explicitly via `/nw-review nw-product-owner-reviewer` only if (a) DoR validation surfaced ambiguity, (b) JTBD assumptions are unverified, (c) vendor-neutrality risk in story ACs, or (d) user explicitly requests. Default: skip. The mandatory consolidated review covering DISCUSS+DESIGN+DEVOPS+DISTILL fires at end of DISTILL. Gate: optional unless triggered.
+6. **Peer Review (OPTIONAL — per-wave; mandatory at end of DISTILL)** — Per-wave Eclipse review is opt-in. Invoke explicitly via `/nw-review nw-product-owner-reviewer` only if (a) DoR validation surfaced ambiguity, (b) JTBD assumptions are unverified, (c) vendor-neutrality risk in story ACs, or (d) user explicitly requests. Default: skip. The mandatory consolidated review covering DISCUSS+DESIGN+DEVOPS+DISTILL fires at end of DISTILL. Gate: optional unless triggered. **Structural-correctness reviewer never skips**: `rigor.reviewer_model: "skip"` applies to scale-sensitive cost-driven reviewers (Eclipse / Architect / Forge) only; the structural-correctness reviewer at the end of DISTILL (Sentinel / `@nw-acceptance-designer-reviewer`) ALWAYS dispatches — silent skip masks the bug class issue #52 fixed.
 7. **Handoff Preparation** — Confirm handoff acceptance by nw-solution-architect (DESIGN wave). Gate: handoff accepted.
 
 | Artifact | Path |

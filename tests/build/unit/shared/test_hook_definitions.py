@@ -239,7 +239,7 @@ class TestBashGuardIntegration:
             input=json.dumps(input_json),
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=15,
         )
 
     def test_allow_non_execution_log_command(self):

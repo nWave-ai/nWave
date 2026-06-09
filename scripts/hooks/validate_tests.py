@@ -209,7 +209,9 @@ def main():
         env["PYTHONPATH"] = os.getcwd() + ":" + env.get("PYTHONPATH", "")
 
         # Pre-commit runs unit/acceptance tests only.
-        # Integration, e2e, and build acceptance tests run at pre-push.
+        # Integration, e2e, build acceptance, and heavy smoke tests run at pre-push.
+        # feature_delta/acceptance: calls nwave-ai CLI with 30s timeout — pre-push.
+        # polyglot-pilot: compiles Kotlin/Rust/Go/Java/TS/C# — pre-push.
         base_args = [
             *test_targets,
             "-x",
@@ -217,13 +219,17 @@ def main():
             "--ignore-glob=**/integration/**",
             "--ignore-glob=**/e2e/**",
             "--ignore-glob=**/build/acceptance/**",
+            "--ignore-glob=**/feature_delta/acceptance/**",
+            "--ignore-glob=**/polyglot-pilot/**",
         ]
 
         # Parallel execution with pytest-xdist (if available)
+        # -n 2 (not auto): dev box OOMs at >2 workers — mirrors pre-push cap.
+        # See pyproject.toml comment: RCA fix-speculative-test-pollution 2026-05-13.
         # --dist loadfile keeps tests from the same file on one worker
         # (prevents shared-fixture conflicts between BDD scenarios)
         if has_xdist():
-            base_args.extend(["-n", "auto", "--dist", "loadfile"])
+            base_args.extend(["-n", "2", "--dist", "loadfile"])
         else:
             base_args.append("-v")
 

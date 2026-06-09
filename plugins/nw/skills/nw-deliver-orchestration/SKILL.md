@@ -39,6 +39,10 @@ Archive to: `docs/evolution/{timestamp}_{feature-id}.md`. Clean up workflow file
 ### Phase 9: Report Completion
 Display comprehensive statistics | List all quality gates passed | Show next steps (review evolution doc, push commits, proceed to DEVOPS wave validation).
 
+## ATDD-Pure Spine (roadmap-free)
+
+The 9 phases above describe the classic DELIVER spine. When `workflow.mode` is `atdd_pure`, DELIVER runs the **roadmap-free sibling spine** instead — a 7-phase A→G per-slice loop (ADR-028), not an extension of the classic phases. There is no Phase 3-4 roadmap step and no `execution-log.json`; each carpaccio slice flows A (green ATs) → G (commit), with an append-only AT-completion ledger as the phase record. The two spines are siblings selected by `workflow.mode` — classic stays roadmap-driven, `atdd_pure` is roadmap-free. The classic state-tracking and smart-skip logic below applies to the classic spine; the `atdd_pure` spine resumes from the AT-completion ledger.
+
 ## Smart Skip Logic
 - File exists AND `validation.status == "approved"` -> skip creation, load for context
 - File exists but not approved -> skip creation, proceed directly to review

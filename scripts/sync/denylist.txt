@@ -1,0 +1,43 @@
+# =============================================================================
+# Public PR Sync — Sensitive File Denylist
+# =============================================================================
+#
+# Block pr-mirror/<N> push if a public PR's diff touches any of these paths.
+# Patterns are gitignore-style globs (fnmatch against repo-root-relative paths).
+# A line starting with `#` is a comment; blank lines ignored.
+#
+# Review cadence: quarterly. Start narrow, expand only on incidents.
+# Source of truth: this file. Consumed by scripts/sync/check_denylist.py.
+#
+# NOTE for distiller/implementer: This file covers path-glob rules ONLY.
+# There is ALSO a content-based rule — see wave-decisions.md §2 "Known
+# content-based rule". The script must additionally flag files containing
+# rewritten `raw.githubusercontent.com/nWave-ai/nWave/main` URLs,
+# reported as `{"path": "...", "rule": "content:rewritten-raw-url"}`.
+# BDD scenarios MUST cover both modes.
+# =============================================================================
+
+# ---- Workflow files on public (covers synced dispatch-pr.yml and any
+#      future nWave/public-workflows/* that lands here) ---------------------
+.github/**
+
+# ---- Auto-generated plugin/marketplace content (release pipeline output) --
+.claude-plugin/**
+plugins/**
+
+# ---- Version managed by semantic-release; never hand-edited ---------------
+pyproject.toml
+
+# ---- Release and install machinery ----------------------------------------
+scripts/release/**
+scripts/install/**
+
+# ---- Source of the synced public workflows (belt-and-braces; path won't
+#      normally exist on public, but we keep it here so a drift can't slip
+#      through if it ever does) --------------------------------------------
+nWave/public-workflows/**
+
+# ---- Legal / process --------------------------------------------------------
+CONTRIBUTING.md
+LICENSE
+PRIVACY.md

@@ -16,9 +16,19 @@ If agents or commands show 0, run: `nwave-ai install`
 
 ## Installation Issues
 
+### `uv: command not found`
+
+**Cause**: `uv` is not installed. uv is the recommended installer for nwave-ai (pipx remains a supported fallback).
+
+**Fix**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+Restart your terminal, then retry `uv tool install nwave-ai`. See [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/) for other platforms.
+
 ### `pipx: command not found`
 
-**Cause**: `pipx` is not installed. Don't confuse it with `pip` or `pipenv` — they are different tools.
+**Cause**: `pipx` is not installed. Don't confuse it with `pip` or `pipenv` — they are different tools. (pipx is supported as a fallback when uv is not available.)
 
 **Fix**:
 ```bash
@@ -66,6 +76,25 @@ nwave-ai uninstall --backup --force
 nwave-ai install
 ```
 
+### Both uv and pipx installed — wrong one being picked
+
+**Symptom**: `nwave-ai plugin install <name>` is calling `pipx` (or `uv`) when you wanted the other one. Or you see two parallel virtual environments for nwave-ai itself.
+
+**Cause**: nwave-ai picks the package manager that originally installed it (mirroring sys.executable). If both uv and pipx exist on your PATH and you installed via the non-default one, the auto-detection may miss it — for example if you set a custom `UV_TOOL_DIR`.
+
+**Fix**: Set the `NWAVE_INSTALLER` environment variable to force a choice:
+
+```bash
+# Force uv for this shell:
+export NWAVE_INSTALLER=uv
+nwave-ai plugin install dedup
+
+# Or one-shot:
+NWAVE_INSTALLER=pipx nwave-ai plugin install dedup
+```
+
+Valid values: `uv`, `pipx`, `pip`. The override is honored only when the named tool is on PATH; otherwise nwave-ai falls back to auto-detection.
+
 ### Uninstall left files behind (fixed in v3.14)
 
 **Symptom**: After running `nwave-ai uninstall --force` (v3.13.x or earlier), the uninstaller reported success but the following remained on disk:
@@ -79,7 +108,7 @@ nwave-ai install
 **Fix (v3.14.0-rc1)**: upgrade and re-run uninstall — it now removes all three classes correctly while preserving any non-`nw-` prefixed skills you created. Background: GitHub issue #39.
 
 ```bash
-pipx upgrade nwave-ai
+uv tool upgrade nwave-ai    # or: pipx upgrade nwave-ai
 nwave-ai uninstall --force
 # Verify residuals are gone:
 ls ~/.claude/skills/nw-* 2>/dev/null | wc -l    # expected 0
@@ -143,7 +172,8 @@ will not work in cmd.exe or PowerShell.
 ```bash
 wsl --install
 # Then open a WSL terminal and run:
-pipx install nwave-ai
+curl -LsSf https://astral.sh/uv/install.sh | sh    # install uv first
+uv tool install nwave-ai                            # or: pipx install nwave-ai
 nwave-ai install
 ```
 

@@ -54,10 +54,19 @@ Check before showing progress:
 
 ### Step 5: DELIVER Progress Detail
 
-If DELIVER in progress, show step-level detail:
-- Read `docs/feature/{id}/deliver/execution-log.json`: count COMMIT/PASS steps, find first without COMMIT/PASS
+DELIVER progress detection branches on `workflow.mode` (read from `.nwave/config.yaml`).
+
+**`classic` mode** — if DELIVER in progress, show step-level detail:
+- `classic` mode: read `docs/feature/{id}/deliver/execution-log.json` — count COMMIT/PASS steps, find first without COMMIT/PASS
 - Read `.develop-progress.json` if exists: check last failure point
 - Display: "DELIVER in progress: Steps 01-01 through 02-01 complete. Next: 02-02"
+
+**`atdd_pure` mode** — there is no `classic`-mode execution-log; resume is driven by the AT-completion ledger using the **two-case cue** (ADR-028 D6). Read the slice plan and the ledger, then pick the case:
+
+1. **Case (i): slices still `pending`.** Some slices are not yet `shipped`. Restart the `/nw-execute` per-slice lean cycle at the first **un-shipped slice** — the first slice plan row whose Status is not `shipped`.
+2. **Case (ii): all slices `shipped`, feature-end cycle unfinished.** The Status column gives no signal once every row is `shipped`, so read the latest `FeatureEndCheckpoint` ledger record and resume the **feature-end cycle** at the recorded step.
+
+Display under `atdd_pure`: "DELIVER (atdd_pure) in progress: 3/5 slices shipped. Next: re-enter /nw-execute at the first un-shipped slice" or "DELIVER (atdd_pure): all slices shipped. Resuming feature-end cycle from FeatureEndCheckpoint."
 
 ### Step 6: Progress Display
 
@@ -87,7 +96,7 @@ Recommend next wave: resume in-progress wave|successor of last complete wave. Sh
 | Empty project directory | Suggest `/nw-new` or re-run from DISCUSS |
 | Corrupted artifact (0 bytes) | Flag file, recommend re-running that wave |
 | Skipped waves | Warn, offer gap-fill or continue options |
-| Cannot parse execution-log.json | Show raw file status, suggest manual review |
+| `classic` mode: cannot parse execution-log.json | Show raw file status, suggest manual review |
 
 ## Success Criteria
 

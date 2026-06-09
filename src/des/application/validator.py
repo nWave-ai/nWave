@@ -4,8 +4,10 @@ Pre-Invocation Template Validator
 Validates that DES prompts contain all mandatory sections and TDD phases
 before Task invocation, preventing incomplete instructions from reaching sub-agents.
 
-Uses canonical 5-phase TDD cycle from step-tdd-cycle-schema.json v4.0 (single source of truth).
-All phase names, skip prefixes, and validation rules loaded from schema.
+Uses canonical 3-phase TDD cycle per ADR-025 (RED, GREEN, COMMIT) as the
+default. Per-log dispatch via the ``schema_version`` field routes pre-2026-05-07
+audit logs (``schema_version="4.0"``) through the legacy 5-phase contract to
+preserve replay correctness.
 
 MANDATORY SECTIONS (9):
 1. DES_METADATA
@@ -18,9 +20,11 @@ MANDATORY SECTIONS (9):
 8. BOUNDARY_RULES
 9. TIMEOUT_INSTRUCTION
 
-MANDATORY TDD PHASES (5 from schema):
-1. PREPARE, 2. RED_ACCEPTANCE, 3. RED_UNIT, 4. GREEN (merged GREEN_UNIT + GREEN_ACCEPTANCE)
-5. COMMIT (absorbs FINAL_VALIDATE)
+MANDATORY TDD PHASES (3 canonical per ADR-025):
+1. RED (absorbs PREPARE + RED_ACCEPTANCE + RED_UNIT via fail-for-right-reason gate)
+2. GREEN
+3. COMMIT
+Legacy 5-phase (schema_version='4.0'): PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN, COMMIT
 Note: REVIEW moved to deliver-level Phase 4 (Adversarial Review via /nw-review)
 Note: REFACTOR moved to deliver-level Phase 3 (Complete Refactoring L1-L4 via /nw-refactor)
 """
@@ -285,6 +289,43 @@ class ExecutionLogValidator:
             schema = TDDSchemaLoader().load()
         self._schema = schema
 
+    _LEGACY_ONLY_PHASES: frozenset[str] = frozenset(
+        {"PREPARE", "RED_ACCEPTANCE", "RED_UNIT"}
+    )
+
+    def _resolve_active_phases(
+        self,
+        schema_version: str,
+        phase_log: list[dict] | None = None,
+    ) -> tuple[str, ...]:
+        """Return the active phase list for a given log's schema_version.
+
+        ADR-025 per-log dispatch (2026-05-18):
+        - ``schema_version="4.0"`` → legacy 5-phase (audit-log replay path)
+        - ``schema_version="5.0"`` → canonical 3-phase (ADR-025)
+        - Any other / absent value: auto-detect from the log itself. If any
+          phase name in ``phase_log`` belongs to the legacy-only set
+          (PREPARE / RED_ACCEPTANCE / RED_UNIT), treat the log as v4 and
+          return ``legacy_phases``. Otherwise fall back to
+          ``self._schema.tdd_phases`` (canonical post-flip default).
+
+        Empty string / None schema_version is treated as absent. Auto-detect
+        preserves backward-compat for callers that record v4 logs but never
+        set the explicit version field.
+        """
+        if schema_version == "4.0":
+            return self._schema.legacy_phases
+        if schema_version == "5.0":
+            return self._schema.canonical_phases
+        if phase_log:
+            recorded = {p.get("phase_name") for p in phase_log if p.get("phase_name")}
+            # Require the COMPLETE legacy-only set to switch — a single
+            # stray legacy phase name is an anomaly, not a canon switch
+            # (otherwise integrity-test fixtures contaminate dispatch).
+            if self._LEGACY_ONLY_PHASES.issubset(recorded):
+                return self._schema.legacy_phases
+        return self._schema.tdd_phases
+
     def validate(
         self,
         phase_log: list[dict],
@@ -324,8 +365,9 @@ class ExecutionLogValidator:
             return errors
 
         if not skip_schema_validation:
-            expected_phases = len(self._schema.tdd_phases)
-            required_phases = set(self._schema.tdd_phases)
+            active_phases = self._resolve_active_phases(schema_version, phase_log)
+            expected_phases = len(active_phases)
+            required_phases = set(active_phases)
 
             if len(phase_log) != expected_phases:
                 errors.append(

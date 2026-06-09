@@ -56,7 +56,12 @@ class LogIntegrityValidator:
     def __init__(
         self, schema: TDDSchema, time_provider: TimeProvider | None = None
     ) -> None:
-        self._valid_phases = set(schema.tdd_phases)
+        # ADR-025 per-log dispatch (2026-05-18): valid phases is the union
+        # of canonical (v5 default) and legacy (v4 audit-log replay). Both
+        # are legitimate — a phase name is "unrecognized" only when it
+        # matches neither canon. This avoids false-positive integrity
+        # warnings on pre-2026-05-07 logs.
+        self._valid_phases = set(schema.tdd_phases) | set(schema.legacy_phases)
         self._time_provider = time_provider
 
     def validate(

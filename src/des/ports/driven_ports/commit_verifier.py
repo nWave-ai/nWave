@@ -40,12 +40,27 @@ class CommitVerifier(ABC):
     """
 
     @abstractmethod
-    def verify_commit(self, step_id: str, cwd: str) -> CommitVerificationResult:
-        """Verify a git commit exists with Step-ID trailer for the given step.
+    def verify_commit(
+        self,
+        step_id: str,
+        cwd: str,
+        feature_id_filter: str | None = None,
+    ) -> CommitVerificationResult:
+        """Verify a git commit exists with Step-Id trailer for the given step.
+
+        When ``feature_id_filter`` is provided, the verifier MUST require BOTH
+        a ``Step-Id: {step_id}`` trailer AND a ``Task-Id: {feature_id_filter}``
+        trailer on the same commit (AND-semantics). This prevents cross-feature
+        commit confusion: a step with ``Step-Id: 01-02`` in feature A being
+        wrongly satisfied by a commit from feature B carrying the same step
+        number. When ``feature_id_filter`` is ``None``, behaviour is unchanged
+        (single-trailer ``Step-Id`` match).
 
         Args:
             step_id: Step identifier to search for (e.g., "01-01")
             cwd: Working directory to run git commands in
+            feature_id_filter: Optional feature/task identifier. When provided,
+                the commit must ALSO carry a matching ``Task-Id:`` trailer.
 
         Returns:
             CommitVerificationResult with verification details

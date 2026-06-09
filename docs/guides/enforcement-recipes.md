@@ -6,7 +6,7 @@ Integration recipes for `nwave-ai validate-feature-delta` across VCS systems, CI
 
 **nwave-ai does NOT auto-install any integration.**
 
-You choose where and when the validator runs. Installing nwave-ai (`pipx install nwave-ai`) gives you a CLI binary and nothing else. No hooks are registered, no CI files are created, no configuration files are modified. Pick the recipe that fits your stack and paste it in — that is the full integration story.
+You choose where and when the validator runs. Installing nwave-ai (`uv tool install nwave-ai`, or `pipx install nwave-ai` as a fallback) gives you a CLI binary and nothing else. No hooks are registered, no CI files are created, no configuration files are modified. Pick the recipe that fits your stack and paste it in — that is the full integration story.
 
 This design is intentional (DD-D14). Teams using Mercurial, Jenkins, bare Make, or no automation at all are first-class citizens alongside GitHub Actions users.
 
@@ -454,7 +454,7 @@ Trigger manually with `Terminal > Run Task > Validate feature-delta` while the f
 
 **When it fires**: whenever you choose to run it.
 
-**Prerequisites**: `nwave-ai` on PATH (`pipx install nwave-ai`).
+**Prerequisites**: `nwave-ai` on PATH (`uv tool install nwave-ai`, or `pipx install nwave-ai` as a fallback).
 
 ```bash
 # Validate a single file

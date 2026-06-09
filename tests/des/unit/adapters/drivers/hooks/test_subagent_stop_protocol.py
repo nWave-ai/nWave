@@ -260,8 +260,8 @@ class TestSubagentStopWithClaudeCodeProtocol:
             )
         )
 
-        # Initialize git repo and create a commit with Step-ID trailer
-        # (required because cwd is now passed for commit verification)
+        # Initialize git repo and create a commit with Step-Id + Task-Id trailers
+        # (Task-Id required by SF parity port -- step 01-01 -- AND-semantics)
         sp.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
         sp.run(
             ["git", "config", "user.email", "test@test.com"],
@@ -275,7 +275,12 @@ class TestSubagentStopWithClaudeCodeProtocol:
         )
         sp.run(["git", "add", "."], cwd=str(tmp_path), capture_output=True)
         sp.run(
-            ["git", "commit", "-m", "feat: implement step\n\nStep-ID: 01-01"],
+            [
+                "git",
+                "commit",
+                "-m",
+                "feat: implement step\n\nStep-Id: 01-01\nTask-Id: test-project",
+            ],
             cwd=str(tmp_path),
             capture_output=True,
         )

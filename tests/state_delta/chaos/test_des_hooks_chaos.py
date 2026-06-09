@@ -68,6 +68,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest  # noqa: TC002
 from hypothesis import HealthCheck, given
 from hypothesis import settings as h_settings
 from nwave_ai.state_delta import (
@@ -239,54 +240,64 @@ class TestChaosExecutablePortability:
         _generate_hook_command. This test validates that executable perturbation
         does not corrupt the PYTHONPATH portion of the hook command.
 
+        Post-#55 contract: `_generate_hook_command` branches on
+        `context.claude_dir == Path.home() / '.claude'`. To exercise the
+        default-home invariant, Path.home() is pinned to the tmpdir base so
+        the default-home path is taken; sys.executable perturbation then
+        tests the PYTHONPATH literal survives the unrelated executable swap.
+
         Pilot finding: 0 violations expected for the PYTHONPATH portion.
         The sys.executable portability violation (python binary part) is
         tested separately in test_hook_command_python_binary_under_venv_executable.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             base = Path(tmpdir)
-            context, claude_dir = _make_hooks_context(base)
-            settings_file = claude_dir / "settings.json"
+            # Pin Path.home() to base so claude_dir == Path.home() / ".claude"
+            # and the default-home branch fires (post-#55 contract).
+            with patch.object(Path, "home", classmethod(lambda cls: base)):
+                context, claude_dir = _make_hooks_context(base)
+                settings_file = claude_dir / "settings.json"
 
-            user_permissions = {"allow": ["Read", "Edit"], "ask": []}
-            settings_file.write_text(
-                json.dumps({"permissions": user_permissions}),
-                encoding="utf-8",
-            )
+                user_permissions = {"allow": ["Read", "Edit"], "ask": []}
+                settings_file.write_text(
+                    json.dumps({"permissions": user_permissions}),
+                    encoding="utf-8",
+                )
 
-            before = _hooks_settings_state(settings_file)
+                before = _hooks_settings_state(settings_file)
 
-            with patch.object(sys, "executable", fake_exe):
-                result = DESPlugin()._install_des_hooks(context)
+                with patch.object(sys, "executable", fake_exe):
+                    result = DESPlugin()._install_des_hooks(context)
 
-            # Only assert when install succeeded (truncation may cause failure)
-            if not result.success:
-                return  # graceful failure is acceptable
+                # Only assert when install succeeded (truncation may cause failure)
+                if not result.success:
+                    return  # graceful failure is acceptable
 
-            after = _hooks_settings_state(settings_file)
+                after = _hooks_settings_state(settings_file)
 
-            # PYTHONPATH must contain '$HOME/.claude/lib/python' literal.
-            # env.SLASH_COMMAND_TOOL_CHAR_BUDGET is an expected write by _install_des_hooks
-            # (declared explicitly to prevent implicit-unchanged from triggering on it).
-            assert_state_delta(
-                before=before,
-                after=after,
-                universe=set(HOOKS_CHAOS_UNIVERSE),
-                expected={
-                    "hooks.SessionStart": containing("$HOME/.claude/lib/python"),
-                    "hooks.PreToolUse": containing("$HOME/.claude/lib/python"),
-                    "hooks.PostToolUse": containing("$HOME/.claude/lib/python"),
-                    "hooks.SubagentStop": containing("$HOME/.claude/lib/python"),
-                    "hooks.SubagentStart": containing("$HOME/.claude/lib/python"),
-                    # _install_des_hooks always writes this when absent — declare it
-                    "env.SLASH_COMMAND_TOOL_CHAR_BUDGET": set_to(
-                        after["env.SLASH_COMMAND_TOOL_CHAR_BUDGET"]
-                    ),
-                    # permissions must not be touched
-                    "permissions": unchanged(),
-                },
-                strict=True,
-            )
+                # PYTHONPATH must contain '$HOME/.claude/lib/python' literal.
+                # env.SLASH_COMMAND_TOOL_CHAR_BUDGET is an expected write by
+                # _install_des_hooks (declared explicitly to prevent
+                # implicit-unchanged from triggering on it).
+                assert_state_delta(
+                    before=before,
+                    after=after,
+                    universe=set(HOOKS_CHAOS_UNIVERSE),
+                    expected={
+                        "hooks.SessionStart": containing("$HOME/.claude/lib/python"),
+                        "hooks.PreToolUse": containing("$HOME/.claude/lib/python"),
+                        "hooks.PostToolUse": containing("$HOME/.claude/lib/python"),
+                        "hooks.SubagentStop": containing("$HOME/.claude/lib/python"),
+                        "hooks.SubagentStart": containing("$HOME/.claude/lib/python"),
+                        # _install_des_hooks always writes this when absent
+                        "env.SLASH_COMMAND_TOOL_CHAR_BUDGET": set_to(
+                            after["env.SLASH_COMMAND_TOOL_CHAR_BUDGET"]
+                        ),
+                        # permissions must not be touched
+                        "permissions": unchanged(),
+                    },
+                    strict=True,
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -320,13 +331,30 @@ class TestChaosHomeEnvCorruption:
     def test_home_env_corruption_does_not_corrupt_pythonpath_in_hook_command(
         self,
         tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
         GIVEN: settings.json with existing permissions
+               AND the install target IS the default ~/.claude/ (default-home
+                   path semantically — `claude_dir == Path.home() / '.claude'`)
                AND HOME env var is corrupted to a broken value mid-install
         WHEN:  _install_des_hooks() is called under HOME corruption
         THEN:  hooks.SessionStart command still contains '$HOME/.claude/lib/python'
                (the PYTHONPATH portion is a hardcoded literal, not env-expanded)
+
+        Post-#55 contract: `_generate_hook_command` branches on
+        `context.claude_dir == Path.home() / '.claude'`. Default-home installs
+        keep the portable `$HOME/.claude/lib/python` literal so settings.json
+        remains transferable across machines. Non-default installs (e.g.
+        `nwave-ai install --target ~/.claude-nwave`) emit the absolute path.
+
+        To exercise the default-home invariant under HOME corruption, this
+        test pre-pins `Path.home()` to `tmp_path` via monkeypatch (which
+        survives the env perturbation that follows). The corruption then
+        only affects the OS-level HOME env var — which is the case the
+        invariant is supposed to defend against (install-time HOME leakage
+        into the hook command). See `tests/des/acceptance/test_hook_path_portability.py`
+        for the matching fixture pattern.
                AND permissions are unchanged (strict implicit-unchanged)
 
         Pilot finding (atteso):
@@ -335,6 +363,10 @@ class TestChaosHomeEnvCorruption:
           corruption causes Path.home() to return a non-matching prefix.
           This is the uncured portability gap on the python-binary slot.
         """
+        # Pin Path.home() to tmp_path BEFORE the env perturbation so the
+        # default-home branch fires inside `_generate_hook_command`
+        # regardless of what HOME is corrupted to below.
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
         context, claude_dir = _make_hooks_context(tmp_path)
         settings_file = claude_dir / "settings.json"
 

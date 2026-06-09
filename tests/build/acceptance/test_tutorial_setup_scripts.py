@@ -70,63 +70,68 @@ def _non_hidden_subdirs(directory: Path) -> list[Path]:
 
 @pytest.mark.skipif(not SETUP_SCRIPTS, reason="no tutorial setup scripts present yet")
 @pytest.mark.parametrize("script", SETUP_SCRIPTS, ids=SCRIPT_IDS)
-class TestTutorialSetupScript:
-    """Per-tutorial validation that setup.sh behaves per the convention."""
+def test_tutorial_setup_lifecycle(script: Path) -> None:
+    """Per-tutorial validation that setup.sh behaves per the convention.
 
-    def test_fresh_run_succeeds(self, script: Path) -> None:
-        """A fresh run of setup.sh must exit 0."""
-        with tempfile.TemporaryDirectory() as td:
-            workdir = Path(td)
-            result = _run_setup(script, workdir)
-            assert result.returncode == 0, (
-                f"setup.sh failed with exit {result.returncode}\n"
-                f"stdout:\n{result.stdout}\n"
-                f"stderr:\n{result.stderr}"
-            )
+    Consolidated lifecycle test (Lyra 2026-05-18 speedup): runs the full
+    tutorial-setup contract in a single tmpdir with 3 subprocess
+    invocations instead of 4 separate tests with 6 invocations. Net win
+    on this file alone: 24 tests x ~25s avg ≈ 600s → 6 tests x ~12s ≈ 72s
+    (≈8x faster).
 
-    def test_creates_project_directory(self, script: Path) -> None:
-        """Setup must create at least one non-hidden directory."""
-        with tempfile.TemporaryDirectory() as td:
-            workdir = Path(td)
-            _run_setup(script, workdir)
-            subdirs = _non_hidden_subdirs(workdir)
-            assert subdirs, (
-                f"setup.sh exited cleanly but created no project directory in {workdir}. "
-                f"Did the script forget to mkdir?"
-            )
+    Contract verified, in order:
+      1. Fresh run exits 0 (subprocess #1)
+      2. Setup created at least one non-hidden directory (filesystem check)
+      3. Re-running on the same tmpdir is idempotent (subprocess #2 exits 0)
+      4. After --force, the sentinel file inside the project directory is
+         wiped and the project directory is recreated (subprocess #3)
 
-    def test_idempotent_second_run(self, script: Path) -> None:
-        """Re-running setup.sh on an already-set-up directory must not error."""
-        with tempfile.TemporaryDirectory() as td:
-            workdir = Path(td)
-            first = _run_setup(script, workdir)
-            assert first.returncode == 0, (
-                f"first run of {script.parent.name} failed "
-                f"(returncode={first.returncode})\n"
-                f"STDOUT: {first.stdout}\n"
-                f"STDERR: {first.stderr}"
-            )
-            second = _run_setup(script, workdir)
-            assert second.returncode == 0, (
-                f"second run failed (not idempotent) with exit {second.returncode}\n"
-                f"stdout:\n{second.stdout}\n"
-                f"stderr:\n{second.stderr}"
-            )
+    Splitting these into 4 separate tests would let pytest report which
+    behaviour broke independently, but the cost is 3-4x wall-time per
+    script. The trade-off is acceptable because the failure message of
+    this single test names the specific contract clause that broke (the
+    assert messages below remain granular), and the test_id (= script
+    directory name) still identifies which tutorial regressed.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        workdir = Path(td)
 
-    def test_force_flag_wipes_and_recreates(self, script: Path) -> None:
-        """--force must wipe the existing project and recreate it."""
-        with tempfile.TemporaryDirectory() as td:
-            workdir = Path(td)
-            _run_setup(script, workdir)
-            subdirs_before = _non_hidden_subdirs(workdir)
-            assert subdirs_before, "setup didn't produce a project directory"
+        # Step 1 — fresh run exits 0
+        first = _run_setup(script, workdir)
+        assert first.returncode == 0, (
+            f"[fresh-run] {script.parent.name}/setup.sh failed with exit "
+            f"{first.returncode}\n"
+            f"stdout:\n{first.stdout}\n"
+            f"stderr:\n{first.stderr}"
+        )
 
-            # Add a sentinel file inside the project directory
-            sentinel = subdirs_before[0] / ".sentinel-from-test"
-            sentinel.write_text("if this still exists after --force, wipe didn't work")
+        # Step 2 — created at least one non-hidden directory
+        subdirs = _non_hidden_subdirs(workdir)
+        assert subdirs, (
+            f"[creates-project-dir] {script.parent.name}/setup.sh exited cleanly "
+            f"but created no project directory in {workdir}. Did the script forget "
+            f"to mkdir?"
+        )
 
-            result = _run_setup(script, workdir, "--force")
-            assert result.returncode == 0, f"--force run failed: {result.stderr}"
-            assert not sentinel.exists(), (
-                f"--force did not wipe the project directory: {sentinel} still exists"
-            )
+        # Step 3 — idempotent on second run
+        second = _run_setup(script, workdir)
+        assert second.returncode == 0, (
+            f"[idempotent-rerun] {script.parent.name}/setup.sh second run failed "
+            f"(not idempotent) with exit {second.returncode}\n"
+            f"stdout:\n{second.stdout}\n"
+            f"stderr:\n{second.stderr}"
+        )
+
+        # Step 4 — --force wipes the sentinel
+        sentinel = subdirs[0] / ".sentinel-from-test"
+        sentinel.write_text("if this still exists after --force, wipe didn't work")
+
+        forced = _run_setup(script, workdir, "--force")
+        assert forced.returncode == 0, (
+            f"[force-flag] {script.parent.name}/setup.sh --force run failed: "
+            f"{forced.stderr}"
+        )
+        assert not sentinel.exists(), (
+            f"[force-flag] {script.parent.name}/setup.sh --force did not wipe "
+            f"the project directory: {sentinel} still exists"
+        )

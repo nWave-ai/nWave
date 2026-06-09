@@ -12,7 +12,7 @@ This test is skipped on non-Windows platforms.  In CI it runs on the
 ``windows-latest`` runner (the native execution environment for Windows
 validation) and is not expected to run on Linux/macOS.
 
-Step-ID: 01-01
+Step-Id: 01-01
 """
 
 from __future__ import annotations

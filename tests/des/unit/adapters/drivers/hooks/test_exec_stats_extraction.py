@@ -254,7 +254,12 @@ def test_commit_verified_event_includes_stats_when_provided():
     )
 
     class StubCommitVerifier(CommitVerifier):
-        def verify_commit(self, step_id: str, cwd: str) -> CommitVerificationResult:
+        def verify_commit(
+            self,
+            step_id: str,
+            cwd: str,
+            feature_id_filter: str | None = None,
+        ) -> CommitVerificationResult:
             return CommitVerificationResult(
                 verified=True,
                 commit_hash="abc123",

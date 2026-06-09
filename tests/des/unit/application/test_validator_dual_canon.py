@@ -76,12 +76,18 @@ class TestSchemaJSONExposesBothCanons:
 
 
 class TestLoaderRespectsLegacyDefault:
-    """TDDSchemaLoader still resolves the active list as legacy v4."""
+    """TDDSchemaLoader resolves the active list to canonical v5 (ADR-025)."""
 
-    def test_loaded_tdd_phases_remain_five_phase(self):
-        """tdd_phases (the active accessor) must stay v4 for backward-compat."""
+    def test_loaded_tdd_phases_match_documented_canon(self):
+        """tdd_phases (active accessor) must match canon_migration default (v5).
+
+        RC-D resolution (2026-05-18): inverted from LEGACY_PHASES to
+        CANONICAL_PHASES. The previous assertion cemented doc-impl drift —
+        schema declares default_for_new_logs="v5" but the getter returned
+        legacy 5-phase. Inversion is the proper migration terminal state.
+        """
         schema = TDDSchemaLoader().load()
-        assert schema.tdd_phases == LEGACY_PHASES
+        assert schema.tdd_phases == CANONICAL_PHASES
 
     def test_loaded_total_phases_remain_five(self):
         """total_phases stays 5 — JSON schema's active list is still v4."""

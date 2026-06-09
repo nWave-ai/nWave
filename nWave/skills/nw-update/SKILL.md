@@ -47,20 +47,26 @@ print(f'{pm}|{binary or \"\"}')"
 
 Parse the output as `pm|binary_abspath`.
 
-### Step 3: Handle unknown PM
+### Step 3: Handle non-auto-updatable PM
 
-If `pm == "unknown"` OR `binary_abspath` is empty:
+If `pm == "unknown"` OR `pm == "pip"` OR `binary_abspath` is empty:
+
+(`detect_pm` returns `pip` only when forced via `NWAVE_INSTALLER=pip`; pip
+installs are not auto-updatable through the deferred-upgrade flow, so they take
+the manual path alongside `unknown`.)
 
 1. Do NOT call `PendingUpdateService.request_update`.
 2. Print the manual fallback and stop:
 
-```
-nwave-ai was not installed via a supported package manager (pipx or uv).
+```text
+nwave-ai was not installed via an auto-updatable package manager.
 Please upgrade manually:
 
-  pipx upgrade nwave-ai && nwave-ai install
-    — or —
   uv tool install nwave-ai@latest && nwave-ai install
+    — or —
+  pipx upgrade nwave-ai && nwave-ai install
+    — or, if you installed with pip —
+  pip install -U nwave-ai && nwave-ai install
 
 Then restart Claude Code.
 ```

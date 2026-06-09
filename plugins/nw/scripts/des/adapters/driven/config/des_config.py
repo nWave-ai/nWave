@@ -166,10 +166,16 @@ class DESConfig:
 
     @property
     def rigor_tdd_phases(self) -> tuple[str, ...]:
-        """Get TDD phases as tuple. Default: full 5-phase."""
+        """Get TDD phases as tuple.
+
+        Default: canonical 3-phase (RED, GREEN, COMMIT) per ADR-025 (default
+        flip 2026-05-18). Existing projects with an explicit ``rigor.tdd_phases``
+        list in ``.nwave/des-config.json`` continue to override this default
+        unchanged (backward-compat preserved).
+        """
         phases = self._rigor().get(
             "tdd_phases",
-            ["PREPARE", "RED_ACCEPTANCE", "RED_UNIT", "GREEN", "COMMIT"],
+            ["RED", "GREEN", "COMMIT"],
         )
         return tuple(phases)
 

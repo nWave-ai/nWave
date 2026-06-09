@@ -92,7 +92,9 @@ export class StateDeltaViolation extends Error {
  * JSON-serializable. Out-of-scope inputs fall back to reference equality.
  */
 export function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
+  // Object.is handles NaN correctly (NaN === NaN is false, but Object.is(NaN, NaN) is true).
+  // Without this, fc.anything() property tests flake whenever fast-check draws a NaN.
+  if (Object.is(a, b)) return true;
   if (a === null || b === null) return false;
   if (typeof a !== "object" || typeof b !== "object") return false;
 

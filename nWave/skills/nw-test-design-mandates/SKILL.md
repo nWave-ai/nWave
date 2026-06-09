@@ -9,6 +9,16 @@ disable-model-invocation: true
 
 Four mandates enforced during peer review. All must pass before handoff to software-crafter.
 
+## LANGUAGE CONVENTION FRAME (read FIRST — overrides all examples below)
+
+**Code examples in this skill use Python syntax for illustration only.** They are NOT prescriptive about target language. nWave is language-agnostic per the "genericity and agnosticism" mandate (2026-05-24).
+
+**Before applying mandates**, detect the target project's language from manifest files: `package.json` → TypeScript/JS; `Cargo.toml` → Rust; `go.mod` → Go; `pyproject.toml`/`setup.py`/`Pipfile` → Python; `pom.xml`/`build.gradle` → Java/Kotlin; `*.csproj`/`*.fsproj` → C#/F#; `Gemfile` → Ruby; `Package.swift` → Swift.
+
+**When the target language is NOT Python**: adapt EVERY code example — replace Python imports (`from pytest_bdd import ...`, `from hypothesis import ...`), type hints, class/function syntax, test-framework idioms, directory conventions (`tests/` vs `test/` vs `__tests__/`) with target equivalents. Project conventions ALWAYS WIN over skill examples — if the user's repo has 50 TS files and zero Python files, mandates apply via TypeScript test framework, never Python pytest.
+
+**Empirical anchor**: 5 of 5 Python code blocks in this skill, zero TS/Go/Rust — root-cause for language-leak per F-SKILL-EXAMPLES-LANGUAGE-LEAK. Connects [[feedback_language_adapter_plugin_architecture_2026_05_24]] (genericity mandate).
+
 ## Mandate 1: Hexagonal Boundary Enforcement
 
 Tests invoke through driving ports (entry points), never internal components.

@@ -12,6 +12,10 @@ argument-hint: "[feature-id] - Optional: --threshold=[75|80|85] --language=[auto
 
 Run mutation testing against implementation files from the current feature. Extracts targets from execution-log.json|generates feature-scoped configs|delegates to software-crafter. Uses cosmic-ray (Python)|PIT (Java)|Stryker (JS/TS/C#).
 
+## Mutation Testing Strategy
+
+Projects declare a strategy via `## Mutation Testing Strategy` in `CLAUDE.md`: `per-feature` | `nightly-delta` | `pre-release` | `disabled`. **Default when unspecified: `nightly-delta`** (recommended — CI runs mutmut nightly on changed modules; keeps per-feature delivery gates fast). `/nw-mutation-test` is an explicit on-demand run independent of strategy.
+
 ## Context Files Required
 
 - `docs/feature/{feature-id}/deliver/execution-log.json` - Implementation file extraction

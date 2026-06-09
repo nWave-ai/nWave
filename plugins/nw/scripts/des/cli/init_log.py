@@ -7,9 +7,18 @@ Usage:
 
 Creates: {"schema_version": "3.0", "feature_id": "my-feature", "events": []}
 
+Workflow-mode awareness (ADR-028 D4.1):
+    The execution log belongs to the classic, roadmap-based DELIVER spine.
+    The atdd_pure spine is roadmap-free and execution-log-free, so when the
+    project's `.nwave/config.yaml` declares `workflow.mode: atdd_pure`,
+    des-init-log refuses to create the log and exits non-zero. Any other
+    mode -- `classic`, an absent key, or an absent config file -- is treated
+    as classic and behaves exactly as before (zero regression).
+
 Exit codes:
     0 = Success, file created
-    1 = Validation error (file already exists, directory missing)
+    1 = Validation error (file already exists, directory missing) or
+        atdd_pure refusal (the execution log must not exist in that mode)
     2 = Usage error (argparse default for missing/invalid arguments)
 """
 
@@ -19,6 +28,84 @@ import argparse
 import json
 import sys
 from pathlib import Path
+
+
+ATDD_PURE_MODE = "atdd_pure"
+
+
+def _strip_inline_comment(value: str) -> str:
+    """Drop a trailing ` # comment` from a YAML scalar (outside quotes)."""
+    in_single = in_double = False
+    for index, char in enumerate(value):
+        if char == "'" and not in_double:
+            in_single = not in_single
+        elif char == '"' and not in_single:
+            in_double = not in_double
+        elif char == "#" and not in_single and not in_double:
+            if index == 0 or value[index - 1].isspace():
+                return value[:index]
+    return value
+
+
+def _unquote(value: str) -> str:
+    """Strip matching surrounding single or double quotes from a scalar."""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        return value[1:-1]
+    return value
+
+
+def _parse_workflow_mode(text: str) -> str | None:
+    """Extract `workflow.mode` from a machine-managed `.nwave/config.yaml`.
+
+    Stdlib-only parser (the DES bundle installs standalone and must not depend
+    on PyYAML). Handles the simple two-level `workflow:` -> `mode:` nesting
+    written by scripts/automation/atdd_pure_falsifier_gate.py, tolerating
+    indentation, blank lines, comments, and quoted/unquoted values.
+
+    Returns the mode string, or None if the key is absent.
+    """
+    inside_workflow = False
+    workflow_indent = -1
+    for raw_line in text.splitlines():
+        without_comment = _strip_inline_comment(raw_line)
+        if not without_comment.strip():
+            continue
+        indent = len(without_comment) - len(without_comment.lstrip())
+        stripped = without_comment.strip()
+        if ":" not in stripped:
+            continue
+        key, _, value = stripped.partition(":")
+        key = key.strip()
+        value = value.strip()
+
+        if not inside_workflow:
+            if key == "workflow" and not value:
+                inside_workflow = True
+                workflow_indent = indent
+            continue
+
+        # Inside the `workflow:` block: a key at or below its indent ends it.
+        if indent <= workflow_indent:
+            inside_workflow = False
+            if key == "workflow" and not value:
+                inside_workflow = True
+                workflow_indent = indent
+            continue
+        if key == "mode" and value:
+            return _unquote(value)
+    return None
+
+
+def _resolve_workflow_mode(project_dir: Path) -> str:
+    """Resolve `workflow.mode` from {project_dir}/.nwave/config.yaml.
+
+    Absent config file or absent key -> "classic" (the default). Uses a
+    stdlib-only parser so the standalone DES bundle stays PyYAML-free.
+    """
+    config_path = project_dir / ".nwave" / "config.yaml"
+    if not config_path.exists():
+        return "classic"
+    return _parse_workflow_mode(config_path.read_text()) or "classic"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -57,6 +144,20 @@ def main(argv: list[str] | None = None) -> int:
     # Validate project directory exists
     if not project_dir.is_dir():
         print(f"Error: Project directory does not exist: {project_dir}")
+        return 1
+
+    # Refuse under the atdd_pure spine: it is roadmap-free and
+    # execution-log-free (ADR-028 D4.1). No log is created.
+    if _resolve_workflow_mode(project_dir) == ATDD_PURE_MODE:
+        print(
+            "Error: workflow.mode is atdd_pure -- the ATDD-pure spine is "
+            "roadmap-free and execution-log-free (ADR-028 D4.1).\n"
+            "       No execution-log.json is created. The atdd_pure DELIVER "
+            "spine tracks progress via the AT-completion ledger instead.\n"
+            "       To create an execution log, set workflow.mode to classic "
+            "in .nwave/config.yaml.",
+            file=sys.stderr,
+        )
         return 1
 
     log_path = project_dir / "execution-log.json"

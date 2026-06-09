@@ -234,7 +234,15 @@ def _render_markdown(
                 f"(https://github.com/{repo}/compare/{prev_tag}...v{version})\n"
             )
         sections.append(
-            "## Install\n```bash\n"
+            "## Install\n"
+            "uv (recommended):\n```bash\n"
+            f"UV_PRERELEASE=allow uv tool install "
+            f"--index https://test.pypi.org/simple/ "
+            f"--index https://pypi.org/simple/ "
+            f"--index-strategy unsafe-best-match "
+            f"nwave-ai=={version}\n"
+            "```\n"
+            "pipx (fallback):\n```bash\n"
             f'pipx install nwave-ai=={version} --pip-args="--pre"\n'
             "```\n"
         )
@@ -249,7 +257,11 @@ def _render_markdown(
                 f"**Full Changelog**: [{prev_tag}...v{version}]"
                 f"(https://github.com/{repo}/compare/{prev_tag}...v{version})\n"
             )
-        sections.append("## Installation\n```bash\npipx install nwave-ai\n```\n")
+        sections.append(
+            "## Installation\n"
+            "uv (recommended):\n```bash\nuv tool install nwave-ai\n```\n"
+            "pipx (fallback):\n```bash\npipx install nwave-ai\n```\n"
+        )
         empty_message = "Patch release (internal improvements)\n"
 
     breaking = categories.get("breaking", [])

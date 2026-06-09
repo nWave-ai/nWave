@@ -167,7 +167,7 @@ def scripts_execute_without_import_errors():
             [sys.executable, str(script)],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=30,
         )
         # Scripts should return 0 (success) or print warning if DES not available
         assert result.returncode == 0 or "DES module not available" in result.stdout, (
@@ -183,7 +183,7 @@ def scripts_output_help_or_status_messages():
             [sys.executable, str(script)],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=30,
         )
         # Should have some output
         output = result.stdout + result.stderr

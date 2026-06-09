@@ -50,10 +50,18 @@ def _files_content_equal(source: Path, target: Path) -> bool:
     return _file_md5(source) == _file_md5(target)
 
 
-# Add project root to sys.path to enable imports from scripts package
-# This allows the script to work when run directly or as a module
-_script_dir = Path(__file__).parent
-_project_root = _script_dir.parent.parent
+# Bootstrap sys.path BEFORE the import block below, so the `scripts.install.*`
+# package imports resolve identically whether this file is run as a bare script
+# (`python scripts/install/install_nwave.py`) or as a module
+# (`python -m scripts.install.install_nwave`).
+#
+# `.resolve()` is load-bearing: in bare-script mode `__file__` is a *relative*
+# path, so `Path(__file__).parent.parent.parent` without resolution collapses to
+# a relative `.` that does not place the repo root ahead of any stale `scripts/`
+# package shadowing it on sys.path. Resolving first yields the absolute repo
+# root; inserting it at index 0 makes the repo's `scripts` win namespace-package
+# resolution (F-05 dogfood friction regression).
+_project_root = Path(__file__).resolve().parent.parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
@@ -82,13 +90,24 @@ try:
     from scripts.install.plugins.opencode_des_plugin import OpenCodeDESPlugin
     from scripts.install.plugins.opencode_skills_plugin import OpenCodeSkillsPlugin
     from scripts.install.plugins.registry import PluginRegistry
+    from scripts.install.plugins.reviewer_signing_plugin import (
+        ReviewerSigningPlugin,
+    )
     from scripts.install.plugins.skills_plugin import SkillsPlugin
     from scripts.install.plugins.templates_plugin import TemplatesPlugin
     from scripts.install.plugins.utilities_plugin import UtilitiesPlugin
     from scripts.install.preflight_checker import PreflightChecker
     from scripts.shared.agent_catalog import is_public_agent, load_public_agents
 except ImportError:
-    # Fallback for standalone execution from scripts/install directory
+    # Safety-net fallback. With the sys.path bootstrap above the package
+    # imports in the `try` block resolve in BOTH invocation modes, so this
+    # branch is normally unreachable. It is retained as a defensive net and
+    # MUST stay import-correct: bare `scripts/install` directory imports plus
+    # an explicit re-bootstrap of the repo root for the `scripts.shared`
+    # package (which lives one level up from `scripts/install`, so a bare
+    # `from shared...` would fail — F-05 latent fallback bug).
+    if str(_project_root) not in sys.path:
+        sys.path.insert(0, str(_project_root))
     from context_detector import detect_target_platforms
     from install_utils import (
         BackupManager,
@@ -101,6 +120,7 @@ except ImportError:
     from plugins.agents_plugin import AgentsPlugin
     from plugins.attribution_plugin import AttributionPlugin
     from plugins.base import InstallContext
+    from plugins.codex_agents_plugin import CodexAgentsPlugin
     from plugins.codex_des_plugin import CodexDESPlugin
     from plugins.codex_skills_plugin import CodexSkillsPlugin
     from plugins.commands_plugin import CommandsPlugin
@@ -110,11 +130,13 @@ except ImportError:
     from plugins.opencode_des_plugin import OpenCodeDESPlugin
     from plugins.opencode_skills_plugin import OpenCodeSkillsPlugin
     from plugins.registry import PluginRegistry
+    from plugins.reviewer_signing_plugin import ReviewerSigningPlugin
     from plugins.skills_plugin import SkillsPlugin
     from plugins.templates_plugin import TemplatesPlugin
     from plugins.utilities_plugin import UtilitiesPlugin
     from preflight_checker import PreflightChecker
-    from shared.agent_catalog import is_public_agent, load_public_agents
+
+    from scripts.shared.agent_catalog import is_public_agent, load_public_agents
 
 # ANSI color codes for --help output (only consumer)
 _ANSI_BLUE = "\033[0;34m"
@@ -368,6 +390,7 @@ class NWaveInstaller:
         registry.register(SkillsPlugin())
         registry.register(UtilitiesPlugin())
         registry.register(DESPlugin())
+        registry.register(ReviewerSigningPlugin())
         registry.register(AttributionPlugin())
         # OpenCode plugins (registered when opencode detected)
         if target_platforms and "opencode" in target_platforms:

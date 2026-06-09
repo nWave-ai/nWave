@@ -25,11 +25,15 @@ Execute \*investigate-root-cause for {problem-statement}.
 - multi_causal: true
 - evidence_required: true
 
+## Workflow-mode context (ADR-028)
+
+The inputs RCA reads depend on `.nwave/config.yaml:workflow.mode`. Under `classic` mode, RCA reads `roadmap.json` + `execution-log.json` as the phase record. Under `atdd_pure` mode those artifacts are unreachable: RCA instead reads the per-slice ATs and the AT-completion ledger at `.nwave/telemetry/atdd-pure/` for the phase-boundary record — that is, in `atdd_pure` mode each slice's failure evidence comes from its slice ATs and the ledger, not from `execution-log.json`.
+
 ## Usage: DELIVER Wave Retrospective (Phase 3.5)
 
 When invoked as part of `/nw-deliver` Phase 3.5, execute in order:
 
-1. **Gather Inputs** — Read evolution document, execution-log.json, mutation results, and git log. Gate: all available inputs loaded.
+1. **Gather Inputs** — Read the evolution document, mutation results, and git log. In `classic` mode also read `roadmap.json` + `execution-log.json`; in `atdd_pure` mode read the per-slice ATs and the AT-completion ledger instead. Gate: all available inputs loaded.
 2. **Analyze What Worked Well** — Identify practices that succeeded and document why — preserve these. Gate: at least one practice documented with rationale.
 3. **Analyze What Improved** — Identify what worked better than before and why — record as reinforcements. Gate: delta from prior execution captured.
 4. **Analyze What Worked Badly** — Apply 5 Whys root cause analysis to failures; produce actionable fix per root cause. Gate: each failure has a root cause and fix.

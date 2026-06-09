@@ -72,6 +72,52 @@ def _skill_group_emoji(group_name: str) -> str:
     return _SKILL_GROUP_EMOJIS.get(base, "\U0001f4e6")
 
 
+def _is_private_owned(reason: str) -> bool:
+    """True when a skill was filtered because a private agent owns it.
+
+    The ``filter_public_skills_with_reasons`` vocabulary has two reasons:
+    ``private-owned by ...`` (owned by a private agent -- naming it would
+    disclose private IP) and ``uncatalogued`` (an orphan skill with no
+    owning agent -- not private work, just unreferenced).
+    """
+    return reason.startswith("private-owned")
+
+
+def _log_skipped_skills(
+    context: InstallContext,
+    excluded: list[tuple[str, str]],
+) -> None:
+    """Report skipped skills without leaking private identifiers.
+
+    A developer install (``dev_mode`` True) keeps the full per-skill
+    diagnostic for the author's benefit. A public install must never
+    enumerate a *private-owned* skill name -- those are reported only as
+    an aggregate count. Orphan (``uncatalogued``) skills are NOT private
+    work, so the public install still names them: their author needs to
+    see why the skill never reached ``~/.claude/``.
+
+    Args:
+        context: InstallContext -- ``dev_mode`` selects the log detail.
+        excluded: (skill_name, reason) pairs filtered out of the install.
+    """
+    if not excluded:
+        return
+
+    if context.dev_mode:
+        for skipped_name, reason in excluded:
+            context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
+        return
+
+    private = [pair for pair in excluded if _is_private_owned(pair[1])]
+    orphan = [pair for pair in excluded if not _is_private_owned(pair[1])]
+
+    for skipped_name, reason in orphan:
+        context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
+
+    if private:
+        context.logger.info(f"  ⏭️ Skipped {len(private)} non-public skill(s)")
+
+
 def _substitute_python_in_installed_files(
     skills_target: Path,
     entries: list,
@@ -218,8 +264,7 @@ class SkillsPlugin(InstallationPlugin):
         entries, excluded = filter_public_skills_with_reasons(
             entries, public_agents, ownership_map, command_skills
         )
-        for skipped_name, reason in excluded:
-            context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
+        _log_skipped_skills(context, excluded)
         copy_skills_to_target(entries, skills_target, clean_existing=True)
 
         # Resolve Python command substitution in installed files
@@ -265,8 +310,7 @@ class SkillsPlugin(InstallationPlugin):
         entries, excluded = filter_public_skills_with_reasons(
             entries, public_agents, ownership_map
         )
-        for skipped_name, reason in excluded:
-            context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
+        _log_skipped_skills(context, excluded)
 
         # Only create target dir if there are skills to install
         if entries:
