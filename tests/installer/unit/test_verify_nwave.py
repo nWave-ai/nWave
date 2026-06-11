@@ -16,6 +16,8 @@ import json
 from pathlib import Path
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 
 def _create_essential_command_skills(skills_dir: Path) -> None:
@@ -376,6 +378,118 @@ class TestVerifyNwaveOutputModes:
 
         output = captured.out.lower()
         assert "agent" in output or "command" in output
+
+
+def _result_with_unaccounted(unaccounted_files):
+    """A successful VerificationResult carrying the given per-family listing."""
+    from scripts.install.installation_verifier import VerificationResult
+
+    return VerificationResult(
+        success=True,
+        agent_file_count=5,
+        command_file_count=6,
+        manifest_exists=True,
+        missing_essential_files=[],
+        skill_file_count=7,
+        skill_group_count=7,
+        des_installed=True,
+        unaccounted_files=unaccounted_files,
+        message="Verification completed successfully.",
+    )
+
+
+#: Per-family listings: family directory key -> sorted unaccounted names.
+_family_listings = st.dictionaries(
+    keys=st.sampled_from(["scripts", "templates", "skills"]),
+    values=st.lists(
+        st.text(alphabet="abcdefgh-_", min_size=2, max_size=12),
+        min_size=1,
+        max_size=4,
+        unique=True,
+    ).map(sorted),
+    min_size=1,
+    max_size=3,
+)
+
+
+class TestVerifyNwaveUnaccountedListing:
+    """C5a/C5b routed pins (installer-orphan-sweep slice-03): pure-formatter
+    rendering of the per-family unaccounted listing across output modes.
+
+    Taxonomy contract: the listing reads as "preserved, not managed by
+    nWave" — informational, NEVER an imperative deletion suggestion
+    (provenance is unprovable).
+    """
+
+    def test_json_output_always_carries_unaccounted_files_even_when_empty(self):
+        """
+        GIVEN: A clean verification result (no unaccounted files anywhere)
+        WHEN: format_json_output() renders it (default and verbose modes)
+        THEN: The "unaccounted_files" field is PRESENT and empty — absent
+              normalizes to None downstream and is NOT a clean bill
+        """
+        from scripts.install.verify_nwave import format_json_output
+
+        result = _result_with_unaccounted({})
+
+        for verbose in (False, True):
+            output_json = json.loads(format_json_output(result, verbose=verbose))
+            assert "unaccounted_files" in output_json
+            assert output_json["unaccounted_files"] == {}
+
+    @given(listings=_family_listings)
+    def test_json_output_renders_listing_per_family_verbatim(self, listings):
+        """
+        GIVEN: A result with unaccounted names in one or more families
+        WHEN: format_json_output() renders it
+        THEN: The "unaccounted_files" field maps each family to exactly
+              its names, in both output modes
+        """
+        from scripts.install.verify_nwave import format_json_output
+
+        result = _result_with_unaccounted(listings)
+
+        for verbose in (False, True):
+            output_json = json.loads(format_json_output(result, verbose=verbose))
+            assert output_json["unaccounted_files"] == listings
+
+    @given(listings=_family_listings)
+    def test_terminal_output_notes_preserved_not_managed_in_every_mode(self, listings):
+        """
+        GIVEN: A result with unaccounted names in one or more families
+        WHEN: format_terminal_output() renders it (default and verbose)
+        THEN: Every family and every name appears under a line that reads
+              "preserved, not managed by nWave" — and the output contains
+              no imperative deletion suggestion
+        """
+        from scripts.install.verify_nwave import format_terminal_output
+
+        result = _result_with_unaccounted(listings)
+
+        for verbose in (False, True):
+            output = format_terminal_output(result, verbose=verbose)
+            assert "not managed by nWave" in output
+            for family, names in listings.items():
+                assert family in output
+                for name in names:
+                    assert name in output
+            lowered = output.lower()
+            assert "delet" not in lowered
+            assert "remov" not in lowered
+
+    def test_terminal_output_renders_no_preserved_line_when_listing_empty(self):
+        """
+        GIVEN: A clean verification result (empty listing)
+        WHEN: format_terminal_output() renders it (default and verbose)
+        THEN: No preserved-not-managed line appears — zero noise
+        """
+        from scripts.install.verify_nwave import format_terminal_output
+
+        result = _result_with_unaccounted({})
+
+        for verbose in (False, True):
+            output = format_terminal_output(result, verbose=verbose)
+            assert "not managed" not in output
 
 
 class TestVerifyNwaveRemediationOutput:

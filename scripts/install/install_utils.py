@@ -120,6 +120,10 @@ class Logger:
         """Log warning message."""
         self._log("WARN", message, self._YELLOW)
 
+    def warning(self, message: str):
+        """Log warning message (stdlib logging.Logger-compatible name)."""
+        self.warn(message)
+
     def error(self, message: str):
         """Log error message."""
         self._log("ERROR", message, self._RED)

@@ -144,7 +144,28 @@ def format_terminal_output(
             lines.append("")
             lines.append("    💡 Re-run the nWave installer to create the manifest")
 
+    lines.extend(_preserved_not_managed_lines(result.unaccounted_files))
+
     return "\n".join(lines)
+
+
+def _preserved_not_managed_lines(unaccounted_files: dict[str, list[str]]) -> list[str]:
+    """Informational listing of files preserved on disk, not managed by nWave.
+
+    Provenance is unprovable (a user-created asset and a pre-manifest orphan
+    are indistinguishable by record membership), so the listing is purely
+    informational — never a deletion suggestion. Empty families render nothing.
+    """
+    families = {
+        family: names for family, names in sorted(unaccounted_files.items()) if names
+    }
+    if not families:
+        return []
+    lines = ["", "    📄 Preserved, not managed by nWave:"]
+    lines.extend(
+        f"      {family}: {', '.join(names)}" for family, names in families.items()
+    )
+    return lines
 
 
 def format_json_output(result: VerificationResult, verbose: bool = False) -> str:
@@ -166,6 +187,9 @@ def format_json_output(result: VerificationResult, verbose: bool = False) -> str
         "des_installed": result.des_installed,
         "manifest_exists": result.manifest_exists,
         "missing_essential_files": result.missing_essential_files,
+        # Always present, even when empty: an absent listing is "no orphan
+        # visibility", not a clean bill (informational, never a failure).
+        "unaccounted_files": result.unaccounted_files,
     }
 
     if result.error_code:

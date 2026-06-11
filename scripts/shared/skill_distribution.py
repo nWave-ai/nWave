@@ -44,7 +44,30 @@ class SourceLayout(enum.Enum):
     OLD_HIERARCHICAL = "old_hierarchical"  # {agent}/*.md directories
 
 
-_MANIFEST_FILENAME = ".nwave-manifest.json"
+#: The shared record file — ONE manifest format for every asset family.
+MANIFEST_FILENAME = ".nwave-manifest.json"
+_MANIFEST_FILENAME = MANIFEST_FILENAME
+
+#: Asset-family keys inside the shared manifest document. Families sharing a
+#: target directory each own one key; sibling keys are never clobbered.
+SCRIPTS_FAMILY_KEY = "installed_scripts"
+UTILITIES_FAMILY_KEY = "installed_utilities"
+TEMPLATES_FAMILY_KEY = "installed_templates"
+SKILLS_FAMILY_KEY = "installed_skills"
+
+
+class FamilyRecord(NamedTuple):
+    """Resolved manifest record for one asset family in a shared directory.
+
+    ``tracked is None`` means pre-record (adoption run): the family must
+    preserve everything and may only warn. ``superseded_keys`` are legacy
+    v1.0-era keys this family adopted — the next write retires them.
+    ``accounted`` unions every name ANY record in the document tracks.
+    """
+
+    tracked: frozenset[str] | None
+    superseded_keys: frozenset[str]
+    accounted: frozenset[str]
 
 
 def detect_layout(source_dir: Path) -> SourceLayout:
@@ -180,7 +203,7 @@ def copy_skills_to_target(
         # Manifest-based selective cleanup: only remove skills previously
         # installed by the framework, preserving user-created nw-* skills.
         manifest = read_manifest(target_dir)
-        framework_skills = set(manifest["installed_skills"]) if manifest else None
+        framework_skills = set(manifest[SKILLS_FAMILY_KEY]) if manifest else None
 
         for existing in target_dir.iterdir():
             if existing.is_dir() and existing.name.startswith("nw-"):
@@ -226,15 +249,18 @@ def cleanup_legacy_namespace(target_dir: Path) -> bool:
 
 def write_manifest(
     target_dir: Path,
-    skill_names: list[str],
+    installed_names: list[str],
+    *,
+    key: str = SKILLS_FAMILY_KEY,
 ) -> None:
-    """Write .nwave-manifest.json listing installed skill names."""
-    manifest = {
-        "installed_skills": sorted(skill_names),
-        "version": "1.0",
-    }
-    manifest_path = target_dir / _MANIFEST_FILENAME
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    """Write .nwave-manifest.json listing installed names under *key*.
+
+    Whole-document replace — the original v1.0 single-family shape
+    (``{key: sorted-names, "version": "1.0"}``) used by the skills family.
+    Families SHARING a target directory use :func:`write_family_record`
+    (merge semantics) instead.
+    """
+    _write_document(target_dir, {key: sorted(installed_names), "version": "1.0"})
 
 
 def read_manifest(target_dir: Path) -> dict | None:
@@ -246,3 +272,138 @@ def read_manifest(target_dir: Path) -> dict | None:
     if not manifest_path.exists():
         return None
     return json.loads(manifest_path.read_text())
+
+
+def read_family_record(
+    target_dir: Path,
+    *,
+    key: str,
+    sibling_keys: frozenset[str] = frozenset(),
+    adopt_legacy: bool = False,
+) -> FamilyRecord:
+    """Resolve one family's record from the shared manifest document.
+
+    The family's tracked names come from its own *key*. When *adopt_legacy*
+    is set (the family is the directory's v1.0-era lineage owner), list
+    values under keys claimed by NO sibling family are adopted as the
+    family's prior-version record and reported in ``superseded_keys`` so the
+    next :func:`write_family_record` retires them — backward-compatible read
+    of the v1.0 single-family shape.
+    """
+    list_values = _list_values(read_manifest(target_dir) or {})
+    accounted = frozenset(name for value in list_values.values() for name in value)
+    legacy_keys = (
+        frozenset(
+            name for name in list_values if name != key and name not in sibling_keys
+        )
+        if adopt_legacy
+        else frozenset()
+    )
+    if key not in list_values and not legacy_keys:
+        return FamilyRecord(
+            tracked=None, superseded_keys=frozenset(), accounted=accounted
+        )
+    tracked = set(list_values.get(key, []))
+    for legacy_key in legacy_keys:
+        tracked.update(list_values[legacy_key])
+    return FamilyRecord(
+        tracked=frozenset(tracked), superseded_keys=legacy_keys, accounted=accounted
+    )
+
+
+def write_family_record(
+    target_dir: Path,
+    installed_names: list[str],
+    *,
+    key: str,
+    superseded_keys: frozenset[str] = frozenset(),
+) -> None:
+    """Merge one family's record into the shared manifest document.
+
+    Sibling families' keys are preserved verbatim; *superseded_keys* (legacy
+    keys this family adopted via :func:`read_family_record`) are dropped.
+    ONE manifest format per directory — never a second mechanism.
+    """
+    manifest = read_manifest(target_dir) or {}
+    for superseded_key in superseded_keys:
+        manifest.pop(superseded_key, None)
+    manifest[key] = sorted(installed_names)
+    manifest["version"] = "1.0"
+    _write_document(target_dir, manifest)
+
+
+def sweep_retired_assets(
+    target_dir: Path, retired_names: frozenset[str]
+) -> tuple[list[str], list[str]]:
+    """Delete the named retired assets (files or folders) from *target_dir*.
+
+    Only positively-identified names are ever passed here (manifest-driven
+    sweep); names absent from disk are skipped. Returns
+    ``(removed, blocked)`` where *blocked* lists read-only assets that
+    could not be removed (caller warns, never crashes).
+    """
+    removed: list[str] = []
+    blocked: list[str] = []
+    for name in sorted(retired_names):
+        path = target_dir / name
+        if not path.exists():
+            continue
+        try:
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+            removed.append(name)
+        except PermissionError:
+            blocked.append(name)
+    return removed, blocked
+
+
+def unaccounted_names(
+    target_dir: Path,
+    *,
+    accounted: frozenset[str],
+    expected: frozenset[str],
+    scope_glob: str = "*",
+) -> list[str]:
+    """Names on disk that no record tracks and the current version won't ship.
+
+    The preserve-by-default warn scope for a family's adoption (pre-record)
+    run: anything here is preserved and the user is told about it.
+    """
+    return sorted(
+        path.name
+        for path in target_dir.glob(scope_glob)
+        if path.name != _MANIFEST_FILENAME
+        and path.name not in accounted
+        and path.name not in expected
+    )
+
+
+def preserve_warning_message(
+    target_dir: Path,
+    unrecorded: list[str],
+    *,
+    family_label: str,
+    item_label: str,
+) -> str:
+    """The preserve-by-default adoption warning, one shape for every family."""
+    return (
+        f"  ⚠️ No {family_label} found in {target_dir}: preserving "
+        f"{len(unrecorded)} unrecorded {item_label}(s) ({', '.join(unrecorded)}); "
+        f"a manifest will track this and future installs"
+    )
+
+
+def _list_values(manifest: dict) -> dict[str, frozenset[str]]:
+    """The manifest's family records: every list-of-strings value, by key."""
+    return {
+        name: frozenset(item for item in value if isinstance(item, str))
+        for name, value in manifest.items()
+        if isinstance(value, list)
+    }
+
+
+def _write_document(target_dir: Path, manifest: dict) -> None:
+    manifest_path = target_dir / _MANIFEST_FILENAME
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
