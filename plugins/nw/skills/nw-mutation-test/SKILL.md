@@ -12,7 +12,7 @@ argument-hint: '[feature-id] - Optional: --threshold=[75|80|85] --language=[auto
 
 ## Overview
 
-Run mutation testing against implementation files from the current feature. Extracts targets — from the classic-mode execution-log.json, or from the ledger `at_ids` under `atdd_pure` (see Target extraction by `workflow.mode`)|generates feature-scoped configs|delegates to software-crafter. Uses cosmic-ray (Python)|PIT (Java)|Stryker (JS/TS/C#).
+Run mutation testing against implementation files from the current feature. Extracts targets from the execution-log.json (see Target extraction)|generates feature-scoped configs|delegates to software-crafter. Uses cosmic-ray (Python)|PIT (Java)|Stryker (JS/TS/C#).
 
 ## Mutation Testing Strategy
 
@@ -20,23 +20,20 @@ Projects declare a strategy via `## Mutation Testing Strategy` in `CLAUDE.md`: `
 
 **Default (when unspecified): `nightly-delta`** — the recommended mode. CI runs mutmut nightly against modules changed since the last run (the delta), keeping per-feature delivery gates fast. `/nw-mutation-test` performs an explicit, on-demand feature-scoped run regardless of strategy; under `nightly-delta` the in-wave Phase 5 gate is skipped and the work is handled by the CI nightly pipeline.
 
-### Target extraction by `workflow.mode`
+### Target extraction
 
-How implementation files are selected depends on `workflow.mode`:
-
-- **classic mode** — targets come from the classic-mode `execution-log.json` (`completed_steps[].files_modified.implementation`).
-- **atdd_pure mode** — there is no step log. Scope mutants by the slice's `at_ids` read from the **AT-completion ledger**: each ledger slice records the `at_ids` it satisfied and the implementation files those ATs drove, and only those files are mutated for the slice.
+Implementation files are selected from the `execution-log.json` (`completed_steps[].files_modified.implementation`).
 
 ## Context Files Required
 
-- `docs/feature/{feature-id}/deliver/execution-log.json` (classic mode) - Implementation file extraction; under `atdd_pure` the AT-completion ledger replaces it as the extraction source
+- `docs/feature/{feature-id}/deliver/execution-log.json` - Implementation file extraction
 - `scripts/mutation/generate_scoped_configs.py` - Automated config generation (if available)
 
 ## Pre-Invocation
 
 Orchestrator performs before delegating:
 
-1. **Extract files** — In classic mode read `execution-log.json` and extract implementation files from `completed_steps[].files_modified.implementation`; in atdd_pure mode read the ledger and extract the files the slice's `at_ids` drove. Gate: file list non-empty.
+1. **Extract files** — Read `execution-log.json` and extract implementation files from `completed_steps[].files_modified.implementation`. Gate: file list non-empty.
 2. **Verify on disk** — Check all extracted files exist on disk. Gate: zero missing files.
 3. **Detect language** — Scan config files (pyproject.toml, pom.xml, package.json, etc.) to select tool. Gate: language identified.
 4. **Confirm tests pass** — Run `pytest -x {test_scope}` (or equivalent). Gate: exit code 0, no failures.
@@ -50,7 +47,7 @@ Execute mutation testing for project {feature-id}.
 
 **Context to pass inline (agent has no Skill access):**
 - Project ID
-- Implementation file list (classic mode: from execution-log.json; atdd_pure mode: from the ledger `at_ids`)
+- Implementation file list (from execution-log.json)
 - Test scope path (e.g., `tests/des/`)
 - Kill rate threshold (default: 80%)
 - Language and tool selection
@@ -68,13 +65,13 @@ Execute mutation testing for project {feature-id}.
 ```bash
 /nw-mutation-test des-hook-enforcement tests/des/
 ```
-Reads the classic-mode execution-log.json, runs `generate_scoped_configs.py des-hook-enforcement`, delegates to software-crafter with per-component configs. Agent runs cosmic-ray, produces mutation-report.md.
+Reads the execution-log.json, runs `generate_scoped_configs.py des-hook-enforcement`, delegates to software-crafter with per-component configs. Agent runs cosmic-ray, produces mutation-report.md.
 
 ### Example 2: Python project without config generator
 ```bash
 /nw-mutation-test auth-upgrade tests/auth/
 ```
-Extracts files manually from the classic-mode execution-log.json, creates single cosmic-ray config with `module-path = [file1, file2, ...]` and `test-command = "pytest -x tests/auth/"`, delegates to agent.
+Extracts files manually from the execution-log.json, creates single cosmic-ray config with `module-path = [file1, file2, ...]` and `test-command = "pytest -x tests/auth/"`, delegates to agent.
 
 ### Example 3: Non-Python project
 ```bash
@@ -84,7 +81,7 @@ Detects `package.json`, selects Stryker, delegates with Stryker-specific instruc
 
 ## Success Criteria
 
-- [ ] Implementation files extracted from the mode source (classic: execution-log.json; atdd_pure: ledger `at_ids`)
+- [ ] Implementation files extracted from execution-log.json
 - [ ] All implementation files verified on disk
 - [ ] Mutation testing executed without errors
 - [ ] Per-file breakdown in mutation-report.md

@@ -1,7 +1,4 @@
-"""Milestone 1 bindings — core retention behavior (S1, S2, S3, S6).
-
-All scenarios @skip in the feature file. DELIVER wave enables one at a time.
-"""
+"""Milestone 1 bindings — core retention behavior (S1, S2, S3, S6)."""
 
 from pytest_bdd import scenario
 

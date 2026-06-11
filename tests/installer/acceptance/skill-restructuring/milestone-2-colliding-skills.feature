@@ -14,7 +14,6 @@ Feature: Colliding Skill Name Resolution
 
   # --- US-01: Audit and Collision Detection ---
 
-  @skip
   Scenario: Audit identifies all naming collisions
     Given the source tree contains skills from multiple agent groups
     When the skill audit is performed
@@ -23,20 +22,17 @@ Feature: Colliding Skill Name Resolution
     And "review-criteria" is flagged as colliding across 7 groups
     And no other collisions exist
 
-  @skip
   Scenario: Audit counts all skill files
     Given the source tree is fully populated
     When the skill audit is performed
     Then exactly 109 skill files are cataloged
     And all agent-to-skill references are mapped
 
-  @skip
   Scenario: Audit detects cross-agent skill references
     Given the functional software crafter references skills from the software crafter
     When the skill audit maps cross-agent references
     Then the cross-references are identified with source and target agents
 
-  @skip
   Scenario: Audit flags orphan skills with no agent reference
     Given a skill file exists that no agent references in its frontmatter
     When the skill audit checks for orphans
@@ -79,7 +75,6 @@ Feature: Colliding Skill Name Resolution
 
   # --- US-04: Agent Frontmatter Updates ---
 
-  @skip
   Scenario: Renamed skill reference updated in agent frontmatter
     Given the acceptance-designer agent previously listed "critique-dimensions"
     And the directory was renamed to "nw-ad-critique-dimensions"
@@ -87,24 +82,16 @@ Feature: Colliding Skill Name Resolution
     Then the skills list contains "nw-ad-critique-dimensions"
     And "critique-dimensions" no longer appears in the skills list
 
-  @skip
   Scenario: Non-colliding skill references remain unchanged
     Given the troubleshooter agent lists "nw-five-whys-methodology"
     When the agent frontmatter is validated
     Then "nw-five-whys-methodology" remains in the skills list
 
-  @skip
   Scenario: All frontmatter skill references resolve to existing directories
     Given all agent definitions have been updated
     When every skill reference is checked against the source tree
     Then every skill name has a matching directory
     And zero dangling references exist
-
-  @skip
-  Scenario: Cross-reference comments removed from frontmatter
-    Given an agent had cross-reference comments in its skills list
-    When the frontmatter is updated
-    Then no cross-reference comments remain
 
   # --- Error Paths ---
 
@@ -114,7 +101,6 @@ Feature: Colliding Skill Name Resolution
     Then the convention falls back to the full agent name prefix
     And the resulting names remain unique
 
-  @skip
   Scenario: Audit reports content difference for same-named skills
     Given two skills share the name "critique-dimensions"
     And their content differs

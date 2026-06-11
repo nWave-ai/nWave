@@ -113,12 +113,6 @@ If any wave fails:
   All acceptance tests pass. Feature is ready.
 ```
 
-## Resume Detection Under `atdd_pure`
-
-When the feature runs in `workflow.mode = atdd_pure` (set in `.nwave/config.yaml`), DELIVER produces no `roadmap.json` and no per-step execution-log. Fast-forward therefore cannot detect DELIVER progress — or compute where to resume an interrupted run — from those classic artifacts. Under `atdd_pure` the resume position is read from the **AT-completion ledger**, the append-only JSONL at `.nwave/telemetry/atdd-pure/{feature-id}.jsonl`.
-
-The ledger carries one record at each **phase-boundary** of every carpaccio slice's `A→G` run, each record stamped with `slice_id` and `at_ids`. To resume an interrupted DELIVER, fast-forward reads the latest phase-boundary record and the feature-delta slice plan: slices whose rows are still `pending` are not yet shipped, and the most recent phase-boundary record names the slice and phase where the run stopped. A `FeatureEndCheckpoint` record (when all slice rows are `shipped`) gives the resume cue for the once-per-feature feature-end cycle. The ledger phase-boundary records — never `roadmap.json` — are the `atdd_pure` resume source of truth.
-
 ## Error Handling
 
 | Error | Response |

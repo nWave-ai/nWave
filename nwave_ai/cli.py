@@ -215,6 +215,11 @@ def _handle_install(args: list[str]) -> int:
     install on failure — at worst the CI default ("lean") is written.
 
     Flags handled here:
+        --platform <tool>  target agentic tool to provision for
+                           (claude-code / codex / opencode). Forwarded
+                           unchanged to install_nwave.py; this is the
+                           entry point the cross-OS RC smoke matrix depends
+                           on (ADR-PLAT-007).
         --target <path>    install into <path> instead of ~/.claude/
                            (sets CLAUDE_CONFIG_DIR for the subprocess; see
                            ADR-001). $HOME is refused with exit 2.
@@ -222,7 +227,7 @@ def _handle_install(args: list[str]) -> int:
         --density-only     run ONLY the density prompt and exit (test driving
                            port for acceptance tests; never a user flag)
 
-    All other args pass through to install_nwave.py.
+    All other args (including --platform) pass through to install_nwave.py.
     """
     target, args, error = _extract_target_flag(args)
     if error is not None:
@@ -689,6 +694,7 @@ def _print_usage() -> int:
     print("  version        Show nwave-ai version")
     print()
     print("Install options:")
+    print("  --platform <tool>  Target agentic tool: claude-code, codex, opencode")
     print("  --dry-run       Preview without making changes")
     print("  --backup-only   Create backup only")
     print("  --restore       Restore from backup")

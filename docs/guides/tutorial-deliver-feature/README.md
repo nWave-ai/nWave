@@ -16,18 +16,9 @@ This tutorial reads both the design output from Tutorial 7 and the distill outpu
 
 If either is missing, complete [Tutorial 8: Generating Acceptance Tests](../tutorial-distill/) first (which itself depends on Tutorial 7).
 
-> **Two delivery paths.** This tutorial walks the **classic** roadmap-based
-> `/nw-deliver` — the default. The architect builds a `roadmap.json`, the
+> **How `/nw-deliver` works.** The architect builds a `roadmap.json`, the
 > crafter executes its steps, and an `execution-log.json` records each TDD
-> phase. nWave also ships a roadmap-free sibling path, `atdd_pure`, selected
-> per-feature via `.nwave/config.yaml:workflow.mode = atdd_pure` (ADR-028).
-> Under `atdd_pure` `/nw-deliver` creates no `roadmap.json` and no
-> `execution-log.json`: it reads the feature-delta slice plan, delivers one
-> thin carpaccio slice at a time, and records each phase boundary in the
-> AT-completion ledger. The steps below assume the classic path; if your
-> project sets `workflow.mode = atdd_pure`, the structure differs (slice loop
-> instead of roadmap steps) but the quality gates and the watch-it-build
-> rhythm are the same.
+> phase. The steps below walk that flow end to end.
 
 ---
 

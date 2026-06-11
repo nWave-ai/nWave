@@ -1,7 +1,6 @@
 # Feature: Backup Retention Policy — Milestone 2 (Config overrides + validation)
 # Covers REQUIRED scenarios S4 and S9 from
 #   docs/feature/backup-retention-policy/discuss/scope.md
-# All scenarios @skip — DELIVER wave enables one at a time.
 
 Feature: Marco can override the backup cap in his global nWave config
   As Marco, a solo developer iterating on nWave from my laptop

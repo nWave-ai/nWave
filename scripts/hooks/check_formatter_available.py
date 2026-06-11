@@ -38,6 +38,26 @@ def get_staged_python_files():
         return []
 
 
+def formatter_available(formatter: str) -> bool:
+    """Return True if the formatter is runnable.
+
+    The dev workflow manages tools through uv, so they live in the project
+    `.venv` rather than on PATH. Prefer `uv run <tool> --version`; fall back to a
+    bare PATH lookup for activated-venv / globally installed setups.
+    """
+    if shutil.which("uv"):
+        try:
+            subprocess.run(
+                ["uv", "run", formatter, "--version"],
+                check=True,
+                capture_output=True,
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+    return shutil.which(formatter) is not None
+
+
 def main():
     """Check code formatter availability."""
     print(f"{BLUE}Checking code formatter availability...{NC}")
@@ -55,7 +75,7 @@ def main():
 
     # Check each formatter
     for formatter in formatters:
-        if not shutil.which(formatter):
+        if not formatter_available(formatter):
             missing_formatters.append(formatter)
 
     if not missing_formatters:
@@ -71,44 +91,9 @@ def main():
         print(f"  - {formatter}")
     print()
 
-    print(f"{YELLOW}Installation Instructions:{NC}")
-    print()
-
-    if "ruff" in missing_formatters:
-        print("For Ruff (combined formatter, linter, import sorter):")
-        print("  pip install ruff")
-        print("  # or if using system package manager:")
-        print("  # apt install ruff  (Debian/Ubuntu)")
-        print("  # brew install ruff (macOS)")
-        print()
-
-    if "mypy" in missing_formatters:
-        print("For Mypy (type checker):")
-        print("  pip install mypy")
-        print("  # or if using system package manager:")
-        print("  # apt install mypy   (Debian/Ubuntu)")
-        print("  # brew install mypy  (macOS)")
-        print()
-
-    print(f"{YELLOW}Alternative Formatter Configurations:{NC}")
-    print()
-    print("If you prefer different tools, alternatives include:")
-    print()
-    print("  Code Formatters (like Ruff):")
-    print("    - Black        : pip install black      (strict formatting)")
-    print("    - Autopep8     : pip install autopep8   (PEP 8 compliant)")
-    print("    - YAPF         : pip install yapf       (flexible formatting)")
-    print()
-    print("  Type Checkers (like Mypy):")
-    print("    - Pyright      : pip install pyright    (VSCode native)")
-    print("    - Pydantic     : pip install pydantic   (runtime validation)")
-    print()
-    print("Configuration can be updated in .pre-commit-config.yaml")
-    print()
-
-    print(f"{YELLOW}Quick setup:{NC}")
-    print("  pip install ruff mypy")
-    print("  pre-commit run --all-files")
+    print(f"{YELLOW}These are dev dependencies. Set them up with:{NC}")
+    print("  uv sync")
+    print("  uv run pre-commit run --all-files")
     print()
 
     print(f"{RED}COMMIT BLOCKED: Formatter tools not available{NC}")

@@ -152,10 +152,6 @@
 
 - [nw-copywriting-frameworks](../../../nWave/skills/nw-copywriting-frameworks/SKILL.md) — PAS, BAB, and AIDA copywriting frameworks for B2B outreach with decision tree for framework selection
 
-## nw-crafter-discipline-atdd-pure
-
-- [nw-crafter-discipline-atdd-pure](../../../nWave/skills/nw-crafter-discipline-atdd-pure/SKILL.md) — Crafter discipline contract for the ATDD-pure 7-phase workflow — what the slim crafter does in Phase A (GREEN-the-ATs), Phase B (coverage-driven dead-code elimination), and Phase E (batch L1-L6 refactor), plus hard prohibitions and the Phase B common-cuts taxonomy
-
 ## nw-css-implementation-recipes
 
 - [nw-css-implementation-recipes](../../../nWave/skills/nw-css-implementation-recipes/SKILL.md) — Concrete CSS code snippets for futuristic UI patterns -- glassmorphism, neon glows, HUD elements, data grids, holographic effects
@@ -306,7 +302,7 @@
 
 ## nw-execute
 
-- [nw-execute](../../../nWave/skills/nw-execute/SKILL.md) — Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Use to run a step (classic workflow.mode, a roadmap.json plan) or one carpaccio slice (atdd_pure workflow.mode).
+- [nw-execute](../../../nWave/skills/nw-execute/SKILL.md) — Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Runs a single roadmap.json step through the TDD cycle.
 
 ## nw-fast-forward
 

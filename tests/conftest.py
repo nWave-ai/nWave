@@ -95,7 +95,7 @@ def _verify_nwave_ai_subprocess_importable():
             "Class B regression — editable install .pth missing or corrupted.\n"
             f"  python: {sys.executable}\n"
             f"  stderr: {result.stderr.strip()}\n"
-            "Fix: `pipenv install -e .` (or run `nwave-doctor` if available).",
+            "Fix: `uv sync` (or run `nwave-doctor` if available).",
             returncode=1,
         )
 
@@ -756,6 +756,7 @@ TIER_MAP = {
     "tests/build/unit/": "unit",
     "tests/build/": "unit",
     # Release train tests
+    "tests/release/rc_smoke/acceptance/": "acceptance",
     "tests/release/": "unit",
     # Outcomes registry tiers
     "tests/outcomes/unit/": "unit",
@@ -799,6 +800,7 @@ DOMAIN_MAP = {
     "tests/build/unit/": ("Build", "Unit Tests"),
     "tests/build/": ("Build", "Build Tests"),
     "tests/bugs/": ("Bugs", "Regression"),
+    "tests/release/rc_smoke/acceptance/": ("Release Train", "RC Smoke Acceptance"),
     "tests/release/": ("Release Train", "Unit Tests"),
 }
 

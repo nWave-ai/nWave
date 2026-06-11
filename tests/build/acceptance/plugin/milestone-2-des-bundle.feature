@@ -71,13 +71,6 @@ Feature: DES Bundle with Hooks Generation
     When the plugin assembler attempts to build the plugin
     Then the build fails with a hook configuration error
 
-  @skip
-  Scenario: DES hook enforcement blocks tool use in wrong phase
-    Given a project with an active DES session in the RED_ACCEPTANCE phase
-    When a tool that is not allowed in RED_ACCEPTANCE is invoked
-    Then the hook returns a block decision
-    And the block message explains which phase is active
-
   # --- Edge Cases ---
 
   Scenario: Plugin does not ship compiled Python files

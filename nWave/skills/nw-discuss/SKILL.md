@@ -11,7 +11,7 @@ argument-hint: '[feature-name] - Optional: --phase=[jtbd|journey|requirements] -
 
 ## Overview
 
-Execute DISCUSS wave through Luna's integrated workflow: JTBD analysis|UX journey discovery|emotional arc design|shared artifact tracking|requirements gathering|user story creation|acceptance criteria definition. Luna uncovers jobs users accomplish, maps to journeys and requirements, handles complete lifecycle from user motivations through DoR-validated stories ready for DESIGN. Establishes ATDD foundation.
+Execute DISCUSS wave through Luna's integrated workflow: JTBD analysis|UX journey discovery|emotional arc design|shared artifact tracking|requirements gathering|user story creation|acceptance criteria definition. Luna uncovers jobs users accomplish, maps to journeys and requirements, handles complete lifecycle from user motivations through DoR-validated stories ready for DESIGN. Establishes the acceptance-test foundation.
 
 For greenfield projects (no src/ code, no docs/feature/ history), Luna proposes Walking Skeleton as Feature 0.
 
@@ -27,8 +27,7 @@ Under `## Wave: DISCUSS / [REF] <Section>` headings:
 - JTBD one-liner — single-sentence Job-to-be-Done statement
 - Locked decisions — D-numbered design decisions with verdicts
 - User stories with elevator pitches — every story has Before/After/Decision-enabled triplet
-- Slice Plan — `## Wave: DISCUSS / [REF] Slice Plan`, a five-column fixed-order carpaccio table (Slice, Value statement, Status, Annotation, Justification). Emitted when `workflow.mode == atdd_pure` (ADR-028 D2 / ADR-029 D3); the PO authors it in place of UAT-scenario user stories, and it replaces the user-story + AC sections as the decomposition + value SSOT. Structurally checked by `validate_feature_delta.py --require-slice-plan` (verdict `accepted`).
-- Acceptance criteria (ACs) — testable, embedded per story (classic mode; under `atdd_pure` the per-slice `.feature` ATs are the AC SSOT, authored downstream in DISTILL)
+- Acceptance criteria (ACs) — testable, embedded per story
 - Definition of Done (DoD) — 9-item checklist
 - Out-of-scope — explicit non-goals
 - WS strategy — A/B/C/D per Mandate 5

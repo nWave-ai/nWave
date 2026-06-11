@@ -1,5 +1,5 @@
 name: nWave
-version: 3.15.1
+version: 3.16.0
 description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192SPIKE\u2192DESIGN\u2192\
   DEVOPS\u2192DISTILL\u2192DELIVER methodology with visual architecture lifecycle\
   \ management"
@@ -305,7 +305,7 @@ commands:
     description: Creates E2E acceptance tests in Given-When-Then format from requirements
       and architecture. Use when preparing executable specifications before implementation.
     argument_hint: '[story-id] - Optional: --test-framework=[cucumber|specflow|pytest-bdd]
-      --integration=[real-services|mocks] --accept-pilot-scope-extension'
+      --integration=[real-services|mocks]'
     agents:
     - acceptance-designer
     wave: DISTILL
@@ -414,8 +414,7 @@ commands:
     agents: []
   execute:
     description: Dispatches one unit of DELIVER work to a specialized agent for TDD
-      execution. Use to run a step (classic workflow.mode, a roadmap.json plan) or
-      one carpaccio slice (atdd_pure workflow.mode).
+      execution. Runs a single roadmap.json step through the TDD cycle.
     argument_hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter
       "auth-upgrade" "01-01"'
     outputs:

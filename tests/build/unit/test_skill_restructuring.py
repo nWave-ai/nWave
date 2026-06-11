@@ -205,7 +205,7 @@ BULK_HASHES = {
     # of pipx-only.
     "nw-buddy": "720a5634d2f2f333c854f1ac07de2624",
     "nw-buddy-command-catalog": "403ff4bf5cc44e73183e6021e0e3147d",
-    "nw-buddy-project-reading": "87e85232291063f4e68f816e0864298a",
+    "nw-buddy-project-reading": "be990dabaac7ca5b8492283fc5abdd1f",
     "nw-buddy-ssot-knowledge": "7a801cc1b1ab7379a258f621a08a71f5",
     # Hash updated 2026-05-14: TDD 3-phase canon (ADR-025) propagation —
     # DELIVER wave description now cites 3-phase RED→GREEN→COMMIT with legacy fallback.
@@ -231,7 +231,7 @@ BULK_HASHES = {
     "nw-ddd-eventsourcing": "f014437fa2b76008896d3a83e4f48288",
     "nw-ddd-strategic": "1bee905e197ac9f2cacf4e5e37f3f8ef",
     "nw-ddd-tactical": "7ec690c487144de353ae7d01ba24cd6c",
-    "nw-deliver-orchestration": "913857db6188bd32dd9267e73776de90",
+    "nw-deliver-orchestration": "554feea5efff15d9811cf44c5e682559",
     "nw-deployment-strategies": "a73beb26bce3706db567f8cce3497b9b",
     "nw-design-methodology": "9f161d6ae6ad061a6a4eb7dcb63c082c",
     "nw-design-patterns": "b0e3f59bfde50d1a7bb6ada40ca9b3b4",
@@ -337,7 +337,7 @@ BULK_HASHES = {
     # + mode-scoped execution-log prose for the roadmap-free spine.
     # Prior hash updated 2026-05-15: closed-source refs scrubbed (3ab776967).
     # Prior hash updated 2026-05-14: TDD 3-phase canon (ADR-025) propagation.
-    "nw-tdd-review-enforcement": "e34abb5843029fa0e2f21a9e8dad662d",
+    "nw-tdd-review-enforcement": "e9f3631a8ec525b1b1e78eb059c9d840",
     "nw-test-design-mandates": "c9dbfae2ddffbd725bc55d9b4ae5aa41",
     "nw-test-organization-conventions": "64778077de4b55a493e89cf0e06ce681",
     "nw-test-refactoring-catalog": "9dd4d17224b32058386f4413027253bd",

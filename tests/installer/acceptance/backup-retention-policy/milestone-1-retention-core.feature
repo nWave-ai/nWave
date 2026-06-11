@@ -1,8 +1,6 @@
 # Feature: Backup Retention Policy — Milestone 1 (Core retention behavior)
 # Covers REQUIRED scenarios S1, S2, S3, S6 from
 #   docs/feature/backup-retention-policy/discuss/scope.md
-# All scenarios @skip — DELIVER wave enables one at a time after the
-# walking skeleton drives them GREEN.
 
 Feature: Backup retention enforces a sane cap on accumulated backups
   As Marco, a solo developer iterating on nWave from my laptop

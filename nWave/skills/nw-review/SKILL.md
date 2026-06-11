@@ -61,10 +61,6 @@ Findings MUST be priority-ordered: blocking issues first, then suggestions, then
 - `--dimensions=rpp` - Triggers RPP code smell scan alongside standard review (Dimension 4)
 - `--from=N` / `--to=N` - RPP level range (default: 1-6). Requires `--dimensions=rpp`
 
-## Workflow Mode Awareness
-
-Reviews run against two DELIVER spines. The classic spine is roadmap-driven (roadmap step + `execution-log.json`). The `atdd_pure` spine is the **roadmap-free sibling spine** — a 7-phase A→G per-slice loop (ADR-028) with no roadmap step and an AT-completion ledger in place of `execution-log.json`. It is a sibling of classic, not derived from the ADR-025 roadmap phases: the two spines run in parallel, selected by `workflow.mode`. When dispatching a reviewer, pass the `workflow_mode` from dispatch context unchanged so the reviewer agent applies the spine-appropriate DoR/DoD (ADR-029 re-split: the PO reviewer gates the slice plan; the acceptance-designer reviewer gates that the ATs themselves stand as the acceptance criteria).
-
 ## Rigor Profile Integration
 
 Before dispatching the reviewer agent, read rigor config from `.nwave/des-config.json` (key: `rigor`). If absent, use standard defaults.

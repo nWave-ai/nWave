@@ -157,16 +157,16 @@ def main():
         print(f"{YELLOW}Warning: python3 not available, skipping tests{NC}")
         return 0
 
-    # Determine pytest command: prefer pipenv run (matches CI) over bare python3
-    use_pipenv = False
+    # Determine pytest command: prefer uv run (matches CI) over bare python3
+    use_uv = False
     try:
         subprocess.run(
-            ["pipenv", "run", "python3", "-m", "pytest", "--version"],
+            ["uv", "run", "python3", "-m", "pytest", "--version"],
             check=True,
             capture_output=True,
             text=True,
         )
-        use_pipenv = True
+        use_uv = True
     except (subprocess.CalledProcessError, FileNotFoundError):
         try:
             subprocess.run(
@@ -234,8 +234,8 @@ def main():
             base_args.append("-v")
 
         cmd = (
-            ["pipenv", "run", "python3", "-m", "pytest", *base_args]
-            if use_pipenv
+            ["uv", "run", "python3", "-m", "pytest", *base_args]
+            if use_uv
             else ["python3", "-m", "pytest", *base_args]
         )
         result = subprocess.run(

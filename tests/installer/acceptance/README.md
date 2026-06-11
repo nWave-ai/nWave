@@ -31,7 +31,6 @@ This directory contains acceptance tests for **nWave framework features** (not D
 ```
 tests/acceptance/
 ├── conftest.py                              # Shared pytest fixtures
-├── acceptance-tests.feature                 # BDD: Framework rationalization
 ├── test_validator_acceptance.py             # Command template compliance
 ├── test_command_noncompliant.md             # Test fixture for validator
 ├── features/
@@ -76,25 +75,7 @@ pytest tests/acceptance/ -v
 
 ## Test Suites
 
-### 1. Framework Rationalization (`acceptance-tests.feature`)
-
-**Feature**: nWave Framework Rationalization for Open Source Publication
-
-**Purpose**: Validates command template compliance and agent-builder capabilities
-
-**Key Scenarios**:
-- Command template compliance validation
-- Agent-builder command creation capability
-- Agent-builder-reviewer validates template compliance
-- Non-compliant command detection and feedback
-
-**Test File**: `test_validator_acceptance.py`
-
-**Status**: ✅ IMPLEMENTED
-
----
-
-### 2. Command Template Validator (`test_validator_acceptance.py`)
+### 1. Command Template Validator (`test_validator_acceptance.py`)
 
 **Purpose**: Validates that nWave command files follow template guidelines
 
@@ -112,7 +93,7 @@ pytest tests/acceptance/ -v
 
 ---
 
-### 3. Version Update Experience (`features/version-update-experience/`)
+### 2. Version Update Experience (`features/version-update-experience/`)
 
 **Feature**: Safe version update workflow for nWave framework
 

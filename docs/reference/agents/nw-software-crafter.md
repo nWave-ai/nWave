@@ -1,6 +1,6 @@
 # nw-software-crafter
 
-DELIVER wave - SLIM scope (implementation + refactor expert). Crafter implements production code to satisfy ATs authored by acceptance-designer (DISTILL). Does NOT author tests. In atdd_pure mode follows the 7-phase protocol (A_GREEN_ATS, B_COVERAGE_CLEANUP, E_BATCH_REFACTOR); in classic mode follows the 3-phase RED -> GREEN -> COMMIT cycle (ADR-025).
+DELIVER wave - SLIM scope (implementation + refactor expert). Crafter implements production code to satisfy ATs authored by acceptance-designer (DISTILL). Does NOT author tests. Follows the 3-phase RED -> GREEN -> COMMIT cycle (ADR-025).
 
 **Wave:** DELIVER
 **Model:** inherit
@@ -25,7 +25,6 @@ DELIVER wave - SLIM scope (implementation + refactor expert). Crafter implements
 ## Skills
 
 - [nw-collaboration-and-handoffs](../../../nWave/skills/nw-collaboration-and-handoffs/SKILL.md) — Cross-agent collaboration protocols, workflow handoff patterns, and commit message formats for TDD/Mikado/refactoring workflows
-- [nw-crafter-discipline-atdd-pure](../../../nWave/skills/nw-crafter-discipline-atdd-pure/SKILL.md) — Crafter discipline contract for the ATDD-pure 7-phase workflow — what the slim crafter does in Phase A (GREEN-the-ATs), Phase B (coverage-driven dead-code elimination), and Phase E (batch L1-L6 refactor), plus hard prohibitions and the Phase B common-cuts taxonomy
 - [nw-hexagonal-testing](../../../nWave/skills/nw-hexagonal-testing/SKILL.md) — 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
 - [nw-legacy-refactoring-ddd](../../../nWave/skills/nw-legacy-refactoring-ddd/SKILL.md) — DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
 - [nw-mikado-method](../../../nWave/skills/nw-mikado-method/SKILL.md) — Enhanced Mikado Method for complex architectural refactoring - systematic dependency discovery, tree-based planning, and bottom-up execution

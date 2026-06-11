@@ -96,34 +96,6 @@ side injection (DISPATCH and DELIVER skills emitting the marker) is
 tracked under follow-up backlog item `F-DES-WORKTREE-ORCHESTRATOR-
 INJECTION`.
 
-## Markers under `workflow.mode = atdd_pure`
-
-The markers above describe the **classic** roadmap-based DELIVER spine. nWave
-also ships a roadmap-free sibling spine selected per-feature via
-`.nwave/config.yaml:workflow.mode = atdd_pure` (ADR-028). Both spines are
-documented here; classic remains the default.
-
-Under `atdd_pure` the marker contract narrows:
-
-- `DES-VALIDATION` and `DES-PROJECT-ID` are unchanged — every `atdd_pure` Task
-  still declares them.
-- `DES-STEP-ID` no longer references `roadmap.json` (the `atdd_pure` spine
-  creates none). Its value is a **carpaccio slice** identifier (`slice-NN`); the
-  trailer key name `Step-Id:` is retained for parser compatibility with
-  `src/des/cli/verify_commit_trailers.py`.
-- `DES-MODE=orchestrator` no longer authorises an `execution-log.json` write:
-  the `atdd_pure` spine creates no per-step `execution-log.json`. The phase
-  record is instead the **AT-completion ledger** — an append-only per-feature
-  JSONL at `.nwave/telemetry/atdd-pure/{feature_id}.jsonl`, carrying `slice_id`
-  and `at_ids` at each phase boundary of each slice's `A→G` run. The
-  AT-completion ledger is the `atdd_pure` audit artifact that replaces the
-  per-step `execution-log.json`; `des-verify-integrity` under `atdd_pure`
-  treats an absent AT-completion ledger as a verification failure (exit 1).
-
-Classic-mode marker semantics are byte-for-byte unchanged: a `workflow.mode`
-that is `classic` or absent keeps the `roadmap.json` / `execution-log.json`
-contract described above.
-
 ## Empirical anchor
 
 `docs/feature/fix-des-worktree-project-root-marker/discuss/wave-decisions.md`

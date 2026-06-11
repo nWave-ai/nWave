@@ -133,64 +133,65 @@ class LocalCIValidator:
         else:
             self.print_warning("YAML validator script not found")
 
-    def validate_pipenv_dependencies(self) -> None:
-        """Validate pipenv dependencies match CI workflow requirements."""
-        self.print_header("2. Pipenv Dependency Validation")
+    def validate_uv_dependencies(self) -> None:
+        """Validate uv dependencies match CI workflow requirements."""
+        self.print_header("2. uv Dependency Validation")
 
-        pipfile = self.project_root / "Pipfile"
-        pipfile_lock = self.project_root / "Pipfile.lock"
+        pyproject = self.project_root / "pyproject.toml"
+        uv_lock = self.project_root / "uv.lock"
 
-        if not pipfile.exists():
-            self.print_error("Pipfile missing - pipenv install will fail")
+        if not pyproject.exists():
+            self.print_error("pyproject.toml missing - uv sync will fail")
             self.tests_failed += 1
             return
 
-        self.print_success("Pipfile exists")
+        self.print_success("pyproject.toml exists")
 
-        # Check Pipfile.lock exists (required for pipenv install --deploy)
-        if not pipfile_lock.exists():
-            self.print_warning(
-                "Pipfile.lock missing - run: pipenv lock (CI uses --deploy flag)"
-            )
+        if not uv_lock.exists():
+            self.print_warning("uv.lock missing - run: uv lock")
             # Generate lock file
             try:
                 subprocess.run(
-                    ["pipenv", "lock"],
+                    ["uv", "lock"],
                     cwd=self.project_root,
                     check=True,
                     capture_output=not self.verbose,
                     text=True,
                 )
-                self.print_success("Pipfile.lock generated")
+                self.print_success("uv.lock generated")
             except (FileNotFoundError, subprocess.CalledProcessError) as e:
-                self.print_error(f"Failed to generate Pipfile.lock: {e}")
+                self.print_error(f"Failed to generate uv.lock: {e}")
                 self.tests_failed += 1
                 return
 
-        self.print_success("Pipfile.lock exists")
+        self.print_success("uv.lock exists")
 
-        # Validate pipenv install works (mirrors CI exactly)
+        # Validate the lockfile is in sync, then install (mirrors CI exactly)
         try:
-            subprocess.run(["pipenv", "--version"], capture_output=True, check=True)
+            subprocess.run(["uv", "--version"], capture_output=True, check=True)
             self.run_command(
-                ["pipenv", "install", "--dev"],
-                "pipenv install --dev (dependency installation)",
+                ["uv", "lock", "--check"],
+                "uv.lock in sync with pyproject.toml",
+            )
+            self.run_command(
+                ["uv", "sync"],
+                "uv sync (dependency installation)",
             )
         except FileNotFoundError:
             self.print_warning(
-                "pipenv not available - install with: pip install pipenv"
+                "uv not available - install from https://docs.astral.sh/uv/"
             )
 
     def run_python_tests(self) -> None:
         """Run Python test suite."""
         self.print_header("3. Python Test Suite")
 
-        # Use pipenv run test (mirrors CI exactly)
+        # Use uv run poe test (mirrors CI exactly)
         try:
-            subprocess.run(["pipenv", "--version"], capture_output=True, check=True)
-            self.run_command(["pipenv", "run", "test"], "Python tests (pytest)")
+            subprocess.run(["uv", "--version"], capture_output=True, check=True)
+            self.run_command(["uv", "run", "poe", "test"], "Python tests (pytest)")
         except FileNotFoundError:
-            # Fall back to direct pytest if pipenv not available
+            # Fall back to direct pytest if uv not available
             self.run_command(
                 [sys.executable, "-m", "pytest", "tests/", "-v"],
                 "Python tests (pytest)",
@@ -204,12 +205,12 @@ class LocalCIValidator:
 
         self.print_header("4. Build Process Validation")
 
-        # Use pipenv run build (mirrors CI exactly)
+        # Use uv run poe build (mirrors CI exactly)
         try:
-            subprocess.run(["pipenv", "--version"], capture_output=True, check=True)
-            self.run_command(["pipenv", "run", "build"], "Build process")
+            subprocess.run(["uv", "--version"], capture_output=True, check=True)
+            self.run_command(["uv", "run", "poe", "build"], "Build process")
         except FileNotFoundError:
-            # Fall back to direct Python if pipenv not available
+            # Fall back to direct Python if uv not available
             build_script = self.project_root / "scripts" / "build_dist.py"
             if build_script.exists():
                 self.run_command([sys.executable, str(build_script)], "Build process")
@@ -283,10 +284,13 @@ class LocalCIValidator:
         self.print_header("6. Python Linting (Ruff)")
 
         try:
-            subprocess.run(["pipenv", "--version"], capture_output=True, check=True)
-            self.run_command(["pipenv", "run", "lint"], "Ruff linting passed")
+            subprocess.run(["uv", "--version"], capture_output=True, check=True)
+            self.run_command(
+                ["uv", "run", "poe", "lint"],
+                "Ruff linting passed",
+            )
         except FileNotFoundError:
-            # Fall back to direct ruff if pipenv not available
+            # Fall back to direct ruff if uv not available
             try:
                 subprocess.run(["ruff", "--version"], capture_output=True, check=True)
                 self.run_command(
@@ -294,21 +298,20 @@ class LocalCIValidator:
                     "Ruff linting passed",
                 )
             except (FileNotFoundError, subprocess.CalledProcessError):
-                self.print_warning(
-                    "Ruff not available - install with: pipenv install --dev"
-                )
+                self.print_warning("Ruff not available - install with: uv sync")
 
     def validate_python_formatting(self) -> None:
         """Check Python formatting with Ruff."""
         self.print_header("7. Python Formatting Check (Ruff)")
 
         try:
-            subprocess.run(["pipenv", "--version"], capture_output=True, check=True)
+            subprocess.run(["uv", "--version"], capture_output=True, check=True)
             self.run_command(
-                ["pipenv", "run", "format-check"], "Ruff formatting check passed"
+                ["uv", "run", "poe", "format-check"],
+                "Ruff formatting check passed",
             )
         except FileNotFoundError:
-            # Fall back to direct ruff if pipenv not available
+            # Fall back to direct ruff if uv not available
             try:
                 subprocess.run(["ruff", "--version"], capture_output=True, check=True)
                 self.run_command(
@@ -316,9 +319,7 @@ class LocalCIValidator:
                     "Ruff formatting check passed",
                 )
             except (FileNotFoundError, subprocess.CalledProcessError):
-                self.print_warning(
-                    "Ruff not available - install with: pipenv install --dev"
-                )
+                self.print_warning("Ruff not available - install with: uv sync")
 
     def validate_security(self) -> None:
         """Run basic security validation."""
@@ -446,7 +447,7 @@ class LocalCIValidator:
 
         # Run all validation phases
         self.validate_yaml()
-        self.validate_pipenv_dependencies()
+        self.validate_uv_dependencies()
         self.run_python_tests()
         self.validate_build()
         self.validate_shell_scripts()

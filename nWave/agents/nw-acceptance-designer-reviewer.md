@@ -60,8 +60,6 @@ At the start of execution, create these tasks using TaskCreate and follow them i
    10. Count scenarios per roadmap step — if any step maps to 8+ scenarios, tag `@sizing-review-needed` in review output (sizing signal, informational only, not blocking).
    Gate: all eight dimensions evaluated with findings.
 
-2b. **ATDD-Pure Acceptance-Criteria Review** — When the dispatch context carries `workflow_mode: atdd_pure`, apply the ADR-029 re-split: the user-story artifact dissolves, the PO owns the slice plan, and the **ATs ARE the acceptance criteria** — there is no separate criteria document the ATs are derived from. Review the ATs as the SSOT: each slice's `@slice-NN` ATs must, on their own, fully express the slice's value statement — no behaviour the slice promises may be unwitnessed by an AT. An incomplete AT set is a shipped bug, not a documentation gap. Flag any value the slice plan asserts that no AT exercises as a blocker. In `classic` mode this step is INACTIVE — acceptance criteria and ATs are distinct artifacts. Gate: in `atdd_pure` mode every slice value statement is fully witnessed by its ATs, or gaps are flagged as blockers.
-
 3. **Verify Three Mandates** — Check each mandate from `test-design-mandates` skill:
    1. **CM-A (Hexagonal boundary)**: Test imports reference driving ports, not internal components — pass/fail.
    2. **CM-B (Business language)**: Step methods delegate to services, assertions check business outcomes — pass/fail.

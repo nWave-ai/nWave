@@ -199,27 +199,24 @@ def write_event_project_beta(test_context: dict):
 
 def _write_test_audit_event(test_context: dict, project_name: str):
     """Helper to write a test audit event."""
-    try:
-        from des.adapters.driven.logging.jsonl_audit_log_writer import (
-            JsonlAuditLogWriter,
-        )
-        from des.ports.driven_ports.audit_log_writer import AuditEvent
+    from des.adapters.driven.logging.jsonl_audit_log_writer import (
+        JsonlAuditLogWriter,
+    )
+    from des.ports.driven_ports.audit_log_writer import AuditEvent
 
-        project_dir = test_context.get("project_dir")
-        if project_dir:
-            writer = JsonlAuditLogWriter()
-            ts = datetime.now(timezone.utc).isoformat()
-            writer.log_event(
-                AuditEvent(
-                    event_type="TEST_EVENT",
-                    timestamp=ts,
-                    data={"project": project_name},
-                )
+    project_dir = test_context.get("project_dir")
+    if project_dir:
+        writer = JsonlAuditLogWriter()
+        ts = datetime.now(timezone.utc).isoformat()
+        writer.log_event(
+            AuditEvent(
+                event_type="TEST_EVENT",
+                timestamp=ts,
+                data={"project": project_name},
             )
-            test_context[f"{project_name}_event_written"] = True
-            test_context[f"{project_name}_writer"] = writer
-    except ImportError:
-        pytest.skip("JsonlAuditLogWriter not available")
+        )
+        test_context[f"{project_name}_event_written"] = True
+        test_context[f"{project_name}_writer"] = writer
 
 
 # -----------------------------------------------------------------------------
@@ -234,18 +231,15 @@ def initialize_audit_logger(test_context: dict):
 
     This tests where the logger writes logs by default.
     """
-    try:
-        from des.adapters.driven.logging.jsonl_audit_log_writer import (
-            JsonlAuditLogWriter,
-        )
+    from des.adapters.driven.logging.jsonl_audit_log_writer import (
+        JsonlAuditLogWriter,
+    )
 
-        # Initialize with no arguments - should use defaults
-        writer = JsonlAuditLogWriter()
-        test_context["audit_logger"] = writer
-        test_context["audit_log_dir"] = writer._log_dir
-        test_context["audit_log_file"] = writer._get_log_file()
-    except ImportError as e:
-        pytest.skip(f"JsonlAuditLogWriter not importable: {e}")
+    # Initialize with no arguments - should use defaults
+    writer = JsonlAuditLogWriter()
+    test_context["audit_logger"] = writer
+    test_context["audit_log_dir"] = writer._log_dir
+    test_context["audit_log_file"] = writer._get_log_file()
 
 
 @when("the DES audit logger writes an event")

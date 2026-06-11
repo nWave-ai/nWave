@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     # Full e2e remains gated by CI on PR. Decision ref:
     # docs/analysis/test-perf-research-2026-05-03.md (#1 ROI).
     cmd = [
-        "pipenv",
+        "uv",
         "run",
         "pytest",
         "-m",

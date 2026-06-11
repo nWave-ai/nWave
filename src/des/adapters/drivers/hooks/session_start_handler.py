@@ -22,6 +22,7 @@ from des.adapters.drivers.hooks.substrate_probe import run_probe
 
 if TYPE_CHECKING:
     from des.adapters.driven.config.des_config import DESConfig
+    from des.application.update_check_service import UpdateCheckService
     from des.ports.driven_ports.package_manager_port import PackageManagerPort
 
 
@@ -90,7 +91,7 @@ def _apply_pending_update_if_any(des_config: DESConfig, current_version: str) ->
         sys.stderr.write(f"[nwave] pending-update apply error (fail-open): {e}\n")
 
 
-def _run_housekeeping(des_config) -> None:
+def _run_housekeeping(des_config: DESConfig) -> None:
     """Run housekeeping using configuration from DESConfig.
 
     Builds HousekeepingConfig from des_config properties and delegates to
@@ -111,11 +112,11 @@ def _run_housekeeping(des_config) -> None:
     HousekeepingService.run_housekeeping(config, SystemTimeProvider())
 
 
-def _build_update_check_service(des_config):
+def _build_update_check_service(des_config: DESConfig) -> UpdateCheckService:
     """Build UpdateCheckService with a shared DESConfig for frequency gating."""
-    from des.application.update_check_service import UpdateCheckService
+    from des.application import update_check_service
 
-    return UpdateCheckService(des_config=des_config)
+    return update_check_service.UpdateCheckService(des_config=des_config)
 
 
 def _build_update_message(local: str, latest: str, changelog: str | None) -> str:

@@ -346,9 +346,9 @@ Before declaring an optimization done, prove no behavior was lost.
 ### 5.1 Baseline before optimization
 
 ```bash
-pipenv run pytest <scope> -p no:randomly --tb=no -q | tail -3
+uv run pytest <scope> -p no:randomly --tb=no -q | tail -3
 # Record: passed count, failed count
-pipenv run pytest <scope> --cov=<package> --cov-report=term-missing -p no:randomly | tail -20
+uv run pytest <scope> --cov=<package> --cov-report=term-missing -p no:randomly | tail -20
 # Record: coverage %, missing lines
 ```
 
@@ -359,9 +359,9 @@ Apply consolidation patterns. Stage changes file-by-file (`git add path/to/file`
 ### 5.3 Validate after optimization
 
 ```bash
-pipenv run pytest <scope> -p no:randomly --tb=short
+uv run pytest <scope> -p no:randomly --tb=short
 # Required: passed count >= baseline (consolidation reduces test count, not pass count semantics)
-pipenv run pytest <scope> --cov=<package> -p no:randomly | tail -5
+uv run pytest <scope> --cov=<package> -p no:randomly | tail -5
 # Required: coverage % >= baseline
 ```
 
@@ -379,7 +379,7 @@ Block conditions:
 For high-confidence optimizations on critical scopes:
 
 ```bash
-pipenv run mutmut run --paths-to-mutate <scope>
+uv run mutmut run --paths-to-mutate <scope>
 ```
 
 Kill rate before optimization vs after must not regress. Loaded only when invoking nw-mutation-test skill.

@@ -37,62 +37,50 @@ def plugin_infrastructure_exists(project_root: Path):
 @given("plugin infrastructure exists with base classes")
 def plugin_infrastructure_with_base_classes(project_root: Path):
     """Verify plugin infrastructure with base classes exists."""
-    try:
-        from scripts.install.plugins.base import (
-            InstallationPlugin,
-            InstallContext,
-            PluginResult,
-        )
+    from scripts.install.plugins.base import (
+        InstallationPlugin,
+        InstallContext,
+        PluginResult,
+    )
 
-        assert InstallationPlugin is not None
-        assert InstallContext is not None
-        assert PluginResult is not None
-    except ImportError as e:
-        pytest.skip(f"Plugin base classes not importable: {e}")
+    assert InstallationPlugin is not None
+    assert InstallContext is not None
+    assert PluginResult is not None
 
 
 @given("AgentsPlugin is implemented with install() and verify() methods")
 def agents_plugin_implemented(project_root: Path):
     """Verify AgentsPlugin is implemented."""
-    try:
-        from scripts.install.plugins.agents_plugin import AgentsPlugin
+    from scripts.install.plugins.agents_plugin import AgentsPlugin
 
-        plugin = AgentsPlugin()
-        assert hasattr(plugin, "install"), "AgentsPlugin missing install() method"
-        assert hasattr(plugin, "verify"), "AgentsPlugin missing verify() method"
-        assert callable(plugin.install), "install() must be callable"
-        assert callable(plugin.verify), "verify() must be callable"
-    except ImportError as e:
-        pytest.skip(f"AgentsPlugin not importable: {e}")
+    plugin = AgentsPlugin()
+    assert hasattr(plugin, "install"), "AgentsPlugin missing install() method"
+    assert hasattr(plugin, "verify"), "AgentsPlugin missing verify() method"
+    assert callable(plugin.install), "install() must be callable"
+    assert callable(plugin.verify), "verify() must be callable"
 
 
 @given("base.py defines InstallationPlugin interface")
 def base_defines_interface(project_root: Path):
     """Verify base.py defines the required interface."""
-    try:
-        from scripts.install.plugins.base import InstallationPlugin
+    from scripts.install.plugins.base import InstallationPlugin
 
-        # Verify interface methods exist
-        assert hasattr(InstallationPlugin, "install")
-        assert hasattr(InstallationPlugin, "verify")
-        assert hasattr(InstallationPlugin, "name")
-    except ImportError:
-        pytest.skip("InstallationPlugin not yet implemented")
+    # Verify interface methods exist
+    assert hasattr(InstallationPlugin, "install")
+    assert hasattr(InstallationPlugin, "verify")
+    assert hasattr(InstallationPlugin, "name")
 
 
 @given("registry.py implements PluginRegistry with topological sort")
 def registry_implements_topological_sort(project_root: Path):
     """Verify registry.py implements PluginRegistry with topological sort."""
-    try:
-        from scripts.install.plugins.registry import PluginRegistry
+    from scripts.install.plugins.registry import PluginRegistry
 
-        registry = PluginRegistry()
-        assert hasattr(registry, "register"), "PluginRegistry missing register() method"
-        assert hasattr(registry, "get_installation_order"), (
-            "Missing get_installation_order()"
-        )
-    except ImportError:
-        pytest.skip("PluginRegistry not yet implemented")
+    registry = PluginRegistry()
+    assert hasattr(registry, "register"), "PluginRegistry missing register() method"
+    assert hasattr(registry, "get_installation_order"), (
+        "Missing get_installation_order()"
+    )
 
 
 @given("module-level functions are extracted from install_nwave.py")
@@ -140,19 +128,16 @@ def create_plugin_wrapper(plugin_name: str, method_name: str):
 @then("all 4 wrapper plugins call existing methods correctly")
 def wrapper_plugins_call_existing_methods():
     """Verify wrapper plugins delegate to existing installation methods."""
-    try:
-        from scripts.install.plugins.agents_plugin import AgentsPlugin
-        from scripts.install.plugins.commands_plugin import CommandsPlugin
-        from scripts.install.plugins.templates_plugin import TemplatesPlugin
-        from scripts.install.plugins.utilities_plugin import UtilitiesPlugin
+    from scripts.install.plugins.agents_plugin import AgentsPlugin
+    from scripts.install.plugins.commands_plugin import CommandsPlugin
+    from scripts.install.plugins.templates_plugin import TemplatesPlugin
+    from scripts.install.plugins.utilities_plugin import UtilitiesPlugin
 
-        # All plugins should be importable
-        assert AgentsPlugin is not None
-        assert CommandsPlugin is not None
-        assert TemplatesPlugin is not None
-        assert UtilitiesPlugin is not None
-    except ImportError as e:
-        pytest.skip(f"Wrapper plugins not yet implemented: {e}")
+    # All plugins should be importable
+    assert AgentsPlugin is not None
+    assert CommandsPlugin is not None
+    assert TemplatesPlugin is not None
+    assert UtilitiesPlugin is not None
 
 
 @then("no behavioral changes occur (same output as pre-plugin)")

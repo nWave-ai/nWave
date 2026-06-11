@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Mechanical gate for acceptance-test completeness. Runs against any candidate AT set. Each unchecked item = potential gap. Verdict deterministic by count, not judgment.
 
-**Provenance**: research-anchored 7-category taxonomy, paradigm-neutral. See `docs/research/at-edge-case-taxonomy-2026-05-19.md` for full literature review. Plan v3 §6 (ATDD-pure restructure) is the canonical specification.
+**Provenance**: research-anchored 7-category taxonomy, paradigm-neutral. See `docs/research/at-edge-case-taxonomy-2026-05-19.md` for full literature review.
 
 **Anchors** [1]-[14] reference research doc bibliography.
 
@@ -40,14 +40,6 @@ extensions: [nwave-installer]
 ```
 
 Reviewer adds overlay's `extra_checks` to the canonical 15-item checklist for that feature only. Verdict thresholds scale with total item count.
-
-## AT-set scope under `atdd_pure`
-
-The candidate AT set this gate runs against is **scoped by `workflow.mode`** (`.nwave/config.yaml`). Under `classic` mode the gate audits the feature's full acceptance-test set. Under `atdd_pure` mode (ADR-028) the unit of work is a carpaccio slice, DISTILL is invoked **per slice**, and only that slice's bounded `@slice-NN`-tagged AT group exists on disk when the slice enters DELIVER.
-
-The completeness gate therefore runs **per-slice**: it audits the entering slice's AT group — the `≤ N` ATs tagged for that one slice — against the 7-category taxonomy, not an all-ATs-up-front contract. Each slice's AT group is gated when that slice is greened; the audit widens incrementally as later slices' ATs are authored. A per-slice AT set that scores `< 10/15` on the §2 checklist routes per §4 exactly as a classic full set would — the taxonomy, checklist, and verdict thresholds are paradigm-neutral and unchanged; only the *scope* of the candidate AT set narrows to one slice under `atdd_pure`.
-
----
 
 ## 1. Canonical 7-category taxonomy (paradigm-neutral)
 
@@ -200,9 +192,9 @@ Routing decision (mechanical):
 
 ```
 if upstream artifact for category X missing
-    → ATGap.kind = SPECIFICATION_AMBIGUITY → Phase D → upstream wave re-entry
+    → ATGap.kind = SPECIFICATION_AMBIGUITY → re-enter the upstream wave
 else
-    → ATGap.kind = AT_GAP_IN_DELIVERY_SCOPE → Phase D → loop A_GREEN_ATS
+    → ATGap.kind = AT_GAP_IN_DELIVERY_SCOPE → address within the delivery cycle
 ```
 
 This closes the Mandate-12 SSOT loop: domain types in DISCUSS/DESIGN/DEVOPS drive taxonomy population.

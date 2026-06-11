@@ -16,7 +16,6 @@ DELIVER wave — SLIM functional crafter. GREEN-the-ATs + L1-L6 refactor for FP 
 ## Skills
 
 - [nw-collaboration-and-handoffs](../../../nWave/skills/nw-collaboration-and-handoffs/SKILL.md) — Cross-agent collaboration protocols, workflow handoff patterns, and commit message formats for TDD/Mikado/refactoring workflows
-- [nw-crafter-discipline-atdd-pure](../../../nWave/skills/nw-crafter-discipline-atdd-pure/SKILL.md) — Crafter discipline contract for the ATDD-pure 7-phase workflow — what the slim crafter does in Phase A (GREEN-the-ATs), Phase B (coverage-driven dead-code elimination), and Phase E (batch L1-L6 refactor), plus hard prohibitions and the Phase B common-cuts taxonomy
 - [nw-fp-algebra-driven-design](../../../nWave/skills/nw-fp-algebra-driven-design/SKILL.md) — Algebra-driven API design with monoids, semigroups, and interpreters via algebraic equations
 - [nw-fp-clojure](../../../nWave/skills/nw-fp-clojure/SKILL.md) — Clojure language-specific patterns, data-first modeling, REPL-driven development, and spec
 - [nw-fp-domain-modeling](../../../nWave/skills/nw-fp-domain-modeling/SKILL.md) — Domain modeling with algebraic data types, smart constructors, and type-level error handling

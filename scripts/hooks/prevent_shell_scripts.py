@@ -18,6 +18,17 @@ import sys
 from pathlib import Path
 
 
+# Sanctioned exceptions to the zero-shell-scripts policy, by exact repo-relative
+# path. These are curl-able bootstraps that must run BEFORE any Python tooling
+# exists on the target machine, so they cannot be Python entry points. Keep this
+# list short and justify every entry.
+ALLOWLIST = {
+    # One-line installer: detects uv/pipx, installs the nwave-ai CLI, then runs
+    # `nwave-ai install`. Reached via `sh -c "$(curl -fsSL .../install.sh)"`.
+    "scripts/install/install.sh",
+}
+
+
 # Prohibited script extensions and their descriptions
 PROHIBITED_EXTENSIONS = {
     ".sh": "Shell script (Bash/sh)",
@@ -55,6 +66,9 @@ def check_for_shell_scripts(staged_files):
     prohibited_files = []
 
     for filepath in staged_files:
+        if filepath in ALLOWLIST:
+            continue
+
         path = Path(filepath)
         ext = path.suffix.lower()
 

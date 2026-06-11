@@ -14,7 +14,6 @@ Feature: Skill Distribution Convergence and Hardening
 
   # --- US-07: Manifest-Based Uninstall ---
 
-  @skip
   Scenario: Manifest created during installation
     Given a clean installation directory exists
     When the skills plugin installs all skills
@@ -22,7 +21,6 @@ Feature: Skill Distribution Convergence and Hardening
     And the manifest lists every installed skill directory name
     And the manifest entry count matches the installed directory count
 
-  @skip
   Scenario: Uninstall removes only manifest-listed directories
     Given the manifest lists "nw-tdd-methodology" and 108 other directories
     And the user has a custom skill "my-custom-skill" not in the manifest
@@ -31,7 +29,6 @@ Feature: Skill Distribution Convergence and Hardening
     And "my-custom-skill" directory still exists
     And the manifest file is removed
 
-  @skip
   Scenario: Uninstall without manifest warns and uses legacy fallback
     Given no manifest file exists
     And the old "nw/" namespace directory exists
@@ -40,7 +37,6 @@ Feature: Skill Distribution Convergence and Hardening
     And the old "nw/" directory is removed
     And no nw-prefixed flat directories are removed
 
-  @skip
   Scenario: Re-install overwrites manifest with current state
     Given a manifest exists from a previous installation with 100 entries
     When the skills plugin installs 109 skills
@@ -131,7 +127,6 @@ Feature: Skill Distribution Convergence and Hardening
     And each file is non-empty
     And each agent's skill list entries match installed directory names
 
-  @skip
   Scenario: Docker verification container validates skill layout
     Given a clean Docker container runs the installer
     When the verification suite runs
@@ -150,7 +145,6 @@ Feature: Skill Distribution Convergence and Hardening
 
   # --- Error and Edge Cases ---
 
-  @skip
   Scenario: Manifest with extra entries does not cause errors during uninstall
     Given the manifest lists a directory that no longer exists on disk
     When the skills plugin runs uninstall
@@ -158,7 +152,6 @@ Feature: Skill Distribution Convergence and Hardening
     And all other listed directories are removed
     And uninstall completes successfully
 
-  @skip
   Scenario: Interrupted installation produces partial but valid manifest
     Given installation was interrupted after installing 50 of 109 skills
     When the manifest is inspected
@@ -229,7 +222,6 @@ Feature: Skill Distribution Convergence and Hardening
     Then the manifest file lists nw-prefixed directory names
     And the manifest format is compatible with the shared module
 
-  @skip
   Scenario: OpenCode upgrade from non-prefixed to nw-prefixed layout
     Given an existing OpenCode installation with non-prefixed skill directories
     And a manifest listing the old non-prefixed names

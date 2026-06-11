@@ -6,6 +6,12 @@
 # Patterns are gitignore-style globs (fnmatch against repo-root-relative paths).
 # A line starting with `#` is a comment; blank lines ignored.
 #
+# Supported rule forms:
+#   - exact      path/to/file   matches that path only
+#   - recursive  dir/**         matches anything under dir/ at any depth
+# Trailing-slash directory rules (foo/) are NOT supported — they match nothing.
+# Use foo/** instead. See _rule_matches_path in scripts/sync/check_denylist.py.
+#
 # Review cadence: quarterly. Start narrow, expand only on incidents.
 # Source of truth: this file. Consumed by scripts/sync/check_denylist.py.
 #

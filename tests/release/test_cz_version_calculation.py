@@ -681,7 +681,7 @@ class TestCZConfigExpansion:
 
     def test_psr_removed_from_dev_dependencies(self):
         """Given pyproject.toml at repo root,
-        when reading [project.optional-dependencies].dev,
+        when reading [dependency-groups].dev,
         then no entry contains 'python-semantic-release',
         and at least one entry contains 'commitizen'.
 
@@ -690,7 +690,7 @@ class TestCZConfigExpansion:
         pyproject_path = REPO_ROOT / "pyproject.toml"
         with pyproject_path.open("rb") as f:
             toml = tomllib.load(f)
-        dev_deps = toml["project"]["optional-dependencies"]["dev"]
+        dev_deps = toml["dependency-groups"]["dev"]
 
         psr_entries = [d for d in dev_deps if "python-semantic-release" in d]
         assert psr_entries == [], (

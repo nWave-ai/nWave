@@ -170,11 +170,18 @@ def no_source_dir(install_context):
 
 
 @given("the installation target directory is read-only")
-def readonly_target(skills_target_dir: Path):
+def readonly_target(skills_target_dir: Path, populate_troubleshooter_skills):
     """Make the target directory read-only.
 
-    Skips on platforms where chmod 444 does not prevent writes
-    (e.g., CI runners executing as root, or Python 3.14+ on some OS configs).
+    Populates the source tree so the install attempts a REAL write into the
+    read-only target. Without a populated source the install copies nothing
+    and reports success on Python 3.14 — where ``Path.exists()`` no longer
+    raises ``PermissionError`` on inaccessible paths (CPython 3.14 change),
+    so the empty-source no-op path returns success and the scenario could
+    not observe the permission failure it is meant to assert.
+
+    Still skips on platforms where chmod 444 does not prevent writes
+    (e.g., CI runners executing as root), via the write probe below.
     """
 
     skills_target_dir.chmod(0o444)
@@ -198,18 +205,6 @@ def no_target_dir(clean_claude_dir: Path):
     target = clean_claude_dir / "skills"
     if target.exists():
         shutil.rmtree(target)
-
-
-@given("the troubleshooter agent definition has been updated")
-def troubleshooter_updated():
-    """Agent definition has been cleaned of workaround sections."""
-    pass
-
-
-@given(parsers.parse("all {count:d} public agent definitions have been updated"))
-def all_agents_updated(count: int):
-    """All public agent definitions have been processed."""
-    pass
 
 
 # ---------------------------------------------------------------------------
@@ -251,26 +246,6 @@ def do_verify(skills_plugin, install_context):
 def attempt_install(skills_plugin, install_context):
     """Attempt installation that may fail."""
     pytest.install_result = skills_plugin.install(install_context)
-
-
-@when("the agent file is inspected")
-def inspect_agent_file(project_root: Path):
-    """Inspect the troubleshooter agent definition file."""
-    agent_file = project_root / "nWave" / "agents" / "nw-troubleshooter.md"
-    if agent_file.exists():
-        pytest.agent_content = agent_file.read_text(encoding="utf-8")
-    else:
-        pytest.agent_content = ""
-
-
-@when("the agent files are inspected")
-def inspect_all_agent_files(project_root: Path):
-    """Inspect all public agent definition files."""
-    agents_dir = project_root / "nWave" / "agents"
-    pytest.agent_files_content = {}
-    if agents_dir.exists():
-        for f in agents_dir.glob("nw-*.md"):
-            pytest.agent_files_content[f.name] = f.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -493,42 +468,6 @@ def error_target_not_found():
         "not found" in pytest.verify_result.message.lower()
         or pytest.verify_result.errors
     )
-
-
-@then(parsers.parse('no "Skill Loading" heading exists in the content'))
-def no_skill_loading_heading():
-    """Verify Skill Loading section was removed."""
-    content = getattr(pytest, "agent_content", "")
-    if content:
-        assert "Skill Loading" not in content
-
-
-@then(parsers.parse('no "Read tool to load" instruction exists in the content'))
-def no_read_tool_instruction():
-    """Verify Read tool instruction was removed."""
-    content = getattr(pytest, "agent_content", "")
-    if content:
-        assert "Read tool to load" not in content
-
-
-@then(parsers.parse('zero agents contain "Skill Loading -- MANDATORY"'))
-def no_agents_skill_loading_mandatory():
-    """Verify no agent has the mandatory skill loading section."""
-    contents = getattr(pytest, "agent_files_content", {})
-    for name, content in contents.items():
-        assert "Skill Loading -- MANDATORY" not in content, (
-            f"{name} still contains Skill Loading -- MANDATORY"
-        )
-
-
-@then(parsers.parse('zero agents contain "Skill Loading Strategy"'))
-def no_agents_skill_loading_strategy():
-    """Verify no agent has the skill loading strategy section."""
-    contents = getattr(pytest, "agent_files_content", {})
-    for name, content in contents.items():
-        assert "Skill Loading Strategy" not in content, (
-            f"{name} still contains Skill Loading Strategy"
-        )
 
 
 @then(

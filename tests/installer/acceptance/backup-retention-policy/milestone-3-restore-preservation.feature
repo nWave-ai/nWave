@@ -1,7 +1,6 @@
 # Feature: Backup Retention Policy — Milestone 3 (Restore preservation)
 # Covers REQUIRED scenario S5 from
 #   docs/feature/backup-retention-policy/discuss/scope.md
-# All scenarios @skip — DELIVER wave enables one at a time.
 
 Feature: Backup retention preserves the restore experience for Marco
   As Marco, a solo developer iterating on nWave from my laptop

@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from pytest_bdd import given, scenarios, then, when
+from pytest_bdd import given, scenarios, then
 
 
 if TYPE_CHECKING:
@@ -68,25 +68,6 @@ def broken_hook_template(build_config: dict[str, Any]):
             ]
         }
     }
-
-
-@given("a project with an active DES session in the RED_ACCEPTANCE phase")
-def active_des_session_red_acceptance(build_config: dict[str, Any]):
-    """Set up a project context with DES in the RED_ACCEPTANCE phase."""
-    build_config["des_phase"] = "RED_ACCEPTANCE"
-
-
-# ---------------------------------------------------------------------------
-# When Steps: DES Enforcement
-# ---------------------------------------------------------------------------
-
-
-@when("a tool that is not allowed in RED_ACCEPTANCE is invoked")
-def tool_not_allowed_in_phase(
-    build_config: dict[str, Any], build_result: dict[str, Any]
-):
-    """Simulate invoking a tool that is blocked in the current DES phase."""
-    pytest.skip("DES hook enforcement not yet implemented")
 
 
 # ---------------------------------------------------------------------------
@@ -347,23 +328,3 @@ def hooks_have_all_five_events(build_result: dict[str, Any]):
         f"Missing events: {expected_events - registered_events}, "
         f"Extra events: {registered_events - expected_events}"
     )
-
-
-# ---------------------------------------------------------------------------
-# Then Steps: DES Enforcement
-# ---------------------------------------------------------------------------
-
-
-@then("the hook returns a block decision")
-def hook_returns_block(build_result: dict[str, Any]):
-    """Verify the hook blocked the tool invocation."""
-    hook_decision = build_result.get("hook_decision", {})
-    assert hook_decision.get("decision") == "block"
-
-
-@then("the block message explains which phase is active")
-def block_message_has_phase(build_result: dict[str, Any]):
-    """Verify the block message includes phase information."""
-    hook_decision = build_result.get("hook_decision", {})
-    message = hook_decision.get("message", "")
-    assert "RED_ACCEPTANCE" in message or "phase" in message.lower()

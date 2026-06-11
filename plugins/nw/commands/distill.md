@@ -1,6 +1,6 @@
 ---
 description: "Creates E2E acceptance tests in Given-When-Then format from requirements and architecture. Use when preparing executable specifications before implementation."
-argument-hint: "[story-id] - Optional: --test-framework=[cucumber|specflow|pytest-bdd] --integration=[real-services|mocks] --accept-pilot-scope-extension"
+argument-hint: "[story-id] - Optional: --test-framework=[cucumber|specflow|pytest-bdd] --integration=[real-services|mocks]"
 ---
 
 # NW-DISTILL: Acceptance Test Creation and Business Validation
@@ -11,55 +11,11 @@ argument-hint: "[story-id] - Optional: --test-framework=[cucumber|specflow|pytes
 
 Orchestrate acceptance test creation from prior wave artifacts, then gate the result through parallel reviews before handoff to DELIVER. You (main Claude instance) are the orchestrator. You dispatch agents and enforce gates.
 
-Behaviour is gated by `workflow.mode` read from `.nwave/config.yaml` (default `classic`; opt-in `atdd_pure` per ADR-027 / plan v3 §4). The cohort pre-assignment gate, AT-completeness gate, MAX-PBT mandate, and Mandate-12 step-reuse metric are MANDATORY under `atdd_pure` and ADVISORY under `classic`.
-
-## Workflow Mode Dispatch (read first)
-
-Read `.nwave/config.yaml` key `workflow.mode`. Allowed values: `classic` | `atdd_pure`. If missing, default `classic`.
-
-| Mode | Cohort pre-assignment gate (Phase 0) | AT-completeness gate (Phase 2.5) | MAX-PBT mandate to Quinn | Mandate-12 step-reuse |
-|---|---|---|---|---|
-| `classic` | skipped | advisory (warn on score) | recommended | informational |
-| `atdd_pure` | **MANDATORY** (BLOCKS on cohort ∉ {M}) | **MANDATORY** (re-author < 10/15) | **MANDATORY** | **target ≥4× informational** |
-
-Mid-feature mode switch is forbidden (per ADR-027).
+The AT-completeness gate, MAX-PBT mandate, and Mandate-12 step-reuse metric are advisory.
 
 ## REVIEW GATE SUMMARY (read this first)
 
 After the acceptance designer produces scenarios, you MUST dispatch 4 parallel reviewers if scenario count exceeds 3 (Eclipse + Architect + Forge + Sentinel). Sentinel (`@nw-acceptance-designer-reviewer`) is the structural-correctness reviewer — it ALWAYS dispatches even on fast-path or under `rigor.reviewer_model: "skip"` (which only skips scale-sensitive cost-driven reviewers). This is the single most important orchestration step in DISTILL. The procedure is: dispatch designer -> count scenarios -> dispatch 4 reviewers in parallel -> AND-gate results -> handoff. Details in Phase 3 below.
-
-## Phase 0: Cohort Pre-Assignment Gate (plan v3 §4.1.bis)
-
-Runs BEFORE author dispatch. Mechanical, deterministic, cohort-keyed. Implementation in `scripts/cli/cohort_classifier.py` (core CLI per [[feedback_target_machine_independence_2026_05_15]] — NOT a pre-commit hook).
-
-**Trigger**: `workflow.mode == atdd_pure`. If `classic`, skip Phase 0 entirely (no event emitted).
-
-**Procedure**:
-
-1. Count candidate ATs in `docs/feature/{feature-id}/feature-delta.md` `## Wave: DISTILL / [REF] Test Placement` section. Sources:
-   - Existing `.feature` scenarios (grep `^\s*Scenario(?: Outline)?:` in referenced files)
-   - Paired unit/property tests authored or earmarked for the feature
-2. Mechanical cohort rule:
-   - **S**: at_count ≤ 10
-   - **M**: 11 ≤ at_count ≤ 30
-   - **L**: 31 ≤ at_count ≤ 80
-   - **XL**: at_count > 80
-3. Gate decision:
-   - cohort = `M` → emit `CohortAssigned(feature, cohort=M, at_count, scope_extension=False)` and proceed
-   - cohort ∈ {S, L, XL} AND `--accept-pilot-scope-extension` flag absent → BLOCK with exit code 43 `COHORT_OUT_OF_PILOT_SCOPE`. Emit `CohortAssignmentRejected(feature, cohort, at_count)`. Halt sequencer.
-   - cohort ∈ {S, L, XL} AND `--accept-pilot-scope-extension` present → emit `CohortAssigned(feature, cohort, at_count, scope_extension=True, operator=<USER>)` with override entry in execution-log; proceed.
-
-**Dispatcher contract**: call CLI rather than embedding logic:
-
-```bash
-python scripts/cli/cohort_classifier.py \
-    --feature {feature-id} \
-    --workflow-mode atdd_pure \
-    ${accept_pilot_scope_extension:+--accept-pilot-scope-extension} \
-    --emit-event CohortAssigned
-```
-
-Exit code 0 → proceed. Exit code 43 → BLOCK + propagate `COHORT_OUT_OF_PILOT_SCOPE` to operator. Anti-pattern: silently re-labelling an S-cohort feature as M to expand the pilot pool — invalidates falsifier-gate per plan v3 §4.5 (forbidden).
 
 ## Phase 1: Decisions and Context
 
@@ -144,18 +100,17 @@ Execute \*create-acceptance-tests for {feature-id}.
 **Prompt must include:**
 - All prior wave context read in Phase 1
 - Decisions 1-4 configuration
-- Instruction to load skills at `~/.claude/skills/nw-{skill-name}/SKILL.md` — explicitly include `nw-acceptance-designer` skills, `nw-bdd-methodology`, `nw-test-design-mandates`, and (under `atdd_pure`) `nw-at-completeness-check`
+- Instruction to load skills at `~/.claude/skills/nw-{skill-name}/SKILL.md` — explicitly include `nw-acceptance-designer` skills, `nw-bdd-methodology`, `nw-test-design-mandates`, and `nw-at-completeness-check`
 - **MAX-PBT + parametrize density mandate** (per [[feedback_ats_max_pbt_parametrize_density_2026_05_19]] + plan v3 §6.4):
   - Default = `parametrize`-collapse for shared-shape scenarios
   - PBT (`@given`) for unbounded / edge-distribution domains
   - Example-based ATs ONLY for unique invariants OR walking-skeleton (real-adapter wiring proof)
-  - State-delta universe `strict=True` mandatory (per [[feedback_atdd_ssot_via_types_services_dsl_2026_05_18]] Mandate-12)
+  - State-delta universe `strict=True` mandatory (Mandate-12)
   - Density ≠ count. Limit AT count, maximise per-test behavioural coverage.
-- **Mandate-12 step-reuse target**: domain types in `tests/{path}/acceptance/steps/domain_types.py`, logic in composition-root services (SSOT), step methods delegate. Target `step_reuse_ratio = total_step_invocations / unique_step_decorators ≥ 4×` (informational under both modes — not a hard block, per [[feedback_mandate12_refinement_2026_05_18]]).
+- **Mandate-12 step-reuse target**: domain types in `tests/{path}/acceptance/steps/domain_types.py`, logic in composition-root services (SSOT), step methods delegate. Target `step_reuse_ratio = total_step_invocations / unique_step_decorators ≥ 4×` (informational — not a hard block, per [[feedback_mandate12_refinement_2026_05_18]]).
 
 **Configuration:**
 - model: rigor.agent_model (omit if "inherit")
-- workflow_mode: `{classic | atdd_pure}` (from Workflow Mode Dispatch above)
 - test_type: {Decision 1} | test_framework: {Decision 2}
 - integration_approach: {Decision 3} | infrastructure_testing: {Decision 4}
 - interactive: moderate | output_format: gherkin
@@ -166,18 +121,18 @@ Execute \*create-acceptance-tests for {feature-id}.
 
 Runs AFTER Quinn returns initial AT set, BEFORE Phase 3 review gate. Mechanical 15-item checklist scored against the canonical 7-category taxonomy (C1-C7) defined in `nWave/skills/nw-at-completeness-check/SKILL.md`.
 
-**Trigger**: `workflow.mode == atdd_pure` → MANDATORY (BLOCKS on score < 10). `workflow.mode == classic` → ADVISORY (emit warning on score < 13, do not block).
+**Trigger**: ADVISORY (emit warning on score < 13, do not block).
 
 **Procedure**:
 
 1. Load skill at `~/.claude/skills/nw-at-completeness-check/SKILL.md`. Apply 15-item checklist (C1a, C1b, C2a, C2b, C3, C4a, C4b, C5a, C5b, C6a, C6b, C6c, C7a, C7b, C7c) against produced AT set.
 2. Compute score (count of checked items, 0-15) and step-reuse-ratio across produced step files.
 3. Verdict thresholds:
-   - **< 10/15 INCOMPLETE** → under `atdd_pure` re-dispatch Quinn with gap findings (max 2 cycles, then escalate). Under `classic` emit warning + proceed.
+   - **< 10/15 INCOMPLETE** → emit warning + proceed.
    - **10-12/15 ACCEPTABLE_WITH_DOCUMENTED_GAPS** → proceed; record gaps in `docs/feature/{feature-id}/distill/at-completeness-gap-log.md`.
    - **13+/15 COMPLETE** → proceed clean.
 4. Emit `ATCompletenessVerdict(feature, score_15, threshold_band, gaps[])`.
-5. Emit `StepReuseRatio(feature, ratio, target=4.0, met=<bool>)` (informational under both modes).
+5. Emit `StepReuseRatio(feature, ratio, target=4.0, met=<bool>)` (informational).
 
 **Upstream-wave routing on `SPECIFICATION_AMBIGUITY`** (plan v3 §6.7): if reviewer flags a gap of kind `SPECIFICATION_AMBIGUITY` (categories C2 / C5 / C7), the gap does NOT route back to DISTILL — it routes back to the upstream wave that should own the missing artefact:
 
@@ -225,7 +180,7 @@ If total scenarios <= 3:
    ```
 2. Run behavioral smoke test:
    ```bash
-   pipenv run pytest tests/acceptance/{feature-id}/ -v --tb=short -x
+   uv run pytest tests/acceptance/{feature-id}/ -v --tb=short -x
    ```
    First scenario MUST fail for a business logic reason (not import error, not missing fixture).
 3. Proceed to Phase 4.
@@ -366,8 +321,6 @@ Before completing DISTILL, produce `docs/feature/{feature-id}/distill/wave-decis
 - Milestone features: {list}
 - Test framework: {framework}
 - Integration approach: {approach}
-- Workflow mode: {classic | atdd_pure}
-- Cohort: {S | M | L | XL} (at_count={N}, scope_extension={bool})
 - AT-completeness score: {N}/15 ({COMPLETE | ACCEPTABLE_WITH_DOCUMENTED_GAPS | INCOMPLETE})
 - Step-reuse ratio: {ratio} (target 4.0×, met={bool})
 
@@ -421,15 +374,13 @@ The invoked agent MUST create a task list from its workflow phases at the start 
 
 ## Success Criteria
 
-- [ ] Workflow mode resolved from `.nwave/config.yaml` (classic | atdd_pure)
-- [ ] Cohort pre-assignment gate executed (atdd_pure only) — exit 0 or operator override recorded
 - [ ] All user stories have corresponding acceptance tests
 - [ ] Step methods call real production services (no mocks at acceptance level)
 - [ ] One-at-a-time implementation strategy established (@skip/@pending tags)
 - [ ] Tests exercise driving ports, not internal components (hexagonal boundary)
 - [ ] Walking skeleton created first with user-centric scenarios (features only; optional for bugs)
 - [ ] Infrastructure test scenarios included (if Decision 4 = Yes)
-- [ ] AT-completeness gate executed — score recorded; under atdd_pure, score ≥ 10/15 or re-author cycle completed
+- [ ] AT-completeness gate executed — score recorded
 - [ ] MAX-PBT + parametrize density mandate honoured (PBT/parametrize default; example-based only for unique invariants or walking-skeleton)
 - [ ] Mandate-12 step-reuse ratio computed and recorded (target ≥ 4× informational)
 - [ ] Final Wave Review Gate passed (4 reviewers: Eclipse + Architect + Forge + Sentinel; fast-path runs Sentinel only; Sentinel always dispatches)
@@ -451,11 +402,5 @@ Orchestrator reads prior waves -> dispatches Quinn -> Quinn produces 2 regressio
 
 ### Example 3: Reviewer model skip (cost-driven)
 `.nwave/des-config.json` has `rigor.reviewer_model: "skip"`. Orchestrator dispatches Quinn -> scenarios produced -> Eclipse/Architect/Forge skipped on cost -> **Sentinel STILL dispatches** (structural-correctness reviewer never skips; silent skip masks Gherkin antipatterns) -> handoff to DELIVER on Sentinel approval.
-
-### Example 4: ATDD-pure M-cohort feature
-`.nwave/config.yaml` has `workflow.mode: atdd_pure`. Orchestrator runs cohort classifier on `codex-empirical-e2e-support` (at_count=18) -> cohort=M -> emit `CohortAssigned` -> dispatch Quinn with MAX-PBT mandate -> Quinn produces 6 parametrize-collapsed + 4 PBT + 2 example-based scenarios -> AT-completeness gate scores 11/15 (ACCEPTABLE_WITH_DOCUMENTED_GAPS: C2b + C7c gaps) -> C7c routes upstream (DEVOPS owns interruption contract) -> Phase 3 full review gate -> handoff to DELIVER with gap log.
-
-### Example 5: ATDD-pure S-cohort BLOCK
-`workflow.mode: atdd_pure`, feature has 7 ATs. Cohort classifier returns S, no `--accept-pilot-scope-extension` flag. Gate emits `CohortAssignmentRejected(feature, cohort=S, at_count=7)`, halts with exit 43 `COHORT_OUT_OF_PILOT_SCOPE`. Operator either reruns with `--accept-pilot-scope-extension` (recorded override) or switches feature to `classic` mode.
 
 DISTILL is the major synthesis point. DELIVER reads DISTILL output as its authoritative specification.

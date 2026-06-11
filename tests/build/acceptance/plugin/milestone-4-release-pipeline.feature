@@ -49,13 +49,6 @@ Feature: Release Pipeline Extension
     Then the plugin build step reports failure
     And the existing release artifacts are not affected
 
-  @skip
-  Scenario: Release pipeline detects version mismatch between tag and metadata
-    Given a release tag "v2.18.0" is created
-    And the project version is "2.17.0"
-    When the release pipeline runs the plugin build step
-    Then the pipeline warns about version mismatch
-
   # --- Edge Cases ---
 
   Scenario: Plugin build is idempotent across repeated runs

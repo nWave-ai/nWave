@@ -660,13 +660,23 @@ class DESPlugin(InstallationPlugin):
     def _migrate_config(
         self, config_file: Path, context: InstallContext
     ) -> PluginResult:
-        """Add update_check to existing config that lacks it (migration path)."""
+        """Seed missing default blocks into an existing config (migration path).
+
+        Each seed is independent and idempotent: a block is added only when it is
+        absent, and an existing block is never overwritten. All pre-existing keys
+        are preserved (read-modify-write).
+        """
         existing = self._read_json_config(config_file)
 
         # Ensure .gitignore on every install/upgrade (migration for existing installs)
         self._ensure_gitignore(config_file.parent)
 
-        if "update_check" in existing:
+        added: list[str] = []
+        if "update_check" not in existing:
+            existing["update_check"] = self._DEFAULT_UPDATE_CHECK_CONFIG
+            added.append("update_check")
+
+        if not added:
             context.logger.info("  ✅ DES config already exists")
             return PluginResult(
                 success=True,
@@ -674,16 +684,16 @@ class DESPlugin(InstallationPlugin):
                 message="DES config already exists",
             )
 
-        existing["update_check"] = self._DEFAULT_UPDATE_CHECK_CONFIG
+        added_summary = ", ".join(added)
         if not context.dry_run:
             self._write_json_config(config_file, existing)
             context.logger.info(
-                f"  ✅ DES config migrated (update_check added): {config_file}"
+                f"  ✅ DES config migrated ({added_summary} added): {config_file}"
             )
         return PluginResult(
             success=True,
             plugin_name="des",
-            message=f"DES config migrated (update_check added) at {config_file}",
+            message=f"DES config migrated ({added_summary} added) at {config_file}",
         )
 
     @staticmethod

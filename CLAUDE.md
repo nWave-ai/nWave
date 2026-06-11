@@ -198,32 +198,37 @@ References to RED_ACCEPTANCE / RED_UNIT in existing execution logs describe the 
 ## Development Commands
 
 ```bash
+# Setup (one-time per clone)
+uv sync                                    # Install project + dev group (PEP 735)
+
 # Testing
-pipenv run pytest                          # All tests
-pipenv run pytest tests/des/unit/          # DES unit tests only
-pipenv run pytest -m unit                  # All unit tests
-pipenv run pytest -m "not slow"            # Skip slow tests
-pipenv run pytest --cov                    # With coverage (fail_under=60)
+uv run poe test                            # All tests
+uv run poe test-des-unit                   # DES unit tests only
+uv run poe test-unit                       # All unit tests
+uv run poe test-not-slow                   # Skip slow tests
+uv run poe test-coverage                   # With coverage (fail_under=60)
 
 # Linting & Formatting
-ruff check src/ scripts/ tests/            # Lint
-ruff format .                              # Format (88 chars, double quotes)
-mypy src/des/                              # Type check (strict mode)
+uv run poe lint                            # Lint (ruff check src/ scripts/ tests/)
+uv run poe format                          # Format (88 chars, double quotes)
+uv run poe typecheck                       # Type check (mypy src/des/, strict mode)
 
 # Pre-commit hooks
-pre-commit run --all-files                 # All hooks
-pre-commit run --hook-stage pre-push       # Push-time hooks only
+uv run pre-commit run --all-files          # All hooks
+uv run pre-commit run --hook-stage pre-push # Push-time hooks only
 
 # Build & Install
-python scripts/build_dist.py               # Build distribution
-python -m nwave_ai.cli install             # Install nWave locally
+uv run poe build                           # Build distribution
+uv run python -m nwave_ai.cli install      # Install nWave locally
 
 # Documentation
-python scripts/docgen.py                   # Regenerate reference docs
+uv run poe docgen                          # Regenerate reference docs
 
 # Mutation testing
-pipenv run mutmut run                      # Run mutation tests
+uv run poe mutation-test                   # Run mutation tests
 ```
+
+> Task aliases live in `[tool.poe.tasks]` (`pyproject.toml`); run `uv run poe` to list them. See [ADR-PLAT-004](docs/architecture/adr/ADR-PLAT-004-uv-dev-workflow.md) for the pipenv→uv decision.
 
 ---
 

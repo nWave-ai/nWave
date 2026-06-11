@@ -1,6 +1,6 @@
 ---
 name: nw-execute
-description: "Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Use to run a step (classic workflow.mode, a roadmap.json plan) or one carpaccio slice (atdd_pure workflow.mode)."
+description: "Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Runs a single roadmap.json step through the TDD cycle."
 user-invocable: true
 argument-hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter "auth-upgrade" "01-01"'
 ---
@@ -11,27 +11,7 @@ argument-hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter "
 
 ## Overview
 
-Dispatch one unit of DELIVER work to an agent. The unit depends on `workflow.mode` (read from `.nwave/config.yaml`): under `classic` it is a single roadmap step; under `atdd_pure` it is one carpaccio slice run through the per-slice lean cycle.
-
-## Workflow Mode
-
-`/nw-execute` reads `workflow.mode` from `.nwave/config.yaml` and branches on it before doing anything else.
-
-- **`classic`** — the ADR-025 roadmap-based spine. `/nw-execute` extracts a single step from `roadmap.json` and dispatches it for the 3-phase TDD canon; the agent appends phase events to `execution-log.json`. This is the default and everything below under "Context Files", "Dispatcher Workflow", and "TDD_PHASES" describes the `classic` path.
-- **`atdd_pure`** — the ADR-028 D6 roadmap-free spine. `/nw-execute` IS the **per-slice lean cycle**: it executes ONE carpaccio slice and has no `roadmap.json` or `execution-log.json` involvement (those are `classic`-only artifacts). See "ATDD-Pure Per-Slice Lean Cycle" below.
-
-### ATDD-Pure Per-Slice Lean Cycle
-
-Under `workflow.mode: atdd_pure`, `/nw-execute` runs one carpaccio slice through the per-slice lean cycle (ADR-028 D6). It does NOT extract roadmap steps and does NOT emit an execution-log — the unit of work is a carpaccio slice, not a roadmap step. The cycle, in order:
-
-1. **Carpaccio entry gate** — confirm the slice's acceptance tests exist and are correctly skip-scaffolded; reject the slice if the carpaccio gate fails.
-2. **`A_GREEN_ATS`** — activate the slice's acceptance tests and implement until they are GREEN. This replaces `classic`-mode roadmap-step extraction: under `atdd_pure` the slice's ATs ARE the work unit.
-3. **`B_COVERAGE_CLEANUP`** — coverage-driven dead-code elimination for the slice.
-4. **Light slice review** — confirm the implementation satisfies the slice's ATs. This is a light pass, not the deep adversarial review (the deep `C`+`F` review belongs to `/nw-deliver`'s feature-end cycle, not here).
-5. **Terminating contract-gate run** — run the whole-tree contract suite (`run_contract_gate.py`); a slice that breaks an earlier slice fails its own terminating run.
-6. **`G_COMMIT`** — stage and conventional-commit, then enforce the `G_COMMIT` exit gate.
-
-`E_BATCH_REFACTOR` and the deep review are explicitly NOT part of `/nw-execute` under `atdd_pure` — they belong to `/nw-deliver`'s feature-end cycle.
+Dispatch one unit of DELIVER work to an agent: a single roadmap step. `/nw-execute` extracts the step from `roadmap.json` and dispatches it for the 3-phase TDD canon; the agent appends phase events to `execution-log.json`.
 
 ## Syntax
 
@@ -39,12 +19,10 @@ Under `workflow.mode: atdd_pure`, `/nw-execute` runs one carpaccio slice through
 /nw-execute @{agent} "{feature-id}" "{step-id}"
 ```
 
-## Context Files Required (classic mode)
+## Context Files Required
 
-These context files apply only when `workflow.mode` is `classic`; under `atdd_pure` there is no roadmap or execution-log (see "ATDD-Pure Per-Slice Lean Cycle").
-
-- `classic` mode: `docs/feature/{feature-id}/deliver/roadmap.json` — Orchestrator reads once, extracts step context
-- `classic` mode: `docs/feature/{feature-id}/deliver/execution-log.json` — Agent appends only (never reads)
+- `docs/feature/{feature-id}/deliver/roadmap.json` — Orchestrator reads once, extracts step context
+- `docs/feature/{feature-id}/deliver/execution-log.json` — Agent appends only (never reads)
 
 ## Rigor Profile Integration
 
@@ -56,11 +34,9 @@ Before dispatching the agent, read rigor config from `.nwave/des-config.json` (k
 
 ## Dispatcher Workflow
 
-This workflow is the `classic`-mode path (roadmap.json step extraction, execution-log emission). Under `atdd_pure`, follow "ATDD-Pure Per-Slice Lean Cycle" above instead.
-
 1. **Parse Parameters** — Extract agent name, feature ID, and step ID from invocation. Gate: all three parameters present and non-empty.
 2. **Load Rigor Profile** — Read `.nwave/des-config.json` key `rigor` (default: standard if absent). Gate: config loaded or default applied.
-3. **Validate Context Files** — `classic` mode only: confirm `roadmap.json` and `execution-log.json` exist under `docs/feature/{feature-id}/deliver/`. Gate: both files present; report path-not-found if missing. Skip this step entirely under `atdd_pure` (no roadmap.json / execution-log).
+3. **Validate Context Files** — Confirm `roadmap.json` and `execution-log.json` exist under `docs/feature/{feature-id}/deliver/`. Gate: both files present; report path-not-found if missing.
 4. **Extract Step Context** — Grep roadmap for `step_id: "{step-id}"` with ~50 lines context. Gate: step found; report available step IDs if missing.
 5. **Invoke Agent** — Call Agent tool with DES template below, applying rigor model and phases from step 2. Gate: Agent tool called, not executed inline.
 
@@ -151,7 +127,7 @@ For SKIPPED phases (genuinely not applicable):
       --data "NOT_APPLICABLE: reason"
 
 CLI enforces real UTC timestamps and validates phase names.
-In `classic` mode, do NOT manually edit execution-log.json.
+Do NOT manually edit execution-log.json.
 Use the DES CLI to record phase outcomes and create log files.
 Python resolution: `$(command -v python3 || command -v python)` — works on macOS (python3 only), Linux, and Windows.
 
@@ -167,9 +143,9 @@ Anti-Fraud Rules:
 
 # BOUNDARY_RULES
 - Only modify files listed in step's files_to_modify
-- `classic` mode: do not load roadmap.json
-- `classic` mode: do not modify execution-log.json structure (append only)
-- `classic` mode: NEVER write execution-log entries for phases you did not execute
+- Do not load roadmap.json
+- Do not modify execution-log.json structure (append only)
+- NEVER write execution-log entries for phases you did not execute
 
 # TIMEOUT_INSTRUCTION
 Target: 30 turns max. If approaching limit, COMMIT current progress.
@@ -183,7 +159,7 @@ If GREEN complete (all tests pass), MUST commit before returning — even at tur
 ## Error Handling
 
 1. **Invalid Agent** — Report available agents from the agent registry. Gate: error message returned, no invocation attempted.
-2. **Missing Context Files** (`classic` mode) — Report exact path not found for roadmap or execution-log. Gate: clear path reported.
+2. **Missing Context Files** — Report exact path not found for roadmap or execution-log. Gate: clear path reported.
 3. **Step Not in Roadmap** — Report available step IDs from roadmap. Gate: list of valid IDs returned.
 4. **Dependency Failure** — Explain which blocking tasks are incomplete. Gate: blocking step IDs named explicitly.
 
@@ -215,11 +191,11 @@ Resume costs ~50% more tokens/call due to context replay (measured: 3.7K vs 2.5K
 ## Success Criteria
 
 - [ ] Agent invoked via Agent tool (dispatcher does not execute the work)
-- [ ] `classic` mode: step context extracted from roadmap and passed in prompt; `atdd_pure` mode: one carpaccio slice run through the per-slice lean cycle
-- [ ] `classic` mode: agent appended phase events to execution-log.json
-- [ ] `classic` mode: agent did not load roadmap.json (under `atdd_pure` there is no roadmap.json)
+- [ ] Step context extracted from roadmap and passed in prompt
+- [ ] Agent appended phase events to execution-log.json
+- [ ] Agent did not load roadmap.json
 
 ## Next Wave
 
 **Handoff To**: /nw-review for post-execution review
-**Deliverables**: `classic` mode — updated execution-log.json; `atdd_pure` mode — committed carpaccio slice; both — implementation artifacts and git commits
+**Deliverables**: Updated execution-log.json, implementation artifacts, and git commits

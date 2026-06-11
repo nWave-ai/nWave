@@ -102,6 +102,11 @@ def _rule_matches_path(rule: str, path: str) -> bool:
     - ``.github/**`` matches anything under ``.github/`` at any depth, but NOT
       the bare directory name ``.github``.
     - ``scripts/release/**`` matches ``scripts/release/foo``, ``scripts/release/a/b``.
+
+    Supported rule forms are **exact** (``pyproject.toml``) and **directory
+    recursion** (``dir/**``). Trailing-slash directory rules (``foo/``) are NOT
+    supported: ``fnmatch("foo/bar", "foo/")`` is False, so such a rule matches
+    nothing — a silent false-negative on a security boundary. Write ``foo/**``.
     """
     if rule.endswith("/**"):
         prefix = rule[: -len("/**")]
@@ -159,15 +164,17 @@ def _git(*args: str, cwd: Path | None = None) -> str:
 
 
 def git_diff_names(base_sha: str, head_sha: str) -> list[str]:
-    """Return added/copied/modified/renamed paths between base and head.
+    """Return added/copied/modified/renamed/type-changed paths between base and head.
 
-    Deletions excluded (diff-filter ACMR) — a deleted file adds no sensitive
-    content. Reference: wave-decisions.md §2 "Reference behaviour".
+    Deletions excluded (diff-filter ACMRT) — a deleted file adds no sensitive
+    content. T (type-change, e.g. file -> symlink) is included so a path that
+    swaps type still gets denylist-scanned. Reference: wave-decisions.md §2
+    "Reference behaviour".
     """
     out = _git(
         "diff",
         "--name-only",
-        "--diff-filter=ACMR",
+        "--diff-filter=ACMRT",
         f"{base_sha}..{head_sha}",
     )
     return [line for line in out.splitlines() if line]

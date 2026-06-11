@@ -149,12 +149,9 @@ def run_pytest_on_path(test_path: str, project_root: Path):
 @when(parsers.parse("I create DESPlugin and register it with PluginRegistry"))
 def create_and_register_des_plugin():
     """Create and register DESPlugin."""
-    try:
-        from scripts.install.plugins.des_plugin import DESPlugin
+    from scripts.install.plugins.des_plugin import DESPlugin
 
-        pytest.des_plugin = DESPlugin()
-    except ImportError:
-        pytest.skip("DESPlugin not yet implemented")
+    pytest.des_plugin = DESPlugin()
 
 
 @when(parsers.parse('I run subprocess import test: "{command}"'))

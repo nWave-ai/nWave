@@ -55,7 +55,7 @@ def test_unconditional_invokes_pytest_on_any_push(wrapper) -> None:
     cmd = mock_run.call_args.args[0]
     # Pre-push runs only the smoke subset (4 critical-path files);
     # full e2e remains on CI per PR.
-    assert "pipenv" in cmd[0] or "pytest" in " ".join(cmd), (
+    assert "uv" in cmd[0] or "pytest" in " ".join(cmd), (
         f"Expected pytest invocation, got: {cmd}"
     )
     assert "-m" in cmd, f"Expected ``-m`` selector, got: {cmd}"

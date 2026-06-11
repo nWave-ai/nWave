@@ -810,7 +810,7 @@ class TestExitCodeInvariant:
         """Sanity: totally empty argv → argparse exits 2 (usage)."""
         result = _run()
 
-        assert result.returncode in {0, 1, 2}
+        assert result.returncode == 2
 
     def test_exit_code_always_in_valid_set_for_random_invocations(self, tmp_path):
         """Property-shaped: 30 random argv/denylist/diff combos — exit always in {0,1,2}."""

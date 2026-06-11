@@ -20,12 +20,9 @@ Dispatches Trim to inventory a test scope, detect duplication and anti-patterns,
 - The scope path (passed as argument or auto-detected)
 - `~/.claude/skills/nw-test-optimization/SKILL.md` — methodology (loaded by agent)
 
-## Timing Baseline by `workflow.mode`
+## Timing Baseline
 
-The timing baseline Trim compares against depends on `workflow.mode`:
-
-- **classic mode** — wall-clock figures recorded in the classic-mode execution-log.json.
-- **atdd_pure mode** — under `atdd_pure` there is no step log; use the **AT-completion ledger** phase-boundary timestamps as the timing baseline. Each ledger slice records a phase-boundary timestamp per phase transition, and the deltas between consecutive phase-boundary marks give the per-slice timing baseline Trim measures improvement against.
+Trim compares against the wall-clock figures recorded in the execution-log.json.
 
 ## Agent Invocation
 
@@ -82,7 +79,7 @@ Trim inventories the unit suite, runs md5sum cross-check, scans for anti-pattern
 ```
 /nw-optimize-tests lean-wave-documentation
 ```
-Trim resolves to `tests/<feature-id>/` paths from the classic-mode execution-log.json if available (or, in atdd_pure mode, from the ledger's recorded test paths), otherwise scopes to test files referencing the feature-id.
+Trim resolves to `tests/<feature-id>/` paths from the execution-log.json if available, otherwise scopes to test files referencing the feature-id.
 
 ### Example 3: Single fat file
 ```

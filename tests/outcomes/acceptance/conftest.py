@@ -95,18 +95,6 @@ def _isolated_env(sandbox: Path) -> dict[str, str]:
     return env
 
 
-def pytest_collection_modifyitems(config, items):
-    """Skip pytest-bdd scenarios tagged ``@pending`` in feature files.
-
-    pytest-bdd lifts feature/scenario tags into pytest markers. Use that
-    to short-circuit @pending scenarios authored ahead of activation.
-    """
-    skip_pending = pytest.mark.skip(reason="@pending — activated in a later step")
-    for item in items:
-        if item.get_closest_marker("pending") is not None:
-            item.add_marker(skip_pending)
-
-
 @pytest.fixture
 def run_cli(nwave_ai_binary: list[str], sandbox: Path):
     """Subprocess runner for nwave-ai outcomes invocations."""
