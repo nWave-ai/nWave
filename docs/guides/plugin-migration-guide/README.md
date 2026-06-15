@@ -3,7 +3,7 @@
 ## Overview
 
 nWave supports two installation methods:
-1. **Custom installer** (`nwave install`) -- installs to `~/.claude/`
+1. **Custom installer** (`nwave-ai install`) -- installs to `~/.claude/`
 2. **Plugin** -- installs to `~/.claude/plugins/cache/nwave/`
 
 Both can coexist. This guide documents how to migrate from the custom installer to the plugin.
@@ -77,4 +77,4 @@ After migration, verify:
 
 To rollback to custom installer:
 1. Remove plugin: `claude plugin uninstall nw`
-2. Reinstall custom: `nwave install`
+2. Reinstall custom: `nwave-ai install`

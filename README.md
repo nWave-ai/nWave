@@ -4,6 +4,8 @@ AI agents that guide you from idea to working code, with human judgment at every
 
 nWave runs inside [Claude Code](https://claude.com/product/claude-code). It breaks feature delivery into seven waves (discover, diverge, discuss, design, devops, distill, deliver). Specialized agents produce artifacts at each wave. You review and approve before proceeding.
 
+**Documentation**: [docs.nwave.ai](https://docs.nwave.ai) — guides, reference, and explanations, versioned per release.
+
 ## Install in 5 Minutes
 
 **Requirements**: Python 3.10+ and Claude Code.
