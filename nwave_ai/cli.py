@@ -159,6 +159,32 @@ def _get_config_dir() -> Path:
     return Path.home() / ".nwave"
 
 
+def _record_package_manager(config_dir: Path) -> None:
+    """Persist the detected package manager into global config after install.
+
+    Runs inside the nwave-ai process, so ``sys.executable`` is the install
+    interpreter and ``detect_pm`` is reliable here -- unlike at ``/nw-update``
+    time, where the skill shells out via an unrelated ambient ``python3``.
+    Recording it now lets ``/nw-update`` read a trustworthy value later
+    (via ``resolve_nwave_pm``).
+
+    Best-effort: a detection/write failure must never fail the install.
+    """
+    try:
+        from des.adapters.driven.package_managers.package_manager_detector import (
+            detect_pm,
+        )
+
+        pm = detect_pm(Path(sys.executable))
+        config = read_global_config(config_dir)
+        install_block = config.get("install", {})
+        install_block["package_manager"] = pm
+        config["install"] = install_block
+        write_global_config(config_dir, config)
+    except Exception:
+        pass  # Never block install on PM recording.
+
+
 def _extract_target_flag(
     args: list[str],
 ) -> tuple[Path | None, list[str], str | None]:
@@ -269,7 +295,10 @@ def _handle_install(args: list[str]) -> int:
     if density_only:
         return 0
 
-    return _run_script("install_nwave.py", pass_through_args)
+    result = _run_script("install_nwave.py", pass_through_args)
+    if result == 0:
+        _record_package_manager(config_dir)
+    return result
 
 
 def _handle_uninstall(args: list[str]) -> int:

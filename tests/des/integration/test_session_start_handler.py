@@ -84,7 +84,13 @@ def _invoke_handler(
     mock_stdin.read.return_value = "{}"
 
     def _build_service_for_test(_des_config=None):
-        des_config = DESConfig(config_path=config_file)
+        # update_check is machine-scoped: the test config_file IS the global
+        # config. The project config is a separate (absent) path so the test
+        # stays isolated from the real ~/.nwave/global-config.json.
+        des_config = DESConfig(
+            config_path=config_file.parent / ".nwave" / "des-config.json",
+            global_config_path=config_file,
+        )
         return UpdateCheckService(
             des_config=des_config,
             local_version=local_version,
@@ -124,7 +130,7 @@ class TestSessionStartHandlerFullFlow:
 
     def test_update_available_produces_additional_context_json(self, tmp_path):
         """UPDATE_AVAILABLE flow produces valid additionalContext JSON on stdout."""
-        config_file = tmp_path / ".nwave" / "des-config.json"
+        config_file = tmp_path / "global-config.json"
         _write_config(
             config_file,
             {
@@ -149,13 +155,16 @@ class TestSessionStartHandlerFullFlow:
         assert exit_code == 0
         assert stdout.strip(), "Expected non-empty stdout for UPDATE_AVAILABLE"
         payload = json.loads(stdout.strip())
-        assert "additionalContext" in payload
-        ctx = payload["additionalContext"]
+        assert payload["hookSpecificOutput"]["hookEventName"] == "SessionStart"
+        ctx = payload["hookSpecificOutput"]["additionalContext"]
         assert "2.0.0" in ctx, "Latest version must appear in additionalContext"
+        assert "2.0.0" in payload["systemMessage"], (
+            "Latest version must appear in the user-visible systemMessage"
+        )
 
     def test_update_available_includes_changelog_when_github_succeeds(self, tmp_path):
         """UPDATE_AVAILABLE with successful GitHub response includes changelog."""
-        config_file = tmp_path / ".nwave" / "des-config.json"
+        config_file = tmp_path / "global-config.json"
         _write_config(
             config_file,
             {"update_check": {"frequency": "every_session", "skipped_versions": []}},
@@ -173,11 +182,11 @@ class TestSessionStartHandlerFullFlow:
 
         assert exit_code == 0
         payload = json.loads(stdout.strip())
-        assert changelog_text in payload["additionalContext"]
+        assert changelog_text in payload["hookSpecificOutput"]["additionalContext"]
 
     def test_up_to_date_produces_no_stdout(self, tmp_path):
         """UP_TO_DATE flow produces no stdout and exit 0."""
-        config_file = tmp_path / ".nwave" / "des-config.json"
+        config_file = tmp_path / "global-config.json"
         _write_config(
             config_file,
             {"update_check": {"frequency": "every_session", "skipped_versions": []}},
@@ -200,7 +209,7 @@ class TestSessionStartHandlerFullFlow:
         """PyPI timeout produces no stdout and exit 0."""
         import urllib.error
 
-        config_file = tmp_path / ".nwave" / "des-config.json"
+        config_file = tmp_path / "global-config.json"
         _write_config(
             config_file,
             {"update_check": {"frequency": "every_session", "skipped_versions": []}},
@@ -223,7 +232,7 @@ class TestSessionStartHandlerFullFlow:
         """GitHub API failure: additionalContext present with version but no changelog body."""
         import urllib.error
 
-        config_file = tmp_path / ".nwave" / "des-config.json"
+        config_file = tmp_path / "global-config.json"
         _write_config(
             config_file,
             {"update_check": {"frequency": "every_session", "skipped_versions": []}},
@@ -243,8 +252,7 @@ class TestSessionStartHandlerFullFlow:
             "Expected non-empty stdout when PyPI succeeds but GitHub fails"
         )
         payload = json.loads(stdout.strip())
-        assert "additionalContext" in payload
-        ctx = payload["additionalContext"]
+        ctx = payload["hookSpecificOutput"]["additionalContext"]
         assert "2.0.0" in ctx, "Latest version must appear in additionalContext"
         # changelog content absent — message ends with "Changes: "
         assert "Feature" not in ctx, (
@@ -253,7 +261,7 @@ class TestSessionStartHandlerFullFlow:
 
     def test_frequency_never_produces_no_stdout_without_network_calls(self, tmp_path):
         """frequency=never produces no stdout and makes no network calls."""
-        config_file = tmp_path / ".nwave" / "des-config.json"
+        config_file = tmp_path / "global-config.json"
         _write_config(
             config_file,
             {"update_check": {"frequency": "never", "skipped_versions": []}},

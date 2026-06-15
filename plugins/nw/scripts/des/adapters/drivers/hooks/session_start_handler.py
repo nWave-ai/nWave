@@ -1,14 +1,24 @@
 """SessionStart hook handler for nWave update checks and housekeeping.
 
 Reads hook input JSON from stdin, runs housekeeping, invokes UpdateCheckService,
-and writes additionalContext JSON to stdout when UPDATE_AVAILABLE.
+and writes the update notice JSON to stdout when UPDATE_AVAILABLE.
 
 Fail-open: any exception exits 0 so session is never blocked.
 Housekeeping and update check run in independent try/except blocks.
 Housekeeping runs before update check; DESConfig is shared between both.
 
-Output format when UPDATE_AVAILABLE:
-    {"additionalContext": "nWave update available: {local} → {latest}. Changes: {changelog_or_empty}"}
+Output format when UPDATE_AVAILABLE (see ``_build_update_output``):
+    {
+      "systemMessage": "nWave update available: {local} → {latest}. Run /nw-update to update.",
+      "hookSpecificOutput": {
+        "hookEventName": "SessionStart",
+        "additionalContext": "nWave update available: {local} → {latest}. Changes: {changelog_or_empty}"
+      }
+    }
+
+``systemMessage`` is shown to the user; ``additionalContext`` is injected into
+the model context. The wrapped ``hookSpecificOutput`` form is required -- the
+bare ``{"additionalContext": ...}`` form is not honored by current Claude Code.
 """
 
 from __future__ import annotations
@@ -120,9 +130,35 @@ def _build_update_check_service(des_config: DESConfig) -> UpdateCheckService:
 
 
 def _build_update_message(local: str, latest: str, changelog: str | None) -> str:
-    """Format the additionalContext message for an available update."""
+    """Format the model-facing additionalContext message for an available update."""
     changes = changelog or ""
     return f"nWave update available: {local} \u2192 {latest}. Changes: {changes}"
+
+
+def _build_visible_message(local: str, latest: str) -> str:
+    """Format the user-visible systemMessage shown on screen at session start."""
+    return f"nWave update available: {local} \u2192 {latest}. Run /nw-update to update."
+
+
+def _build_update_output(local: str, latest: str, changelog: str | None) -> dict:
+    """Build the SessionStart hook JSON payload for an available update.
+
+    Emits BOTH:
+    - ``systemMessage`` (top-level) -- rendered visibly to the user at session
+      start. ``additionalContext`` alone is injected silently and never shown,
+      so a visible notice requires this field.
+    - ``hookSpecificOutput.additionalContext`` -- the canonical wrapped form for
+      context injection. The bare ``{"additionalContext": ...}`` form is dropped
+      by current Claude Code versions, so the wrapper is required for the model
+      to actually receive the update context.
+    """
+    return {
+        "systemMessage": _build_visible_message(local, latest),
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": _build_update_message(local, latest, changelog),
+        },
+    }
 
 
 def handle_session_start() -> int:
@@ -158,12 +194,12 @@ def handle_session_start() -> int:
         from des.application.update_check_service import UpdateStatus
 
         if result.status == UpdateStatus.UPDATE_AVAILABLE:
-            message = _build_update_message(
+            output = _build_update_output(
                 local=_get_local_version(),
                 latest=result.latest or "",
                 changelog=result.changelog,
             )
-            print(json.dumps({"additionalContext": message}))
+            print(json.dumps(output))
 
     except Exception:
         pass

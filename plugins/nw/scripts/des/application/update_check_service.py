@@ -147,9 +147,9 @@ class UpdateCheckService:
         else:
             result = UpdateCheckResult(status=UpdateStatus.UP_TO_DATE)
 
-        # Persist last_checked after successful network fetch
+        # Persist last_checked + latest discovered after successful network fetch
         if self._des_config is not None:
-            self._persist_last_checked()
+            self._persist_last_checked(latest_available=latest)
 
         return result
 
@@ -184,8 +184,12 @@ class UpdateCheckService:
             current_time=datetime.now(tz=timezone.utc),
         )
 
-    def _persist_last_checked(self) -> None:
-        """Write last_checked=now to DESConfig. Silently ignores any errors."""
+    def _persist_last_checked(self, latest_available: str | None = None) -> None:
+        """Write last_checked=now (+ latest discovered) to DESConfig.
+
+        Persisting ``latest_available`` lets ``/nw-update`` resolve the upgrade
+        target from config without re-querying PyPI. Silently ignores errors.
+        """
         if self._des_config is None:
             return
         try:
@@ -193,6 +197,7 @@ class UpdateCheckService:
             self._des_config.save_update_check_state(
                 last_checked=now_iso,
                 skipped_versions=self._des_config.update_check_skipped_versions,
+                latest_available=latest_available,
             )
         except Exception:
             pass  # State persistence is best-effort; never block the service

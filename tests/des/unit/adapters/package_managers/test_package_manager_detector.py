@@ -16,7 +16,10 @@ from unittest.mock import patch
 
 import pytest
 
-from des.adapters.driven.package_managers.package_manager_detector import detect_pm
+from des.adapters.driven.package_managers.package_manager_detector import (
+    detect_pm,
+    resolve_nwave_pm,
+)
 
 
 _PROBE = (
@@ -140,3 +143,38 @@ class TestDetectPmOverride:
             patch(_PROBE, side_effect=FileNotFoundError()),
         ):
             assert detect_pm(executable) == "pip"
+
+
+class TestResolveNwavePm:
+    """resolve_nwave_pm: override > recorded value > path detection.
+
+    Regression for /nw-update reporting 'unknown' under uv installs: the skill
+    runs via an ambient python3 whose path has no PM marker, so detect_pm alone
+    yields 'unknown'. The recorded install-time value must take precedence.
+    """
+
+    # An interpreter with NO package-manager marker (the /nw-update situation).
+    _AMBIENT = Path("/home/user/.local/share/virtualenvs/dev/bin/python3")
+
+    def test_recorded_value_used_when_path_detection_would_be_unknown(self) -> None:
+        with patch(_PROBE, side_effect=FileNotFoundError()):
+            assert resolve_nwave_pm("uv", self._AMBIENT) == "uv"
+            assert resolve_nwave_pm("pipx", self._AMBIENT) == "pipx"
+
+    def test_override_wins_over_recorded_value(self) -> None:
+        with (
+            patch.dict("os.environ", {"NWAVE_INSTALLER": "pipx"}, clear=False),
+            patch(_PROBE, side_effect=FileNotFoundError()),
+        ):
+            assert resolve_nwave_pm("uv", self._AMBIENT) == "pipx"
+
+    def test_falls_back_to_path_detection_when_unrecorded(self) -> None:
+        uv_exe = Path("/home/user/.local/share/uv/tools/nwave-ai/bin/python")
+        with patch(_PROBE, side_effect=FileNotFoundError()):
+            assert resolve_nwave_pm(None, uv_exe) == "uv"
+
+    @pytest.mark.parametrize("recorded", [None, "unknown", "conda", ""])
+    def test_invalid_or_missing_recorded_falls_back(self, recorded) -> None:
+        # Ambient interpreter has no marker -> unknown when recorded is unusable.
+        with patch(_PROBE, side_effect=FileNotFoundError()):
+            assert resolve_nwave_pm(recorded, self._AMBIENT) == "unknown"

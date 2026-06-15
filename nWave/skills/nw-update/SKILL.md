@@ -24,14 +24,29 @@ Do NOT attempt to upgrade nwave-ai in the current session.
 
 1. If the user passed an argument (`$ARGUMENTS`), treat it as the target version
    after stripping a leading `v`.
-2. Otherwise read `update_check.latest_available` from DESConfig
-   (`.nwave/des-state.json`).
-3. If no argument AND no discovered version: ask the user for the target version
-   explicitly. Do not guess.
+2. Otherwise read the latest version discovered by the periodic update check
+   from the global config (`update_check.latest_available`):
+
+```bash
+python3 -c "
+import sys, os
+sys.path.insert(0, os.path.expanduser('~/.claude/lib/python'))
+from des.adapters.driven.config.des_config import DESConfig
+print(DESConfig().update_check_latest_available or '')"
+```
+
+3. If no argument AND no discovered version (empty output): ask the user for the
+   target version explicitly. Do not guess.
 
 ### Step 2: Detect the package manager and its binary
 
-Invoke the detector and resolve the PM binary absolute path in a single Bash call:
+Invoke the detector and resolve the PM binary absolute path in a single Bash call.
+
+This runs under whatever `python3` the shell provides, which is NOT the
+interpreter nwave-ai was installed under — so `sys.executable` is the wrong
+anchor for detection. Use `resolve_nwave_pm`, which prefers the value the
+installer recorded at install time (`install.package_manager` in the global
+config) and only falls back to live path detection:
 
 ```bash
 python3 -c "
@@ -39,8 +54,11 @@ import sys, os
 sys.path.insert(0, os.path.expanduser('~/.claude/lib/python'))
 import shutil
 from pathlib import Path
-from des.adapters.driven.package_managers.package_manager_detector import detect_pm
-pm = detect_pm(Path(sys.executable))
+from des.adapters.driven.config.des_config import DESConfig
+from des.adapters.driven.package_managers.package_manager_detector import (
+    resolve_nwave_pm,
+)
+pm = resolve_nwave_pm(DESConfig().installed_package_manager, Path(sys.executable))
 binary = shutil.which(pm) if pm in ('pipx', 'uv') else ''
 print(f'{pm}|{binary or \"\"}')"
 ```
@@ -75,29 +93,30 @@ Then restart Claude Code.
 
 Call the driving port `PendingUpdateService.request_update`:
 
+Reuse the `pm` and `binary` already resolved in Step 2 — do NOT re-detect from
+`sys.executable` here (that interpreter is not the install anchor). Construct
+`DESConfig()` directly; there is no `DESConfig.load()`.
+
 ```bash
 python3 -c "
 import sys, os
 sys.path.insert(0, os.path.expanduser('~/.claude/lib/python'))
 from des.application.pending_update_service import PendingUpdateService
 from des.adapters.driven.config.des_config import DESConfig
-from des.adapters.driven.package_managers.package_manager_detector import detect_pm
-from des.ports.driven_ports.package_manager_port import PackageManagerPort
-from pathlib import Path
-import shutil
 
-pm = detect_pm(Path(sys.executable))
-binary = shutil.which(pm)
+pm = '${PM}'
+binary = '${PM_BINARY}'
 target = '${TARGET_VERSION}'
 
-config = DESConfig.load()
-# PM adapter is only used by apply(), request_update() does not invoke it.
+config = DESConfig()
+# PM adapter is only used by apply(); request_update() does not invoke it.
 svc = PendingUpdateService(config=config, pm=None)  # type: ignore[arg-type]
 svc.request_update(pm=pm, pm_binary_abspath=binary, target_version=target)
 print(f'queued:{pm}:{target}')"
 ```
 
-Substitute `${TARGET_VERSION}` with the value resolved in Step 1 (no leading `v`).
+Substitute `${PM}` and `${PM_BINARY}` with the Step 2 values, and
+`${TARGET_VERSION}` with the Step 1 value (no leading `v`).
 
 ### Step 5: Confirm to the user
 
