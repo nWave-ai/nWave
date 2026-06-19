@@ -38,7 +38,7 @@ Direct the user to `docs/guides/configuring-doc-density.md` for the persistent c
 If `docs/reference/global-config.md` is absent (Read tool returns not-found):
 
 1. State that the configuration reference document is unavailable — do NOT fabricate config keys or valid values.
-2. Direct the user to the troubleshooting path: check that nwave-ai is installed (`pipx list | grep nwave`), that `docs/reference/` exists in the project, or run `python -m nwave_ai.cli install` to restore framework docs.
+2. Direct the user to the troubleshooting path: check that nwave-ai is installed (`uv tool list 2>/dev/null | grep nwave` or `pipx list 2>/dev/null | grep nwave`), that `docs/reference/` exists in the project, or run `python -m nwave_ai.cli install` to restore framework docs.
 3. Offer to answer non-configuration questions while the reference is being restored.
 
 ### Version-awareness — answering "what's new in vX.Y?" / "what changed?" / "what was fixed?"

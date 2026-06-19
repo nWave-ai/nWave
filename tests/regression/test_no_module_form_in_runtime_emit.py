@@ -22,8 +22,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 
 _FORBIDDEN_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"python\s*-m\s+des\.cli\."),
@@ -53,26 +51,39 @@ def _scan_file(path: Path) -> list[tuple[int, str]]:
     return hits
 
 
-@pytest.mark.parametrize(
-    "py_file",
-    _collect_src_des_py_files(),
-    ids=lambda p: str(p.relative_to(_PROJECT_ROOT)),
-)
-def test_no_module_form_in_src_des(py_file: Path) -> None:
-    """Each .py file under src/des/ must NOT contain module-form invocation strings.
+def test_src_des_runtime_has_no_module_form_invocations() -> None:
+    """∀ f ∈ src/des/**/*.py : ¬∃ line ∈ f matching forbidden_pattern.
+
+    Closed-world static invariant over the project's runtime tree. Collapses
+    155 parametrized cases (one per file) into a single set-difference assertion
+    that reports the full violation map in the failure message.
 
     Module-form strings (e.g. `python -m des.cli.roadmap`) leaked from runtime
     emit cause Claude to generalize the form, breaking multi-env users
-    (uv install + poetry/conda/venv project).
+    (uv install + poetry/conda/venv project). Use entry-point form instead:
+    `des-roadmap`, `des-init-log`, `des-log-phase`, `des-verify-integrity`,
+    `des-health-check` (declared in pyproject.toml under `[project.scripts]`).
 
-    Use entry-point form instead: `des-roadmap`, `des-init-log`, `des-log-phase`,
-    `des-verify-integrity`, `des-health-check` (declared in pyproject.toml under
-    `[project.scripts]`).
+    Shape choice (Lyra 2026-05-18 after PBT-pilot falsification): set-difference
+    collapse, not PBT. Per `nw-test-optimization` SKILL section 2-3 (parametrize-
+    inflation → set-difference). Hypothesis would add 457ms import + per-example
+    overhead x 155, making it slower than parametrize. Mandate-12 still satisfied:
+    types-as-domain (`Path` enumeration), services-as-logic (`_scan_file` +
+    `_FORBIDDEN_PATTERNS`), single-source assertion. Empirical wall-time:
+    5.42s parametrize → 0.61s collapse (8.9x faster, 88.7% reduction).
     """
-    hits = _scan_file(py_file)
-    assert not hits, (
-        f"Forbidden module-form CLI invocation in {py_file.relative_to(_PROJECT_ROOT)}:\n"
-        + "\n".join(f"  line {n}: {text}" for n, text in hits)
+    violations = {
+        py_file: hits
+        for py_file in _collect_src_des_py_files()
+        if (hits := _scan_file(py_file))
+    }
+    assert not violations, (
+        "Forbidden module-form CLI invocation in src/des/:\n"
+        + "\n".join(
+            f"  {path.relative_to(_PROJECT_ROOT)}:{n}: {text}"
+            for path, hits in violations.items()
+            for n, text in hits
+        )
         + "\n\nUse entry-point form instead (e.g. `des-roadmap` not `python -m des.cli.roadmap`)."
         + "\nDeclared entry points: pyproject.toml [project.scripts]."
     )

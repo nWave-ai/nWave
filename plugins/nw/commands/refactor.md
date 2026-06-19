@@ -11,7 +11,18 @@ argument-hint: "[target-class-or-module] - Optional: --level=[1-6] --method=[ext
 
 ## Overview
 
-Applies the Refactoring Priority Premise (RPP) — cascading 6-level hierarchy where lower levels complete before higher. Levels: L1 Readability|L2 Complexity|L3 Responsibilities|L4 Abstractions|L5 Design Patterns|L6 SOLID++. Each builds on previous. For complex multi-class refactorings, agent applies Mikado Method internally.
+Applies the Refactoring Priority Premise (RPP) — 6-level hierarchy L1 Readability|L2 Complexity|L3 Responsibilities|L4 Abstractions|L5 Design Patterns|L6 SOLID++. For complex multi-class refactorings, agent applies Mikado Method internally.
+
+## Execution Model — Batch-Then-Verify (default, unconditional)
+
+`/nw-refactor` runs **batch-then-verify** by default, regardless of test-suite speed:
+
+1. **Cascade governs PLANNING ORDER only** — analyze and plan lower levels before higher (L2 builds on L1, etc.). Not a test-gating sequence.
+2. **Edits applied as one coherent batch** — all planned L1-L6 transformations in a single editing session, NO interleaved test runs.
+3. **Run the test suite exactly ONCE**, at the very end, after all L1-L6 edits.
+4. **If RED after the batch**: diagnose and fix the **production** code. Do NOT modify tests to make them pass. A test that must change means either (a) the refactor altered observable behavior — revert it — or (b) the test encoded an implementation detail — flag to the user before touching it. Tests changing during a refactor is a signal, not a step.
+
+**Legacy incremental variant** (opt-in only): the `nw-progressive-refactoring` skill documents the incremental L1→test→L2→test cycle — NOT the default; use only when explicitly requested. Anchor: `feedback_refactor_batch_when_test_suite_slow_2026_05_19` (the prior "only batch when suite slow" conditional is removed).
 
 ## Context Files Required
 
@@ -43,8 +54,9 @@ The invoked agent MUST create a task list from its workflow phases at the start 
 ## Success Criteria
 
 - [ ] Code quality metrics improved (measured before/after)
-- [ ] All tests passing after refactoring
-- [ ] Refactoring levels applied in sequence (L1 before L2, etc.)
+- [ ] L1-L6 transformations planned in cascade order, applied as one batch
+- [ ] Test suite run exactly once, at the end — GREEN
+- [ ] If RED after batch: production code fixed (tests NOT modified to pass)
 - [ ] Technical debt reduced measurably
 
 ## Next Wave
@@ -70,7 +82,7 @@ Crafty uses Mikado Method for multi-class refactoring, applies dependency invers
 ```
 /nw-refactor src/des/domain/ --from=1 --to=3 --scope=module
 ```
-Sweeps L1 readability|L2 complexity|L3 responsibility smells. Cascade rule: L2 only after L1 clean, L3 only after L2 clean.
+Sweeps L1 readability|L2 complexity|L3 responsibility smells. Cascade governs planning order (analyze L1 before L2 before L3); edits applied as one batch; suite run once at the end.
 
 ### Example 4: Targeted single-level refactor
 ```

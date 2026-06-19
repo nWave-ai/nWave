@@ -9,7 +9,7 @@ Test 4 captures F-08 (remediation message), fixed in step 01-03.
 Tests 5-6 harden D-02 (tool-aware remediation for pipx-only and no-tool cases).
 
 Refs: install-uv-primary feature plan, architects convergence
-Step-ID: 01-01, 01-03
+Step-Id: 01-01, 01-03
 """
 
 import sys
@@ -96,7 +96,7 @@ def test_remediation_mentions_uv_when_uv_on_path(
     whose remediation mentions 'uv tool install nwave-ai' because uv is on PATH,
     and does NOT present 'pip install nwave-ai' as the primary standalone command.
 
-    Fixes F-08. Step-ID: 01-03.
+    Fixes F-08. Step-Id: 01-03.
     """
     monkeypatch.setattr(sys, "prefix", sys.base_prefix)
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
@@ -125,7 +125,7 @@ def test_remediation_mentions_pipx_when_only_pipx_on_path(
     shutil.which returns None for uv but a path for pipx.
     Verifies remediation mentions 'pipx install nwave-ai' and not 'uv tool install'.
 
-    Hardens D-02 tool-aware remediation for pipx-only case. Step-ID: 01-03.
+    Hardens D-02 tool-aware remediation for pipx-only case. Step-Id: 01-03.
     """
     monkeypatch.setattr(sys, "prefix", sys.base_prefix)
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
@@ -155,7 +155,7 @@ def test_remediation_suggests_installing_uv_when_no_tool_on_path(
     shutil.which returns None for both uv and pipx.
     Verifies remediation includes the curl install command for uv and 'uv tool install nwave-ai'.
 
-    Hardens D-02 tool-aware remediation for no-tool case. Step-ID: 01-03.
+    Hardens D-02 tool-aware remediation for no-tool case. Step-Id: 01-03.
     """
     monkeypatch.setattr(sys, "prefix", sys.base_prefix)
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)

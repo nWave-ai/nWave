@@ -7,6 +7,10 @@ Falls back to safe defaults (audit logging ON) when file is missing or invalid.
 Rigor cascade: project config -> global config -> standard defaults.
 When a project has a "rigor" key, the entire global rigor block is ignored.
 
+update_check state (frequency, last_checked, skipped_versions) is machine-scoped
+and read from / written to the GLOBAL config only -- it is NOT per-project. See
+``_update_check`` and ``save_update_check_state``.
+
 Hexagonal Architecture:
 - DRIVEN ADAPTER: Implements configuration port (driven by business logic)
 - ON BY DEFAULT: Audit logging enabled unless explicitly disabled in config
@@ -61,12 +65,12 @@ class DESConfig:
         self._config_path = config_path
         self._config_data = self._load_json_file(self._config_path)
 
-        effective_global_path = (
+        self._global_config_path = (
             global_config_path
             if global_config_path is not None
             else self._DEFAULT_GLOBAL_CONFIG_PATH
         )
-        self._global_config_data = self._load_json_file(effective_global_path)
+        self._global_config_data = self._load_json_file(self._global_config_path)
 
     @staticmethod
     def _load_json_file(path: Path) -> dict[str, Any]:
@@ -142,8 +146,16 @@ class DESConfig:
         return self._global_config_data.get("rigor", {})
 
     def _update_check(self) -> dict:
-        """Return update_check sub-config dict, defaulting to empty dict."""
-        return self._config_data.get("update_check", {})
+        """Return update_check sub-config from the GLOBAL config.
+
+        Update-check cadence/state (frequency, last_checked, skipped_versions)
+        is a per-machine concern -- "has this machine asked PyPI recently?" --
+        not a per-project one. It therefore lives in
+        ``~/.nwave/global-config.json``, independent of the working directory.
+        Storing it per-project caused sibling folders to gate independently and
+        a folder with a same-day timestamp to self-suppress the update banner.
+        """
+        return self._global_config_data.get("update_check", {})
 
     def _housekeeping(self) -> dict:
         """Return housekeeping sub-config dict, defaulting to empty dict."""
@@ -166,10 +178,16 @@ class DESConfig:
 
     @property
     def rigor_tdd_phases(self) -> tuple[str, ...]:
-        """Get TDD phases as tuple. Default: full 5-phase."""
+        """Get TDD phases as tuple.
+
+        Default: canonical 3-phase (RED, GREEN, COMMIT) per ADR-025 (default
+        flip 2026-05-18). Existing projects with an explicit ``rigor.tdd_phases``
+        list in ``.nwave/des-config.json`` continue to override this default
+        unchanged (backward-compat preserved).
+        """
         phases = self._rigor().get(
             "tdd_phases",
-            ["PREPARE", "RED_ACCEPTANCE", "RED_UNIT", "GREEN", "COMMIT"],
+            ["RED", "GREEN", "COMMIT"],
         )
         return tuple(phases)
 
@@ -197,14 +215,28 @@ class DESConfig:
     def update_check_frequency(self) -> str | None:
         """Get update check frequency.
 
-        Returns None when the update_check key is entirely absent from config
-        (indicates first run — no config bootstrapped yet). Returns 'daily'
-        when the update_check key exists but frequency sub-key is absent.
+        Read from the GLOBAL config (machine-scoped; see ``_update_check``).
+        Returns None when the update_check key is entirely absent from the
+        global config (indicates first run — no config bootstrapped yet).
+        Returns 'daily' when the update_check key exists but frequency sub-key
+        is absent.
         """
-        update_check = self._config_data.get("update_check")
+        update_check = self._global_config_data.get("update_check")
         if update_check is None:
-            return None  # key absent = first run, no config yet
+            return None  # key absent = first run, no global config yet
         return update_check.get("frequency", "daily")
+
+    @property
+    def installed_package_manager(self) -> str | None:
+        """PM recorded at install time, from the GLOBAL config (machine-scoped).
+
+        ``~/.nwave/global-config.json`` -> ``install.package_manager``. Recorded
+        by ``nwave-ai install`` from its own interpreter, where detection is
+        reliable; consumed by ``/nw-update`` whose ambient interpreter is not.
+        Returns None when unrecorded (installed before this existed, or a pip
+        install with no PM marker).
+        """
+        return self._global_config_data.get("install", {}).get("package_manager")
 
     @property
     def update_check_last_checked(self) -> str | None:
@@ -215,6 +247,15 @@ class DESConfig:
     def update_check_skipped_versions(self) -> list[str]:
         """Get list of versions skipped by user. Default: empty list."""
         return self._update_check().get("skipped_versions", [])
+
+    @property
+    def update_check_latest_available(self) -> str | None:
+        """Latest version discovered by the last successful update check.
+
+        Recorded in the GLOBAL config update_check block and consumed by
+        ``/nw-update`` to resolve the upgrade target. None when never recorded.
+        """
+        return self._update_check().get("latest_available")
 
     @property
     def housekeeping_enabled(self) -> bool:
@@ -259,22 +300,30 @@ class DESConfig:
         last_checked: str,
         skipped_versions: list[str],
         frequency: str | None = None,
+        latest_available: str | None = None,
     ) -> None:
         """
-        Persist update check state to config file.
+        Persist update check state to the GLOBAL config file.
 
-        Read-modify-write: preserves all other config keys.
+        Update-check state is machine-scoped (see ``_update_check``), so it is
+        written to ``~/.nwave/global-config.json`` rather than the project
+        config. Read-modify-write: preserves all other global config keys.
         Creates update_check key when absent.
 
         Args:
             last_checked: ISO 8601 UTC timestamp of last check
             skipped_versions: list of version strings user has skipped
             frequency: if None, preserves existing frequency (or leaves default)
+            latest_available: latest version discovered by the check; when None,
+                any previously stored value is preserved. Consumed by
+                ``/nw-update`` to resolve the upgrade target without re-querying.
         """
         current_data: dict[str, Any] = {}
-        if self._config_path.exists():
+        if self._global_config_path.exists():
             try:
-                current_data = json.loads(self._config_path.read_text(encoding="utf-8"))
+                current_data = json.loads(
+                    self._global_config_path.read_text(encoding="utf-8")
+                )
             except (json.JSONDecodeError, OSError):
                 current_data = {}
 
@@ -286,12 +335,14 @@ class DESConfig:
         elif "frequency" not in update_check:
             # Bootstrap default on first save (e.g. after first-run check)
             update_check["frequency"] = "daily"
+        if latest_available is not None:
+            update_check["latest_available"] = latest_available
 
         current_data["update_check"] = update_check
 
-        self._config_path.parent.mkdir(parents=True, exist_ok=True)
-        ensure_nwave_gitignore(self._config_path.parent)
-        self._config_path.write_text(
+        self._global_config_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_nwave_gitignore(self._global_config_path.parent)
+        self._global_config_path.write_text(
             json.dumps(current_data, indent=2), encoding="utf-8"
         )
 

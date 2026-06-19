@@ -337,12 +337,17 @@ def _extract_issue_numbers(text: str) -> list[int]:
 def find_acceptance_tests(
     item: BacklogItem,
     repo_root: Path,
+    tests_root: Path | None = None,
     scan_limit: int = SCAN_LIMIT,
 ) -> list[Path]:
     """Discover acceptance tests for a backlog item.
 
     Returns paths ordered by confidence (explicit > issue-grep > keyword-score).
     Empty list = no test found by heuristic.
+
+    When ``tests_root`` is provided, discovery is scoped to that single root
+    (overriding ``ACCEPTANCE_DISCOVERY_PATHS``). When ``None``, the default
+    ACCEPTANCE_DISCOVERY_PATHS under ``repo_root`` are scanned.
     """
     discovered: list[Path] = []
 
@@ -354,7 +359,7 @@ def find_acceptance_tests(
                 discovered.append(ref_path)
 
     # Build candidate file pool
-    candidates = _candidate_test_files(repo_root, scan_limit)
+    candidates = _candidate_test_files(repo_root, scan_limit, tests_root)
 
     # Step 2: issue number search
     if item.issue_numbers:
@@ -394,12 +399,24 @@ def find_acceptance_tests(
     return discovered
 
 
-def _candidate_test_files(repo_root: Path, scan_limit: int) -> list[Path]:
-    """Collect Python test files under canonical acceptance roots."""
+def _candidate_test_files(
+    repo_root: Path,
+    scan_limit: int,
+    tests_root: Path | None = None,
+) -> list[Path]:
+    """Collect Python test files under canonical acceptance roots.
+
+    When ``tests_root`` is provided, scan only that directory (used by callers
+    that need isolation, e.g. unit tests of this module). Otherwise iterate
+    ACCEPTANCE_DISCOVERY_PATHS under repo_root.
+    """
     seen: set[Path] = set()
     result: list[Path] = []
-    for relative in ACCEPTANCE_DISCOVERY_PATHS:
-        root = repo_root / relative
+    if tests_root is not None:
+        roots: list[Path] = [tests_root]
+    else:
+        roots = [repo_root / relative for relative in ACCEPTANCE_DISCOVERY_PATHS]
+    for root in roots:
         if not root.exists():
             continue
         for path in root.rglob("test_*.py"):
@@ -684,7 +701,7 @@ def audit(
 
     results: list[AuditResult] = []
     for item in items:
-        test_paths = find_acceptance_tests(item, repo_root)
+        test_paths = find_acceptance_tests(item, repo_root, tests_root)
         result = classify_item(item, test_paths, repo_root)
 
         # Run tests for items provisionally GREEN

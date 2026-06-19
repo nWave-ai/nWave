@@ -263,19 +263,16 @@ def install_context(
     This fixture provides dependency injection for plugin installation tests.
     Uses production service patterns as required by DISTILL wave guidelines.
     """
-    try:
-        from scripts.install.plugins.base import InstallContext
+    from scripts.install.plugins.base import InstallContext
 
-        return InstallContext(
-            claude_dir=temp_claude_dir,
-            scripts_dir=project_root / "scripts" / "install",
-            templates_dir=project_root / "nWave" / "templates",
-            logger=test_logger,
-            project_root=project_root,
-            dry_run=False,
-        )
-    except ImportError as e:
-        pytest.skip(f"Plugin infrastructure not importable: {e}")
+    return InstallContext(
+        claude_dir=temp_claude_dir,
+        scripts_dir=project_root / "scripts" / "install",
+        templates_dir=project_root / "nWave" / "templates",
+        logger=test_logger,
+        project_root=project_root,
+        dry_run=False,
+    )
 
 
 @pytest.fixture
@@ -285,12 +282,9 @@ def des_plugin():
 
     Uses production service pattern.
     """
-    try:
-        from scripts.install.plugins.des_plugin import DESPlugin
+    from scripts.install.plugins.des_plugin import DESPlugin
 
-        return DESPlugin()
-    except ImportError as e:
-        pytest.skip(f"DESPlugin not importable: {e}")
+    return DESPlugin()
 
 
 # -----------------------------------------------------------------------------

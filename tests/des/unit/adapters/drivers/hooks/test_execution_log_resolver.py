@@ -174,8 +174,16 @@ class TestResolveExecutionLogPath:
 # ---------------------------------------------------------------------------
 
 
-def _setup_git_repo(tmp_path, step_id: str = "01-01") -> None:
-    """Initialize a throwaway git repo with a commit carrying Step-ID trailer."""
+def _setup_git_repo(
+    tmp_path, step_id: str = "01-01", feature_id: str | None = None
+) -> None:
+    """Initialize a throwaway git repo with a commit carrying Step-Id (+ optional Task-Id) trailers.
+
+    SF parity port (step 01-01): when the SubagentStopService receives a
+    non-empty ``project_id`` in context, it passes ``feature_id_filter`` to
+    the verifier and AND-semantics requires a ``Task-Id:`` trailer too. Tests
+    invoking the hook with a real project_id MUST pass ``feature_id`` here.
+    """
     sp.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
     sp.run(
         ["git", "config", "user.email", "t@t.com"],
@@ -184,8 +192,11 @@ def _setup_git_repo(tmp_path, step_id: str = "01-01") -> None:
     )
     sp.run(["git", "config", "user.name", "T"], cwd=str(tmp_path), capture_output=True)
     sp.run(["git", "add", "."], cwd=str(tmp_path), capture_output=True)
+    body = f"Step-Id: {step_id}"
+    if feature_id is not None:
+        body += f"\nTask-Id: {feature_id}"
     sp.run(
-        ["git", "commit", "--allow-empty", "-m", f"feat: step\n\nStep-ID: {step_id}"],
+        ["git", "commit", "--allow-empty", "-m", f"feat: step\n\n{body}"],
         cwd=str(tmp_path),
         capture_output=True,
     )
@@ -215,7 +226,7 @@ class TestSubagentStopWithWaveAgnosticLogs:
         bugfix_dir.mkdir(parents=True)
         (bugfix_dir / "execution-log.json").write_text(_complete_exec_log(project_id))
 
-        _setup_git_repo(tmp_path)
+        _setup_git_repo(tmp_path, feature_id=project_id)
 
         hook_input = _make_hook_input(transcript, str(tmp_path))
         monkeypatch.setattr("sys.stdin", __import__("io").StringIO(hook_input))
@@ -247,7 +258,7 @@ class TestSubagentStopWithWaveAgnosticLogs:
         design_dir.mkdir(parents=True)
         (design_dir / "execution-log.json").write_text(_complete_exec_log(project_id))
 
-        _setup_git_repo(tmp_path)
+        _setup_git_repo(tmp_path, feature_id=project_id)
 
         hook_input = _make_hook_input(transcript, str(tmp_path))
         monkeypatch.setattr("sys.stdin", __import__("io").StringIO(hook_input))

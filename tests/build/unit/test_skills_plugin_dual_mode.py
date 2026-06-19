@@ -61,18 +61,6 @@ def new_flat_source(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def old_hierarchical_source(tmp_path: Path) -> Path:
-    """Source tree with {agent}/*.md layout (OLD_HIERARCHICAL)."""
-    source = tmp_path / "source" / "skills"
-    source.mkdir(parents=True)
-    crafter = source / "software-crafter"
-    crafter.mkdir()
-    (crafter / "tdd-methodology.md").write_text("# TDD\n", encoding="utf-8")
-    (crafter / "hexagonal-testing.md").write_text("# Hex\n", encoding="utf-8")
-    return source
-
-
-@pytest.fixture
 def plugin() -> SkillsPlugin:
     return SkillsPlugin()
 
@@ -120,31 +108,6 @@ class TestInstallFromNewFlatLayout:
         ):
             installed = claude_dir / "skills" / name / "SKILL.md"
             assert installed.exists(), f"{name}/SKILL.md not installed"
-
-    @pytest.mark.skip(
-        reason="TODO: old hierarchical layout conversion not yet implemented in dual-mode installer"
-    )
-    def test_install_from_old_hierarchical_still_works(
-        self,
-        plugin: SkillsPlugin,
-        claude_dir: Path,
-        old_hierarchical_source: Path,
-        project_root: Path,
-        logger: logging.Logger,
-    ) -> None:
-        ctx = _make_context(
-            claude_dir, old_hierarchical_source.parent, project_root, logger
-        )
-        result = plugin.install(ctx)
-
-        assert result.success, result.message
-        # Verify skills were actually written (not just a success flag)
-        # Dual-mode installer converts old layout to new flat layout
-        skills_dir = claude_dir / "skills"
-        installed_dirs = [d for d in skills_dir.iterdir() if d.is_dir()]
-        assert len(installed_dirs) > 0, (
-            "At least one skill directory should be installed"
-        )
 
 
 # ---------------------------------------------------------------------------

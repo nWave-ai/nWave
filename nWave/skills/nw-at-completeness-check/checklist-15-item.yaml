@@ -1,0 +1,124 @@
+# AT Completeness Check — 15-item mechanical checklist
+# Machine-readable form of nw-at-completeness-check SKILL.md §2.
+# Verdict thresholds: <10 INCOMPLETE | 10-12 ACCEPTABLE_WITH_DOCUMENTED_GAPS | >=13 COMPLETE
+#
+# Reviewer computes count mechanically. Items not applicable to SUT (e.g. C7c for
+# non-concurrent code) count as passing when explicit rationale is provided.
+
+version: "1.0.0"
+total_items: 15
+thresholds:
+  incomplete_below: 10
+  acceptable_range: [10, 12]
+  complete_at_or_above: 13
+
+categories:
+  - id: C1
+    name: "Equivalence & Boundary"
+    anchor: "ISTQB v4.0 §4.2 [1]; Beizer 1990 ch.5 [2]"
+  - id: C2
+    name: "State & Transition"
+    anchor: "ISTQB §4.2.4 [1]; Hendrickson [3]; Hypothesis stateful [4]"
+    upstream_wave: DISCUSS
+    upstream_artifact: "state diagram in user-stories Elevator Pitch + DoD"
+  - id: C3
+    name: "Count Cardinality (0/1/N)"
+    anchor: "Hendrickson Count [3]; Adzic key examples [5]"
+  - id: C4
+    name: "CRUD-Lifecycle & Idempotency"
+    anchor: "Hendrickson CRUD [3]; Hillel Wayne PBT+Contracts [6]"
+  - id: C5
+    name: "Mode-Flag / Decision-Table"
+    anchor: "ISTQB §4.2.3 [1]; Adzic [5,7]"
+    upstream_wave: DESIGN
+    upstream_artifact: "flag enumeration in component manifest"
+  - id: C6
+    name: "Negative & Robustness (Postel)"
+    anchor: "RFC 760 §1.2.10 [8]; FEW HICCUPPS [9]; Kaner LLST [10]; RIMGEA [11]"
+    upstream_wave: DESIGN
+    upstream_artifact: "typed error set + invariants per port"
+  - id: C7
+    name: "Configuration / Environment / Interruption"
+    anchor: "Bach HTSM SFDIPOT [12]; Hendrickson [3]; Marick Q4 [13]"
+    upstream_wave: DEVOPS
+    upstream_artifact: "env matrix + concurrency/interruption contract"
+
+checks:
+  - id: C1a
+    category: C1
+    description: ">=1 AT exercises empty/zero/minimum-size input"
+    mandatory: true
+  - id: C1b
+    category: C1
+    description: ">=1 AT on each partition boundary (max-1, max, max+1)"
+    mandatory: true
+  - id: C2a
+    category: C2
+    description: "SUT state machine documented in AT module docstring"
+    mandatory: true
+  - id: C2b
+    category: C2
+    description: "For each state, >=1 AT for illegal-event-from-that-state"
+    mandatory: true
+  - id: C3
+    category: C3
+    description: "parametrize/PBT covering n in {0, 1, many} for each collection input"
+    mandatory: true
+  - id: C4a
+    category: C4
+    description: "Each mutating op has 'apply twice' AT (idempotency or correct non-idempotency)"
+    mandatory: true
+  - id: C4b
+    category: C4
+    description: ">=1 AT for inverse op without prerequisite (uninstall-without-install)"
+    mandatory: true
+  - id: C5a
+    category: C5
+    description: "Each mode flag: every materially-distinct combination exercised"
+    mandatory: true
+  - id: C5b
+    category: C5
+    description: ">=1 AT asserting flag orthogonality (verbose toggles output only)"
+    mandatory: false
+  - id: C6a
+    category: C6
+    description: "Each input param: >=1 AT with malformed value (wrong type, malformed encoding)"
+    mandatory: true
+  - id: C6b
+    category: C6
+    description: "Each declared error in contract: >=1 AT triggers exactly that error"
+    mandatory: true
+  - id: C6c
+    category: C6
+    description: ">=1 AT asserts closed error set (no other error escapes)"
+    mandatory: true
+  - id: C7a
+    category: C7
+    description: ">=1 AT under degraded-resource condition (read-only FS / no network / low disk)"
+    mandatory: false
+  - id: C7b
+    category: C7
+    description: ">=1 AT for interruption mid-operation (SIGINT / timeout / partial commit)"
+    mandatory: false
+  - id: C7c
+    category: C7
+    description: "If concurrent-safe by claim: >=1 multi-actor AT (two parallel invocations)"
+    mandatory: false
+    applicability: "only when SUT claims concurrent-safety"
+
+reviewer_output_schema:
+  finding_kinds:
+    - AT_GAP_IN_DELIVERY_SCOPE
+    - SPECIFICATION_AMBIGUITY
+  severities:
+    - BLOCKER
+    - HIGH
+    - MEDIUM
+    - LOW
+
+falsifier_gate:
+  prune_rule:
+    description: "3 consecutive zero-findings on category X across pilot features -> prune X from default"
+    window_months: 3
+  escalate_rule:
+    description: "1 BLOCKER found via category X -> escalate X to MANDATORY"

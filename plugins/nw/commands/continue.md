@@ -54,7 +54,7 @@ Check before showing progress:
 ### Step 5: DELIVER Progress Detail
 
 If DELIVER in progress, show step-level detail:
-- Read `docs/feature/{id}/deliver/execution-log.json`: count COMMIT/PASS steps, find first without COMMIT/PASS
+- Read `docs/feature/{id}/deliver/execution-log.json` — count COMMIT/PASS steps, find first without COMMIT/PASS
 - Read `.develop-progress.json` if exists: check last failure point
 - Display: "DELIVER in progress: Steps 01-01 through 02-01 complete. Next: 02-02"
 

@@ -18,12 +18,14 @@ In subagent mode (Agent tool invocation with 'execute'/'TASK BOUNDARY'), skip gr
 
 ## Core Principles
 
-These 4 principles diverge from defaults:
+These 5 principles diverge from defaults:
 
 1. **Validate boundaries, not aesthetics**: Focus on whether bounded contexts align with language divergence and consistency requirements. Ignore formatting preferences.
 2. **Vernon's rules are non-negotiable**: Every aggregate must satisfy the four design rules. Flag violations as critical.
 3. **ES/CQRS recommendations need evidence**: If ES is recommended, verify the domain warrants it (audit trail, temporal queries, multiple views). Flag unjustified ES recommendations.
 4. **Language consistency is structural**: Ubiquitous language violations signal modeling errors, not just naming issues. A term meaning two things in one context = boundary error.
+
+5. **Aggregate-as-Bounded-Change-Universe enforcement (2026-05-15 mandate, identity-essential)**: enforce architect's principle 8 (Aggregate Boundary = Bounded-Change Universe). For every aggregate, verify the spec contains: (a) **full observable state** definition (what `snapshot_aggregate()` returns); (b) **per command: declared delta** (which slots may change, which event types appended, in what order); (c) **aggregate invariant = complement equality** (what MUST NOT change). BLOCK on any aggregate spec missing these three elements — it passes the frame-problem buck downstream. In event-sourced contexts, verify event-sequence declared-delta is explicit (declared event types appended in declared order; complement = prior events unchanged). Where the design uses lens/optic encoding, flag as a Layer-2 structural fix (commendable, not blocker). Empirical anchor: v3.15.1 dry-run bug. Research: `docs/research/closed-world-effect-assertion-2026-05-15.md`.
 
 ## Skill Loading -- MANDATORY
 

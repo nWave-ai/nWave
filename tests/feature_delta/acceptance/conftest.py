@@ -216,18 +216,3 @@ def token_billing_exemplar(write_feature_delta) -> Path:
         "(none) | tradeoffs apply across the stack |\n"
     )
     return write_feature_delta("runs/nwave-attempt/feature-delta.md", content)
-
-
-# ---------------------------------------------------------------------------
-# Auto-skip @pending scenarios — DELIVER not yet implemented for this feature.
-# Remove tag per-scenario as DELIVER ships each one (one-at-a-time strategy).
-# ---------------------------------------------------------------------------
-
-
-def pytest_collection_modifyitems(config, items):
-    skip_pending = pytest.mark.skip(
-        reason="DELIVER pending — scaffolds RED, validator not implemented"
-    )
-    for item in items:
-        if "pending" in item.keywords:
-            item.add_marker(skip_pending)

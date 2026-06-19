@@ -66,7 +66,10 @@ class TestSessionStartHandlerUpdateAvailable:
         assert exit_code == 0
         out = capsys.readouterr().out.strip()
         payload = json.loads(out)
-        assert "additionalContext" in payload
+        # Wrapped form for context injection + visible systemMessage.
+        assert payload["hookSpecificOutput"]["hookEventName"] == "SessionStart"
+        assert "additionalContext" in payload["hookSpecificOutput"]
+        assert "systemMessage" in payload
 
     def test_additional_context_contains_local_latest_changelog(self, capsys):
         """additionalContext includes local version, latest version, and changelog."""
@@ -98,7 +101,7 @@ class TestSessionStartHandlerUpdateAvailable:
 
         out = capsys.readouterr().out.strip()
         payload = json.loads(out)
-        msg = payload["additionalContext"]
+        msg = payload["hookSpecificOutput"]["additionalContext"]
         assert "1.5.0" in msg
         assert "3.1.0" in msg
         assert "Fix A" in msg
@@ -201,6 +204,39 @@ class TestSessionStartHandlerFailOpen:
         assert capsys.readouterr().out.strip() == ""
 
 
+class TestBuildUpdateOutputContract:
+    """Regression: update notice must be user-visible AND injected via the wrapped form.
+
+    Bug: the handler emitted a bare {"additionalContext": ...}. That form is (a)
+    never shown to the user and (b) dropped by current Claude Code versions, so
+    no update notice ever surfaced. The payload must carry a top-level
+    systemMessage (visible) plus hookSpecificOutput.additionalContext (canonical
+    context injection).
+    """
+
+    def test_payload_has_visible_message_and_wrapped_context(self):
+        from des.adapters.drivers.hooks.session_start_handler import (
+            _build_update_output,
+        )
+
+        payload = _build_update_output(
+            local="3.17.0", latest="3.18.0", changelog="- thing"
+        )
+
+        # Visible, top-level (not nested) -> rendered to the user at startup.
+        assert payload["systemMessage"] == (
+            "nWave update available: 3.17.0 → 3.18.0. Run /nw-update to update."
+        )
+        # Wrapped form -> reliably injected into the model context.
+        hso = payload["hookSpecificOutput"]
+        assert hso["hookEventName"] == "SessionStart"
+        assert hso["additionalContext"] == (
+            "nWave update available: 3.17.0 → 3.18.0. Changes: - thing"
+        )
+        # The bare form must NOT be present at top level (the original bug).
+        assert "additionalContext" not in payload
+
+
 class TestSessionStartHandlerOutputFormat:
     """B5: Output JSON format matches specification."""
 
@@ -235,7 +271,11 @@ class TestSessionStartHandlerOutputFormat:
         out = capsys.readouterr().out.strip()
         payload = json.loads(out)
         expected = "nWave update available: 1.0.0 \u2192 2.0.0. Changes: changelog text"
-        assert payload["additionalContext"] == expected
+        assert payload["hookSpecificOutput"]["additionalContext"] == expected
+        # Visible message shown to the user (no changelog body, just the prompt).
+        assert payload["systemMessage"] == (
+            "nWave update available: 1.0.0 \u2192 2.0.0. Run /nw-update to update."
+        )
 
     def test_output_format_without_changelog(self, capsys):
         """Output format when changelog is None: Changes field is empty."""
@@ -268,7 +308,7 @@ class TestSessionStartHandlerOutputFormat:
         out = capsys.readouterr().out.strip()
         payload = json.loads(out)
         expected = "nWave update available: 1.0.0 \u2192 2.0.0. Changes: "
-        assert payload["additionalContext"] == expected
+        assert payload["hookSpecificOutput"]["additionalContext"] == expected
 
 
 class TestSessionStartHandlerHousekeepingIntegration:

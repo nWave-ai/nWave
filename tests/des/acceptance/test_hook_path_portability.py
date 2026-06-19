@@ -88,9 +88,7 @@ def project_root() -> Path:
 
 
 @pytest.fixture
-def install_context(
-    tmp_path, project_root, test_logger, monkeypatch
-) -> InstallContext:
+def install_context(tmp_path, project_root, test_logger, monkeypatch) -> InstallContext:
     """Create InstallContext simulating a fresh DEFAULT-HOME installation.
 
     The portability assertions in this file (e.g. "PYTHONPATH uses $HOME")
@@ -100,7 +98,9 @@ def install_context(
     feature.
 
     To exercise the default-home code path under tmp_path, we redirect
-    `Path.home()` to tmp_path so `Path.home() / ".claude" == claude_dir`.
+    Path.home() to tmp_path via monkeypatch so the home-derived claude
+    directory equals the fixture's claude_dir (default-home branch fires
+    inside the production code).
     """
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))

@@ -8,7 +8,6 @@ Driving ports: Naming convention logic, agent frontmatter validation
 
 from pathlib import Path
 
-import pytest
 import yaml
 from pytest_bdd import scenario
 
@@ -90,7 +89,6 @@ def _has_frontmatter_comments(agent_path: Path) -> list[str]:
     return comments
 
 
-@pytest.mark.skip(reason="Enable after milestone 1 passes")
 @scenario(
     "milestone-2-colliding-skills.feature",
     "Audit identifies all naming collisions",
@@ -100,7 +98,6 @@ def test_audit_collisions():
     pass
 
 
-@pytest.mark.skip(reason="Enable after milestone 1 passes")
 @scenario(
     "milestone-2-colliding-skills.feature",
     "Audit counts all skill files",
@@ -110,7 +107,6 @@ def test_audit_count():
     pass
 
 
-@pytest.mark.skip(reason="Enable after milestone 1 passes")
 @scenario(
     "milestone-2-colliding-skills.feature",
     "Audit detects cross-agent skill references",
@@ -120,7 +116,6 @@ def test_audit_cross_refs():
     pass
 
 
-@pytest.mark.skip(reason="Enable after milestone 1 passes")
 @scenario(
     "milestone-2-colliding-skills.feature",
     "Audit flags orphan skills with no agent reference",
@@ -175,7 +170,6 @@ def test_naming_nw_prefix():
     pass
 
 
-@pytest.mark.skip(reason="Enable after milestone 1 passes")
 @scenario(
     "milestone-2-colliding-skills.feature",
     "Renamed skill reference updated in agent frontmatter",
@@ -185,7 +179,6 @@ def test_frontmatter_updated():
     pass
 
 
-@pytest.mark.skip(reason="Enable after milestone 1 passes")
 @scenario(
     "milestone-2-colliding-skills.feature",
     "Non-colliding skill references remain unchanged",
@@ -195,9 +188,6 @@ def test_frontmatter_unchanged():
     pass
 
 
-@pytest.mark.skip(
-    reason="BDD step definitions incomplete; real validation in direct tests below"
-)
 @scenario(
     "milestone-2-colliding-skills.feature",
     "All frontmatter skill references resolve to existing directories",
@@ -422,15 +412,6 @@ def test_all_skill_dirs_start_with_nw_prefix():
 
 @scenario(
     "milestone-2-colliding-skills.feature",
-    "Cross-reference comments removed from frontmatter",
-)
-def test_frontmatter_cross_refs_removed():
-    """Cross-reference comments cleaned up."""
-    pass
-
-
-@scenario(
-    "milestone-2-colliding-skills.feature",
     "Naming convention rejects abbreviation collision",
 )
 def test_naming_abbrev_collision():
@@ -438,7 +419,6 @@ def test_naming_abbrev_collision():
     pass
 
 
-@pytest.mark.skip(reason="Enable after milestone 1 passes")
 @scenario(
     "milestone-2-colliding-skills.feature",
     "Audit reports content difference for same-named skills",

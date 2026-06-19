@@ -3,9 +3,18 @@ Wrapper plugin for utilities installation.
 
 Encapsulates the _install_utility_scripts() method from NWaveInstaller,
 maintaining backward compatibility while enabling plugin-based orchestration.
+
+Upgrade hygiene is manifest-driven (shared ``.nwave-manifest.json``
+mechanism): install records the shipped script names under the utilities
+family key; upgrade sweeps only names that key tracks and the current
+version no longer ships. The DES family shares the same directory and
+document — its key is a sibling, never clobbered, never swept by this
+plugin. User scripts and anything else no record positively identifies are
+preserved (hard contract); a pre-record target is adopted with a warning.
 """
 
 import shutil
+from pathlib import Path
 
 from scripts.install.install_utils import PathUtils, VersionUtils
 from scripts.install.plugins.base import (
@@ -13,10 +22,23 @@ from scripts.install.plugins.base import (
     InstallContext,
     PluginResult,
 )
+from scripts.shared.skill_distribution import (
+    SCRIPTS_FAMILY_KEY,
+    UTILITIES_FAMILY_KEY,
+    FamilyRecord,
+    preserve_warning_message,
+    read_family_record,
+    sweep_retired_assets,
+    unaccounted_names,
+    write_family_record,
+)
 
 
 class UtilitiesPlugin(InstallationPlugin):
     """Plugin for installing utilities into the nWave framework."""
+
+    # Utility scripts installed (with version checking) to ~/.claude/scripts/
+    UTILITY_SCRIPTS = ["install_nwave_target_hooks.py", "validate_step_file.py"]
 
     def __init__(self):
         """Initialize utilities plugin with name and priority."""
@@ -51,32 +73,33 @@ class UtilitiesPlugin(InstallationPlugin):
             scripts_target = context.claude_dir / "scripts"
             scripts_target.mkdir(parents=True, exist_ok=True)
 
-            # List of utility scripts to install with version checking
-            utility_scripts = ["install_nwave_target_hooks.py", "validate_step_file.py"]
+            record = read_family_record(
+                scripts_target,
+                key=UTILITIES_FAMILY_KEY,
+                sibling_keys=frozenset({SCRIPTS_FAMILY_KEY}),
+            )
 
-            # Remove stale .py files in target not in current utility_scripts set
-            current_set = set(utility_scripts)
-            for existing in list(scripts_target.glob("*.py")):
-                if existing.name not in current_set:
-                    try:
-                        existing.unlink()
-                        context.logger.info(
-                            f"  🗑️ Removed stale utility script: {existing.name}"
-                        )
-                    except PermissionError:
-                        context.logger.warning(
-                            f"  ⚠️ Cannot remove read-only stale script: {existing.name}"
-                        )
+            if context.dry_run:
+                total_scripts = PathUtils.count_files(scripts_target, "*.py")
+                return PluginResult(
+                    success=True,
+                    plugin_name=self.name,
+                    message=f"Utilities installed successfully ({total_scripts} scripts)",
+                )
 
-            installed_files = []
+            self._reconcile_target(scripts_target, record, context)
+
+            installed_files: list[str] = []
             installed_count = 0
+            recorded: list[str] = []
 
-            for script_name in utility_scripts:
+            for script_name in self.UTILITY_SCRIPTS:
                 source_script = scripts_source / script_name
                 target_script = scripts_target / script_name
 
                 if not source_script.exists():
                     continue
+                recorded.append(script_name)
 
                 source_ver = VersionUtils.extract_version_from_file(source_script)
                 target_ver = (
@@ -102,6 +125,13 @@ class UtilitiesPlugin(InstallationPlugin):
                         f"  📁 {script_name} up-to-date (v{target_ver})"
                     )
 
+            write_family_record(
+                scripts_target,
+                recorded,
+                key=UTILITIES_FAMILY_KEY,
+                superseded_keys=record.superseded_keys,
+            )
+
             total_scripts = PathUtils.count_files(scripts_target, "*.py")
             context.logger.info(f"  ✅ Utilities installed ({installed_count} scripts)")
 
@@ -119,6 +149,50 @@ class UtilitiesPlugin(InstallationPlugin):
                 message=f"Utilities installation failed: {e!s}",
                 errors=[str(e)],
             )
+
+    def _reconcile_target(
+        self,
+        scripts_target: Path,
+        record: FamilyRecord,
+        context: InstallContext,
+    ) -> None:
+        """Sweep this family's retired scripts; adopt a pre-record target."""
+        if record.tracked is None:
+            self._warn_unrecorded_scripts(scripts_target, record.accounted, context)
+            return
+        removed, blocked = sweep_retired_assets(
+            scripts_target, record.tracked - set(self.UTILITY_SCRIPTS)
+        )
+        for name in removed:
+            context.logger.info(f"  🗑️ Removed retired utility script: {name}")
+        for name in blocked:
+            context.logger.warning(
+                f"  ⚠️ Cannot remove read-only retired script: {name}"
+            )
+
+    def _warn_unrecorded_scripts(
+        self,
+        scripts_target: Path,
+        accounted: frozenset[str],
+        context: InstallContext,
+    ) -> None:
+        """Preserve-by-default: warn about scripts no record accounts for."""
+        unrecorded = unaccounted_names(
+            scripts_target,
+            accounted=accounted,
+            expected=frozenset(self.UTILITY_SCRIPTS),
+            scope_glob="*.py",
+        )
+        if not unrecorded:
+            return
+        context.logger.warning(
+            preserve_warning_message(
+                scripts_target,
+                unrecorded,
+                family_label="utilities record",
+                item_label="script",
+            )
+        )
 
     def verify(self, context: InstallContext) -> PluginResult:
         """Verify utilities were installed correctly.

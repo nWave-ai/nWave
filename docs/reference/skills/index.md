@@ -40,6 +40,10 @@
 
 - [nw-assessment-kirkpatrick](../../../nWave/skills/nw-assessment-kirkpatrick/SKILL.md) — Kirkpatrick New World Model applied to workshop design — assessment checkpoints, behavioral commitment instruments, rubric design, and Level 3 required drivers
 
+## nw-at-completeness-check
+
+- [nw-at-completeness-check](../../../nWave/skills/nw-at-completeness-check/SKILL.md) — Canonical AT completeness gate — research-anchored 7-category taxonomy (C1-C7) + 15-item mechanical checklist. Paradigm-neutral. Drives acceptance-designer reviewer verdict deterministically.
+
 ## nw-authoritative-sources
 
 - [nw-authoritative-sources](../../../nWave/skills/nw-authoritative-sources/SKILL.md) — Domain-specific authoritative source databases, search strategies by topic category, and source freshness rules
@@ -298,7 +302,7 @@
 
 ## nw-execute
 
-- [nw-execute](../../../nWave/skills/nw-execute/SKILL.md) — Dispatches a single roadmap step to a specialized agent for TDD execution. Use when implementing a specific step from a roadmap.json plan.
+- [nw-execute](../../../nWave/skills/nw-execute/SKILL.md) — Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Runs a single roadmap.json step through the TDD cycle.
 
 ## nw-fast-forward
 

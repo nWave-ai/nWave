@@ -14,14 +14,14 @@ Feature: Density mode is decided once at install and surfaced by doctor
     And the global configuration records the expansion prompt as "ask-intelligent"
     And running install a second time does not prompt Marco again
 
-  @skip @US-3 @driving_port
+  @US-3 @driving_port
   Scenario: Non-interactive install defaults to lean density
     Given a continuous-integration host with no terminal and no existing global configuration
     When the pipeline runs install in non-interactive mode
     Then the global configuration records the default density as "lean"
     And the install completes without prompting
 
-  @skip @US-3 @driving_port @error
+  @US-3 @driving_port @error
   Scenario: Upgrade path on existing configuration writes lean default silently with one notice
     Given an existing global configuration without a documentation block
     When Marco runs install interactively
@@ -30,36 +30,11 @@ Feature: Density mode is decided once at install and surfaced by doctor
     And Marco does not see an interactive density prompt
     And Marco sees exactly one informational line referencing the global configuration path
 
-  @skip @US-6 @driving_port
-  Scenario: Doctor surfaces lean default density with default annotation
-    Given the global configuration records the default density as "lean"
-    When Marco runs doctor
-    Then Marco sees the line "Documentation density: lean (default)"
-    And Marco does not see a remediation link on the next line
-
-  @skip @US-6 @driving_port
-  Scenario: Doctor flags overridden full density and shows the remediation link
-    Given the global configuration records the default density as "full"
-    When Marco runs doctor
-    Then Marco sees the line "Documentation density: full"
-    And the next line links Marco to the configuring-doc-density guide
-
-  @skip @US-6 @driving_port @error
-  Scenario: Doctor falls back to lean default and warns when configuration is missing
+  @US-6 @driving_port @error
+  Scenario: Doctor falls back to lean default and surfaces the no-config provenance
     Given the nWave global configuration file does not exist
     When Marco runs doctor
-    Then Marco sees the line "Documentation density: lean (default)"
-    And Marco sees a stderr warning that global configuration was not found
-    And doctor exits successfully
-
-  @skip @US-4 @driving_port
-  Scenario: New feature in lean mode produces single-file layout with no wave subdirectories
-    Given the global configuration records the default density as "lean"
-    When Marco runs the DISCOVER wave followed by the DISCUSS wave on feature "small-feat-x"
-    Then the feature-delta.md for "small-feat-x" exists at the lean single-file path
-    And no discuss subdirectory exists for "small-feat-x"
-    And no discover subdirectory exists for "small-feat-x"
-    And the feature directory declares the lean format
+    Then Marco sees the line "Documentation density: lean (default (no config))"
 
   @US-5 @driving_port
   Scenario: Validator script exits zero on well-formed lean feature delta

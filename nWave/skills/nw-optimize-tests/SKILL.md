@@ -20,6 +20,10 @@ Dispatches Trim to inventory a test scope, detect duplication and anti-patterns,
 - The scope path (passed as argument or auto-detected)
 - `~/.claude/skills/nw-test-optimization/SKILL.md` — methodology (loaded by agent)
 
+## Timing Baseline
+
+Trim compares against the wall-clock figures recorded in the execution-log.json.
+
 ## Agent Invocation
 
 @nw-test-optimizer
@@ -75,7 +79,7 @@ Trim inventories the unit suite, runs md5sum cross-check, scans for anti-pattern
 ```
 /nw-optimize-tests lean-wave-documentation
 ```
-Trim resolves to `tests/<feature-id>/` paths from execution-log.json if available, otherwise scopes to test files referencing the feature-id.
+Trim resolves to `tests/<feature-id>/` paths from the execution-log.json if available, otherwise scopes to test files referencing the feature-id.
 
 ### Example 3: Single fat file
 ```

@@ -91,20 +91,15 @@ def install_context(
     This fixture provides dependency injection for plugin installation tests.
     It uses production service patterns as required by DISTILL wave guidelines.
     """
-    # Import here to avoid circular imports until plugin infrastructure exists
-    try:
-        from scripts.install.plugins.base import InstallContext
+    from scripts.install.plugins.base import InstallContext
 
-        return InstallContext(
-            claude_dir=clean_test_directory,
-            scripts_dir=project_root / "scripts" / "install",
-            templates_dir=project_root / "nWave" / "templates",
-            logger=test_logger,
-            dry_run=False,
-        )
-    except ImportError:
-        # Plugin infrastructure not yet implemented
-        pytest.skip("Plugin infrastructure not yet implemented")
+    return InstallContext(
+        claude_dir=clean_test_directory,
+        scripts_dir=project_root / "scripts" / "install",
+        templates_dir=project_root / "nWave" / "templates",
+        logger=test_logger,
+        dry_run=False,
+    )
 
 
 @pytest.fixture
@@ -115,12 +110,9 @@ def plugin_registry(project_root: Path):
     This fixture provides the production PluginRegistry class,
     following the production service integration pattern.
     """
-    try:
-        from scripts.install.plugins.registry import PluginRegistry
+    from scripts.install.plugins.registry import PluginRegistry
 
-        return PluginRegistry()
-    except ImportError:
-        pytest.skip("Plugin infrastructure not yet implemented")
+    return PluginRegistry()
 
 
 # -----------------------------------------------------------------------------
@@ -148,41 +140,6 @@ def baseline_file_tree() -> dict:
     """
     # TODO: Implement baseline capture when switchover testing begins
     return {}
-
-
-# -----------------------------------------------------------------------------
-# Fixtures: Service Providers (Production Integration Pattern)
-# -----------------------------------------------------------------------------
-
-
-@pytest.fixture
-def backup_manager():
-    """
-    Provide BackupManager service for testing.
-
-    Uses production service pattern (_serviceProvider.GetRequiredService<T>() equivalent).
-    """
-    try:
-        from scripts.install.backup import BackupManager
-
-        return BackupManager()
-    except ImportError:
-        pytest.skip("BackupManager not yet implemented")
-
-
-@pytest.fixture
-def installation_verifier():
-    """
-    Provide InstallationVerifier service for testing.
-
-    Uses production service pattern for verification tests.
-    """
-    try:
-        from scripts.install.verifier import InstallationVerifier
-
-        return InstallationVerifier()
-    except ImportError:
-        pytest.skip("InstallationVerifier not yet implemented")
 
 
 # -----------------------------------------------------------------------------

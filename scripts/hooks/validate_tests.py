@@ -157,16 +157,16 @@ def main():
         print(f"{YELLOW}Warning: python3 not available, skipping tests{NC}")
         return 0
 
-    # Determine pytest command: prefer pipenv run (matches CI) over bare python3
-    use_pipenv = False
+    # Determine pytest command: prefer uv run (matches CI) over bare python3
+    use_uv = False
     try:
         subprocess.run(
-            ["pipenv", "run", "python3", "-m", "pytest", "--version"],
+            ["uv", "run", "python3", "-m", "pytest", "--version"],
             check=True,
             capture_output=True,
             text=True,
         )
-        use_pipenv = True
+        use_uv = True
     except (subprocess.CalledProcessError, FileNotFoundError):
         try:
             subprocess.run(
@@ -209,7 +209,9 @@ def main():
         env["PYTHONPATH"] = os.getcwd() + ":" + env.get("PYTHONPATH", "")
 
         # Pre-commit runs unit/acceptance tests only.
-        # Integration, e2e, and build acceptance tests run at pre-push.
+        # Integration, e2e, build acceptance, and heavy smoke tests run at pre-push.
+        # feature_delta/acceptance: calls nwave-ai CLI with 30s timeout — pre-push.
+        # polyglot-pilot: compiles Kotlin/Rust/Go/Java/TS/C# — pre-push.
         base_args = [
             *test_targets,
             "-x",
@@ -217,19 +219,23 @@ def main():
             "--ignore-glob=**/integration/**",
             "--ignore-glob=**/e2e/**",
             "--ignore-glob=**/build/acceptance/**",
+            "--ignore-glob=**/feature_delta/acceptance/**",
+            "--ignore-glob=**/polyglot-pilot/**",
         ]
 
         # Parallel execution with pytest-xdist (if available)
+        # -n 2 (not auto): dev box OOMs at >2 workers — mirrors pre-push cap.
+        # See pyproject.toml comment: RCA fix-speculative-test-pollution 2026-05-13.
         # --dist loadfile keeps tests from the same file on one worker
         # (prevents shared-fixture conflicts between BDD scenarios)
         if has_xdist():
-            base_args.extend(["-n", "auto", "--dist", "loadfile"])
+            base_args.extend(["-n", "2", "--dist", "loadfile"])
         else:
             base_args.append("-v")
 
         cmd = (
-            ["pipenv", "run", "python3", "-m", "pytest", *base_args]
-            if use_pipenv
+            ["uv", "run", "python3", "-m", "pytest", *base_args]
+            if use_uv
             else ["python3", "-m", "pytest", *base_args]
         )
         result = subprocess.run(

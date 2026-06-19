@@ -34,20 +34,6 @@ scenarios("../milestone-3-mirror-sync.feature")
 
 
 # ---------------------------------------------------------------------------
-# Skip hook — maps @skip tag to pytest.mark.skip (preserves the
-# existing convention; future scenarios may re-acquire @skip).
-# ---------------------------------------------------------------------------
-
-
-def pytest_bdd_apply_tag(tag: str, function: object) -> bool | None:
-    if tag == "skip":
-        marker = pytest.mark.skip(reason="DELIVER will activate one scenario at a time")
-        marker(function)
-        return True
-    return None
-
-
-# ---------------------------------------------------------------------------
 # Helpers — real subprocess git operations on tmp_path.
 # ---------------------------------------------------------------------------
 

@@ -9,6 +9,16 @@ argument-hint: '[feature-description] - Example: "Implement user authentication 
 
 **Wave**: DELIVER (wave 6 of 6)|**Agent**: Main Instance (orchestrator)|**Command**: `/nw-deliver "{feature-description}"`
 
+## LANGUAGE CONVENTION FRAME (read FIRST — overrides all examples below)
+
+**Code examples in this skill use Python syntax for illustration only.** They are NOT prescriptive about target language. nWave is language-agnostic per the "genericity and agnosticism" mandate (2026-05-24).
+
+**Before crafting**, detect the target project's language from manifest files: `package.json` → TypeScript/JS; `Cargo.toml` → Rust; `go.mod` → Go; `pyproject.toml`/`setup.py`/`Pipfile` → Python; `pom.xml`/`build.gradle` → Java/Kotlin; `*.csproj`/`*.fsproj` → C#/F#; `Gemfile` → Ruby; `Package.swift` → Swift.
+
+**When the target language is NOT Python**: adapt every code example to target conventions (imports, type system, test-framework idioms, file extensions, directory layout). Project conventions ALWAYS WIN over examples below.
+
+**Empirical anchor**: skill examples being Python-only caused LLM to emit Python code in greenfield TS project. Fix per F-SKILL-EXAMPLES-LANGUAGE-LEAK. Connects [[feedback_language_adapter_plugin_architecture_2026_05_24]].
+
 ## Overview
 
 Orchestrates complete DELIVER wave: feature description → production-ready code with mandatory quality gates. You (main Claude instance) coordinate by delegating to specialized agents via Task tool. Final wave (DISCOVER > DISCUSS > SPIKE > DESIGN > DEVOPS > DISTILL > DELIVER).
@@ -142,7 +152,7 @@ At the start of execution, create these tasks using TaskCreate and follow them i
 
 1.6. **Detect Mutation Testing Strategy** — Read same `CLAUDE.md`, search "## Mutation Testing Strategy".
    - Found → extract: `per-feature` | `nightly-delta` | `pre-release` | `disabled`.
-   - Not found → default `"per-feature"`.
+   - Not found → default `nightly-delta` (recommended mode — CI runs mutmut nightly on changed modules; keeps per-feature gates fast).
    - Log strategy for traceability. Note: strategy locks at deliver start; `CLAUDE.md` edits during delivery take effect next run.
    - Gate: strategy recorded.
 
@@ -166,7 +176,7 @@ At the start of execution, create these tasks using TaskCreate and follow them i
    - i. Acceptance test gate: after each step's COMMIT/PASS, run `tests/acceptance/{feature-id}/`. Fix failures before proceeding to next step. No deferral.
 
 3.5. **Post-Merge Integration Gate (Hard Gate)** — AFTER all steps reach COMMIT/PASS, BEFORE Phase 3. Gate: full acceptance suite passes in all environments AND every story's Elevator Pitch demo command produces non-empty output.
-   - a. Run `pipenv run pytest tests/acceptance/{feature-id}/ -v --tb=short`.
+   - a. Run `uv run pytest tests/acceptance/{feature-id}/ -v --tb=short`.
    - b. Run acceptance tests against EVERY environment listed in the `## Wave: DEVOPS / [REF] Environment Matrix` section of `feature-delta.md` (lean v3.14) OR `docs/feature/{feature-id}/devops/environments.yaml` (legacy multi-file). If neither, use defaults: `clean`, `with-pre-commit`, `with-stale-config`.
    - c. BLOCK if ANY test fails in ANY environment.
    - d. **Elevator Pitch demo execution (HARD GATE)** — For every user story in the `## Wave: DISCUSS / [REF] User Stories with Elevator Pitches` section of `feature-delta.md` (lean v3.14) OR `docs/feature/{feature-id}/discuss/user-stories.md` (legacy) that is NOT tagged `@infrastructure`:
@@ -202,9 +212,10 @@ At the start of execution, create these tasks using TaskCreate and follow them i
    - d. Violations → re-execute via Task with DES markers. Proceed only after pass.
    - e. **Rigor-aware integrity** (F-3, ADR-025): the verifier tracks the rigor-profile phase set declared in `.nwave/des-config.json` (`rigor.tdd_phases`), intersected with the canonical TDDSchema. 3-phase ADR-025 projects (`[RED, GREEN, COMMIT]`) verify cleanly. Legacy 5-phase projects continue to verify unchanged. Empty intersection → exit 2 with diagnostic naming the offending rigor phases (fix `.nwave/des-config.json` and rerun).
 
-8. **Phase 7 — Finalize** — Gate: evolution archived, session markers removed, commit pushed.
+8. **Phase 7 — Finalize** — Gate: evolution archived, session markers removed, commit pushed, hook offer made (if applicable).
    - a. Dispatch `@nw-platform-architect` to archive to `docs/evolution/` (load `~/.claude/skills/nw-finalize/SKILL.md`).
    - b. Commit + push. Run: `rm -f .nwave/des/deliver-session.json .nwave/des/des-task-active`.
+   - c. **One-time test-hook offer** — Check whether the project's pre-commit/pre-push test hooks are installed (absence of the pre-commit framework marker in `.git/hooks/pre-push`). If NOT installed AND not previously declined (no `.nwave/hook-offer-declined` marker): offer the user ONCE — suggest running `pre-commit install --hook-type pre-commit --hook-type pre-push` so tests also run automatically on commit/push. This is an OFFER, not enforcement; it does NOT replace the crafter's own mandatory terminating test run (the suite always runs at the end of every code modification regardless of hooks — `feedback_target_machine_independence_2026_05_15`). If the user declines, write `.nwave/hook-offer-declined` and do not re-offer.
 
 9. **Phase 8 — Retrospective (conditional)** — Skip if clean execution. Gate: 5 Whys documented or clean-run noted.
    - On issues found → dispatch `@nw-troubleshooter` for 5 Whys analysis.

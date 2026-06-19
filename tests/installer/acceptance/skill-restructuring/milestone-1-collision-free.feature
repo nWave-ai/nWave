@@ -82,20 +82,6 @@ Feature: Collision-Free Skill Installation
     Then all Read paths use "~/.claude/skills/nw-{skill}/SKILL.md" format
     And no paths use old "~/.claude/skills/nw/{agent}/{skill}.md" format
 
-  @skip
-  Scenario: Agent definitions no longer contain skill loading workaround
-    Given the troubleshooter agent definition has been updated
-    When the agent file is inspected
-    Then no "Skill Loading" heading exists in the content
-    And no "Read tool to load" instruction exists in the content
-
-  @skip
-  Scenario: All public agents are free of skill loading workaround sections
-    Given all 23 public agent definitions have been updated
-    When the agent files are inspected
-    Then zero agents contain "Skill Loading -- MANDATORY"
-    And zero agents contain "Skill Loading Strategy"
-
   # --- Error Paths ---
 
   Scenario: Installation fails gracefully when source directory is missing
@@ -105,12 +91,14 @@ Feature: Collision-Free Skill Installation
     Then the installation reports that no skills were found
     And no directories are created in the installation target
 
-  @skip
   Scenario: Installation handles read-only target directory
-    # SKIP: chmod 444 behavior is OS/user-dependent. On CI runners as root
-    # or certain filesystems, read-only dirs still allow subdirectory creation.
-    # The probe-based skip in install_steps.py handles local execution, but
-    # CI consistently fails on Py3.14. Needs a more robust permission test approach.
+    # The "is read-only" step chmod 444's the target, populates the source so
+    # the install attempts a real write, then probes whether chmod actually
+    # blocks writes — skipping (pytest.skip) only where it does not (CI as
+    # root). Note: on Python 3.14 chmod DOES block; the prior flake was that
+    # Path.exists() stopped raising PermissionError there, so an empty-source
+    # install reported success. A populated source + an explicit writability
+    # guard in the plugin make the refusal deterministic across 3.10–3.14.
     Given the installation target directory is read-only
     When the skills plugin attempts to install skills
     Then the installation fails with a clear error message

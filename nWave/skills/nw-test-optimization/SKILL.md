@@ -241,6 +241,52 @@ If `tests/<file>.py` and `tests/<subdir>/<file>.py` are byte-identical (md5-equa
 
 If two files are not byte-identical but assert the same handler/service through overlapping intent, merge into the canonical tier and delete the other.
 
+### 3.7 Single-Lifecycle Consolidation
+
+When N tests share an expensive setup/teardown lifecycle (subprocess install, container start, filesystem fixture build) AND each test asserts a distinct contract on the same post-setup state, collapse to **one lifecycle, N assertions** instead of N lifecycles × 1 assertion.
+
+```python
+# BEFORE — 24 tests × ~6s lifecycle each = 152s wall-clock
+class TestTutorialSetupScripts:
+    def setup_method(self):
+        self.workspace = build_tutorial_workspace()  # expensive
+        run_setup_script(self.workspace)
+    def test_creates_project_dir(self): assert (self.workspace / "project").is_dir()
+    def test_creates_config_file(self): assert (self.workspace / ".nwave/config.json").exists()
+    # ... 22 more independent assertions ...
+
+# AFTER — 1 lifecycle, 24 assertions = 63s wall-clock (2.4× faster)
+@pytest.fixture(scope="class")
+def tutorial_workspace():
+    workspace = build_tutorial_workspace()
+    run_setup_script(workspace)
+    return workspace
+
+class TestTutorialSetupScripts:
+    def test_creates_project_dir(self, tutorial_workspace):
+        assert (tutorial_workspace / "project").is_dir()
+    def test_creates_config_file(self, tutorial_workspace):
+        assert (tutorial_workspace / ".nwave/config.json").exists()
+    # ... 22 more, all reading the same workspace ...
+```
+
+**Empirical anchor**: `tests/build/acceptance/test_tutorial_setup_scripts.py` (commit `defc07f0d`, 2026-05-18): 152.81s → 62.87s, 2.4× faster, -90s.
+
+**Pre-conditions** (HARD GATES):
+- Setup is **read-only** for the assertions — no test mutates shared state. If even one test mutates, scope cannot promote (audit per §3.3).
+- Failure granularity preserved: each assertion identifies WHAT failed (file/property/contract), not just "setup failed".
+- Tests remain **order-independent** — `pytest-randomly` must not change outcomes (proves no hidden coupling).
+
+**Anti-pattern**: do NOT collapse when assertions verify **steps of a state-transition sequence** (run A → assert, mutate B → assert, mutate C → assert). That is state-delta paradigm territory (§3.8), not single-lifecycle.
+
+### 3.8 State-Delta Paradigm (cross-ref)
+
+For tests that mutate user-observable state (installer, uninstaller, sync, hooks, settings.json — ~28% of suite), use the **state-delta paradigm** instead of per-assertion lifecycle: capture initial state once, apply operation, assert the delta (added/removed/modified) as a single matcher.
+
+Honest gain: 13% compression / 17% wall-clock on the addressable subset (Ale 2026-05-05 revision). NOT universal — pure-function/AST/schema tests retain standard assertions (3-5× ceremony for zero gain otherwise).
+
+See: `nw-state-delta-paradigm` skill (when present) and memory `feedback_state_transition_test_paradigm` for scope rules. Empirical anchor: Task #12 pilot (both slices).
+
 ## 4. Stopping Criterion Procedure
 
 Apply when planning unit-test authoring inside RED (3-phase canon, ADR-025) or RED_UNIT (legacy 5-phase), at GREEN, and at COMMIT. Reviewer enforces at review.
@@ -255,6 +301,44 @@ Apply when planning unit-test authoring inside RED (3-phase canon, ADR-025) or R
    - Or redesign the abstraction: high test count often signals the unit under test owns too many responsibilities
 7. **Reviewer enforcement** — counts independently. Budget exceeded without justification or applied pattern citation = block.
 
+## 4-bis. Paradigm-Match Decision Rule
+
+Before authoring or migrating tests, match the test SHAPE to the right paradigm. Mismatched paradigm = ceremony without value (or correctness loss).
+
+| Test shape | Paradigm | Empirical anchor |
+|---|---|---|
+| **Closed-world finite input** (N known files, M known event types, K known skill names) — assertion shape identical across instances | Parametrize-collapse → §3.1 / Dict-iteration → §3.2 | `c2637f6c8` set-difference 155-test → 1 (8.9× faster) |
+| **Multi-step contract on shared expensive setup** — independent assertions on post-setup read-only state | Single-lifecycle consolidation → §3.7 | `defc07f0d` 24-test 152s → 63s (2.4× faster) |
+| **User-observable state mutation** (installer/uninstaller/sync/hooks/settings) — N tests verifying same lifecycle's side effects | State-delta paradigm → §3.8 | Task #12 pilot (13% compression / 17% wall-clock) |
+| **Unbounded input domain** with universal invariant (algorithm, serialization, business rule) — "for all X in DOMAIN, P(X) holds" | Property-based testing (Hypothesis) — see `nw-property-based-testing` | Standard PBT literature; nWave-internal scope = unbounded ONLY |
+| **Single happy-path + 1-3 sad paths** with distinct error messages | Example-based unit tests, no consolidation needed | n/a — already minimal |
+
+### Falsifier-gate before adopting PBT
+
+Closed-world finite input is NOT PBT territory. Hypothesis import (~457ms) + per-example bookkeeping is **slower** than `@pytest.mark.parametrize` when the input set is finite + enumerable. Apply the gate:
+
+1. **Enumerate the input domain**. Is it finite + listable (`SKILL_NAMES_149`, `EVENT_TYPES_5`, `SUPPORTED_PYTHONS_3`)? → parametrize-collapse, NOT PBT.
+2. **Is the invariant value-independent** (holds for ANY valid X, not specific Xs)? → PBT candidate.
+3. **Run cost-benefit**: if domain ≤ 10× the typical PBT example budget (100), parametrize wins on wall-clock + readability + shrinking-from-trivial-counterexamples cost.
+
+**Empirical anchor 2026-05-18**: PBT migration attempt on 155-file closed-world skill registry was correctly aborted at recon stage by the falsifier-gate. Solution was set-difference parametrize-collapse (`c2637f6c8`, 5.42s → 0.71s, 8.9× faster). Documented in memory `feedback_state_transition_test_paradigm` (revised 2026-05-05).
+
+### Decision tree (concise)
+
+```
+Test shape?
+├─ Same assertion, varying inputs from finite known set?
+│   └─ parametrize-collapse (§3.1) OR dict-iteration (§3.2)
+├─ N independent assertions on same post-setup read-only state?
+│   └─ single-lifecycle consolidation (§3.7)
+├─ State-mutation lifecycle with delta assertions?
+│   └─ state-delta paradigm (§3.8)
+├─ Universal invariant over unbounded domain?
+│   └─ PBT (nw-property-based-testing)
+└─ Few specific examples with distinct outcomes?
+    └─ example-based, no consolidation
+```
+
 ## 5. Coverage-Preserving Validation
 
 Before declaring an optimization done, prove no behavior was lost.
@@ -262,9 +346,9 @@ Before declaring an optimization done, prove no behavior was lost.
 ### 5.1 Baseline before optimization
 
 ```bash
-pipenv run pytest <scope> -p no:randomly --tb=no -q | tail -3
+uv run pytest <scope> -p no:randomly --tb=no -q | tail -3
 # Record: passed count, failed count
-pipenv run pytest <scope> --cov=<package> --cov-report=term-missing -p no:randomly | tail -20
+uv run pytest <scope> --cov=<package> --cov-report=term-missing -p no:randomly | tail -20
 # Record: coverage %, missing lines
 ```
 
@@ -275,9 +359,9 @@ Apply consolidation patterns. Stage changes file-by-file (`git add path/to/file`
 ### 5.3 Validate after optimization
 
 ```bash
-pipenv run pytest <scope> -p no:randomly --tb=short
+uv run pytest <scope> -p no:randomly --tb=short
 # Required: passed count >= baseline (consolidation reduces test count, not pass count semantics)
-pipenv run pytest <scope> --cov=<package> -p no:randomly | tail -5
+uv run pytest <scope> --cov=<package> -p no:randomly | tail -5
 # Required: coverage % >= baseline
 ```
 
@@ -295,7 +379,7 @@ Block conditions:
 For high-confidence optimizations on critical scopes:
 
 ```bash
-pipenv run mutmut run --paths-to-mutate <scope>
+uv run mutmut run --paths-to-mutate <scope>
 ```
 
 Kill rate before optimization vs after must not regress. Loaded only when invoking nw-mutation-test skill.
@@ -306,12 +390,15 @@ When invoked without a specific scope, prioritize by leverage:
 
 | Indicator | Priority | Pattern |
 |-----------|----------|---------|
-| Byte-identical file pairs (md5-equal) | P0 | Cross-Tier Deduplication |
-| Single file with > 200 collected tests | P0 | Investigate parametrize-inflation, migration nets |
+| Byte-identical file pairs (md5-equal) | P0 | Cross-Tier Deduplication (§3.6) |
+| Single file with > 200 collected tests | P0 | Investigate parametrize-inflation, migration nets (§2.5, §3.5) |
+| Test class with `setup_method` building expensive workspace, > 10 read-only assertions | P0 | Single-Lifecycle Consolidation (§3.7) |
+| Closed-world finite domain tests (N known files × M known phrases) | P0 | Parametrize-collapse (§3.1), NOT PBT — see §4-bis falsifier-gate |
+| Test file dominating slow-suite survey (top-N wall-clock) | P0 | Apply Paradigm-Match Decision Rule (§4-bis) before authoring fixes |
 | Tests/function ratio > 4 in a module | P1 | Behavior re-counting, anti-pattern scan |
 | Files matching `*_typing_compat`, `*_interface_*`, `*_abc_*` | P1 | Language-guarantee scan |
 | AST-import test files | P1 | Replace with CI matrix |
-| Files older than 6 months touching migration paths | P2 | Migration-collapse lifecycle check |
+| Files older than 6 months touching migration paths | P2 | Migration-collapse lifecycle check (§3.5) |
 
 Use `git log --diff-filter=A --name-only` for migration-net dating, `find tests/ -name '*.py' -exec wc -l {} + | sort -rn` for fat files.
 
@@ -327,5 +414,8 @@ Use `git log --diff-filter=A --name-only` for migration-net dating, `find tests/
 - `nw-tdd-methodology` — Mandate 1 (Observable Behavioral Outcomes), Mandate 5 (Parametrize Input Variations)
 - `nw-tdd-review-enforcement` — reviewer block conditions
 - `nw-mutation-test` — coverage-preserving validation via mutation kill rate
+- `nw-property-based-testing` — PBT paradigm, falsifier-gate for closed-world domains
+- `nw-test-design-mandates` — universe-per-layer, state-delta + Universe matrix (§263-270)
 - `nw-test-refactoring-catalog` — refactoring patterns for test code structure
 - `docs/analysis/investigation-overtesting-hypothesis-2026-04-28.md` — empirical evidence (~580 removable tests, 18% of unit suite, the gap is enforcement decay + loose behavior definition)
+- Empirical speedup commits 2026-05-18: `c2637f6c8` (parametrize-collapse 8.9×), `defc07f0d` (single-lifecycle 2.4×), `e97c94663`+`a90606d6b` (CVE+timeout+tiktoken)

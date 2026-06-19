@@ -8,6 +8,16 @@ import sys
 from pathlib import Path
 
 from scripts.shared import hook_definitions as shared_hooks
+from scripts.shared.skill_distribution import (
+    SCRIPTS_FAMILY_KEY,
+    UTILITIES_FAMILY_KEY,
+    FamilyRecord,
+    preserve_warning_message,
+    read_family_record,
+    sweep_retired_assets,
+    unaccounted_names,
+    write_family_record,
+)
 
 from .base import InstallationPlugin, InstallContext, PluginResult
 
@@ -27,6 +37,10 @@ class DESPlugin(InstallationPlugin):
         "check_stale_phases.py",
         "scope_boundary_check.py",
     ]
+
+    # Asset-family key for the DES scripts list in the shared
+    # .nwave-manifest.json mechanism (scripts/shared/skill_distribution.py).
+    SCRIPTS_MANIFEST_KEY = SCRIPTS_FAMILY_KEY
 
     # DES shims installed to ~/.claude/bin/
     DES_SHIMS = [
@@ -377,7 +391,15 @@ class DESPlugin(InstallationPlugin):
             )
 
     def _install_des_scripts(self, context: InstallContext) -> PluginResult:
-        """Install DES utility scripts."""
+        """Install DES utility scripts, sweeping manifest-tracked orphans.
+
+        On upgrade, scripts tracked by the shared manifest but absent from
+        the new source set are deleted BEFORE copying, and the manifest is
+        rewritten. Without a manifest (pre-record, 3.16.0-shaped target)
+        nothing is deleted: unrecorded scripts are preserved and the user
+        is warned (preserve-by-default hard contract). Under ``dry_run``
+        no file is deleted and no manifest is written.
+        """
         try:
             # Use framework source if available, fallback to nWave/scripts/des
             if context.framework_source:
@@ -391,6 +413,15 @@ class DESPlugin(InstallationPlugin):
             target_dir = context.claude_dir / "scripts"
             target_dir.mkdir(parents=True, exist_ok=True)
 
+            record = read_family_record(
+                target_dir,
+                key=self.SCRIPTS_MANIFEST_KEY,
+                sibling_keys=frozenset({UTILITIES_FAMILY_KEY}),
+                adopt_legacy=True,
+            )
+            if not context.dry_run:
+                self._sweep_retired_scripts(target_dir, record, context)
+
             installed = []
             for script_name in self.DES_SCRIPTS:
                 source = source_dir / script_name
@@ -401,6 +432,14 @@ class DESPlugin(InstallationPlugin):
                         shutil.copy2(source, target)
                         target.chmod(0o755)
                     installed.append(script_name)
+
+            if not context.dry_run:
+                write_family_record(
+                    target_dir,
+                    installed,
+                    key=self.SCRIPTS_MANIFEST_KEY,
+                    superseded_keys=record.superseded_keys,
+                )
 
             return PluginResult(
                 success=True,
@@ -414,6 +453,41 @@ class DESPlugin(InstallationPlugin):
                 plugin_name="des",
                 message=f"DES scripts install failed: {e}",
             )
+
+    def _sweep_retired_scripts(
+        self, target_dir: Path, record: FamilyRecord, context: InstallContext
+    ) -> None:
+        """Delete this family's tracked scripts the current version retired."""
+        if record.tracked is None:
+            self._warn_unrecorded_scripts(target_dir, record.accounted, context)
+            return
+        removed, blocked = sweep_retired_assets(
+            target_dir, record.tracked - set(self.DES_SCRIPTS)
+        )
+        for retired_name in removed:
+            context.logger.info(f"  🧹 Removed retired DES script: {retired_name}")
+        for blocked_name in blocked:
+            context.logger.warning(
+                f"  ⚠️ Cannot remove read-only retired DES script: {blocked_name}"
+            )
+
+    def _warn_unrecorded_scripts(
+        self, target_dir: Path, accounted: frozenset[str], context: InstallContext
+    ) -> None:
+        """Preserve-by-default: warn about scripts no record accounts for."""
+        unrecorded = unaccounted_names(
+            target_dir, accounted=accounted, expected=frozenset(self.DES_SCRIPTS)
+        )
+        if not unrecorded:
+            return
+        context.logger.warning(
+            preserve_warning_message(
+                target_dir,
+                unrecorded,
+                family_label="DES scripts manifest",
+                item_label="script",
+            )
+        )
 
     def _install_des_templates(self, context: InstallContext) -> PluginResult:
         """Install DES templates."""
@@ -660,13 +734,23 @@ class DESPlugin(InstallationPlugin):
     def _migrate_config(
         self, config_file: Path, context: InstallContext
     ) -> PluginResult:
-        """Add update_check to existing config that lacks it (migration path)."""
+        """Seed missing default blocks into an existing config (migration path).
+
+        Each seed is independent and idempotent: a block is added only when it is
+        absent, and an existing block is never overwritten. All pre-existing keys
+        are preserved (read-modify-write).
+        """
         existing = self._read_json_config(config_file)
 
         # Ensure .gitignore on every install/upgrade (migration for existing installs)
         self._ensure_gitignore(config_file.parent)
 
-        if "update_check" in existing:
+        added: list[str] = []
+        if "update_check" not in existing:
+            existing["update_check"] = self._DEFAULT_UPDATE_CHECK_CONFIG
+            added.append("update_check")
+
+        if not added:
             context.logger.info("  ✅ DES config already exists")
             return PluginResult(
                 success=True,
@@ -674,16 +758,16 @@ class DESPlugin(InstallationPlugin):
                 message="DES config already exists",
             )
 
-        existing["update_check"] = self._DEFAULT_UPDATE_CHECK_CONFIG
+        added_summary = ", ".join(added)
         if not context.dry_run:
             self._write_json_config(config_file, existing)
             context.logger.info(
-                f"  ✅ DES config migrated (update_check added): {config_file}"
+                f"  ✅ DES config migrated ({added_summary} added): {config_file}"
             )
         return PluginResult(
             success=True,
             plugin_name="des",
-            message=f"DES config migrated (update_check added) at {config_file}",
+            message=f"DES config migrated ({added_summary} added) at {config_file}",
         )
 
     @staticmethod

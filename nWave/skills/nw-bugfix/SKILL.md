@@ -28,10 +28,10 @@ INPUT: "{bug-description}"
   │   └─ User confirms root cause + approves fix direction
   │   └─ If user rejects → refine RCA or stop
   │
-  └─ Phase 3: Regression Test + Fix (via /nw-deliver)
-      └─ /nw-deliver "fix-{bug-id}" with bug-fix scope
+  └─ Phase 3: Regression Test + Fix
+      └─ /nw-deliver "fix-{bug-id}" — roadmap-based bugfix flow
       └─ Paradigm detection determines crafter (OOP or FP)
-      └─ Roadmap: regression test (RED) → fix (GREEN) → verify (COMMIT)
+      └─ Regression test (RED) → fix (GREEN) → verify (COMMIT)
 ```
 
 ## Execution Steps
@@ -85,27 +85,27 @@ If user rejects:
 
 If user approves → proceed to Phase 3.
 
-### Phase 3: Regression Test + Fix (via /nw-deliver)
+### Phase 3: Regression Test + Fix
 
-This phase delegates entirely to `/nw-deliver`, which handles:
-- Paradigm detection (reads project CLAUDE.md for `## Development Paradigm`)
-- Crafter selection (@nw-software-crafter for OOP, @nw-functional-software-crafter for FP)
-- DES enforcement with proper markers
-- Rigor profile from `.nwave/des-config.json`
+Phase 3 dispatches the fix through the roadmap-based bugfix flow. It does
+paradigm detection (reads project CLAUDE.md for `## Development Paradigm`),
+crafter selection (@nw-software-crafter for OOP, @nw-functional-software-crafter
+for FP), DES enforcement, and reads the rigor profile from
+`.nwave/des-config.json`.
 
-**Preparation before invoking /nw-deliver:**
+**Preparation:**
 
 1. Derive feature-id: `fix-{kebab-case-bug-summary}` (max 5 words)
 2. Create `docs/feature/{feature-id}/deliver/` directory
 3. Prepare RCA context from Phase 1 output (root cause, files affected, proposed fix)
 
-**Invoke /nw-deliver with bug-fix scope:**
+Delegate to `/nw-deliver`:
 
 ```
 /nw-deliver "fix-{bug-summary}"
 ```
 
-The deliver orchestrator creates a minimal roadmap with 2 steps:
+The deliver orchestrator builds a minimal two-step roadmap:
 
 **Step 01-01: Regression test (RED)**
 - Write a test that reproduces the exact defect
@@ -118,7 +118,8 @@ The deliver orchestrator creates a minimal roadmap with 2 steps:
 - Run ALL tests — regression test must now PASS
 - Existing tests must not regress
 
-The crafter handles the TDD cycle (3-phase canon RED → GREEN → COMMIT per ADR-025, or legacy 5-phase PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT for pre-2026-05-07 audit-log replay) with DES monitoring.
+The crafter handles the TDD cycle (3-phase canon RED → GREEN → COMMIT per
+ADR-025) with DES monitoring.
 
 ## Success Criteria
 
@@ -161,4 +162,4 @@ Phase 3: `/nw-deliver "fix-compose-none-guard"` → paradigm detected as FP → 
 - The regression test is the primary deliverable — it prevents the bug from recurring.
 - Keep the fix minimal. Refactoring belongs in `/nw-refactor`, not here.
 - If the RCA reveals a design flaw (not just a code bug), escalate to `/nw-design` before fixing.
-- Phase 3 uses `/nw-deliver` which handles paradigm detection, DES enforcement, and rigor profile automatically.
+- Phase 3 delegates to `/nw-deliver`, which handles paradigm detection, DES enforcement, and rigor profile automatically.

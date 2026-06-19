@@ -27,4 +27,4 @@ Feature: Developer's rigor preferences follow them across projects
     Then the active rigor profile is "standard"
     And the active agent model is "sonnet"
     And the active reviewer model is "haiku"
-    And the active TDD phases are the full 5-phase cycle
+    And the active TDD phases are the canonical 3-phase cycle

@@ -1,6 +1,6 @@
 # nw-software-crafter-reviewer
 
-Use for review and critique tasks - Code quality and implementation review specialist. Runs on Haiku for cost efficiency.
+Use for review and critique tasks. Code-quality + TDD-discipline review of Outside-In TDD implementations. Runs on Haiku for cost efficiency.
 
 **Wave:** DELIVER
 **Model:** haiku

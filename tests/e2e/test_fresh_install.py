@@ -20,7 +20,7 @@ The authoritative contract is:
 Requires a Docker daemon.  Skips gracefully when docker is unavailable.
 
 Refs: docs/analysis/adversarial-verify-issue-36.md B-5
-Step-ID: 01-03
+Step-Id: 01-03
 """
 
 from __future__ import annotations

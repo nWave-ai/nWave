@@ -26,7 +26,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from scripts.shared.density_config import Density, resolve_density
@@ -71,20 +70,6 @@ def _run_doctor(home_dir: Path) -> subprocess.CompletedProcess[str]:
         cwd=str(project_root),
         timeout=30,
     )
-
-
-# ---------------------------------------------------------------------------
-# Skip hook — maps @skip tag to pytest.skip
-# ---------------------------------------------------------------------------
-
-
-def pytest_bdd_apply_tag(tag: str, function: object) -> bool | None:
-    """Apply @skip tag as pytest.mark.skip; let pytest-bdd handle other tags."""
-    if tag == "skip":
-        marker = pytest.mark.skip(reason="DELIVER will activate one scenario at a time")
-        marker(function)
-        return True
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -498,4 +483,139 @@ def _malformed_heading_reported(
     )
     assert "missing schema prefix" in stdout, (
         f"Expected failing-rule reason in stdout, got: {stdout!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario: Non-interactive install defaults to lean density (US-3)
+# ---------------------------------------------------------------------------
+
+
+@given(
+    "a continuous-integration host with no terminal and no existing "
+    "global configuration"
+)
+def _ci_host_no_config(global_config_path: Path) -> None:
+    """Pre-condition: a CI host starts with no global-config.json on disk."""
+    assert not global_config_path.exists(), (
+        f"Expected absent global-config.json, found one at {global_config_path}"
+    )
+
+
+@when(
+    "the pipeline runs install in non-interactive mode",
+    target_fixture="install_result",
+)
+def _install_non_interactive(
+    marco_home: Path, ctx: dict[str, Any]
+) -> subprocess.CompletedProcess[str]:
+    """Drive install with a piped (non-TTY) stdin -> the non_interactive branch.
+
+    The install CLI promotes a non-TTY stdin to non_interactive mode
+    (`cli.py` — `not sys.stdin.isatty()`), so a piped empty stdin reproduces a
+    CI host: `handle_install_density_prompt` writes the silent lean default.
+    """
+    result = _run_install_with_density_only(marco_home, stdin_text="")
+    ctx["install_stdout"] = result.stdout
+    ctx["install_returncode"] = result.returncode
+    return result
+
+
+@then("the install completes without prompting")
+def _install_completes_without_prompting(
+    install_result: subprocess.CompletedProcess[str],
+) -> None:
+    """Driven assertion: exit 0 and the interactive prompt string never appears."""
+    assert install_result.returncode == 0, (
+        f"Install failed: stdout={install_result.stdout!r} "
+        f"stderr={install_result.stderr!r}"
+    )
+    assert "lean (experienced)" not in install_result.stdout, (
+        f"Non-interactive install unexpectedly prompted: "
+        f"stdout={install_result.stdout!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario: Upgrade path writes lean default silently with one notice (US-3)
+# ---------------------------------------------------------------------------
+
+
+@given("an existing global configuration without a documentation block")
+def _existing_config_without_documentation(global_config_path: Path) -> None:
+    """Pre-condition: a config file that exists but carries no documentation key."""
+    global_config_path.parent.mkdir(parents=True, exist_ok=True)
+    global_config_path.write_text(
+        json.dumps({"attribution": {"enabled": False}}, indent=2), encoding="utf-8"
+    )
+
+
+@when("Marco runs install interactively", target_fixture="install_result")
+def _install_interactive_over_existing(
+    marco_home: Path, ctx: dict[str, Any]
+) -> subprocess.CompletedProcess[str]:
+    """Run install over an existing doc-less config -> the upgrade-silent branch.
+
+    Case 2 of `handle_install_density_prompt` (config exists, no documentation
+    block) fires before the interactivity check, so the lean default is written
+    silently regardless of the (piped) stdin.
+    """
+    result = _run_install_with_density_only(marco_home, stdin_text="")
+    ctx["install_stdout"] = result.stdout
+    ctx["install_returncode"] = result.returncode
+    return result
+
+
+@then("Marco does not see an interactive density prompt")
+def _no_interactive_density_prompt(
+    install_result: subprocess.CompletedProcess[str],
+) -> None:
+    assert "lean (experienced)" not in install_result.stdout, (
+        f"Upgrade path unexpectedly prompted: stdout={install_result.stdout!r}"
+    )
+
+
+@then(
+    "Marco sees exactly one informational line referencing the global "
+    "configuration path"
+)
+def _one_info_line_referencing_config(
+    install_result: subprocess.CompletedProcess[str],
+) -> None:
+    """Driven assertion: the upgrade notice names the config file exactly once."""
+    info_lines = [
+        line
+        for line in install_result.stdout.splitlines()
+        if "global-config.json" in line
+    ]
+    assert len(info_lines) == 1, (
+        f"Expected exactly one info line referencing global-config.json, got "
+        f"{info_lines!r} from stdout={install_result.stdout!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario: Doctor falls back to lean default, surfaces no-config provenance (US-6)
+# ---------------------------------------------------------------------------
+
+
+@when("Marco runs doctor", target_fixture="doctor_result")
+def _marco_runs_doctor_plain(
+    marco_home: Path, ctx: dict[str, Any]
+) -> subprocess.CompletedProcess[str]:
+    """Driving port: invoke the real `nwave-ai doctor` subprocess (no-config)."""
+    result = _run_doctor(marco_home)
+    ctx["doctor_stdout"] = result.stdout
+    ctx["doctor_returncode"] = result.returncode
+    return result
+
+
+@then(parsers.parse('Marco sees the line "{expected_line}"'))
+def _marco_sees_line(
+    expected_line: str, doctor_result: subprocess.CompletedProcess[str]
+) -> None:
+    """Driven assertion: the doctor density line appears verbatim in stdout."""
+    assert expected_line in doctor_result.stdout, (
+        f"Expected line {expected_line!r} not in doctor stdout.\n"
+        f"stdout={doctor_result.stdout!r}\nstderr={doctor_result.stderr!r}"
     )

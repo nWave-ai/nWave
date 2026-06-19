@@ -19,7 +19,7 @@ Stale artifacts simulated:
 
 Requires a Docker daemon.  Skips gracefully when Docker is unavailable.
 
-Step-ID: 01-02
+Step-Id: 01-02
 """
 
 from __future__ import annotations

@@ -1,14 +1,17 @@
 """
 Milestone 3 Acceptance Tests: Hardening.
 
-Happy-path scenarios are enabled (no @skip). Edge cases and scenarios
-requiring the actual installer remain @skip until Milestone 2 passes.
+All scenarios are active. The Docker verification scenario is gated by an
+honest skipif (runs where the docker CLI is available, conditionally skips
+otherwise) — there are no parked-pending skips.
 
 Driving ports: SkillsPlugin.install/uninstall/verify,
                agent_catalog.build_skill_to_agent_map/is_public_skill,
                build_dist.py, validate_skill_agent_mapping.py,
                skill_distribution shared module
 """
+
+import shutil
 
 import pytest
 from pytest_bdd import scenario
@@ -19,7 +22,6 @@ from pytest_bdd import scenario
 # Keep @skip until the shared module is implemented.
 
 
-@pytest.mark.skip(reason="Enable after shared module implements write_manifest")
 @scenario(
     "milestone-3-hardening.feature",
     "Manifest created during installation",
@@ -29,7 +31,6 @@ def test_manifest_created():
     pass
 
 
-@pytest.mark.skip(reason="Enable after shared module implements read_manifest")
 @scenario(
     "milestone-3-hardening.feature",
     "Uninstall removes only manifest-listed directories",
@@ -39,7 +40,6 @@ def test_uninstall_manifest_only():
     pass
 
 
-@pytest.mark.skip(reason="Enable after shared module implements read_manifest")
 @scenario(
     "milestone-3-hardening.feature",
     "Uninstall without manifest warns and uses legacy fallback",
@@ -49,7 +49,6 @@ def test_uninstall_no_manifest():
     pass
 
 
-@pytest.mark.skip(reason="Enable after shared module implements write_manifest")
 @scenario(
     "milestone-3-hardening.feature",
     "Re-install overwrites manifest with current state",
@@ -180,7 +179,7 @@ def test_e2e_verification():
     pass
 
 
-@pytest.mark.skip(reason="Docker infrastructure required")
+@pytest.mark.skipif(shutil.which("docker") is None, reason="requires Docker")
 @scenario(
     "milestone-3-hardening.feature",
     "Docker verification container validates skill layout",
@@ -193,7 +192,6 @@ def test_docker_verification():
 # --- Error/Edge Cases ---
 
 
-@pytest.mark.skip(reason="Enable after shared module implements read_manifest")
 @scenario(
     "milestone-3-hardening.feature",
     "Manifest with extra entries does not cause errors during uninstall",
@@ -203,7 +201,6 @@ def test_manifest_ghost_entry():
     pass
 
 
-@pytest.mark.skip(reason="Enable after shared module implements write_manifest")
 @scenario(
     "milestone-3-hardening.feature",
     "Interrupted installation produces partial but valid manifest",
@@ -268,7 +265,6 @@ def test_plugin_no_skill_ref_rewrite():
     pass
 
 
-@pytest.mark.skip(reason="Enable after ownership map in shared module")
 @scenario(
     "milestone-3-hardening.feature",
     "Plugin build excludes private agent skills",
@@ -326,7 +322,6 @@ def test_opencode_manifest_nw_prefixed():
     pass
 
 
-@pytest.mark.skip(reason="Enable after OpenCode manifest-based upgrade")
 @scenario(
     "milestone-3-hardening.feature",
     "OpenCode upgrade from non-prefixed to nw-prefixed layout",
@@ -357,7 +352,6 @@ def test_shared_enumerate():
     pass
 
 
-@pytest.mark.skip(reason="Enable after ownership map in shared module")
 @scenario(
     "milestone-3-hardening.feature",
     "Shared module filter_public_skills excludes private skills",

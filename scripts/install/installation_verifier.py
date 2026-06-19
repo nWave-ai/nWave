@@ -19,8 +19,17 @@ Usage:
         print(f"Verification failed: {result.error_code}")
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from scripts.shared.skill_distribution import (
+    SCRIPTS_FAMILY_KEY,
+    SKILLS_FAMILY_KEY,
+    TEMPLATES_FAMILY_KEY,
+    read_family_record,
+    read_manifest,
+    unaccounted_names,
+)
 
 
 try:
@@ -44,6 +53,10 @@ class VerificationResult:
         skill_file_count: Number of skill .md files found.
         skill_group_count: Number of skill group directories found.
         des_installed: True if DES module directory exists with files.
+        unaccounted_files: Per manifest-bearing family directory, names on
+            disk that no family record tracks — informational ("preserved,
+            not managed by nWave"), never a verification failure. Always
+            present, even when empty.
         error_code: VERIFY_FAILED if verification failed, None otherwise.
         message: Human-readable verification result message.
     """
@@ -56,6 +69,7 @@ class VerificationResult:
     skill_file_count: int = 0
     skill_group_count: int = 0
     des_installed: bool = False
+    unaccounted_files: dict[str, list[str]] = field(default_factory=dict)
     error_code: str | None = None
     message: str = ""
 
@@ -84,6 +98,14 @@ class InstallationVerifier:
         "nw-distill",
         "nw-deliver",
     ]
+
+    # The orphan report covers the manifest-bearing family directories:
+    # (target directory name, the family's canonical manifest key).
+    REPORT_FAMILY_DIRS: tuple[tuple[str, str], ...] = (
+        ("scripts", SCRIPTS_FAMILY_KEY),
+        ("templates", TEMPLATES_FAMILY_KEY),
+        ("skills", SKILLS_FAMILY_KEY),
+    )
 
     def __init__(self, claude_config_dir: Path | None = None):
         """Initialize InstallationVerifier.
@@ -196,6 +218,26 @@ class InstallationVerifier:
             return False
         return len(list(self.des_dir.rglob("*.py"))) > 0
 
+    def verify_unaccounted_files(self) -> dict[str, list[str]]:
+        """Per manifest-bearing family directory, names no record tracks.
+
+        Expected set per directory = union of the family records in that
+        directory's shared ``.nwave-manifest.json`` (the manifest-based
+        oracle). Directories without a manifest are out of report scope.
+        Informational only ("preserved, not managed by nWave") — read-only,
+        never affects the verification verdict, deterministic across runs.
+        """
+        report: dict[str, list[str]] = {}
+        for family, family_key in self.REPORT_FAMILY_DIRS:
+            directory = self.claude_config_dir / family
+            if read_manifest(directory) is None:
+                continue
+            accounted = read_family_record(directory, key=family_key).accounted
+            report[family] = unaccounted_names(
+                directory, accounted=accounted, expected=frozenset()
+            )
+        return report
+
     def run_verification(self) -> VerificationResult:
         """Run complete installation verification.
 
@@ -211,6 +253,7 @@ class InstallationVerifier:
         missing_essential = self.verify_essential_commands()
         skill_file_count, skill_group_count = self.verify_skills()
         des_installed = self.verify_des()
+        unaccounted_files = self.verify_unaccounted_files()
 
         # Determine overall success
         # Verification fails if:
@@ -258,6 +301,7 @@ class InstallationVerifier:
             skill_file_count=skill_file_count,
             skill_group_count=skill_group_count,
             des_installed=des_installed,
+            unaccounted_files=unaccounted_files,
             error_code=error_code,
             message=message,
         )

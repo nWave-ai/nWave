@@ -200,7 +200,10 @@ BULK_HASHES = {
     # Updated 2026-05-03 (v3.14.0-rc1 prep): nw-buddy gained "Version-awareness"
     # handler section directing it to read whats-new-v<MAJOR><MINOR>/ folders
     # when answering version/changelog/fix questions. See commit prep.
-    "nw-buddy": "15084084be76d5d3bc1cdaa794a078d0",
+    # Updated 2026-05-21 (wtbd-44 uv-first migration): graceful-degradation
+    # diagnostic hint now checks both `uv tool list` and `pipx list` instead
+    # of pipx-only.
+    "nw-buddy": "720a5634d2f2f333c854f1ac07de2624",
     "nw-buddy-command-catalog": "403ff4bf5cc44e73183e6021e0e3147d",
     "nw-buddy-project-reading": "be990dabaac7ca5b8492283fc5abdd1f",
     "nw-buddy-ssot-knowledge": "7a801cc1b1ab7379a258f621a08a71f5",
@@ -295,7 +298,10 @@ BULK_HASHES = {
     "nw-production-readiness": "d94eaa53a822fb6ca220a442cb0782f9",
     "nw-production-safety": "2a9b76c9a548a9986b06a6b6c99437c4",
     "nw-progressive-refactoring": "35e590c9df632bcfa04098d6246e5bd9",
-    "nw-property-based-testing": "670ef9279f11f4754ce50e4898d9a649",
+    # Updated 2026-05-19: extended "When PBT Adds Value" with closed-world
+    # falsifier-gate anti-pattern + empirical anchor (commit c2637f6c8). See
+    # backlog F-TEST-SPEEDUP-PARADIGM-CATALOG for context.
+    "nw-property-based-testing": "605d22bd69e68109fbb2abe49c2bbf14",
     "nw-proposal-structure": "6703c77e63466b6e911b02afeddc4514",
     "nw-psychological-safety": "106382f562186d415f5b5ad1430542b7",
     "nw-quality-framework": "c539c9288c26d9e3ec64075e63982175",
@@ -324,12 +330,15 @@ BULK_HASHES = {
     "nw-stress-analysis": "ad5e1b64848a4343e749ec99c61f3517",
     "nw-taste-evaluation": "93f3f75be13aae0ec1a260ca68af94b7",
     "nw-tbr-methodology": "40e44f3c469968c140bd7c107b536644",
-    "nw-tdd-methodology": "b41cc4b1887b19e461144d055ff1753c",
-    # Hash updated 2026-05-15: closed-source refs scrubbed (3ab776967).
-    # Prior hash updated 2026-05-14: TDD 3-phase canon (ADR-025) propagation —
-    # gates table now maps RED phase to legacy RED_ACCEPTANCE/RED_UNIT for backward compat.
-    "nw-tdd-review-enforcement": "bea906b833ed2b4c299b10af249a0a8d",
-    "nw-test-design-mandates": "d212bbaa1305e4c5ca5e86905649c3b0",
+    "nw-tdd-methodology": "a86542d9b859a5ffcfdf6f2fd59834c3",
+    # Hash updated 2026-05-26: LANGUAGE CONVENTION FRAME banner added
+    # (prevent Python-leak in non-Python projects per user-reported friction).
+    # Prior hash updated 2026-05-20: ATDD-pure slice-10 — AT-completion ledger
+    # + mode-scoped execution-log prose for the roadmap-free spine.
+    # Prior hash updated 2026-05-15: closed-source refs scrubbed (3ab776967).
+    # Prior hash updated 2026-05-14: TDD 3-phase canon (ADR-025) propagation.
+    "nw-tdd-review-enforcement": "e9f3631a8ec525b1b1e78eb059c9d840",
+    "nw-test-design-mandates": "c9dbfae2ddffbd725bc55d9b4ae5aa41",
     "nw-test-organization-conventions": "64778077de4b55a493e89cf0e06ce681",
     "nw-test-refactoring-catalog": "9dd4d17224b32058386f4413027253bd",
     "nw-tlaplus-verification": "39ba15e1845e237a9d2014c467aa56ff",

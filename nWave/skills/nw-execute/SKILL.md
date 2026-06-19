@@ -1,6 +1,6 @@
 ---
 name: nw-execute
-description: "Dispatches a single roadmap step to a specialized agent for TDD execution. Use when implementing a specific step from a roadmap.json plan."
+description: "Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Runs a single roadmap.json step through the TDD cycle."
 user-invocable: true
 argument-hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter "auth-upgrade" "01-01"'
 ---
@@ -11,7 +11,7 @@ argument-hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter "
 
 ## Overview
 
-Dispatch a single roadmap step to an agent. Orchestrator extracts step context from roadmap so agent never loads the full roadmap.
+Dispatch one unit of DELIVER work to an agent: a single roadmap step. `/nw-execute` extracts the step from `roadmap.json` and dispatches it for the 3-phase TDD canon; the agent appends phase events to `execution-log.json`.
 
 ## Syntax
 
@@ -36,7 +36,7 @@ Before dispatching the agent, read rigor config from `.nwave/des-config.json` (k
 
 1. **Parse Parameters** — Extract agent name, feature ID, and step ID from invocation. Gate: all three parameters present and non-empty.
 2. **Load Rigor Profile** — Read `.nwave/des-config.json` key `rigor` (default: standard if absent). Gate: config loaded or default applied.
-3. **Validate Context Files** — Confirm `docs/feature/{feature-id}/deliver/roadmap.json` and `execution-log.json` exist. Gate: both files present; report path-not-found if missing.
+3. **Validate Context Files** — Confirm `roadmap.json` and `execution-log.json` exist under `docs/feature/{feature-id}/deliver/`. Gate: both files present; report path-not-found if missing.
 4. **Extract Step Context** — Grep roadmap for `step_id: "{step-id}"` with ~50 lines context. Gate: step found; report available step IDs if missing.
 5. **Invoke Agent** — Call Agent tool with DES template below, applying rigor model and phases from step 2. Gate: Agent tool called, not executed inline.
 
@@ -92,12 +92,12 @@ Load on-demand per phase as specified in your Skill Loading Strategy table.
    Never move to new task or stop without committing green code.
 
 3. COMMIT - Stage and commit with conventional message.
-   Include git trailer: `Step-ID: {step-id}` (required for DES verification)
+   Include git trailer: `Step-Id: {step-id}` (required for DES verification)
    Example:
    ```
    feat(feature-id): implement feature X
 
-   Step-ID: 02-01
+   Step-Id: 02-01
    ```
 
 LEGACY 5-PHASE CONTRACT (ADR-024 era, pre-2026-05-07): PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT. Preserved for audit-log replay only — new work uses the 3-phase canon above. Audit-log entries referencing RED_ACCEPTANCE/RED_UNIT/PREPARE represent merged sub-steps now folded into RED.
@@ -198,4 +198,4 @@ Resume costs ~50% more tokens/call due to context replay (measured: 3.7K vs 2.5K
 ## Next Wave
 
 **Handoff To**: /nw-review for post-execution review
-**Deliverables**: Updated execution-log.json|implementation artifacts|git commits
+**Deliverables**: Updated execution-log.json, implementation artifacts, and git commits

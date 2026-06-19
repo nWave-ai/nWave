@@ -33,7 +33,7 @@ Feature: Rigor configuration cascade resolution
     Then the active rigor profile is "standard"
     And the active agent model is "sonnet"
     And the active reviewer model is "haiku"
-    And the active TDD phases are the full 5-phase cycle
+    And the active TDD phases are the canonical 3-phase cycle
 
   Scenario: No project rigor, global config has no rigor key -- use standard defaults
     Given the project config has no rigor key
@@ -95,7 +95,7 @@ Feature: Rigor configuration cascade resolution
     Then the active rigor profile is "custom"
     And the active agent model is "opus"
     And the active reviewer model is "haiku"
-    And the active TDD phases are the full 5-phase cycle
+    And the active TDD phases are the canonical 3-phase cycle
     And mutation testing is disabled
 
   @property

@@ -31,19 +31,16 @@ def current_installer_version(version: str, project_root: Path):
 @given("wrapper plugins are complete (Milestone 2)")
 def wrapper_plugins_complete():
     """Verify wrapper plugins from Milestone 2 are complete."""
-    try:
-        from scripts.install.plugins.agents_plugin import AgentsPlugin
-        from scripts.install.plugins.commands_plugin import CommandsPlugin
-        from scripts.install.plugins.templates_plugin import TemplatesPlugin
-        from scripts.install.plugins.utilities_plugin import UtilitiesPlugin
+    from scripts.install.plugins.agents_plugin import AgentsPlugin
+    from scripts.install.plugins.commands_plugin import CommandsPlugin
+    from scripts.install.plugins.templates_plugin import TemplatesPlugin
+    from scripts.install.plugins.utilities_plugin import UtilitiesPlugin
 
-        # Verify all plugins exist
-        assert AgentsPlugin is not None
-        assert CommandsPlugin is not None
-        assert TemplatesPlugin is not None
-        assert UtilitiesPlugin is not None
-    except ImportError as e:
-        pytest.skip(f"Milestone 2 not complete: {e}")
+    # Verify all plugins exist
+    assert AgentsPlugin is not None
+    assert CommandsPlugin is not None
+    assert TemplatesPlugin is not None
+    assert UtilitiesPlugin is not None
 
 
 @given("install_framework() is modified to use PluginRegistry")

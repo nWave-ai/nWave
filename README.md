@@ -4,25 +4,19 @@ AI agents that guide you from idea to working code, with human judgment at every
 
 nWave runs inside [Claude Code](https://claude.com/product/claude-code). It breaks feature delivery into seven waves (discover, diverge, discuss, design, devops, distill, deliver). Specialized agents produce artifacts at each wave. You review and approve before proceeding.
 
+**Documentation**: [docs.nwave.ai](https://docs.nwave.ai) — guides, reference, and explanations, versioned per release.
+
 ## Install in 5 Minutes
 
 **Requirements**: Python 3.10+ and Claude Code.
 
 ```bash
-# Step 1: install uv (skip if you already have it)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Step 2: install the nWave CLI
-uv tool install nwave-ai
-
-# Step 3: install nWave into Claude Code
-nwave-ai install
-
-# Step 4: verify everything is healthy
-nwave-ai doctor
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
 ```
 
-Restart Claude Code after step 3. The installer prints a success panel with the installed version number; run `nwave-ai doctor` to confirm everything is healthy.
+This installs the `nwave-ai` CLI and wires nWave into Claude Code in one step. It uses [uv](https://docs.astral.sh/uv/) when available (recommended); [pipx](https://pipx.pypa.io/) is supported but not recommended. Restart Claude Code when it finishes.
+
+Need CLI flags, environment variables, CI/non-interactive use, or manual and offline steps? See the **[Installation Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md)**.
 
 ## Your First Command
 
@@ -37,7 +31,7 @@ The buddy reads your project and tells you which wave to start, where your artif
 **Before nWave**: "Where do I start? Requirements doc or code first? Which agent?"
 **After nWave**: The buddy reads your project and gives you a concrete next step.
 
-Using pipx or OpenCode instead? [See alternative install methods](#alternative-install-methods).
+Using pipx, OpenCode, or Codex instead? See the [Installation Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md).
 
 ## Learn More
 
@@ -113,52 +107,16 @@ DISTILL then DELIVER is always the terminal pair. See the [Wave Routing Guide](h
 
 ### CLI Installer
 
-Follow the [Install in 5 Minutes](#install-in-5-minutes) steps at the top of this page. Agents and commands go to `~/.claude/`.
+Run the one-liner under **Install in 5 Minutes** at the top of this page. Agents and commands go to `~/.claude/`.
 
 > **Don't have uv?** Install with: `curl -LsSf https://astral.sh/uv/install.sh | sh` or see [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/). Alternatively, use [pipx](https://pipx.pypa.io/stable/installation/) (requires Python 3.10+): `pip install pipx && pipx ensurepath`.
 > **Windows users**: Use WSL (Windows Subsystem for Linux). Install with: `wsl --install`
 
 Full setup details: **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide/README.md)**
 
-### Alternative Install Methods
+### Other install methods
 
-<a name="alternative-install-methods"></a>
-
-**Using pipx:**
-```bash
-pipx install nwave-ai
-nwave-ai install
-nwave-ai doctor
-```
-
-**Using OpenCode** (open-source IDE alternative):
-```bash
-npm install -g opencode-ai
-uv tool install nwave-ai        # or: pipx install nwave-ai
-mkdir -p ~/.config/opencode
-echo '{"model": "openai/gpt-4o-mini"}' > ~/.config/opencode/opencode.json
-export OPENAI_API_KEY=your-key-here
-nwave-ai install
-```
-
-OpenCode compatibility: about 67% of nWave features work natively. For full feature parity, Claude Code remains the primary environment. See [OpenCode compatibility notes](#opencode-support-alternative-ide) below.
-
-**Using Codex** (OpenAI CLI):
-```bash
-# Step 1: install Codex CLI if not already installed
-# (Download from https://platform.openai.com/docs/guides/codex)
-
-# Step 2: install nWave CLI
-uv tool install nwave-ai        # or: pipx install nwave-ai
-
-# Step 3: install nWave into Codex
-nwave-ai install --platform codex
-
-# Step 4: verify DES hooks are wired
-nwave-ai doctor
-```
-
-Codex integration: nWave's DES enforcement (TDD phase gates, validation hooks) fires when you run Codex sessions, just as it does on Claude Code. See **[Installing for Codex CLI](#installing-for-codex-cli)** below for details and troubleshooting.
+Looking for step-by-step instructions or a different setup? The **[Installation Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md)** covers every path — the single-script bootstrap, manual **uv** / **pipx** / **pip** steps, **Codex CLI**, **OpenCode**, and offline / air-gapped install.
 
 ### Plugin marketplace (not recommended)
 
@@ -166,91 +124,7 @@ Codex integration: nWave's DES enforcement (TDD phase gates, validation hooks) f
 >
 > **Use the CLI installer above.** The plugin marketplace ships agents, commands, and skills only; consider it a degraded preview, not a supported install method.
 
-### OpenCode Support (Alternative IDE)
-
-nWave also works with [OpenCode](https://github.com/opencode-dev/opencode), an open-source IDE for AI pair programming. Installation requires a few extra steps to configure OpenCode's environment.
-
-**Install prerequisites:**
-```bash
-npm install -g opencode-ai
-uv tool install nwave-ai        # or: pipx install nwave-ai
-```
-
-**Configure OpenCode:**
-```bash
-mkdir -p ~/.config/opencode
-echo '{"model": "openai/gpt-4o-mini"}' > ~/.config/opencode/opencode.json
-```
-
-**Set your OpenAI API key:**
-```bash
-export OPENAI_API_KEY=your-key-here
-```
-
-**Install nWave into OpenCode:**
-```bash
-nwave-ai install
-```
-
-**Compatibility notes:**
-- About 67% of nWave features work natively on OpenCode via compatibility paths
-- DES hooks integrate via OpenCode's `tool.execute.before` mechanism
-- Some advanced subagent coordination may differ from Claude Code. Use the core `/nw-discuss`, `/nw-design`, `/nw-distill`, `/nw-deliver` commands for best results
-- For full feature parity and support, Claude Code remains the primary environment
-
-### Installing for Codex CLI
-
-nWave integrates with the [OpenAI Codex CLI](https://platform.openai.com/docs/guides/codex) via pre-tool-use hooks. When installed, every Bash and file-edit action fires nWave's DES validation — the same enforcement that runs on Claude Code.
-
-**Prerequisites:**
-- OpenAI Codex CLI installed (`codex` binary on PATH) or `~/.codex/` directory exists
-- Python 3.10+
-
-**Auto-detect installation (recommended):**
-```bash
-pipx install nwave-ai
-nwave-ai install            # auto-detects Codex + installs hooks
-```
-
-**Explicit Codex installation:**
-```bash
-nwave-ai install --platform codex
-```
-
-**What gets written:** nWave creates `~/.codex/hooks.json` with an event-keyed structure:
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "^Bash$|^apply_patch$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python -m des.adapters.drivers.hooks.claude_code_hook_adapter pre-tool-use"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-**Verify installation succeeded:**
-```bash
-cat ~/.codex/hooks.json | jq '.hooks.PreToolUse | length'
-# Expected output: 1 (or higher if you have other hook entries)
-```
-
-**Troubleshooting:**
-
-- **"Codex not detected"** — Check `which codex` and `ls ~/.codex/`. To force install before the Codex binary exists, use `--platform codex`. You'll need to install Codex separately before hooks will fire.
-
-- **"Hook fires but audit log empty"** — Verify `~/.claude/des-audit.jsonl` is writable and `~/.claude/lib/python/des/` exists. Run a Codex action and check the log: `tail -5 ~/.claude/des-audit.jsonl | jq .`
-
-- **"Codex says hook not loaded"** — Ensure `hooks.json` uses the event-keyed format above (not a legacy top-level array). Reinstall with `nwave-ai install --platform codex --force` if in doubt.
-
-For detailed setup and workflow, see **[Installing for Codex CLI](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installing-codex.md)**.
+> **OpenCode and Codex CLI** are supported too. Their step-by-step setup lives in the [Installation Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md).
 
 ### Which method?
 
@@ -290,7 +164,7 @@ nWave checks for new versions when you open Claude Code. When available, you'll 
 
 **CLI:**
 ```bash
-pipx upgrade nwave-ai        # or: uv tool upgrade nwave-ai
+uv tool upgrade nwave-ai     # or: pipx upgrade nwave-ai
 nwave-ai install
 ```
 
@@ -303,7 +177,7 @@ nwave-ai install
 
 ```bash
 nwave-ai uninstall              # Remove agents, commands, config, DES hooks
-pipx uninstall nwave-ai         # or: uv tool uninstall nwave-ai
+uv tool uninstall nwave-ai      # or: pipx uninstall nwave-ai
 ```
 
 Both methods remove agents, commands, and configuration from `~/.claude/`. Your project files are unaffected.
@@ -348,7 +222,7 @@ If `nwave-ai doctor` reports a problem at startup, you will see an advisory in y
 | **DES_MARKERS_MISSING** | Agent prompt mentions a step ID (01-01 pattern) but lacks DES markers. | Either: add DES markers for step execution, OR add `<!-- DES-ENFORCEMENT : exempt -->` comment if it's not actually step work. |
 | **Source write blocked** | You tried to edit a file during active `/nw-deliver` outside a DES task. | Edit requests must go through the active deliver session. If you need to make changes, finalize the current session first. |
 | **TDD phase incomplete** | Sub-agent returned without finishing all required TDD phases. | Re-dispatch the same agent to complete missing phases (typically COMMIT or refactoring steps). |
-| **nWave update available** | SessionStart detected a newer version available. | Optional. Run `pipx upgrade nwave-ai && nwave-ai install` when ready to upgrade, or dismiss and continue working. |
+| **nWave update available** | SessionStart detected a newer version available. | Optional. Run `uv tool upgrade nwave-ai && nwave-ai install` (or `pipx upgrade nwave-ai && nwave-ai install`) when ready to upgrade, or dismiss and continue working. |
 | **False positive blocks** | Your prompt accidentally matches step-ID pattern (e.g., dates like "2026-02-09"). | Add `<!-- DES-ENFORCEMENT : exempt -->` comment to exempt the agent call from step-ID enforcement. |
 
 These messages protect code quality but never prevent your work. They guide you toward the safe path.
@@ -392,7 +266,7 @@ These messages protect code quality but never prevent your work. They guide you 
 
 **Why?** Commands migrated from Claude Code's dynamic `commands/` directory to the stable `skills/` system to prevent commands from disappearing during long sessions.
 
-**To upgrade**: Run `pipx upgrade nwave-ai && nwave-ai install` (or `uv tool upgrade nwave-ai && nwave-ai install`). Old `/nw:` commands are automatically removed.
+**To upgrade**: Run `uv tool upgrade nwave-ai && nwave-ai install` (or `pipx upgrade nwave-ai && nwave-ai install`). Old `/nw:` commands are automatically removed.
 
 ## Privacy
 

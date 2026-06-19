@@ -26,6 +26,11 @@ import pytest
 from pytest_bdd import given, scenario, then, when
 
 from scripts.install.plugins.base import InstallContext, PluginResult
+from scripts.shared.skill_distribution import (
+    TEMPLATES_FAMILY_KEY,
+    UTILITIES_FAMILY_KEY,
+    write_manifest,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -321,11 +326,17 @@ def given_current_excludes_stale_command(temp_source_dir: Path):
     target_fixture="stale_template_file",
 )
 def given_stale_template_file(clean_claude_dir: Path) -> Path:
-    """Pre-populate a stale template file in the templates directory."""
+    """Pre-populate a stale template file in the templates directory.
+
+    "From a previous version" means the previous install RECORDED it in the
+    templates family manifest — sweep authority is manifest-driven (slice-02
+    of installer-orphan-sweep): unrecorded files are preserved by default.
+    """
     templates_dir = clean_claude_dir / "templates"
     templates_dir.mkdir(parents=True, exist_ok=True)
     stale = templates_dir / "old-workflow-template.yaml"
     stale.write_text("# Old workflow template\nstale: true\n", encoding="utf-8")
+    write_manifest(templates_dir, [stale.name], key=TEMPLATES_FAMILY_KEY)
     return stale
 
 
@@ -344,7 +355,13 @@ def given_current_excludes_stale_template(temp_source_dir: Path):
     target_fixture="stale_script_file",
 )
 def given_stale_utility_script(clean_claude_dir: Path) -> Path:
-    """Pre-populate a stale utility script in the scripts directory."""
+    """Pre-populate a stale utility script in the scripts directory.
+
+    "From a previous version" means the previous install RECORDED it in the
+    utilities family manifest — sweep authority is manifest-driven (slice-02
+    of installer-orphan-sweep): unrecorded ``*.py`` files (user scripts,
+    sibling-family scripts) are preserved by default.
+    """
     scripts_dir = clean_claude_dir / "scripts"
     scripts_dir.mkdir(parents=True, exist_ok=True)
     stale = scripts_dir / "legacy_migration_helper.py"
@@ -352,6 +369,7 @@ def given_stale_utility_script(clean_claude_dir: Path) -> Path:
         '"""Legacy migration helper."""\n__version__ = "1.0.0"\n',
         encoding="utf-8",
     )
+    write_manifest(scripts_dir, [stale.name], key=UTILITIES_FAMILY_KEY)
     return stale
 
 
@@ -498,6 +516,9 @@ def given_readonly_stale_template(clean_claude_dir: Path) -> Path:
     templates_dir.mkdir(parents=True, exist_ok=True)
     stale = templates_dir / "old-config.yaml"
     stale.write_text("# Old config\nstale: true\n", encoding="utf-8")
+    # Recorded by the previous version: keeps the cleanup path exercised
+    # under the manifest-driven sweep (unrecorded files are never touched).
+    write_manifest(templates_dir, [stale.name], key=TEMPLATES_FAMILY_KEY)
     # Make it read-only
     stale.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
     return stale

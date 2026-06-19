@@ -72,6 +72,52 @@ def _skill_group_emoji(group_name: str) -> str:
     return _SKILL_GROUP_EMOJIS.get(base, "\U0001f4e6")
 
 
+def _is_private_owned(reason: str) -> bool:
+    """True when a skill was filtered because a private agent owns it.
+
+    The ``filter_public_skills_with_reasons`` vocabulary has two reasons:
+    ``private-owned by ...`` (owned by a private agent -- naming it would
+    disclose private IP) and ``uncatalogued`` (an orphan skill with no
+    owning agent -- not private work, just unreferenced).
+    """
+    return reason.startswith("private-owned")
+
+
+def _log_skipped_skills(
+    context: InstallContext,
+    excluded: list[tuple[str, str]],
+) -> None:
+    """Report skipped skills without leaking private identifiers.
+
+    A developer install (``dev_mode`` True) keeps the full per-skill
+    diagnostic for the author's benefit. A public install must never
+    enumerate a *private-owned* skill name -- those are reported only as
+    an aggregate count. Orphan (``uncatalogued``) skills are NOT private
+    work, so the public install still names them: their author needs to
+    see why the skill never reached ``~/.claude/``.
+
+    Args:
+        context: InstallContext -- ``dev_mode`` selects the log detail.
+        excluded: (skill_name, reason) pairs filtered out of the install.
+    """
+    if not excluded:
+        return
+
+    if context.dev_mode:
+        for skipped_name, reason in excluded:
+            context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
+        return
+
+    private = [pair for pair in excluded if _is_private_owned(pair[1])]
+    orphan = [pair for pair in excluded if not _is_private_owned(pair[1])]
+
+    for skipped_name, reason in orphan:
+        context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
+
+    if private:
+        context.logger.info(f"  ⏭️ Skipped {len(private)} non-public skill(s)")
+
+
 def _substitute_python_in_installed_files(
     skills_target: Path,
     entries: list,
@@ -131,8 +177,16 @@ class SkillsPlugin(InstallationPlugin):
                     message="No skills to install (source directory not found)",
                 )
 
-            # Clean up old nw/ namespace from previous hierarchical installs
+            # Preflight: there ARE skills to install, so the target must be
+            # writable. Detect a read-only target up front and fail with a
+            # clear permission error rather than aborting opaquely mid-copy.
             skills_target = context.claude_dir / "skills"
+            writability_error = self._ensure_target_writable(skills_target)
+            if writability_error is not None:
+                context.logger.error(f"  \u274c {writability_error.message}")
+                return writability_error
+
+            # Clean up old nw/ namespace from previous hierarchical installs
             if cleanup_legacy_namespace(skills_target):
                 context.logger.info(
                     "  \U0001f5d1\ufe0f Removed legacy skills/nw/ namespace directory"
@@ -149,6 +203,39 @@ class SkillsPlugin(InstallationPlugin):
                 plugin_name=self.name,
                 message=f"Skills installation failed: {e!s}",
                 errors=[str(e)],
+            )
+
+    def _ensure_target_writable(self, target: Path) -> PluginResult | None:
+        """Return a failing PluginResult if ``target`` is not writable, else None.
+
+        Uses a trial write rather than ``os.access``/``Path.exists`` checks:
+        ``os.access`` is advisory and unreliable, and CPython 3.14 changed
+        ``Path.exists()``/``stat()`` to return ``False`` / swallow
+        ``PermissionError`` on inaccessible paths
+        (https://docs.python.org/3.14/whatsnew/3.14.html). A real probe write
+        is the only portable, version-stable way to detect a read-only target.
+
+        When ``target`` does not yet exist, the writability of its nearest
+        existing ancestor is probed instead (that is where it would be created).
+        """
+        probe_dir = target
+        while not probe_dir.exists() and probe_dir != probe_dir.parent:
+            probe_dir = probe_dir.parent
+
+        probe = probe_dir / ".nwave_write_probe"
+        try:
+            probe.write_text("", encoding="utf-8")
+            probe.unlink()
+            return None
+        except OSError as e:
+            return PluginResult(
+                success=False,
+                plugin_name=self.name,
+                message=(
+                    f"Skills target directory is not writable "
+                    f"(permission denied): {probe_dir} ({e})"
+                ),
+                errors=[f"Permission denied writing to {probe_dir}: {e}"],
             )
 
     def _resolve_source(
@@ -218,8 +305,7 @@ class SkillsPlugin(InstallationPlugin):
         entries, excluded = filter_public_skills_with_reasons(
             entries, public_agents, ownership_map, command_skills
         )
-        for skipped_name, reason in excluded:
-            context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
+        _log_skipped_skills(context, excluded)
         copy_skills_to_target(entries, skills_target, clean_existing=True)
 
         # Resolve Python command substitution in installed files
@@ -265,8 +351,7 @@ class SkillsPlugin(InstallationPlugin):
         entries, excluded = filter_public_skills_with_reasons(
             entries, public_agents, ownership_map
         )
-        for skipped_name, reason in excluded:
-            context.logger.info(f"  ⏭️ Skipped {skipped_name}: {reason}")
+        _log_skipped_skills(context, excluded)
 
         # Only create target dir if there are skills to install
         if entries:

@@ -108,6 +108,11 @@ def _git(*args: str, cwd: Path) -> None:
     subprocess.run(
         [
             "git",
+            # bootstrap repo: disable the contributor's global git hooks
+            # (e.g. templateDir-injected pre-commit/prepare-commit-msg) so the
+            # demo commit doesn't fail on a missing .pre-commit-config.yaml
+            "-c",
+            "core.hooksPath=.disabled-git-hooks",
             "-c",
             "user.email=tutorial@nwave.ai",
             "-c",

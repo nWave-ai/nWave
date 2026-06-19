@@ -69,11 +69,17 @@ class StubScopeChecker(ScopeChecker):
 
 
 def _make_complete_events(step_id: str) -> list[PhaseEvent]:
-    """Create complete 7-phase events that pass StepCompletionValidator."""
+    """Create complete events that pass StepCompletionValidator.
+
+    F6 sweep (2026-05-18): RED-family predicate updated to include the
+    canonical "RED" phase (ADR-025) alongside legacy "RED_ACCEPTANCE" /
+    "RED_UNIT". Iterates whatever the default ``tdd_phases`` returns —
+    canonical 3-phase post-flip, legacy 5-phase pre-flip.
+    """
     phases = get_tdd_schema().tdd_phases
     events = []
     for phase in phases:
-        outcome = "FAIL" if phase in ("RED_ACCEPTANCE", "RED_UNIT") else "PASS"
+        outcome = "FAIL" if phase in ("RED", "RED_ACCEPTANCE", "RED_UNIT") else "PASS"
         if phase == "REFACTOR_CONTINUOUS":
             events.append(
                 PhaseEvent(

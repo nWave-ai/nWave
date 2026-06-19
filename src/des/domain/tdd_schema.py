@@ -6,15 +6,14 @@ nWave/templates/step-tdd-cycle-schema.json. Provides cached access to avoid
 repeated file I/O.
 
 Dual-canon support (ADR-025, 2026-05-07):
+- ``canonical_phases`` (v5, 3-phase: RED/GREEN/COMMIT) is the canonical list
+  per ADR-025. RED absorbs PREPARE+RED_ACCEPTANCE+RED_UNIT. This is the
+  default returned by ``tdd_phases`` (2026-05-18 flip — F1+F2+F3 closes
+  doc-impl drift identified in RCA RC-A).
 - ``legacy_phases`` (v4, 5-phase: PREPARE/RED_ACCEPTANCE/RED_UNIT/GREEN/COMMIT)
-  is the active list returned by ``tdd_phases`` for backward compatibility
-  with pre-2026-05-07 audit-log replay and existing validators/tests.
-- ``canonical_phases`` (v5, 3-phase: RED/GREEN/COMMIT) is the new canonical
-  list per ADR-025. RED absorbs PREPARE+RED_ACCEPTANCE+RED_UNIT.
-
-Callers that need to write or validate v5 logs explicitly read
-``canonical_phases``; callers consuming the legacy contract continue to read
-``tdd_phases`` unchanged.
+  is preserved for backward-compat audit-log replay of pre-2026-05-07
+  commits. Callers reach the legacy list explicitly via
+  ``phases_for("4.0")`` or the ``legacy_phases`` field.
 
 Design Principles:
 - Single Responsibility: Only loads and parses TDD schema
@@ -61,9 +60,9 @@ class TDDSchemaProtocol(Protocol):
     def tdd_phases(self) -> tuple[str, ...]:
         """Ordered tuple of active TDD phase names.
 
-        Currently aliases ``legacy_phases`` (5-phase v4) for backward
-        compatibility. Callers needing the canonical 3-phase contract
-        (ADR-025) read ``canonical_phases`` explicitly.
+        Returns CANONICAL_PHASES (3-phase v5, ADR-025) by default;
+        ``schema_version='4.0'`` dispatch routes legacy callers via the
+        ``legacy_phases`` property / ``phases_for("4.0")``.
         """
         ...
 
@@ -92,9 +91,12 @@ class TDDSchemaProtocol(Protocol):
 class TDDSchema:
     """Immutable container for TDD schema data.
 
-    Dual-canon (ADR-025, 2026-05-07):
-    - ``tdd_phases`` / ``legacy_phases`` = 5-phase v4 (default active list).
-    - ``canonical_phases`` = 3-phase v5 (RED, GREEN, COMMIT) for new logs.
+    Dual-canon (ADR-025, 2026-05-07; default flip 2026-05-18):
+    - ``tdd_phases`` / ``canonical_phases`` = 3-phase v5 (RED, GREEN, COMMIT)
+      — default active list returned by the getter.
+    - ``legacy_phases`` = 5-phase v4 (PREPARE/RED_ACCEPTANCE/RED_UNIT/GREEN/
+      COMMIT) — preserved for audit-log replay; reached via
+      ``phases_for("4.0")`` dispatch.
 
     All tuple fields are frozen to prevent mutation after construction.
     """
@@ -250,11 +252,16 @@ class TDDSchemaLoader:
         )
 
     def _extract_tdd_phases(self, raw_data: dict) -> tuple[str, ...]:
-        """Extract ordered TDD phase names from schema."""
-        phase_log = raw_data.get("tdd_cycle", {}).get("phase_execution_log", [])
-        return tuple(
-            phase["phase_name"] for phase in phase_log if "phase_name" in phase
-        )
+        """Extract ordered TDD phase names from schema.
+
+        ADR-025 (2026-05-07; default flip 2026-05-18): the active getter
+        returns CANONICAL_PHASES (3-phase v5) by default. The JSON file's
+        ``tdd_cycle.phase_execution_log`` still records the legacy 5-phase
+        list for audit-log replay; that path is reached via
+        ``phases_for("4.0")`` or the ``legacy_phases`` field, NOT the
+        default ``tdd_phases`` getter.
+        """
+        return CANONICAL_PHASES
 
     def _extract_valid_statuses(self, raw_data: dict) -> tuple[str, ...]:
         """Extract valid phase statuses from schema."""

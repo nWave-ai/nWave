@@ -118,6 +118,19 @@ class SubagentStopService(SubagentStopPort):
                 ],
             )
 
+        # Earned-Trust intake validation: project_id IS feature_id on DEV and
+        # drives the Task-Id grep in commit verification. Empty/whitespace
+        # values would silently disable AND-semantics at the verifier port,
+        # so reject upstream rather than defensively clamping at the caller.
+        if not context.project_id or not context.project_id.strip():
+            return HookDecision.block(
+                reason="EMPTY_PROJECT_ID: feature_id missing from execution context",
+                recovery_suggestions=[
+                    "Ensure execution-log carries a non-empty project_id",
+                    "Check DES-PROJECT-ID marker in prompt",
+                ],
+            )
+
         # Step 2: Read step events
         try:
             events = self._log_reader.read_step_events(
@@ -181,16 +194,22 @@ class SubagentStopService(SubagentStopPort):
             )
 
         # Step 3.5: Verify git commit exists (only if phases passed and cwd provided)
+        # SF parity (commit ae109bd8): require AND-semantics on Step-Id + Task-Id
+        # to prevent cross-feature commit confusion. context.project_id IS the
+        # feature_id on DEV (validated in step 1 above).
         if context.cwd and self._commit_verifier:
             commit_result = self._commit_verifier.verify_commit(
-                context.step_id, context.cwd
+                context.step_id,
+                context.cwd,
+                feature_id_filter=context.project_id,
             )
             if not commit_result.verified:
                 self._log_commit_not_verified(context, commit_result, hook_id=hook_id)
                 return HookDecision.block(
                     reason=f"COMMIT_NOT_VERIFIED: {commit_result.error_reason}",
                     recovery_suggestions=[
-                        f"Create a git commit with trailer 'Step-ID: {context.step_id}'",
+                        f"Create a git commit with trailer 'Step-Id: {context.step_id}'",
+                        f"Include trailer 'Task-Id: {context.project_id}' on the same commit",
                         "Ensure the COMMIT phase actually runs git commit",
                         "Check that git is available and you're in a git repository",
                     ],

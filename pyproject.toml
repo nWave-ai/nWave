@@ -23,7 +23,7 @@ packages = ["nwave_ai"]
 
 [project]
 name = "nwave-ai"
-version = "3.15.1"
+version = "3.18.2"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -72,6 +72,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-bdd>=7.0.0",
+    "respx>=0.20.0",
+    "jsonschema>=4.0.0"
+]
+
+[dependency-groups]
+# Local dev toolchain (PEP 735). Installed by default on `uv sync`.
+# Not published in package metadata (unlike the `test` extra above).
 dev = [
     # Testing
     "pytest>=8.0.0",
@@ -87,6 +100,7 @@ dev = [
     "pytest-watch>=4.2.0",
     "allure-pytest>=2.13.0",
     "respx>=0.20.0",
+    "hypothesis>=6.0",
     # Mutation testing
     "cosmic-ray>=8.4.0",
     "mutmut>=2.4.0",
@@ -99,6 +113,8 @@ dev = [
     "pre-commit>=3.6.0",
     "commitizen>=3.12.0",
     "gitlint>=0.19.0",
+    # Task runner (replaces Pipfile [scripts]; run via `uv run poe <task>`)
+    "poethepoet>=0.24",
     # Utilities
     "fpdf2>=2.7.0",
     "click>=8.0.0",
@@ -110,16 +126,9 @@ dev = [
     "testcontainers>=4.0.0",
     "docker>=7.0.0",
     # JSON Schema validation (used by tests/outcomes + tests/feature_delta)
-    "jsonschema>=4.0.0"
-]
-test = [
-    "pytest>=8.0.0",
-    "pytest-cov>=4.1.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-xdist>=3.5.0",
-    "pytest-bdd>=7.0.0",
-    "respx>=0.20.0",
-    "jsonschema>=4.0.0"
+    "jsonschema>=4.0.0",
+    # Packaging (python -m build / scripts/build_dist.py)
+    "build>=1.2.0"
 ]
 
 [project.urls]
@@ -159,6 +168,7 @@ markers = [
     "live_api: Tests that call paid external APIs (e.g. OpenAI); skipped unless relevant API key env var is set",
     "broken_schema_v0: Quarantined tests asserting internal pre-FM-1 (top-level array) hooks.json schema; superseded by tests/e2e/test_codex_real_boot.py per DDD-7 (codex-empirical-e2e-support / FM-4). Excluded by default CI selector via -m 'not broken_schema_v0'.",
     "polyglot_smoke: Polyglot pilot smoke tests (per-pilot toolchain required: Node/npm for TS, dotnet for C#, cargo for Rust). Skipped automatically when toolchain absent.",
+    "wiring_e2e: Walking-skeleton integration tests that wire spine CLIs together via real subprocess against a realistic tmp project (proves end-to-end composition, not isolated fixtures).",
 ]
 norecursedirs = [
     ".venv",
@@ -310,7 +320,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "3.15.1"
+version = "3.18.2"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",
@@ -323,3 +333,37 @@ changelog_file = "CHANGELOG.md"
 major_version_zero = false
 bump_message = "chore(release): v$new_version [skip ci]"
 update_changelog_on_bump = true
+
+[tool.poe.tasks]
+# Dev task runner — replaces the former Pipfile [scripts] block.
+# Run with: `uv run poe <task>` (or `poe <task>` inside an activated .venv).
+# Testing (alphabetical)
+mutation-test    = "mutmut run --paths-to-mutate=src/des,scripts/install"
+test             = "python -m pytest tests/ --pspec --tb=short --color=yes"
+test-acceptance  = "python -m pytest tests/des/acceptance/ tests/installer/acceptance/ tests/plugins/plugin-architecture/acceptance/ tests/bugs/ --pspec --tb=short --color=yes"
+test-allure      = "python -m pytest tests/ --pspec --tb=short --alluredir=reports/allure-results --color=yes"
+test-bugs        = "python -m pytest tests/bugs/ --pspec --tb=short --color=yes"
+test-coverage    = "python -m pytest tests/ -q --cov=src --cov=scripts --cov-report=term-missing --cov-report=html:reports/htmlcov"
+test-des         = "python -m pytest tests/des/ --pspec --tb=short --color=yes"
+test-des-unit    = "python -m pytest tests/des/unit/ --pspec --tb=short --color=yes"
+test-e2e         = "python -m pytest tests/des/e2e/ tests/installer/e2e/ tests/plugins/plugin-architecture/e2e/ --pspec --tb=short --color=yes"
+test-full        = "python -m pytest tests/ --pspec --tb=short --cov=src --cov=scripts --cov-report=term-missing --cov-report=html:reports/htmlcov --html=reports/test-report.html --self-contained-html --alluredir=reports/allure-results --color=yes"
+test-html        = "python -m pytest tests/ --pspec --tb=short --html=reports/test-report.html --self-contained-html --color=yes"
+test-installer   = "python -m pytest tests/installer/ --pspec --tb=short --color=yes"
+test-integration = "python -m pytest tests/des/integration/ tests/plugins/plugin-architecture/integration/ --pspec --tb=short --color=yes"
+test-not-slow    = "python -m pytest tests/ -m 'not slow' --pspec --tb=short --color=yes"
+test-plugins     = "python -m pytest tests/plugins/ --pspec --tb=short --color=yes"
+test-unit        = "python -m pytest tests/des/unit/ tests/installer/unit/ tests/plugins/plugin-architecture/unit/ tests/plugins/install/ --pspec --tb=short --color=yes"
+# Linting & formatting (alphabetical)
+format           = "ruff format src/ scripts/ tests/"
+format-check     = "ruff format --check src/ scripts/ tests/"
+lint             = "ruff check src/ scripts/ tests/"
+typecheck        = "mypy src/des/"
+# Validation (alphabetical)
+validate         = "python scripts/local_ci.py"
+validate-fast    = "python scripts/local_ci.py --fast"
+validate-yaml    = "python scripts/validation/validate_yaml_files.py"
+# Build, docs & hooks (alphabetical)
+build            = "python scripts/build_dist.py"
+docgen           = "python scripts/docgen.py"
+install-hooks    = "pre-commit install --install-hooks"  # all hook types via default_install_hook_types

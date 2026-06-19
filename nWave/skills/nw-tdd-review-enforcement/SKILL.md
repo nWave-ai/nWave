@@ -257,7 +257,7 @@ When a crafter gets stuck, the correct action is to escalate -- not to silently 
 
 ### What to Check
 
-1. **ESCALATION_NEEDED markers**: execution-log.json should contain `escalation_needed: true` with reason if the crafter hit a wall
+1. **ESCALATION_NEEDED markers**: the execution-log.json should contain `escalation_needed: true` with reason if the crafter hit a wall
 2. **Three-attempt rule**: evidence of at least 3 distinct implementation attempts before any test change (check GREEN phase attempts in execution log)
 3. **Product owner approval**: any requirement-driven test change must reference explicit PO approval (e.g., `po_approved: true` or `requirement_change: {ticket}` in execution log)
 

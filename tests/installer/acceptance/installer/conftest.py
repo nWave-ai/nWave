@@ -95,6 +95,24 @@ def installer_result(project_root, tmp_path_factory):
         )
         subprocess.run = lambda *a, **kw: mock_completed
 
+        # --- Patch AttributionPlugin hook lifecycle to prevent real FS writes ---
+        # AttributionPlugin() defaults self._config_dir to Path.home() / ".nwave",
+        # and install_attribution_hook's _resolve_hooks_dir falls through to a
+        # cwd-relative .git/hooks/ when subprocess returns empty stdout (as the
+        # mock above does). Without patching, the installer writes to the real
+        # ~/.nwave/ and .git/hooks/ of whichever repo the tests run from.
+        import scripts.install.attribution_utils as _attr_utils
+        import scripts.install.plugins.attribution_plugin as _attr_plugin
+
+        original_install_hook_utils = _attr_utils.install_attribution_hook
+        original_install_hook_plugin = _attr_plugin.install_attribution_hook
+        original_write_pref = _attr_utils.write_attribution_preference
+        _attr_plugin.install_attribution_hook = lambda config_dir=None: (
+            claude_config_dir / ".nwave" / "hooks" / "prepare-commit-msg"
+        )
+        _attr_utils.install_attribution_hook = _attr_plugin.install_attribution_hook
+        _attr_utils.write_attribution_preference = lambda *a, **kw: None
+
         # --- Set argv ---
         sys.argv = ["install_nwave.py"]
 
@@ -121,6 +139,9 @@ def installer_result(project_root, tmp_path_factory):
         PathUtils.get_opencode_config_dir = original_get_opencode
         PreflightChecker.run_all_checks = original_run_checks
         subprocess.run = original_subprocess_run
+        _attr_utils.install_attribution_hook = original_install_hook_utils
+        _attr_plugin.install_attribution_hook = original_install_hook_plugin
+        _attr_utils.write_attribution_preference = original_write_pref
         sys.argv = original_argv
         if original_opencode_env is None:
             os.environ.pop("OPENCODE_CONFIG_DIR", None)

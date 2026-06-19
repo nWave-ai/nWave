@@ -7,11 +7,11 @@ After this guide, every Bash and apply_patch tool invocation by OpenAI Codex CLI
 ## Prerequisites
 
 - **Python 3.10 or later** — Check with `python3 --version`
-- **pipx or uv** — Package installer. Install with:
+- **uv** (recommended) **or pipx** (fallback) — Package installer. Install with:
   ```bash
-  curl -LsSf https://astral.sh/uv/install.sh | sh    # uv
-  # or
-  python3 -m pip install pipx && pipx ensurepath      # pipx
+  curl -LsSf https://astral.sh/uv/install.sh | sh    # uv (recommended)
+  # or, as a fallback:
+  python3 -m pip install pipx && pipx ensurepath     # pipx
   ```
 - **OpenAI Codex CLI** — Download from [platform.openai.com/docs/guides/codex](https://platform.openai.com/docs/guides/codex) and install per OpenAI's instructions. Verify with `which codex` or `ls ~/.codex/`.
 
@@ -20,9 +20,9 @@ After this guide, every Bash and apply_patch tool invocation by OpenAI Codex CLI
 ### Step 1: Install nWave CLI
 
 ```bash
+uv tool install nwave-ai     # recommended
+# or, as a fallback:
 pipx install nwave-ai
-# or
-uv tool install nwave-ai
 ```
 
 ### Step 2: Auto-detect and install into Codex
@@ -100,7 +100,7 @@ rm ~/.codex/hooks.json ~/.codex/.nwave-des-manifest.json
 To remove nWave entirely:
 ```bash
 nwave-ai uninstall
-pipx uninstall nwave-ai    # or: uv tool uninstall nwave-ai
+uv tool uninstall nwave-ai    # or: pipx uninstall nwave-ai
 ```
 
 ## Common Issues
@@ -124,7 +124,7 @@ nwave-ai install --platform codex --force
 
 **Fix:** Upgrade to v3.15+:
 ```bash
-pipx upgrade nwave-ai    # or: uv tool upgrade nwave-ai
+uv tool upgrade nwave-ai    # or: pipx upgrade nwave-ai
 nwave-ai install --platform codex --force
 ```
 
@@ -136,7 +136,7 @@ nwave-ai install --platform codex --force
 
 **Fix:** Upgrade to v3.15+:
 ```bash
-pipx upgrade nwave-ai
+uv tool upgrade nwave-ai    # or: pipx upgrade nwave-ai
 nwave-ai install --platform codex --force
 ```
 

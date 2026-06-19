@@ -3,9 +3,6 @@
 Strategy C (Real local). Both walking skeletons exercise real BackupManager
 against a real filesystem on tmp_path with HOME and CLAUDE_CONFIG_DIR
 isolated via monkeypatch.
-
-DELIVER wave enables these one at a time after RED; the @walking_skeleton
-tag drives the outer TDD loop first.
 """
 
 from pytest_bdd import scenario

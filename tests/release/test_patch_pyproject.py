@@ -231,16 +231,6 @@ class TestCliEntryPoint:
         content = (tmp_path / "out.toml").read_text()
         assert content.count("[project.scripts]") == 1
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "GREEN in step 03-01 — patcher rewrite skip->merge per RCA Branch A "
-            "permanent (issue #41). Current _add_cli_entry_point skips when "
-            "[project.scripts] already exists, so foreign entries survive but "
-            "nwave-ai is never injected. The merge-if-exists rewrite in 03-01 "
-            "will make this assertion pass and remove this xfail marker."
-        ),
-    )
     def test_patched_output_contains_nwave_ai_entry(self, tmp_path):
         """Given source already has [project.scripts] with foreign entries
         (no nwave-ai), when patching, then the patched output MUST contain

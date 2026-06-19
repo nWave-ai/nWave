@@ -24,12 +24,11 @@ Finalize a completed feature: verify all steps done|create evolution document|mi
 
 ## Context Files Required
 
-- docs/feature/{feature-id}/deliver/roadmap.json - Original project plan
-- docs/feature/{feature-id}/deliver/execution-log.json - Step execution history
+The completion-evidence files are `docs/feature/{feature-id}/deliver/roadmap.json` (the original project plan) and `docs/feature/{feature-id}/deliver/execution-log.json` (step execution history).
 
-## Pre-Dispatch Gate: All Steps Complete
+## Pre-Dispatch Gate: All Work Complete
 
-Before dispatching, verify all steps are done — prevents archiving incomplete features.
+Before dispatching, verify all work is done — prevents archiving incomplete features.
 
 1. **Parse execution log** — Read `docs/feature/{feature-id}/deliver/execution-log.json`. Gate: file readable.
 2. **Verify completeness** — Check every step has status `DONE`. Gate: all steps DONE.
@@ -39,9 +38,9 @@ Before dispatching, verify all steps are done — prevents archiving incomplete 
 
 ### Phase A — Evolution Document
 
-1. **Gather source data** — Read `execution-log.json`, `roadmap.json`, and all `*/wave-decisions.md` files. Gate: source files read.
+1. **Gather source data** — Read `execution-log.json` + `roadmap.json` (the step log and plan), and all `*/wave-decisions.md` files. Gate: source files read.
 2. **Extract key decisions** — Pull decisions, issues, and lessons from wave-decisions files. Gate: decisions list assembled.
-3. **Write evolution doc** — Create `docs/evolution/YYYY-MM-DD-{feature-id}.md` with: feature summary, business context, key decisions, steps completed (from execution-log.json), lessons learned, issues encountered, links to migrated permanent artifacts. Gate: file written.
+3. **Write evolution doc** — Create `docs/evolution/YYYY-MM-DD-{feature-id}.md` with: feature summary, business context, key decisions, work completed (from `execution-log.json`), lessons learned, issues encountered, links to migrated permanent artifacts. Gate: file written.
 
 ### Phase B — Migrate Lasting Artifacts
 
@@ -72,7 +71,7 @@ These are process scaffolding — valuable during delivery, disposable after:
 
 | File pattern | Why discard |
 |---|---|
-| `deliver/execution-log.json` | Audit trail captured in evolution doc |
+| `deliver/execution-log.json` | Audit trail — captured in evolution doc |
 | `deliver/roadmap.json` | Step plan — superseded by evolution doc + git history |
 | `deliver/.develop-progress.json` | Resume state — temporary |
 | `design/review-*.md` | Review findings captured in evolution doc |

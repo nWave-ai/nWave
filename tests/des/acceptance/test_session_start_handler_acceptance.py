@@ -41,12 +41,11 @@ class TestSessionStartHandlerAcceptance:
         captured = capsys.readouterr()
         assert captured.out.strip()
         output = json.loads(captured.out.strip())
-        assert "additionalContext" in output
-        assert (
-            "1.0.0" in output["additionalContext"]
-            or "2.0.0" in output["additionalContext"]
-        )
-        assert "2.0.0" in output["additionalContext"]
+        ctx = output["hookSpecificOutput"]["additionalContext"]
+        assert "1.0.0" in ctx or "2.0.0" in ctx
+        assert "2.0.0" in ctx
+        # User-visible notice is also emitted.
+        assert "2.0.0" in output["systemMessage"]
 
     def test_produces_no_output_when_up_to_date(self, capsys):
         """AC: Produces no stdout output and exits 0 when UP_TO_DATE."""
@@ -144,7 +143,7 @@ class TestSessionStartHandlerAcceptance:
         assert exit_code == 0
         captured = capsys.readouterr()
         output = json.loads(captured.out.strip())
-        msg = output["additionalContext"]
+        msg = output["hookSpecificOutput"]["additionalContext"]
         assert "1.5.0" in msg  # local version
         assert "3.1.0" in msg  # latest version
         assert "Bug fixes" in msg  # changelog

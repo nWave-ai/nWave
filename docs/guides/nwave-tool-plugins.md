@@ -17,7 +17,7 @@ PyPI packages under the `nWave-ai` GitHub organization.
 A nWave tool plugin is a Python package that:
 
 1. Lives in its own GitHub repo under `nWave-ai/` (e.g. `nWave-ai/nwave-dedup`)
-2. Ships its own PyPI wheel installable via `pip` or `pipx`
+2. Ships its own PyPI wheel installable via `uv tool`, `pipx`, or `pip`
 3. Exposes a CLI named `nwave-<verb>` (e.g. `nwave-dedup`, `nwave-audit`)
 4. Has its own version, tests, CI, and release cadence — independent of
    `nwave-ai` core
@@ -38,7 +38,7 @@ Tool plugins solve this by:
 
 - Letting tools ship at their own pace (a scanner bug-fix doesn't need a
   methodology release)
-- Letting users install only what they need (`pipx install nwave-dedup`
+- Letting users install only what they need (`uv tool install nwave-dedup`
   doesn't pull tree-sitter grammars unless they want them)
 - Letting external contributors own a tool without touching the
   methodology core
@@ -148,12 +148,14 @@ Three options, in order of preference:
 
 If you already have `nwave-ai` installed, the integrated subcommand
 discovers known plugins from a built-in registry and installs them via
-pipx (or pip as fallback):
+the same toolchain that owns nwave-ai (uv → pipx → pip priority).
+Override with `NWAVE_INSTALLER=uv` or `NWAVE_INSTALLER=pipx` if needed:
 
 ```bash
 nwave-ai plugin install dedup
-# Resolves "dedup" → "nwave-dedup", runs: pipx install nwave-dedup
-# Verifies the resulting CLI is on PATH
+# Resolves "dedup" → "nwave-dedup".
+# Runs `uv tool install nwave-dedup` (or `pipx install nwave-dedup`
+# if nwave-ai itself is pipx-installed). Verifies the CLI is on PATH.
 ```
 
 List known plugins:
@@ -169,14 +171,16 @@ Uninstall:
 nwave-ai plugin uninstall dedup
 ```
 
-### Option 2 — Direct `pipx` (no nwave-ai required)
+### Option 2 — Direct install (no nwave-ai required)
 
 Tool plugins are independent PyPI packages — install one without
 installing `nwave-ai` at all:
 
 ```bash
+uv tool install nwave-dedup    # recommended
+# or, as a fallback:
 pipx install nwave-dedup
-# or
+# or:
 pip install nwave-dedup
 ```
 
@@ -185,6 +189,8 @@ pip install nwave-dedup
 For pre-release versions or unreleased branches:
 
 ```bash
+uv tool install git+https://github.com/nWave-ai/nwave-dedup.git
+# or:
 pipx install git+https://github.com/nWave-ai/nwave-dedup.git
 ```
 

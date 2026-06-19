@@ -13,7 +13,6 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 
@@ -264,12 +263,6 @@ def existing_artifacts_safe(build_result: dict[str, Any]):
         assert not plugin_dir.exists() or len(list(plugin_dir.iterdir())) == 0, (
             f"Failed build left partial output in {plugin_dir}"
         )
-
-
-@then("the pipeline warns about version mismatch")
-def pipeline_warns_version_mismatch(build_result: dict[str, Any]):
-    """Verify mismatch warning is produced."""
-    pytest.skip("Version mismatch detection not yet implemented")
 
 
 @then("both builds produce identical plugin directories")

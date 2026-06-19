@@ -29,7 +29,7 @@ Execute \*investigate-root-cause for {problem-statement}.
 
 When invoked as part of `/nw-deliver` Phase 3.5, execute in order:
 
-1. **Gather Inputs** — Read evolution document, execution-log.json, mutation results, and git log. Gate: all available inputs loaded.
+1. **Gather Inputs** — Read the evolution document, mutation results, git log, `roadmap.json`, and `execution-log.json`. Gate: all available inputs loaded.
 2. **Analyze What Worked Well** — Identify practices that succeeded and document why — preserve these. Gate: at least one practice documented with rationale.
 3. **Analyze What Improved** — Identify what worked better than before and why — record as reinforcements. Gate: delta from prior execution captured.
 4. **Analyze What Worked Badly** — Apply 5 Whys root cause analysis to failures; produce actionable fix per root cause. Gate: each failure has a root cause and fix.

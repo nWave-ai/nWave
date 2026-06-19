@@ -129,14 +129,25 @@ def _init_git_repo(path: Path) -> None:
 
 
 def _create_commit_with_step_id(
-    path: Path, step_id: str, message: str = "Implement feature"
+    path: Path,
+    step_id: str,
+    message: str = "Implement feature",
+    feature_id: str = "test-project",
 ) -> str:
-    """Create a git commit containing a Step-ID trailer in the message body.
+    """Create a git commit containing Step-Id + Task-Id trailers in the body.
+
+    Emits BOTH trailers because production code now requires AND-semantics
+    (SF parity port, step 01-01): ``feature_id_filter=context.project_id`` is
+    always passed when ``project_id`` is non-empty, so commits without a
+    matching ``Task-Id:`` trailer will fail verification.
 
     Args:
         path: Git repository directory
         step_id: Step identifier to embed as trailer (e.g., "01-01")
         message: Subject line for the commit message
+        feature_id: Feature/task identifier to embed as Task-Id trailer.
+            Defaults to "test-project" (matches the test SubagentStopContext
+            project_id used throughout this file).
 
     Returns:
         The commit hash (short form) of the created commit
@@ -153,7 +164,7 @@ def _create_commit_with_step_id(
         check=True,
     )
 
-    commit_message = f"{message}\n\nStep-ID: {step_id}"
+    commit_message = f"{message}\n\nStep-Id: {step_id}\nTask-Id: {feature_id}"
     subprocess.run(
         ["git", "commit", "-m", commit_message],
         cwd=str(path),
@@ -268,7 +279,7 @@ class TestGitCommitVerification:
     ):
         """
         GIVEN all phases are complete in execution-log.json
-        AND a git commit exists with trailer "Step-ID: 01-01"
+        AND a git commit exists with trailer "Step-Id: 01-01"
         WHEN the completion hook fires after agent finishes
         THEN the step is allowed to proceed
         AND the verification confirms the commit exists
@@ -279,7 +290,7 @@ class TestGitCommitVerification:
                        without a real git commit.
 
         Domain Example: Software-crafter finishes step 01-01, commits code
-                       with "Step-ID: 01-01" trailer. Hook finds the commit
+                       with "Step-Id: 01-01" trailer. Hook finds the commit
                        and confirms the step is genuinely complete.
         """
         # Arrange: Initialize git repo and create commit with Step-ID trailer
@@ -319,7 +330,7 @@ class TestGitCommitVerification:
     ):
         """
         GIVEN all phases are complete in execution-log.json
-        BUT no git commit contains trailer "Step-ID: 01-01"
+        BUT no git commit contains trailer "Step-Id: 01-01"
         WHEN the completion hook fires after agent finishes
         THEN the step is blocked with commit verification failure
         AND the reason mentions missing commit verification
@@ -423,7 +434,7 @@ class TestGitCommitVerification:
     ):
         """
         GIVEN execution-log.json has missing phases (validation fails)
-        AND a git commit exists with trailer "Step-ID: 01-01"
+        AND a git commit exists with trailer "Step-Id: 01-01"
         WHEN the completion hook fires after agent finishes
         THEN the step is blocked for the missing phases reason
         AND git verification is never performed
@@ -442,9 +453,11 @@ class TestGitCommitVerification:
         _init_git_repo(tmp_project_root)
         _create_commit_with_step_id(tmp_project_root, "01-01", "Previous attempt")
 
-        # Arrange: Create execution-log.json with MISSING phases (only first 3)
-        first_three = list(tdd_phases[:3])
-        log_data = _create_execution_log_missing_phases(tdd_phases, first_three)
+        # Arrange: Create execution-log.json with MISSING phases — include
+        # only the first phase, leave the rest missing (canon-agnostic:
+        # works for both 3-phase canonical and 5-phase legacy).
+        partial_phases = list(tdd_phases[:1])
+        log_data = _create_execution_log_missing_phases(tdd_phases, partial_phases)
         log_file = tmp_project_root / "execution-log.json"
         log_file.write_text(json.dumps(log_data, indent=2))
 
@@ -483,7 +496,7 @@ class TestGitCommitVerification:
         """
         GIVEN all phases are complete in execution-log.json
         AND multiple git commits exist in the repository
-        AND only one commit contains trailer "Step-ID: 01-01"
+        AND only one commit contains trailer "Step-Id: 01-01"
         WHEN the completion hook fires after agent finishes
         THEN the correct commit is found and verified
 
@@ -494,7 +507,7 @@ class TestGitCommitVerification:
 
         Domain Example: Repository has 50 commits from various developers.
                        Only the latest from software-crafter has the
-                       "Step-ID: 01-01" trailer. Hook correctly identifies
+                       "Step-Id: 01-01" trailer. Hook correctly identifies
                        this specific commit.
         """
         # Arrange: Initialize git repo with multiple commits
@@ -539,7 +552,7 @@ class TestGitCommitVerification:
     ):
         """
         GIVEN all phases are complete in execution-log.json
-        AND a git commit has "Step-ID: 01-01" in its message body (not subject)
+        AND a git commit has "Step-Id: 01-01" in its message body (not subject)
         WHEN the completion hook fires after agent finishes
         THEN the commit is found and verified
 
@@ -550,7 +563,7 @@ class TestGitCommitVerification:
 
         Domain Example: Software-crafter creates a commit with:
                        Subject: "Implement user registration"
-                       Body: "Added registration endpoint...\\n\\nStep-ID: 01-01"
+                       Body: "Added registration endpoint...\\n\\nStep-Id: 01-01"
                        Hook searches full commit message and finds the trailer.
         """
         # Arrange: Initialize git repo
@@ -567,14 +580,16 @@ class TestGitCommitVerification:
             capture_output=True,
             check=True,
         )
-        # Multi-line commit message with Step-ID trailer in body
+        # Multi-line commit message with Step-Id + Task-Id trailers in body
+        # (Task-Id required by SF parity port -- step 01-01)
         commit_msg = (
             "Implement user registration\n"
             "\n"
             "Added registration endpoint with email validation.\n"
             "Includes password hashing and session management.\n"
             "\n"
-            "Step-ID: 01-01"
+            "Step-Id: 01-01\n"
+            "Task-Id: test-project"
         )
         subprocess.run(
             ["git", "commit", "-m", commit_msg],

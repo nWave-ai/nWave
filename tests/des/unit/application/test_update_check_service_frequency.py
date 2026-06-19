@@ -66,11 +66,22 @@ def _start_server(
 
 
 def _make_config(tmp_path: Path, data: dict[str, Any]) -> DESConfig:
-    """Write a des-config.json with given data and return a DESConfig for it."""
-    config_path = tmp_path / ".nwave" / "des-config.json"
-    config_path.parent.mkdir(parents=True)
-    config_path.write_text(json.dumps(data), encoding="utf-8")
-    return DESConfig(config_path=config_path)
+    """Return a DESConfig whose update_check state lives in the global config.
+
+    update_check is machine-scoped, so the given data (an update_check block)
+    is written to ``global-config.json``; the project config stays empty.
+    """
+    global_path = _global_path(tmp_path)
+    global_path.write_text(json.dumps(data), encoding="utf-8")
+    project_path = tmp_path / ".nwave" / "des-config.json"
+    project_path.parent.mkdir(parents=True)
+    project_path.write_text("{}", encoding="utf-8")
+    return DESConfig(config_path=project_path, global_config_path=global_path)
+
+
+def _global_path(tmp_path: Path) -> Path:
+    """Path to the global config file used for update_check state in tests."""
+    return tmp_path / "global-config.json"
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +181,7 @@ class TestUpdateCheckServiceStatePersistence:
                 result = service.check_for_updates()
                 assert result.status == UpdateStatus.UP_TO_DATE
 
-                config_path = tmp_path / ".nwave" / "des-config.json"
-                saved = json.loads(config_path.read_text())
+                saved = json.loads(_global_path(tmp_path).read_text())
                 assert saved["update_check"]["last_checked"] is not None
             finally:
                 server.shutdown()
@@ -198,9 +208,10 @@ class TestUpdateCheckServiceStatePersistence:
                 result = service.check_for_updates()
                 assert result.status == UpdateStatus.UPDATE_AVAILABLE
 
-                config_path = tmp_path / ".nwave" / "des-config.json"
-                saved = json.loads(config_path.read_text())
+                saved = json.loads(_global_path(tmp_path).read_text())
                 assert saved["update_check"]["last_checked"] is not None
+                # latest discovered version is recorded for /nw-update.
+                assert saved["update_check"]["latest_available"] == "2.0.0"
             finally:
                 server.shutdown()
 
@@ -221,8 +232,7 @@ class TestUpdateCheckServiceStatePersistence:
             result = service.check_for_updates()
             assert result.status == UpdateStatus.SKIP
 
-            config_path = tmp_path / ".nwave" / "des-config.json"
-            saved = json.loads(config_path.read_text())
+            saved = json.loads(_global_path(tmp_path).read_text())
             assert saved["update_check"].get("last_checked") is None
 
 

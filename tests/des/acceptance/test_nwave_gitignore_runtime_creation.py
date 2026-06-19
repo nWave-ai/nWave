@@ -40,13 +40,16 @@ def _assert_gitignore(nwave_dir: Path) -> None:
 def test_des_config_save_update_check_state_creates_gitignore(
     tmp_path: Path,
 ) -> None:
-    """Regression for #32: SessionStart update check must create .gitignore."""
-    nwave_dir = tmp_path / ".nwave"
-    config_path = nwave_dir / "des-config.json"
-    # Point global config at a non-existent file to keep the scenario hermetic.
+    """Regression for #32: SessionStart update check must create .gitignore.
+
+    update_check state is machine-scoped, so the save targets the GLOBAL config
+    under ~/.nwave/. The .gitignore invariant must hold for that .nwave/ dir.
+    """
+    global_nwave_dir = tmp_path / "global" / ".nwave"
+    global_config_path = global_nwave_dir / "global-config.json"
     config = DESConfig(
-        config_path=config_path,
-        global_config_path=tmp_path / "no-such-global.json",
+        config_path=tmp_path / "proj" / ".nwave" / "des-config.json",
+        global_config_path=global_config_path,
     )
 
     config.save_update_check_state(
@@ -54,8 +57,8 @@ def test_des_config_save_update_check_state_creates_gitignore(
         skipped_versions=[],
     )
 
-    assert config_path.exists()
-    _assert_gitignore(nwave_dir)
+    assert global_config_path.exists()
+    _assert_gitignore(global_nwave_dir)
 
 
 def test_create_des_task_signal_creates_gitignore(tmp_path: Path) -> None:

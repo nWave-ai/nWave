@@ -23,7 +23,7 @@ Uses its own container (not the shared ``opencode_container``) because
 this test requires the pipx + local-branch overlay toolchain from the
 Dockerfile — the nwave-ai PyPI package plus our in-branch fixes.
 
-Step-ID: 01-03
+Step-Id: 01-03
 """
 
 from __future__ import annotations

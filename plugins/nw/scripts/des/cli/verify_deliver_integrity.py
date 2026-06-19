@@ -7,6 +7,17 @@ Reads roadmap.json and execution-log.json from the project directory,
 cross-references step IDs against execution-log entries, and reports
 violations (steps without DES traces or with incomplete TDD phases).
 
+Workflow-mode awareness (ADR-028 D4.2):
+    Under `workflow.mode: atdd_pure` (resolved from `.nwave/config.yaml`),
+    the DELIVER spine is roadmap-free and execution-log-free. In that mode
+    `--roadmap-only` and the execution-log cross-reference are no-ops: a
+    missing roadmap.json is the expected state (never exit 2), a leftover
+    roadmap.json is a WARNING, and the verifier validates the AT-completion
+    ledger instead. An absent ledger is an integrity violation (exit 1),
+    never a crash. Any other mode -- `classic`, an absent key, or an absent
+    config file -- is treated as classic and behaves exactly as before
+    (the 0/1/2 exit-code contract is preserved byte-for-byte).
+
 Exit codes:
     0 = All steps verified
     1 = Integrity violations found
@@ -21,6 +32,7 @@ import sys
 from pathlib import Path
 
 from des.adapters.driven.config.des_config import DESConfig
+from des.cli.init_log import ATDD_PURE_MODE, _resolve_workflow_mode
 from des.domain._roadmap_helpers import (
     extract_step_ids as _extract_step_ids,
 )
@@ -89,6 +101,63 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _find_at_completion_ledger(project_dir: Path) -> Path | None:
+    """Locate the AT-completion ledger for an atdd_pure feature (ADR-028 D3).
+
+    The ledger is a single per-feature append-only JSONL file at
+    `{project_dir}/.nwave/telemetry/atdd-pure/{feature_id}.jsonl`. The verifier
+    discovers it by glob -- one file per feature -- so it need not be told the
+    feature id. Returns the ledger path, or None when no ledger exists.
+    """
+    ledger_dir = project_dir / ".nwave" / "telemetry" / "atdd-pure"
+    if not ledger_dir.is_dir():
+        return None
+    ledgers = sorted(ledger_dir.glob("*.jsonl"))
+    return ledgers[0] if ledgers else None
+
+
+def _verify_atdd_pure(project_dir: Path, roadmap_path: Path) -> int:
+    """Verify deliver integrity for an atdd_pure feature (ADR-028 D4.2).
+
+    The atdd_pure spine is roadmap-free and execution-log-free. `--roadmap-only`
+    and the execution-log cross-reference are no-ops here -- this branch never
+    inspects either artifact for verdict purposes. The verifier validates the
+    AT-completion ledger instead:
+
+    - present ledger -> feature verified (exit 0);
+    - absent ledger  -> structured integrity-violation diagnostic (exit 1),
+      never a crash;
+    - a leftover roadmap.json is the WRONG artifact for this spine, reported as
+      a WARNING -- never an error.
+    """
+    ledger_path = _find_at_completion_ledger(project_dir)
+
+    if ledger_path is None:
+        print(
+            "INTEGRITY VIOLATION: the AT-completion ledger is missing for this "
+            "atdd_pure feature.\n"
+            f"  - expected an append-only JSONL ledger under "
+            f"{project_dir / '.nwave' / 'telemetry' / 'atdd-pure'}\n"
+            "  - the atdd_pure DELIVER spine records audit telemetry in the "
+            "AT-completion ledger (ADR-028 D3); without it the feature has no "
+            "verifiable integrity trace."
+        )
+        return 1
+
+    if roadmap_path.exists():
+        print(
+            f"Warning: a leftover roadmap.json is present at {roadmap_path}. "
+            "The atdd_pure spine is roadmap-free (ADR-028 D1); this stale "
+            "artifact is ignored and may be removed."
+        )
+
+    print(
+        f"All slices have a complete AT-completion ledger trace: {ledger_path} "
+        "(atdd_pure: roadmap.json and execution-log.json cross-reference skipped)."
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     # F-2 (RC-B, ADR-025): argparse replaces hand-rolled args[0] loop. The
     # legacy loop silently swallowed `--roadmap-only` (treating it as the
@@ -101,6 +170,12 @@ def main(argv: list[str] | None = None) -> int:
 
     project_dir: Path = args.project_dir
     roadmap_path = project_dir / "roadmap.json"
+
+    # ADR-028 D4.2: resolve workflow mode BEFORE any roadmap.json access. Under
+    # atdd_pure the spine is roadmap-free -- a missing roadmap is the expected
+    # state, not exit 2 -- so the mode branch MUST run above the roadmap check.
+    if _resolve_workflow_mode(project_dir) == ATDD_PURE_MODE:
+        return _verify_atdd_pure(project_dir, roadmap_path)
 
     if not roadmap_path.exists():
         print(f"Error: roadmap.json not found at {roadmap_path}")
@@ -152,8 +227,37 @@ def main(argv: list[str] | None = None) -> int:
     # canonical TDDSchema phase set. This lets 3-phase ADR-025 projects pass
     # integrity without spurious "missing PREPARE/RED_ACCEPTANCE/RED_UNIT"
     # errors, while legacy 5-phase projects continue to verify unchanged.
+    #
+    # ADR-025 dispatch (per-log auto-detect, 2026-05-18 hotfix): the CLI
+    # uses the EXECUTION LOG to decide which canon applies. If ALL three
+    # legacy-only phases (PREPARE, RED_ACCEPTANCE, RED_UNIT) appear in
+    # ANY step's recorded events, treat the log as v4 legacy and validate
+    # against the schema's `legacy_phases` tuple. Otherwise canonical.
+    # Mirrors `validator._resolve_active_phases` for consistency with the
+    # in-process step-completion validator.
+    legacy_only = {"PREPARE", "RED_ACCEPTANCE", "RED_UNIT"}
+    log_canon_is_legacy = any(
+        legacy_only.issubset(set(phase_names)) for phase_names in entries.values()
+    )
+    active_phases = schema.legacy_phases if log_canon_is_legacy else schema.tdd_phases
     rigor_phases = DESConfig().rigor_tdd_phases
-    effective_phases = tuple(p for p in schema.tdd_phases if p in rigor_phases)
+    # Empty rigor.tdd_phases is a config misconfiguration, not a degenerate
+    # zero-overlap case — surface the diagnostic BEFORE the active-phases
+    # fallback can mask it. The fallback (line below) is correct ONLY when
+    # rigor declares non-empty phases that simply do not overlap with the
+    # active canon (e.g. 3-phase rigor against a legacy v4 audit-replay).
+    if not rigor_phases:
+        print(
+            f"ERROR: rigor.tdd_phases is empty in .nwave/des-config.json. "
+            f"Configure rigor.tdd_phases with at least one of: "
+            f"{list(schema.tdd_phases)!r} (canonical) or "
+            f"{list(schema.legacy_phases)!r} (legacy).",
+            file=sys.stderr,
+        )
+        return 2
+    effective_phases = (
+        tuple(p for p in active_phases if p in rigor_phases) or active_phases
+    )
     if not effective_phases:
         print(
             f"ERROR: rigor.tdd_phases contains no phases recognised by the "

@@ -116,73 +116,6 @@ class TestFullSmokeReportPasses:
 
 
 # ---------------------------------------------------------------------------
-# Scenario: DES hook adapter is importable
-# ---------------------------------------------------------------------------
-
-
-class TestDesHookAdapterImportable:
-    """The DES hook adapter must be importable in the installed venv."""
-
-    def test_des_hook_adapter_import(self, venv_python: Path):
-        """Importing the hook adapter module succeeds."""
-        result = check_importable(
-            venv_python,
-            "des.adapters.drivers.hooks.claude_code_hook_adapter",
-        )
-        assert result.passed, f"DES hook adapter not importable: {result.message}"
-
-    def test_des_domain_import(self, venv_python: Path):
-        """Importing des.domain succeeds."""
-        result = check_importable(venv_python, "des.domain")
-        assert result.passed, f"des.domain not importable: {result.message}"
-
-    def test_des_application_import(self, venv_python: Path):
-        """Importing des.application succeeds."""
-        result = check_importable(venv_python, "des.application")
-        assert result.passed, f"des.application not importable: {result.message}"
-
-
-# ---------------------------------------------------------------------------
-# Scenario: nwave-ai CLI responds with version
-# ---------------------------------------------------------------------------
-
-
-class TestNwaveCliVersion:
-    """The nwave-ai CLI must respond to version command."""
-
-    def test_nwave_cli_importable(self, venv_python: Path):
-        """Importing nwave_ai.cli succeeds."""
-        result = check_importable(venv_python, "nwave_ai.cli")
-        assert result.passed, f"nwave_ai.cli not importable: {result.message}"
-
-    def test_nwave_cli_version_output(self, venv_python: Path):
-        """Running 'python -m nwave_ai.cli version' returns a version string."""
-        result = check_module_runnable(
-            venv_python,
-            "nwave_ai.cli",
-            args=["version"],
-        )
-        assert result.passed, f"nwave-ai version command failed: {result.message}"
-
-
-# ---------------------------------------------------------------------------
-# Scenario: No src.des import paths in installed code
-# ---------------------------------------------------------------------------
-
-
-class TestNoSrcDesImports:
-    """Installed code must not contain 'from src.des' or 'import src.des'."""
-
-    def test_no_src_imports_in_des_package(self, venv_python: Path):
-        """The des/ package in site-packages has no src.des references."""
-        site_packages = find_site_packages(venv_python)
-        result = check_no_src_imports(site_packages, "des")
-        assert result.passed, (
-            f"Found src.des import paths in installed code: {result.message}"
-        )
-
-
-# ---------------------------------------------------------------------------
 # Scenario: Missing DES module causes detectable failure
 # ---------------------------------------------------------------------------
 
@@ -200,22 +133,51 @@ class TestMissingDesModuleDetected:
 
 
 # ---------------------------------------------------------------------------
-# Scenario: DES hook adapter runnable as module
+# Scenario: Public API return shapes (consolidates 7 redundant tests)
+#
+# check_importable / check_module_runnable / check_no_src_imports are all
+# exercised internally by run_install_smoke (called by TestFullSmokeReportPasses).
+# This test validates the public API contracts (return shape, allow_nonzero
+# semantics) without duplicating the subprocess work.
+# Pattern: nw-test-optimization §3.7 Single-Lifecycle Consolidation + §2.4
 # ---------------------------------------------------------------------------
 
 
-class TestDesHookAdapterRunnable:
-    """The DES hook adapter must be runnable via python -m."""
+class TestPublicApiDirectCalls:
+    """Public check functions return valid CheckResult shapes on happy paths."""
 
-    def test_hook_adapter_module_runnable(self, venv_python: Path):
-        """Running 'python -m des.adapters.drivers.hooks.claude_code_hook_adapter'
-        with no arguments exits without crashing (may show usage)."""
-        result = check_module_runnable(
+    def test_public_check_functions_return_correct_shapes(self, venv_python: Path):
+        """check_importable, check_module_runnable, check_no_src_imports all
+        return passing CheckResult instances for a correctly installed wheel."""
+        # check_importable -- DES hook adapter
+        r1 = check_importable(
+            venv_python,
+            "des.adapters.drivers.hooks.claude_code_hook_adapter",
+        )
+        assert r1.passed, f"DES hook adapter not importable: {r1.message}"
+
+        # check_importable -- nwave_ai.cli
+        r2 = check_importable(venv_python, "nwave_ai.cli")
+        assert r2.passed, f"nwave_ai.cli not importable: {r2.message}"
+
+        # check_module_runnable -- CLI version command
+        r3 = check_module_runnable(
+            venv_python,
+            "nwave_ai.cli",
+            args=["version"],
+        )
+        assert r3.passed, f"nwave-ai version command failed: {r3.message}"
+
+        # check_module_runnable -- hook adapter (allow_nonzero: exits with usage)
+        r4 = check_module_runnable(
             venv_python,
             "des.adapters.drivers.hooks.claude_code_hook_adapter",
             args=[],
             allow_nonzero=True,
         )
-        assert result.passed, (
-            f"DES hook adapter not runnable as module: {result.message}"
-        )
+        assert r4.passed, f"DES hook adapter not runnable as module: {r4.message}"
+
+        # check_no_src_imports -- no src.des references in installed des/ package
+        site_packages = find_site_packages(venv_python)
+        r5 = check_no_src_imports(site_packages, "des")
+        assert r5.passed, f"Found src.des import paths in installed code: {r5.message}"

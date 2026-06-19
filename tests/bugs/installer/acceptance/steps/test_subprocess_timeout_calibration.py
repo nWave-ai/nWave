@@ -83,7 +83,7 @@ TIMEOUT_TARGETS: dict[tuple[str, int], float] = {
 
 # Tutorial assertion target (Scenario B)
 TUTORIAL_TEST_FILE = "tests/build/acceptance/test_tutorial_setup_scripts.py"
-TUTORIAL_FUNC_NAME = "test_idempotent_second_run"
+TUTORIAL_FUNC_NAME = "test_tutorial_setup_lifecycle"
 REQUIRED_SUBSTRINGS = ("parent.name", "stdout", "stderr")
 
 

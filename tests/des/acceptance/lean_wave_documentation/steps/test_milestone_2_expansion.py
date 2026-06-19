@@ -25,7 +25,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from des.adapters.driven.logging.jsonl_audit_log_writer import JsonlAuditLogWriter
@@ -51,15 +50,6 @@ _DOC_DENSITY_GUIDE_PATH = (
 
 # Link feature file
 scenarios("../milestone-2-expansion-mechanism.feature")
-
-
-def pytest_bdd_apply_tag(tag: str, function: object) -> bool | None:
-    """Apply @skip tag as pytest.mark.skip."""
-    if tag == "skip":
-        marker = pytest.mark.skip(reason="DELIVER will activate one scenario at a time")
-        marker(function)
-        return True
-    return None
 
 
 # ---------------------------------------------------------------------------

@@ -79,7 +79,7 @@ class TestInstallFrameworkUsesPluginRegistry:
     def test_install_framework_registers_all_wrapper_plugins(
         self, configured_installer
     ):
-        """Verify all 7 wrapper plugins are registered with the registry."""
+        """Verify all 8 wrapper plugins are registered with the registry."""
         installer = configured_installer
 
         # Patch PluginRegistry to capture registrations
@@ -105,13 +105,16 @@ class TestInstallFrameworkUsesPluginRegistry:
                 "attribution": PluginResult(
                     success=True, plugin_name="attribution", message="OK"
                 ),
+                "reviewer_signing": PluginResult(
+                    success=True, plugin_name="reviewer_signing", message="OK"
+                ),
             }
             MockRegistry.return_value = mock_registry
 
             installer.install_framework()
 
-            # Verify 7 plugins registered (including skills, DES, and attribution)
-            assert mock_registry.register.call_count == 7
+            # Verify 8 plugins registered (skills, DES, attribution, reviewer_signing)
+            assert mock_registry.register.call_count == 8
 
             # Verify each plugin type was registered
             registered_plugins = [
@@ -126,6 +129,7 @@ class TestInstallFrameworkUsesPluginRegistry:
             assert "utilities" in plugin_names
             assert "des" in plugin_names
             assert "attribution" in plugin_names
+            assert "reviewer_signing" in plugin_names
 
     def test_install_framework_creates_install_context(self, configured_installer):
         """Verify InstallContext is created with required fields."""
@@ -229,13 +233,16 @@ class TestInstallFrameworkPluginExecutionOrder:
                 "attribution": PluginResult(
                     success=True, plugin_name="attribution", message="OK"
                 ),
+                "reviewer_signing": PluginResult(
+                    success=True, plugin_name="reviewer_signing", message="OK"
+                ),
             }
             MockRegistry.return_value = mock_registry
 
             installer.install_framework()
 
-            # All 7 plugins should be registered (including skills, DES, and attribution)
-            assert len(registration_order) == 7
+            # All 8 plugins should be registered (skills, DES, attribution, reviewer_signing)
+            assert len(registration_order) == 8
             assert "agents" in registration_order
             assert "commands" in registration_order
             assert "templates" in registration_order
@@ -243,6 +250,7 @@ class TestInstallFrameworkPluginExecutionOrder:
             assert "utilities" in registration_order
             assert "des" in registration_order
             assert "attribution" in registration_order
+            assert "reviewer_signing" in registration_order
 
 
 class TestInstallFrameworkDryRunMode:

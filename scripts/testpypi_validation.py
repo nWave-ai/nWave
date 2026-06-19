@@ -21,6 +21,10 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
+
+
+Installer = Literal["uv", "pipx"]
 
 
 @dataclass
@@ -47,6 +51,7 @@ class TestPyPIValidator:
         expected_commands: int = 0,
         expected_templates: int = 0,
         package_name: str = "nwave",
+        installer: Installer = "uv",
     ) -> None:
         """Initialize the validator.
 
@@ -56,13 +61,51 @@ class TestPyPIValidator:
             expected_commands: Expected number of commands (0 to skip check).
             expected_templates: Expected number of templates (0 to skip check).
             package_name: Name of the package to install.
+            installer: Which installer to use ("uv" primary, "pipx" fallback).
         """
         self.version = version
         self.expected_agents = expected_agents
         self.expected_commands = expected_commands
         self.expected_templates = expected_templates
         self.package_name = package_name
+        self.installer: Installer = installer
         self.results: list[ValidationResult] = []
+
+    def _uninstall_cmd(self) -> list[str]:
+        """Build the uninstall command for the configured installer."""
+        if self.installer == "uv":
+            return ["uv", "tool", "uninstall", self.package_name]
+        return ["pipx", "uninstall", self.package_name]
+
+    def _install_cmd(self) -> list[str]:
+        """Build the TestPyPI install command for the configured installer.
+
+        TestPyPI is the primary index; PyPI is added as a secondary index
+        so dependencies that are not on TestPyPI still resolve.
+        """
+        spec = f"{self.package_name}=={self.version}"
+        if self.installer == "uv":
+            return [
+                "uv",
+                "tool",
+                "install",
+                "--prerelease",
+                "allow",
+                "--index",
+                self.TESTPYPI_INDEX_URL,
+                "--index",
+                self.PYPI_INDEX_URL,
+                "--index-strategy",
+                "unsafe-best-match",
+                spec,
+            ]
+        return [
+            "pipx",
+            "install",
+            spec,
+            "--pip-args",
+            f"--index-url {self.TESTPYPI_INDEX_URL} --extra-index-url {self.PYPI_INDEX_URL}",
+        ]
 
     def run_command(
         self, cmd: list[str], capture_output: bool = True
@@ -85,34 +128,26 @@ class TestPyPIValidator:
         )
 
     def install_from_testpypi(self) -> ValidationResult:
-        """Install the package from TestPyPI using pipx.
+        """Install the package from TestPyPI using the configured installer.
 
         Returns:
             ValidationResult indicating success or failure.
         """
         print(
-            f"\n[1/4] Installing {self.package_name}=={self.version} from TestPyPI..."
+            f"\n[1/4] Installing {self.package_name}=={self.version} "
+            f"from TestPyPI via {self.installer}..."
         )
 
-        # First, ensure any existing installation is removed
-        uninstall_cmd = ["pipx", "uninstall", self.package_name]
-        self.run_command(uninstall_cmd)  # Ignore errors if not installed
+        # First, ensure any existing installation is removed.
+        self.run_command(self._uninstall_cmd())  # Ignore errors if not installed.
 
-        # Install from TestPyPI with PyPI fallback for dependencies
-        install_cmd = [
-            "pipx",
-            "install",
-            f"{self.package_name}=={self.version}",
-            "--pip-args",
-            f"--index-url {self.TESTPYPI_INDEX_URL} --extra-index-url {self.PYPI_INDEX_URL}",
-        ]
-
-        result = self.run_command(install_cmd)
+        # Install from TestPyPI with PyPI fallback for dependencies.
+        result = self.run_command(self._install_cmd())
 
         if result.returncode != 0:
             return ValidationResult(
                 success=False,
-                check_name="TestPyPI Installation",
+                check_name=f"TestPyPI Installation ({self.installer})",
                 expected="exit code 0",
                 actual=f"exit code {result.returncode}",
                 message=f"Installation failed: {result.stderr}",
@@ -120,7 +155,7 @@ class TestPyPIValidator:
 
         return ValidationResult(
             success=True,
-            check_name="TestPyPI Installation",
+            check_name=f"TestPyPI Installation ({self.installer})",
             expected="exit code 0",
             actual="exit code 0",
             message=f"Successfully installed {self.package_name}=={self.version}",
@@ -373,6 +408,12 @@ def main() -> int:
         default="nwave",
         help="Name of the package to install (default: nwave)",
     )
+    parser.add_argument(
+        "--installer",
+        choices=("uv", "pipx"),
+        default="uv",
+        help="Installer to validate (default: uv; pipx remains a supported fallback)",
+    )
 
     args = parser.parse_args()
 
@@ -382,6 +423,7 @@ def main() -> int:
         expected_commands=args.expected_commands,
         expected_templates=args.expected_templates,
         package_name=args.package_name,
+        installer=args.installer,
     )
 
     try:

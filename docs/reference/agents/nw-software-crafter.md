@@ -1,6 +1,6 @@
 # nw-software-crafter
 
-DELIVER wave - Outside-In TDD and progressive refactoring. Research-optimized core (~375L) with Skills for deep knowledge. Includes Mikado Method for complex refactoring.
+DELIVER wave - SLIM scope (implementation + refactor expert). Crafter implements production code to satisfy ATs authored by acceptance-designer (DISTILL). Does NOT author tests. Follows the 3-phase RED -> GREEN -> COMMIT cycle (ADR-025).
 
 **Wave:** DELIVER
 **Model:** inherit
@@ -28,11 +28,10 @@ DELIVER wave - Outside-In TDD and progressive refactoring. Research-optimized co
 - [nw-hexagonal-testing](../../../nWave/skills/nw-hexagonal-testing/SKILL.md) — 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
 - [nw-legacy-refactoring-ddd](../../../nWave/skills/nw-legacy-refactoring-ddd/SKILL.md) — DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
 - [nw-mikado-method](../../../nWave/skills/nw-mikado-method/SKILL.md) — Enhanced Mikado Method for complex architectural refactoring - systematic dependency discovery, tree-based planning, and bottom-up execution
+- [nw-mutation-test](../../../nWave/skills/nw-mutation-test/SKILL.md) — Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%).
 - [nw-production-safety](../../../nWave/skills/nw-production-safety/SKILL.md) — Agent safety boundaries - input validation, output filtering, scope constraints, and document creation policy
 - [nw-progressive-refactoring](../../../nWave/skills/nw-progressive-refactoring/SKILL.md) — Progressive L1-L6 refactoring hierarchy, 22 code smell taxonomy, atomic transformations, test code smells, and Fowler refactoring catalog
-- [nw-property-based-testing](../../../nWave/skills/nw-property-based-testing/SKILL.md) — Property-based testing strategies, mutation testing, shrinking, and combined PBT+mutation workflow for test quality validation
 - [nw-quality-framework](../../../nWave/skills/nw-quality-framework/SKILL.md) — Quality gates - 11 commit readiness gates, build/test protocol, validation checkpoints, and quality metrics
+- [nw-refactor](../../../nWave/skills/nw-refactor/SKILL.md) — Applies the Refactoring Priority Premise (RPP) levels L1-L6 for systematic code refactoring. Use when improving code quality through structured refactoring passes.
 - [nw-sc-review-dimensions](../../../nWave/skills/nw-sc-review-dimensions/SKILL.md) — Reviewer critique dimensions for peer review - implementation bias detection, test quality validation, completeness checks, and priority validation
 - [nw-tdd-methodology](../../../nWave/skills/nw-tdd-methodology/SKILL.md) — Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
-- [nw-test-optimization](../../../nWave/skills/nw-test-optimization/SKILL.md) — Methodology for minimizing test count while maximizing behavioral coverage - behavior definition, anti-pattern catalog, consolidation patterns, stopping criterion, coverage-preserving validation
-- [nw-test-refactoring-catalog](../../../nWave/skills/nw-test-refactoring-catalog/SKILL.md) — Detailed refactoring mechanics with step-by-step procedures, and test code smell catalog with detection patterns and before/after examples

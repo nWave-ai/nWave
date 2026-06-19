@@ -1,5 +1,5 @@
 ---
-description: "Dispatches a single roadmap step to a specialized agent for TDD execution. Use when implementing a specific step from a roadmap.json plan."
+description: "Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Runs a single roadmap.json step through the TDD cycle."
 argument-hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter "auth-upgrade" "01-01"'
 ---
 
@@ -9,7 +9,7 @@ argument-hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter "
 
 ## Overview
 
-Dispatch a single roadmap step to an agent. Orchestrator extracts step context from roadmap so agent never loads the full roadmap.
+Dispatch one unit of DELIVER work to an agent: a single roadmap step. `/nw-execute` extracts the step from `roadmap.json` and dispatches it for the 3-phase TDD canon; the agent appends phase events to `execution-log.json`.
 
 ## Syntax
 
@@ -34,8 +34,8 @@ Before dispatching the agent, read rigor config from `.nwave/des-config.json` (k
 
 1. Parse parameters: agent name|feature ID|step ID
 2. Read rigor profile from `.nwave/des-config.json` (default: standard)
-3. Validate roadmap and execution-log exist
-4. Grep roadmap for `step_id: "{step-id}"` with ~50 lines context
+3. Validate roadmap.json and execution-log exist
+4. Grep roadmap.json for `step_id: "{step-id}"` with ~50 lines context
 5. Extract step fields and invoke Agent tool with DES template below, applying rigor model and phases
 
 ## Agent Invocation
@@ -90,12 +90,12 @@ Load on-demand per phase as specified in your Skill Loading Strategy table.
    Never move to new task or stop without committing green code.
 
 3. COMMIT - Stage and commit with conventional message.
-   Include git trailer: `Step-ID: {step-id}` (required for DES verification)
+   Include git trailer: `Step-Id: {step-id}` (required for DES verification)
    Example:
    ```
    feat(feature-id): implement feature X
 
-   Step-ID: 02-01
+   Step-Id: 02-01
    ```
 
 LEGACY 5-PHASE CONTRACT (ADR-024 era, pre-2026-05-07): PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT. Preserved for audit-log replay only — new work uses the 3-phase canon above. Audit-log entries referencing RED_ACCEPTANCE/RED_UNIT/PREPARE represent merged sub-steps now folded into RED.
@@ -157,8 +157,8 @@ If GREEN complete (all tests pass), MUST commit before returning — even at tur
 ## Error Handling
 
 - Invalid agent: report available agents
-- Missing roadmap/execution-log: report path not found
-- Step not in roadmap: report available step IDs
+- Missing roadmap.json / execution-log — report path not found
+- Step not in roadmap.json — report available step IDs
 - Dependency failure: explain blocking tasks
 
 ## Resume vs Restart
@@ -200,4 +200,4 @@ The invoked agent MUST create a task list from its workflow phases at the start 
 ## Next Wave
 
 **Handoff To**: /nw-review for post-execution review
-**Deliverables**: Updated execution-log.json|implementation artifacts|git commits
+**Deliverables**: Updated execution-log.json, implementation artifacts, and git commits

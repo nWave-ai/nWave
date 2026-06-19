@@ -16,6 +16,10 @@ This tutorial reads both the design output from Tutorial 7 and the distill outpu
 
 If either is missing, complete [Tutorial 8: Generating Acceptance Tests](../tutorial-distill/) first (which itself depends on Tutorial 7).
 
+> **How `/nw-deliver` works.** The architect builds a `roadmap.json`, the
+> crafter executes its steps, and an `execution-log.json` records each TDD
+> phase. The steps below walk that flow end to end.
+
 ---
 
 ## What You'll Build

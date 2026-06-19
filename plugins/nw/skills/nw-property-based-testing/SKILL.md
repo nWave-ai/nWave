@@ -39,9 +39,23 @@ Algorithm: find failing input -> try simpler variants -> if still fails, use as 
 Adopted by Amazon, Volvo, Stripe, Jane Street (ICSE 2024 study).
 
 ## When PBT Adds Value
-HIGH value: algorithms | data structures | serialization | business rules (validation, calculations) | protocols/state machines.
-LOW value: simple CRUD | UI logic | external API integrations.
+HIGH value: algorithms | data structures | serialization | business rules (validation, calculations) | protocols/state machines | **unbounded input domain** with universal invariant.
+LOW value: simple CRUD | UI logic | external API integrations | **closed-world finite domain** (use parametrize instead — see falsifier-gate below).
 PBT complements example-based testing, doesn't replace it.
+
+### Falsifier-gate: closed-world finite → parametrize, NOT PBT
+
+If the input domain is **finite + enumerable** (N known files, M known event types, K known skill names, fixed Python versions), PBT is the wrong tool:
+
+- `Hypothesis` import (~457ms) + per-example bookkeeping > `@pytest.mark.parametrize` overhead
+- Shrinking is irrelevant — the failing input is already a known list member, no minimization needed
+- Coverage is bounded by the parameter list, not the example budget — fewer assertions, same coverage
+
+**Decision rule**: enumerate the domain. If listable (`[a, b, c, ...]`), use parametrize-collapse or dict-iteration (see `nw-test-optimization` §3.1, §3.2). Reserve PBT for "for all X in DOMAIN, P(X) holds" where DOMAIN is infinite (all strings, all integers, all valid JSON, all sorted lists).
+
+**Empirical anchor 2026-05-18**: 155-file closed-world skill registry PBT migration was correctly aborted at recon stage by the falsifier-gate. Solution: set-difference parametrize-collapse (commit `c2637f6c8`), 5.42s → 0.71s (8.9× faster). Mass-migrating closed-world tests to PBT would have made the suite **slower**, not faster.
+
+See `nw-test-optimization` §4-bis Paradigm-Match Decision Rule for the full shape-to-paradigm table.
 
 ## PBT + TDD Integration
 1. Start with example-based TDD for specific cases (drives detailed design)

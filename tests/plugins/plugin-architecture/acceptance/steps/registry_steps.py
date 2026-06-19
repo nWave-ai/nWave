@@ -22,14 +22,11 @@ from pytest_bdd import given, parsers, then, when
 @given("plugin infrastructure is operational (Milestone 1 complete)")
 def plugin_infrastructure_operational():
     """Verify Milestone 1 plugin infrastructure is operational."""
-    try:
-        from scripts.install.plugins.base import InstallationPlugin
-        from scripts.install.plugins.registry import PluginRegistry
+    from scripts.install.plugins.base import InstallationPlugin
+    from scripts.install.plugins.registry import PluginRegistry
 
-        assert PluginRegistry is not None
-        assert InstallationPlugin is not None
-    except ImportError as e:
-        pytest.skip(f"Milestone 1 not complete: {e}")
+    assert PluginRegistry is not None
+    assert InstallationPlugin is not None
 
 
 @given(parsers.parse("PluginRegistry contains {count:d} registered plugins"))
@@ -116,12 +113,9 @@ def baseline_tree_exists():
 @given("DES plugin is implemented (Milestone 4)")
 def des_plugin_implemented():
     """Verify DES plugin is implemented."""
-    try:
-        from scripts.install.plugins.des_plugin import DESPlugin
+    from scripts.install.plugins.des_plugin import DESPlugin
 
-        assert DESPlugin is not None
-    except ImportError:
-        pytest.skip("DES plugin not yet implemented")
+    assert DESPlugin is not None
 
 
 @given("wrapper plugins are operational (Milestone 2)")
@@ -156,14 +150,11 @@ def create_registry_instance(plugin_registry):
 @when("I register AgentsPlugin with the registry")
 def register_agents_plugin(plugin_registry):
     """Register AgentsPlugin with the registry."""
-    try:
-        from scripts.install.plugins.agents_plugin import AgentsPlugin
+    from scripts.install.plugins.agents_plugin import AgentsPlugin
 
-        plugin = AgentsPlugin()
-        plugin_registry.register(plugin)
-        pytest.agents_plugin = plugin
-    except ImportError as e:
-        pytest.skip(f"AgentsPlugin not available: {e}")
+    plugin = AgentsPlugin()
+    plugin_registry.register(plugin)
+    pytest.agents_plugin = plugin
 
 
 @when("I register both plugins with PluginRegistry")
