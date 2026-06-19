@@ -6,9 +6,11 @@ Each handler is in its own module for single-responsibility.
 Entry point: python3 -m des.adapters.drivers.hooks.claude_code_hook_adapter <command>
 """
 
+import io
 import json
 import sys
 
+from des.adapters.drivers.hooks.activation_gate import apply_gate
 from des.adapters.drivers.hooks.deliver_progress_handler import handle_deliver_progress
 from des.adapters.drivers.hooks.post_tool_use_handler import handle_post_tool_use
 from des.adapters.drivers.hooks.pre_tool_use_handler import handle_pre_tool_use
@@ -32,6 +34,18 @@ def main() -> None:
         sys.exit(1)
 
     command = sys.argv[1]
+
+    # Activation gate (ADR-AG-001): buffer stdin at the top, before any handler
+    # reads it, so the gate can resolve the project and re-inject the bytes
+    # byte-identically. Inactive non-SessionStart commands exit 0 (allow, never
+    # block) inside apply_gate. SessionStart is exempt (always dispatches). The
+    # read is defensive (fail-open): an unreadable stdin yields an empty buffer.
+    try:
+        buffered_stdin = sys.stdin.read()
+    except (OSError, ValueError):
+        buffered_stdin = ""
+    reinjected = apply_gate(command, buffered_stdin)
+    sys.stdin = io.StringIO(reinjected if reinjected is not None else buffered_stdin)
 
     if command in ("pre-tool-use", "pre-task"):
         # "pre-task" accepted for backward compatibility

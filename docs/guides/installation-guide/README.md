@@ -310,6 +310,24 @@ Both methods register DES (Deterministic Execution System) hooks in your Claude 
 
 Configure globally in `~/.claude/settings.json` or per-project via `.nwave/des-config.json`.
 
+## Activating nWave in a Project
+
+nWave hooks install globally but are **opt-in per project by default**. In an inactive project, hooks silently exit 0 — you cannot tell nWave is installed. To turn nWave on for the current project:
+
+```bash
+nwave-ai project enable
+```
+
+To check the activation state:
+
+```bash
+nwave-ai status
+```
+
+Commit `.nwave/local-config.json` so teammates inherit the same nWave state. For the full mental model and resolution policy, see **[Activating nWave in a Project](../activating-nwave-per-project.md)**.
+
+---
+
 ## Per-Project Configuration
 
 To customize DES behavior for a specific project, create `.nwave/des-config.json` in your project directory:

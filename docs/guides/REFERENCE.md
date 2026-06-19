@@ -10,4 +10,5 @@ Structural and conceptual reference material for understanding nWave internals.
 | [Understanding the SSOT Model](./understanding-ssot-model/) | Why nWave's documentation structure changed and how to navigate it | Intermediate |
 | [DES Audit Trail Guide](./des-audit-trail-guide/) | Deterministic Execution System immutable audit trail | Advanced |
 | [Plugin Use Cases](./plugin-use-cases/) | Four practical use cases with prompts and expected output | Beginner |
+| [What's New in v3.19](./whats-new-v319/) | Release notes: per-project activation (opt-in gate) and the documented `nwave-ai` CLI | All |
 | [What's New in v3.5](./whats-new-v35/) | Release notes: DIVERGE wave, SSOT model, three DESIGN architects, /nw-buddy | All |

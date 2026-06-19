@@ -206,6 +206,13 @@ def given_des_agent_validation_failure(ctx: dict[str, Any], tmp_path: Path) -> N
     }
     execution_log_path.write_text(json.dumps(execution_log))
 
+    # Activation gate (nwave-project-activation-gating): hooks only run in an
+    # activated project. A project mid-DELIVER is, by definition, active — mark
+    # it so the SubagentStop validation runs (the block assertion is unchanged).
+    marker = tmp_path / ".nwave" / "local-config.json"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(json.dumps({"enabled_for_repo": True}))
+
     ctx["hook_command"] = "subagent-stop"
     ctx["stdin"] = json.dumps(
         {

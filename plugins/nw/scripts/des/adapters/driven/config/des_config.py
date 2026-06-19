@@ -90,9 +90,13 @@ class DESConfig:
             return {}
 
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
+            parsed = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             return {}
+        # Valid JSON that is not an object (``null``, ``[]``, ``123``, ``"x"``)
+        # would crash every ``.get(...)`` caller. Coerce to ``{}`` so callers
+        # fail open to safe defaults rather than raising on a malformed config.
+        return parsed if isinstance(parsed, dict) else {}
 
     @property
     def skill_tracking_enabled(self) -> bool:
@@ -134,6 +138,58 @@ class DESConfig:
         if env_override is not None:
             return env_override.lower() in ("true", "1", "yes")
         return self._config_data.get("audit_logging_enabled", True)
+
+    # ------------------------------------------------------------------
+    # Activation gating (EXTEND, ADR-AG-002 / DDD-3).
+    # ``activation_mode`` reads ``activation.mode`` from the GLOBAL config
+    # (default ``"opt-in"``). ``enabled_for_repo`` reads ``enabled_for_repo``
+    # from the per-project MARKER file ``.nwave/local-config.json`` (NOT
+    # ``des-config.json``), returning ``None`` when absent/keyless/corrupt.
+    # Both fail-to-default; neither mutates.
+    # ------------------------------------------------------------------
+
+    @property
+    def activation_mode(self) -> str:
+        """Global ``activation.mode`` (``"opt-in"`` | ``"all"``); default ``"opt-in"``."""
+        activation = self._global_config_data.get("activation", {})
+        if not isinstance(activation, dict):
+            return "opt-in"
+        mode = activation.get("mode", "opt-in")
+        return mode if mode in ("opt-in", "all") else "opt-in"
+
+    @property
+    def enabled_for_repo(self) -> bool | None:
+        """Per-project marker ``enabled_for_repo`` from ``.nwave/local-config.json``.
+
+        Walk-up resolution (ADR-AG-002, amended 2026-06-18): ascend parent dirs
+        from the project dir and use the NEAREST ``.nwave/local-config.json``
+        (nearer-wins), stopping at ``$HOME`` — ``$HOME/.nwave/`` is the global
+        config home, never a project marker. ``None`` when no marker is found,
+        or the nearest marker is key-missing / corrupt.
+        """
+        marker_path = self._nearest_marker()
+        if marker_path is None:
+            return None
+        marker_data = self._load_json_file(marker_path)
+        value = marker_data.get("enabled_for_repo")
+        return value if isinstance(value, bool) else None
+
+    def _nearest_marker(self) -> Path | None:
+        """Nearest ``.nwave/local-config.json`` at or above the project dir.
+
+        Starts at the project dir (``.nwave/des-config.json``'s grandparent) and
+        ascends while ``dir != Path.home()`` and ``dir != dir.parent``. The first
+        directory carrying a ``.nwave/local-config.json`` wins (nearer-wins).
+        ``$HOME`` is the stop boundary and is never inspected as a project root.
+        """
+        home = Path.home()
+        current = self._config_path.parent.parent
+        while current not in (home, current.parent):
+            candidate = current / ".nwave" / "local-config.json"
+            if candidate.exists():
+                return candidate
+            current = current.parent
+        return None
 
     def _rigor(self) -> dict:
         """Return rigor sub-config via cascade: project -> global -> empty dict.

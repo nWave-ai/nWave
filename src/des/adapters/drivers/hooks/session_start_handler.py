@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from des.adapters.drivers.hooks.substrate_probe import run_probe
@@ -101,6 +102,42 @@ def _apply_pending_update_if_any(des_config: DESConfig, current_version: str) ->
         sys.stderr.write(f"[nwave] pending-update apply error (fail-open): {e}\n")
 
 
+def _adopt_prior_use_if_warranted(stdin_text: str) -> None:
+    """Trigger-1: silently adopt a prior-use project at SessionStart (DDD-7).
+
+    SessionStart is gate-exempt (always runs), so this is the wiring point for
+    prior-use adoption. Resolves the project root from the hook stdin ``cwd``
+    (same envelope shape every handler reads), then asks ``AutoMarkingService``
+    to write the marker IFF prior-use evidence warrants it. Silent and fail-open:
+    any parse/IO error is swallowed so SessionStart's update-notice and
+    housekeeping are never disturbed.
+    """
+    try:
+        project_root = _parse_cwd(stdin_text)
+        if project_root is None:
+            return
+        from des.application.auto_marking_service import (
+            AdoptionTrigger,
+            AutoMarkingService,
+        )
+
+        AutoMarkingService().adopt_if_warranted(
+            project_root=project_root, trigger=AdoptionTrigger.PRIOR_USE
+        )
+    except Exception as e:
+        sys.stderr.write(f"[nwave] prior-use adoption error (fail-open): {e}\n")
+
+
+def _parse_cwd(stdin_text: str) -> Path | None:
+    """Resolve the project root from the hook stdin envelope's ``cwd`` field."""
+    try:
+        data = json.loads(stdin_text)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    cwd = data.get("cwd") if isinstance(data, dict) else None
+    return Path(cwd) if cwd else None
+
+
 def _run_housekeeping(des_config: DESConfig) -> None:
     """Run housekeeping using configuration from DESConfig.
 
@@ -171,7 +208,12 @@ def handle_session_start() -> int:
     Returns:
         0 always (fail-open: session must never be blocked).
     """
-    sys.stdin.read()
+    stdin_text = sys.stdin.read()
+
+    # Trigger-1 (prior-use adoption): SessionStart is gate-exempt, so this is
+    # where an unmarked project with prior nWave use is silently adopted. Runs
+    # first and fail-open so it never disturbs the update-notice / housekeeping.
+    _adopt_prior_use_if_warranted(stdin_text)
 
     from des.adapters.driven.config.des_config import DESConfig
 

@@ -14,6 +14,6 @@ Use for review and critique tasks. Code-quality + TDD-discipline review of Outsi
 
 ## Skills
 
-- [nw-sc-review-dimensions](../../../nWave/skills/nw-sc-review-dimensions/SKILL.md) — Reviewer critique dimensions for peer review - implementation bias detection, test quality validation, completeness checks, and priority validation
-- [nw-tdd-methodology](../../../nWave/skills/nw-tdd-methodology/SKILL.md) — Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
-- [nw-tdd-review-enforcement](../../../nWave/skills/nw-tdd-review-enforcement/SKILL.md) — Test design mandate enforcement, test budget validation, TDD phase validation (3-phase canon per ADR-025), and external validity checks for the software crafter reviewer
+- [nw-sc-review-dimensions](../skills/nw-sc-review-dimensions.md) — Reviewer critique dimensions for peer review - implementation bias detection, test quality validation, completeness checks, and priority validation
+- [nw-tdd-methodology](../skills/nw-tdd-methodology.md) — Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
+- [nw-tdd-review-enforcement](../skills/nw-tdd-review-enforcement.md) — Test design mandate enforcement, test budget validation, TDD phase validation (3-phase canon per ADR-025), and external validity checks for the software crafter reviewer

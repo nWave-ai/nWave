@@ -156,6 +156,14 @@ class TestCodexRealBoot:
         assert hooks_path.exists()
 
         # 2. Boot fake-codex harness pointed at the installed hooks file.
+        #    Activation gate: the hook only runs in an activated project, so the
+        #    harness session cwd must be a real, activated directory.
+        session_cwd = install_context.project_root
+        session_cwd.mkdir(parents=True, exist_ok=True)
+        marker = session_cwd / ".nwave" / "local-config.json"
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({"enabled_for_repo": True}))
+
         repo_src = Path(__file__).resolve().parents[2] / "src"
         harness = FakeCodexHarness(
             hooks_path,
@@ -165,6 +173,7 @@ class TestCodexRealBoot:
                 "PYTHONPATH": str(repo_src),
                 "HOME": str(install_context.claude_dir.parent),
             },
+            session_cwd=str(session_cwd),
         )
 
         # 3. Fire the Bash event — the installed hook command runs the real

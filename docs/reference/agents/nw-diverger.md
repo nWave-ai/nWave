@@ -13,6 +13,6 @@ Use before DISCUSS — runs JTBD analysis, competitive research, structured brai
 
 ## Skills
 
-- [nw-brainstorming](../../../nWave/skills/nw-brainstorming/SKILL.md) — Structured divergent thinking techniques — HMW framing, SCAMPER, Crazy 8s mechanics, and option diversity guarantees. Enforces strict separation of generation and evaluation phases.
-- [nw-jtbd-analysis](../../../nWave/skills/nw-jtbd-analysis/SKILL.md) — JTBD methodology for extracting real jobs behind feature requests — job statements, abstraction layers, first-principles extraction, ODI outcome statements, and opportunity scoring
-- [nw-taste-evaluation](../../../nWave/skills/nw-taste-evaluation/SKILL.md) — Design taste evaluation framework — DVF primary filter, Apple/Google/Jobs design principles as explicit scoring criteria, weighted decision matrix, and option ranking for the DIVERGE wave
+- [nw-brainstorming](../skills/nw-brainstorming.md) — Structured divergent thinking techniques — HMW framing, SCAMPER, Crazy 8s mechanics, and option diversity guarantees. Enforces strict separation of generation and evaluation phases.
+- [nw-jtbd-analysis](../skills/nw-jtbd-analysis.md) — JTBD methodology for extracting real jobs behind feature requests — job statements, abstraction layers, first-principles extraction, ODI outcome statements, and opportunity scoring
+- [nw-taste-evaluation](../skills/nw-taste-evaluation.md) — Design taste evaluation framework — DVF primary filter, Apple/Google/Jobs design principles as explicit scoring criteria, weighted decision matrix, and option ranking for the DIVERGE wave

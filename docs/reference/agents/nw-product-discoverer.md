@@ -13,6 +13,6 @@ Conducts evidence-based product discovery through customer interviews, assumptio
 
 ## Skills
 
-- [nw-discovery-workflow](../../../nWave/skills/nw-discovery-workflow/SKILL.md) — 4-phase discovery workflow with decision gates, phase transitions, success metrics, and state tracking
-- [nw-interviewing-techniques](../../../nWave/skills/nw-interviewing-techniques/SKILL.md) — Mom Test questioning toolkit, JTBD analysis, interview conduct, assumption testing framework, and hypothesis design
-- [nw-opportunity-mapping](../../../nWave/skills/nw-opportunity-mapping/SKILL.md) — Opportunity Solution Trees, opportunity scoring, Lean Canvas, JTBD job mapping, and technique selection guide
+- [nw-discovery-workflow](../skills/nw-discovery-workflow.md) — 4-phase discovery workflow with decision gates, phase transitions, success metrics, and state tracking
+- [nw-interviewing-techniques](../skills/nw-interviewing-techniques.md) — Mom Test questioning toolkit, JTBD analysis, interview conduct, assumption testing framework, and hypothesis design
+- [nw-opportunity-mapping](../skills/nw-opportunity-mapping.md) — Opportunity Solution Trees, opportunity scoring, Lean Canvas, JTBD job mapping, and technique selection guide

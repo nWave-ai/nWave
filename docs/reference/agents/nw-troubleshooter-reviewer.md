@@ -9,4 +9,4 @@ Use for review and critique tasks - Risk analysis and failure mode review specia
 
 ## Skills
 
-- [nw-tr-review-criteria](../../../nWave/skills/nw-tr-review-criteria/SKILL.md) — Review dimensions and scoring for root cause analysis quality assessment
+- [nw-tr-review-criteria](../skills/nw-tr-review-criteria.md) — Review dimensions and scoring for root cause analysis quality assessment

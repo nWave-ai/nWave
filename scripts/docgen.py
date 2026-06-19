@@ -22,10 +22,16 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 from scripts.shared.agent_catalog import (  # noqa: E402
+    build_ownership_map,
+    detect_command_skills,
     is_public_agent,
     is_public_skill,
     load_public_agents,
 )
+
+
+# Public source repo, for linking released skills to browsable source.
+GITHUB_REPO = "https://github.com/nWave-ai/nWave"
 
 
 class DocgenError(Exception):
@@ -411,6 +417,94 @@ def _skills_for_agent(agent: Agent, skills: list[Skill]) -> list[Skill]:
     return result
 
 
+def released_skill_dirs(root: Path | None) -> set[str] | None:
+    """Skill directory names that survive the public release (the "released" set).
+
+    Consults the SAME catalog logic the release pipeline's strip_private_agents
+    uses (public agents + frontmatter ownership map + command skills). Returns
+    ``None`` when no catalog is available (e.g. a synthetic test tree), meaning
+    "treat every skill as released".
+    """
+    if root is None:
+        return None
+    nwave = root / "nWave"
+    public_agents = load_public_agents(nwave, strict=False)
+    if not public_agents:
+        return None  # catalog absent — caller treats all as released
+    ownership = build_ownership_map(nwave / "agents")
+    command_skills = detect_command_skills(nwave / "skills")
+    dirs: set[str] = set()
+    for d in (nwave / "skills").iterdir() if (nwave / "skills").is_dir() else []:
+        if d.is_dir() and is_public_skill(
+            d.name, public_agents, ownership, command_skills
+        ):
+            dirs.add(d.name)
+    return dirs
+
+
+def skill_slug(skill: Skill) -> str:
+    """Stable, unique in-site slug for a skill page (under reference/skills/).
+
+    nWave/skills/nw-divio-framework/SKILL.md -> "nw-divio-framework"
+    nWave/skills/crafter/tdd.md              -> "crafter-tdd"
+    """
+    parts = Path(skill["source_path"]).with_suffix("").parts
+    if "skills" in parts:
+        sub = list(parts[parts.index("skills") + 1 :])
+    else:
+        sub = [skill["agent_dir"], Path(skill["source_path"]).stem]
+    if sub and sub[-1] == "SKILL":
+        sub = sub[:-1] or [skill["agent_dir"]]
+    return "-".join(sub)
+
+
+def _skill_source_url(skill: Skill) -> str:
+    """Browsable GitHub blob URL (at main) for a skill's source file."""
+    parts = Path(skill["source_path"]).parts
+    if "nWave" in parts:
+        rel = "/".join(parts[parts.index("nWave") :])
+    else:
+        rel = f"nWave/skills/{skill['agent_dir']}/{Path(skill['source_path']).name}"
+    return f"{GITHUB_REPO}/blob/main/{rel}"
+
+
+def _is_released(skill: Skill, released: set[str] | None) -> bool:
+    """A skill is released when no catalog is loaded (None) or its dir is public."""
+    return released is None or skill["agent_dir"] in released
+
+
+def skill_ref(skill: Skill, released: set[str] | None, *, in_skills_dir: bool) -> str:
+    """Link target for a skill from an agent page or the skills index.
+
+    Released skills get an in-site reference page (resolves on the published
+    site). Private skills — whose referencing agent page is itself stripped
+    from the public repo — link to source instead, so no private skill page is
+    ever emitted into the public-synced docs/reference tree.
+    """
+    if _is_released(skill, released):
+        return (
+            f"{skill_slug(skill)}.md"
+            if in_skills_dir
+            else f"../skills/{skill_slug(skill)}.md"
+        )
+    name = "SKILL" if skill["agent_dir"].startswith("nw-") else skill["name"]
+    return f"../../../nWave/skills/{skill['agent_dir']}/{name}.md"
+
+
+def render_skill_detail(skill: Skill, used_by: list[str]) -> str:
+    """Render a per-skill reference page (emitted only for released skills)."""
+    lines = [f"# {skill['name']}", "", skill["description"], ""]
+    if used_by:
+        agent_links = ", ".join(f"[{a}](../agents/{a}.md)" for a in sorted(used_by))
+        lines += [f"**Used by:** {agent_links}", ""]
+    lines += [
+        f"**Source:** [{Path(skill['source_path']).name} on GitHub]"
+        f"({_skill_source_url(skill)})",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def render_master_index(data: dict[str, list]) -> str:
     return "\n".join(
         [
@@ -426,6 +520,17 @@ def render_master_index(data: dict[str, list]) -> str:
             f"- [Commands](commands/index.md) ({len(data['commands'])})",
             f"- [Skills](skills/index.md) ({len(data['skills'])})",
             f"- [Templates](templates/index.md) ({len(data['templates'])})",
+            "",
+            "## CLI & configuration references",
+            "",
+            "Hand-authored reference for the CLI and configuration files:",
+            "",
+            "- [CLI Reference](cli.md) — the `nwave-ai` command and its subcommands",
+            "- [Global Config Reference](global-config.md) — "
+            "`~/.nwave/global-config.json` keys",
+            "- [Outcomes CLI Reference](outcomes-cli.md) — `nwave-ai outcomes …`",
+            "- [DES Markers Reference](des-markers.md) — DES task-prompt markers",
+            "- [Feature-delta Format](feature-format.md) — feature-delta.md schema",
             "",
         ]
     )
@@ -464,7 +569,9 @@ def render_agents_index(agents: list[Agent], skills: list[Skill]) -> str:
     return "\n".join(lines)
 
 
-def render_agent_detail(agent: Agent, skills: list[Skill]) -> str:
+def render_agent_detail(
+    agent: Agent, skills: list[Skill], released: set[str] | None = None
+) -> str:
     agent_skills = _skills_for_agent(agent, skills)
     wave = agent.get("wave", "Other")
     commands = agent.get("commands", [])
@@ -489,10 +596,7 @@ def render_agent_detail(agent: Agent, skills: list[Skill]) -> str:
         lines.append("## Skills")
         lines.append("")
         for s in sorted(agent_skills, key=lambda x: x["name"]):
-            if s["agent_dir"].startswith("nw-"):
-                skill_path = f"../../../nWave/skills/{s['agent_dir']}/SKILL.md"
-            else:
-                skill_path = f"../../../nWave/skills/{s['agent_dir']}/{s['name']}.md"
+            skill_path = skill_ref(s, released, in_skills_dir=False)
             lines.append(f"- [{s['name']}]({skill_path}) — {s['description']}")
         lines.append("")
     return "\n".join(lines)
@@ -509,11 +613,14 @@ def render_commands_index(commands: list[Command]) -> str:
     return f"# Commands\n\n{table}\n"
 
 
-def render_skills_index(skills: list[Skill]) -> str:
+def render_skills_index(skills: list[Skill], released: set[str] | None = None) -> str:
     lines = ["# Skills", ""]
     by_agent: dict[str, list[Skill]] = {}
+    # List released skills only — private skill names/descriptions must not
+    # reach the public-synced docs/reference tree.
     for s in skills:
-        by_agent.setdefault(s["agent_dir"], []).append(s)
+        if _is_released(s, released):
+            by_agent.setdefault(s["agent_dir"], []).append(s)
     for agent_dir in sorted(by_agent):
         if agent_dir == "common":
             lines.append("## Shared Skills")
@@ -526,12 +633,7 @@ def render_skills_index(skills: list[Skill]) -> str:
             lines.append(f"## {display_name}")
         lines.append("")
         for s in sorted(by_agent[agent_dir], key=lambda x: x["name"]):
-            if s["agent_dir"].startswith("nw-"):
-                # Flat layout: nw-{skill}/SKILL.md
-                skill_path = f"../../../nWave/skills/{s['agent_dir']}/SKILL.md"
-            else:
-                # Old layout: {agent}/{skill}.md
-                skill_path = f"../../../nWave/skills/{s['agent_dir']}/{s['name']}.md"
+            skill_path = skill_ref(s, released, in_skills_dir=True)
             lines.append(f"- [{s['name']}]({skill_path}) — {s['description']}")
         lines.append("")
     return "\n".join(lines)
@@ -545,18 +647,41 @@ def render_templates_index(templates: list[Template]) -> str:
     return f"# Templates\n\n{table}\n"
 
 
-def render(data: dict[str, list]) -> dict[str, str]:
+def render(data: dict[str, list], *, root: Path | None = None) -> dict[str, str]:
     """Render all pages. Returns {relative_path: content}."""
+    # The "released" (public) skill set drives which skills get an in-site page.
+    # Released skills are linked in-site (so links resolve on the published
+    # site); private skills link to source and get NO page — keeping private
+    # skill names/descriptions out of the public-synced docs/reference tree.
+    released = released_skill_dirs(root)
+    # Public agent names, to keep private agent names off public skill pages.
+    public_agents = load_public_agents(root / "nWave", strict=False) if root else set()
+
     pages: dict[str, str] = {}
     pages["index.md"] = render_master_index(data)
     pages["agents/index.md"] = render_agents_index(data["agents"], data["skills"])
     pages["commands/index.md"] = render_commands_index(data["commands"])
-    pages["skills/index.md"] = render_skills_index(data["skills"])
+    pages["skills/index.md"] = render_skills_index(data["skills"], released)
     pages["templates/index.md"] = render_templates_index(data["templates"])
 
     for agent in data["agents"]:
         filename = f"agents/{agent['name']}.md"
-        pages[filename] = render_agent_detail(agent, data["skills"])
+        pages[filename] = render_agent_detail(agent, data["skills"], released)
+
+    # Per-skill reference pages — released skills only. "Used by" lists public
+    # agents only: a released skill page ships to the public repo, so naming a
+    # private agent there would leak it (and link to a stripped agent page).
+    used_by: dict[str, list[str]] = {}
+    for agent in data["agents"]:
+        if public_agents and not is_public_agent(f"{agent['name']}.md", public_agents):
+            continue
+        for s in _skills_for_agent(agent, data["skills"]):
+            used_by.setdefault(skill_slug(s), []).append(agent["name"])
+    for s in data["skills"]:
+        if not _is_released(s, released):
+            continue
+        slug = skill_slug(s)
+        pages[f"skills/{slug}.md"] = render_skill_detail(s, used_by.get(slug, []))
 
     return pages
 
@@ -643,7 +768,7 @@ def run_pipeline(
     paths = scan(root, public_only=public_only)
     data = extract_all(paths)
     data = enrich(data)
-    return render(data)
+    return render(data, root=root)
 
 
 # ---------------------------------------------------------------------------

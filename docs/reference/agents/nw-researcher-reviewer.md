@@ -13,4 +13,4 @@ Use for review and critique tasks - Research quality and evidence review special
 
 ## Skills
 
-- [nw-rr-critique-dimensions](../../../nWave/skills/nw-rr-critique-dimensions/SKILL.md) — Critique dimensions and scoring for research document reviews
+- [nw-rr-critique-dimensions](../skills/nw-rr-critique-dimensions.md) — Critique dimensions and scoring for research document reviews

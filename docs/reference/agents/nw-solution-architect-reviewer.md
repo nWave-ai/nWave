@@ -14,5 +14,5 @@ Architecture design and patterns review specialist - Optimized for cost-efficien
 
 ## Skills
 
-- [nw-roadmap-review-checks](../../../nWave/skills/nw-roadmap-review-checks/SKILL.md) — Roadmap-specific validation checks for architecture reviews. Load when reviewing roadmaps for implementation readiness.
-- [nw-sar-critique-dimensions](../../../nWave/skills/nw-sar-critique-dimensions/SKILL.md) — Architecture quality critique dimensions for peer review. Load when performing architecture document reviews.
+- [nw-roadmap-review-checks](../skills/nw-roadmap-review-checks.md) — Roadmap-specific validation checks for architecture reviews. Load when reviewing roadmaps for implementation readiness.
+- [nw-sar-critique-dimensions](../skills/nw-sar-critique-dimensions.md) — Architecture quality critique dimensions for peer review. Load when performing architecture document reviews.

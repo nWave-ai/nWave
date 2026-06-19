@@ -15,6 +15,7 @@ This reference documents every configuration key available in nWave's global con
 
 ```json
 {
+  "activation": { "mode": "..." },
   "rigor": { "profile": "..." },
   "documentation": { "density": "...", "expansion_prompt": "..." },
   "audit_logging_enabled": true,
@@ -26,6 +27,42 @@ This reference documents every configuration key available in nWave's global con
 ---
 
 ## Configuration keys
+
+### `activation` (object, optional)
+
+Controls the default activation mode for unmarked projects (repos without an explicit per-project marker).
+
+#### `activation.mode` (string, optional)
+
+Valid values: `opt-in` (default) | `all`.
+
+- **`opt-in`** (default): Unmarked projects are **inactive**. Hooks silently exit 0. Only projects with `.nwave/local-config.json` set to `enabled_for_repo: true` are active.
+
+- **`all`**: Unmarked projects are **active** by default. Hooks fire in every repo unless explicitly disabled with `.nwave/local-config.json` set to `enabled_for_repo: false`.
+
+**Default**: `opt-in` (opt-in is the safe, non-invasive default; nWave is only active where you explicitly enable it).
+
+**How to set this**:
+
+```bash
+nwave-ai mode opt-in    # unmarked repos inactive (default)
+nwave-ai mode all       # unmarked repos active
+```
+
+**Per-project override**: A project's `.nwave/local-config.json` marker always wins, regardless of global mode. Set `enabled_for_repo: true` or `enabled_for_repo: false` to override the mode for that project.
+
+**Example**:
+```json
+{
+  "activation": {
+    "mode": "opt-in"
+  }
+}
+```
+
+**For the complete mental model**, see [Activating nWave in a Project](../guides/activating-nwave-per-project.md).
+
+---
 
 ### `rigor` (object)
 

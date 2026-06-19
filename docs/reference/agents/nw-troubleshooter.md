@@ -15,6 +15,6 @@ Use for investigating system failures, recurring issues, unexpected behaviors, o
 
 ## Skills
 
-- [nw-five-whys-methodology](../../../nWave/skills/nw-five-whys-methodology/SKILL.md) — Toyota 5 Whys methodology with multi-causal branching, evidence requirements, and validation techniques
-- [nw-investigation-techniques](../../../nWave/skills/nw-investigation-techniques/SKILL.md) — Evidence collection methods, problem categorization, analysis techniques, and solution design patterns
-- [nw-post-mortem-framework](../../../nWave/skills/nw-post-mortem-framework/SKILL.md) — Blameless post-mortem structure, incident timeline reconstruction, response evaluation, and organizational learning
+- [nw-five-whys-methodology](../skills/nw-five-whys-methodology.md) — Toyota 5 Whys methodology with multi-causal branching, evidence requirements, and validation techniques
+- [nw-investigation-techniques](../skills/nw-investigation-techniques.md) — Evidence collection methods, problem categorization, analysis techniques, and solution design patterns
+- [nw-post-mortem-framework](../skills/nw-post-mortem-framework.md) — Blameless post-mortem structure, incident timeline reconstruction, response evaluation, and organizational learning

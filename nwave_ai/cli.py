@@ -1,5 +1,6 @@
 """nwave-ai CLI: thin wrapper around nWave install/uninstall scripts."""
 
+import json
 import os
 import subprocess
 import sys
@@ -720,6 +721,10 @@ def _print_usage() -> int:
     print("  attribution    Toggle commit attribution (on/off/status)")
     print("  outcomes       Register / check shipped outcomes (Tier-1 collision)")
     print("  plugin         Manage tool plugins (install/uninstall/list)")
+    print("  project        Enable or disable nWave activation for this project")
+    print("  mode           Set the global activation mode (all/opt-in)")
+    print("  status         Show global mode and this project's resolved state")
+    print("  completion     Print a shell-completion script (bash/zsh)")
     print("  version        Show nwave-ai version")
     print()
     print("Install options:")
@@ -731,6 +736,119 @@ def _print_usage() -> int:
     print("Example:")
     print("  nwave-ai install")
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Activation gating verbs (EXTEND, DDD-12). `project enable|disable`,
+# `mode all|opt-in`, `status`. `main_with_argv(argv)` is the testable entry
+# that dispatches the same way `main()` does but takes argv explicitly (so
+# acceptance tests need not patch sys.argv). `status` is read-only (no write
+# surface, Principle 12).
+# ---------------------------------------------------------------------------
+
+
+def _handle_project(args: list[str]) -> int:
+    """Handle 'project enable|disable' — write the marker + fix gitignore."""
+    if not args or args[0] not in ("enable", "disable"):
+        print("Usage: nwave-ai project <enable|disable>", file=sys.stderr)
+        return 1
+    from des.application.auto_marking_service import AutoMarkingService
+
+    project_root = Path.cwd()
+    _write_marker(project_root, enabled=args[0] == "enable")
+    AutoMarkingService().fix_gitignore(project_root=project_root)
+    state = "enabled" if args[0] == "enable" else "disabled (sticky opt-out)"
+    print(f"nWave activation for this project: {state}.")
+    return 0
+
+
+def _handle_mode(args: list[str]) -> int:
+    """Handle 'mode all|opt-in' — set the global activation mode."""
+    if not args or args[0] not in ("all", "opt-in"):
+        print("Usage: nwave-ai mode <all|opt-in>", file=sys.stderr)
+        return 1
+    config_dir = _get_config_dir()
+    config = read_global_config(config_dir)
+    activation = config.get("activation", {})
+    if not isinstance(activation, dict):
+        activation = {}
+    activation["mode"] = args[0]
+    config["activation"] = activation
+    write_global_config(config_dir, config)
+    print(f"Global nWave activation mode set to '{args[0]}'.")
+    return 0
+
+
+def _handle_status(args: list[str]) -> int:
+    """Handle 'status' — print global mode + resolved state (read-only)."""
+    from des.adapters.driven.config.des_config import DESConfig
+    from des.domain.activation_policy import resolve_activation
+
+    config = DESConfig(cwd=Path.cwd())
+    mode = config.activation_mode
+    active = resolve_activation(config.enabled_for_repo, mode)
+    state = "active" if active else "inactive"
+    print(f"Global activation mode: {mode}")
+    print(f"This project is {state}.")
+    return 0
+
+
+def _handle_completion(args: list[str]) -> int:
+    """Handle 'completion <bash|zsh>' — print the generated shell-completion script.
+
+    Reaches the spec-driven generator (``nwave_ai.completion.generate_completion``)
+    that was otherwise unreachable from the CLI. A missing or unsupported shell
+    prints usage to stderr and exits nonzero.
+    """
+    from nwave_ai.completion import generate_completion
+
+    if not args or args[0] in ("--help", "-h"):
+        print("Usage: nwave-ai completion <bash|zsh>", file=sys.stderr)
+        return 1
+    try:
+        print(generate_completion(args[0]))
+    except ValueError:
+        print(f"Unsupported completion shell: {args[0]!r}", file=sys.stderr)
+        print("Usage: nwave-ai completion <bash|zsh>", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _write_marker(project_root: Path, *, enabled: bool) -> None:
+    """Write the version-controlled activation marker .nwave/local-config.json."""
+    marker = project_root / ".nwave" / "local-config.json"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(
+        json.dumps({"enabled_for_repo": enabled}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+_ACTIVATION_HANDLERS = {
+    "project": _handle_project,
+    "mode": _handle_mode,
+    "status": _handle_status,
+    "completion": _handle_completion,
+}
+
+
+def main_with_argv(argv: list[str]) -> int:
+    """Dispatch a CLI invocation from an explicit argv (testable entry).
+
+    ``argv`` excludes the program name, e.g. ``["project", "enable"]`` or
+    ``["mode", "opt-in"]`` or ``["status"]`` or ``["completion", "bash"]``.
+    Returns the process exit code (0 on success; nonzero + usage text on stderr
+    for bad args).
+    """
+    if not argv:
+        print("Usage: nwave-ai <project|mode|status|completion> ...", file=sys.stderr)
+        return 1
+    handler = _ACTIVATION_HANDLERS.get(argv[0])
+    if handler is None:
+        print(f"Unknown command: {argv[0]}", file=sys.stderr)
+        print("Run 'nwave-ai --help' for usage.", file=sys.stderr)
+        return 1
+    return handler(argv[1:])
 
 
 def main() -> int:
@@ -766,6 +884,8 @@ def main() -> int:
         return handle_outcomes(sys.argv[2:])
     elif command == "plugin":
         return _handle_plugin(sys.argv[2:])
+    elif command in ("project", "mode", "status", "completion"):
+        return main_with_argv(sys.argv[1:])
     elif command == "version":
         print(f"nwave-ai {_get_version()}")
         return 0

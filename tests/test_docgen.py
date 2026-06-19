@@ -319,15 +319,74 @@ class TestSkillLinks:
             "templates": list((nwave_tree / "nWave" / "templates").glob("*.yaml")),
         }
         data = enrich(extract_all(paths))
-        page = render(data)["agents/nw-crafter.md"]
-        # Skills should be linked, not plain text
-        assert "[tdd](../../../nWave/skills/crafter/tdd.md)" in page
-        assert "[refactoring](../../../nWave/skills/crafter/refactoring.md)" in page
+        pages = render(data)
+        page = pages["agents/nw-crafter.md"]
+        # Skills link to the in-site reference page (stays inside the doc root,
+        # so it resolves on the published site instead of escaping to GitHub).
+        assert "[tdd](../skills/crafter-tdd.md)" in page
+        assert "[refactoring](../skills/crafter-refactoring.md)" in page
+        # The per-skill pages exist and (no catalog → all released) link source.
+        assert "skills/crafter-tdd.md" in pages
+        assert "github.com/nWave-ai/nWave/blob/main" in pages["skills/crafter-tdd.md"]
+
+    def test_no_generated_md_link_escapes_doc_root(self, nwave_tree: Path):
+        """Invariant: no generated relative .md link escapes docs/reference/.
+
+        This is the regression guard for the nw-documentarist-reviewer class of
+        bug — generated pages must not link out of the published doc root.
+        """
+        import posixpath
+        import re
+
+        link_re = re.compile(r"\]\(([^)]+)\)")
+        paths = {
+            "agents": list((nwave_tree / "nWave" / "agents").glob("*.md")),
+            "commands": list((nwave_tree / "nWave" / "tasks" / "nw").glob("*.md")),
+            "skills": list((nwave_tree / "nWave" / "skills").rglob("*.md")),
+            "templates": list((nwave_tree / "nWave" / "templates").glob("*.yaml")),
+        }
+        pages = render(enrich(extract_all(paths)))
+        for relpath, content in pages.items():
+            base = (Path("docs/reference") / relpath).parent.as_posix()
+            for url in link_re.findall(content):
+                if url.startswith(("http://", "https://", "#", "mailto:")):
+                    continue
+                target = posixpath.normpath(posixpath.join(base, url.split("#")[0]))
+                assert target.startswith("docs/reference"), (
+                    f"{relpath}: link escapes doc root -> {url} ({target})"
+                )
+
+    def test_public_skill_page_omits_private_agents(self, tmp_path: Path):
+        """A released skill page must not name a private agent in 'Used by'.
+
+        Released skill pages ship to the public repo; naming a private agent
+        there leaks it and links to a stripped agent page. Uses a real catalog
+        fixture (the synthetic nwave_tree has none, so it can't catch this).
+        """
+        nw = tmp_path / "nWave"
+        (nw / "agents").mkdir(parents=True)
+        (nw / "skills" / "nw-shared").mkdir(parents=True)
+        (nw / "framework-catalog.yaml").write_text(
+            "wave_phases:\n- DISCUSS\nagents:\n"
+            "  pub:\n    public: true\n  priv:\n    public: false\n",
+            encoding="utf-8",
+        )
+        for name in ("pub", "priv"):
+            (nw / "agents" / f"nw-{name}.md").write_text(
+                f"---\nname: nw-{name}\ndescription: A {name} agent\n"
+                "skills:\n  - nw-shared\n---\n# body\n",
+                encoding="utf-8",
+            )
+        (nw / "skills" / "nw-shared" / "SKILL.md").write_text(
+            "---\nname: nw-shared\ndescription: shared skill\n---\n# body\n",
+            encoding="utf-8",
+        )
+        pages = run_pipeline(tmp_path, tmp_path / "docs" / "reference")
+        page = pages["skills/nw-shared.md"]  # released (owned by public 'pub')
+        assert "nw-pub" in page  # public user is listed
+        assert "nw-priv" not in page  # private user must be filtered out
 
 
-# ---------------------------------------------------------------------------
-# Fix 2: Wave grouping in agents index
-# ---------------------------------------------------------------------------
 class TestWaveGrouping:
     @pytest.mark.parametrize(
         "description,expected_wave",

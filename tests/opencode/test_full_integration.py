@@ -22,6 +22,19 @@ TEMPLATE_PATH = (
 )
 
 
+def _activate_project(project_root: Path) -> None:
+    """Write the activation marker so the gate dispatches hooks for this project.
+
+    The activation gate (nwave-project-activation-gating) makes hooks
+    non-invasive: they only run in an activated project. Hermetic DES test
+    projects must declare themselves active to exercise the hook's internal
+    behavior.
+    """
+    marker = project_root / ".nwave" / "local-config.json"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(json.dumps({"enabled_for_repo": True}))
+
+
 def _run_adapter(
     action: str,
     stdin_json: dict,
@@ -153,6 +166,11 @@ class TestWriteGuard:
             )
         )
 
+        # Activation gate: hooks only run in an activated project. A hermetic
+        # project mid-DELIVER is active by definition — mark it so the write
+        # guard runs (the exit-2 block assertion below is unchanged).
+        _activate_project(tmp_path)
+
         cc_json = {
             "tool_name": "Write",
             "tool_input": {
@@ -226,6 +244,8 @@ class TestEditGuard:
             )
         )
 
+        _activate_project(tmp_path)
+
         cc_json = {
             "tool_name": "Edit",
             "tool_input": {
@@ -268,6 +288,7 @@ class TestWriteGuardCwdIsolation:
         (nwave_des / "deliver-session.json").write_text(
             json.dumps({"feature_id": "hermetic-test", "active": True})
         )
+        _activate_project(tmp_path)
 
         cc_json = {
             "tool_name": "Write",

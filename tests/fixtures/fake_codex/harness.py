@@ -90,10 +90,15 @@ class FakeCodexHarness:
         hooks_path: Path,
         env: dict | None = None,
         timeout_seconds: int = 30,
+        session_cwd: str = "/tmp/fake-codex-cwd",
     ) -> None:
         self._hooks_path = Path(hooks_path)
         self._env = dict(env) if env else {}
         self._timeout_seconds = timeout_seconds
+        # The session working directory advertised in the stdin envelope. The
+        # activation gate resolves the project from this ``cwd``; tests that
+        # exercise an active project pass a real, activated directory here.
+        self._session_cwd = session_cwd
 
     # -- Public API --------------------------------------------------------
 
@@ -165,6 +170,7 @@ class FakeCodexHarness:
             tool_name=tool_name,
             tool_input=tool_input or {},
             session_id=session_id,
+            cwd=self._session_cwd,
         )
         stdin_payload = json.dumps(envelope)
 
@@ -209,7 +215,10 @@ class FakeCodexHarness:
 
     @staticmethod
     def _build_pretool_envelope(
-        tool_name: str, tool_input: dict, session_id: str
+        tool_name: str,
+        tool_input: dict,
+        session_id: str,
+        cwd: str = "/tmp/fake-codex-cwd",
     ) -> dict:
         """Build a documented PreToolUse stdin envelope (Q4).
 
@@ -218,7 +227,7 @@ class FakeCodexHarness:
         published JSON schema.
         """
         return {
-            "cwd": "/tmp/fake-codex-cwd",
+            "cwd": cwd,
             "hook_event_name": "PreToolUse",
             "model": "gpt-5",
             "permission_mode": "default",

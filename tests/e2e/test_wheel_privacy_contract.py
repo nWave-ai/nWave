@@ -156,6 +156,24 @@ def _find_in_site_packages(container, pattern: str, path_filter: str = "") -> in
         return -1
 
 
+def _tests_leak_scan_cmd(site: str) -> str:
+    """Bash command listing nWave's OWN leaked ``tests/`` .py files under *site*.
+
+    Scoped to nWave's footprint: a leaked repo ``tests/`` dir lands at the
+    site-packages root (mirroring repo layout, exactly like the ``src/`` and
+    ``scripts/`` leaks guarded above), or nested inside the installed
+    ``nwave_ai`` package.  Third-party dependencies legitimately bundle their
+    own ``tests/`` (e.g. ``referencing/tests/``, pulled in transitively via the
+    ``jsonschema`` runtime dependency added in v3.19.0) — those are NOT nWave
+    leaks and must not trip this gate.  The previous unscoped
+    ``find "$site" -path "*/tests/*"`` matched any dependency's bundled tests.
+    """
+    return (
+        f'find "{site}/tests" "{site}/nwave_ai" -path "*/tests/*" '
+        '-name "*.py" 2>/dev/null | head -5'
+    )
+
+
 @pytest.mark.e2e
 @require_docker
 class TestWheelPrivacyContract:
@@ -237,14 +255,10 @@ class TestWheelPrivacyContract:
         site = _site_packages_root(wheel_privacy_container)
         _code, out = exec_in_container(
             wheel_privacy_container,
-            [
-                "bash",
-                "-c",
-                f'find "{site}" -path "*/tests/*" -name "*.py" 2>/dev/null | head -5',
-            ],
+            ["bash", "-c", _tests_leak_scan_cmd(site)],
         )
         leaked = out.strip()
-        assert leaked == "", f"tests/ .py files leaked into wheel:\n{leaked}"
+        assert leaked == "", f"nWave tests/ .py files leaked into wheel:\n{leaked}"
 
     def test_no_secret_files_in_wheel(self, wheel_privacy_container) -> None:
         site = _site_packages_root(wheel_privacy_container)
@@ -383,6 +397,47 @@ class TestWheelPrivacyFixtureShape:
     fixture (which builds the wheel via the same release-prod.yml pipeline) and
     install it from a path inside the container, never from live PyPI.
     """
+
+    def test_tests_leak_scan_ignores_third_party_bundled_tests(self, tmp_path) -> None:
+        """The tests/ leak gate flags nWave's own leaked tests/ but ignores
+        third-party deps that bundle their own tests/ (e.g. referencing via
+        jsonschema, v3.19.0). Runs the scan logic locally — no Docker needed.
+
+        Regression for the v3.19.0 RC failure: the unscoped
+        ``find "$site" -path "*/tests/*"`` matched ``referencing/tests/*.py`` and
+        falsely blocked the release.
+        """
+        import subprocess
+
+        site = tmp_path
+        (site / "nwave_ai").mkdir()
+        (site / "nwave_ai" / "__init__.py").write_text("")
+        # A third-party dependency that bundles its own tests/ — must be IGNORED.
+        (site / "referencing" / "tests").mkdir(parents=True)
+        (site / "referencing" / "tests" / "test_referencing_suite.py").write_text("")
+        (site / "referencing" / "tests" / "__init__.py").write_text("")
+
+        def scan() -> str:
+            done = subprocess.run(
+                ["bash", "-c", _tests_leak_scan_cmd(str(site))],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            return done.stdout.strip()
+
+        # Only a dependency bundles tests/ -> gate must pass (empty result).
+        assert scan() == "", (
+            f"third-party bundled tests/ tripped the leak gate:\n{scan()}"
+        )
+
+        # nWave's own repo tests/ shipped at the site root -> MUST be caught.
+        (site / "tests").mkdir()
+        (site / "tests" / "test_leaked.py").write_text("")
+        leaked = scan()
+        assert "tests/test_leaked.py" in leaked, (
+            f"nWave tests/ leak was not caught by the gate:\n{leaked!r}"
+        )
 
     def test_fixture_does_not_install_from_live_pypi(self) -> None:
         """The wheel_privacy_container fixture body MUST NOT reference live PyPI."""

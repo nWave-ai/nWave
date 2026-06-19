@@ -13,6 +13,6 @@ Use for documentation quality enforcement using DIVIO/Diataxis principles. Class
 
 ## Skills
 
-- [nw-collapse-detection](../../../nWave/skills/nw-collapse-detection/SKILL.md) — Documentation collapse anti-patterns - detection rules, bad examples, and remediation strategies for type-mixing violations
-- [nw-divio-framework](../../../nWave/skills/nw-divio-framework/SKILL.md) — DIVIO/Diataxis four-quadrant documentation framework - type definitions, classification decision tree, and signal catalog
-- [nw-quality-validation](../../../nWave/skills/nw-quality-validation/SKILL.md) — Type-specific validation checklists, six quality characteristics, and quality gate thresholds for documentation assessment
+- [nw-collapse-detection](../skills/nw-collapse-detection.md) — Documentation collapse anti-patterns - detection rules, bad examples, and remediation strategies for type-mixing violations
+- [nw-divio-framework](../skills/nw-divio-framework.md) — DIVIO/Diataxis four-quadrant documentation framework - type definitions, classification decision tree, and signal catalog
+- [nw-quality-validation](../skills/nw-quality-validation.md) — Type-specific validation checklists, six quality characteristics, and quality gate thresholds for documentation assessment

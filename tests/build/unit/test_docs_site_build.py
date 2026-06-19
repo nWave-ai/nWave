@@ -207,3 +207,42 @@ def test_build_nav_classifies_and_buckets_unmatched(bs) -> None:
     # Reference keeps its sub-grouping ("agents" branch).
     ref_titles = {c["title"] for c in by_title["Reference"]["children"]}
     assert "agents" in {t.lower() for t in ref_titles}
+
+
+def test_build_nav_orders_leaves_by_siteyaml_then_alpha(bs) -> None:
+    # site.yaml's curated path order is authoritative for leaf ordering;
+    # pages sharing one directory prefix fall back to alphabetical. This guards
+    # the what's-new ordering regression (newest-first 3.19, 3.14, 3.5 — which
+    # alphabetical-by-slug would mis-sort to 3.14, 3.19, 3.5).
+    config = {
+        "sections": [
+            {
+                "id": "explanation",
+                "title": "Explanation",
+                "paths": [
+                    "docs/guides/whats-new-v319",
+                    "docs/guides/whats-new-v314",
+                    "docs/guides/whats-new-v35",
+                    "docs/reference",  # shared prefix -> alpha within
+                ],
+            }
+        ]
+    }
+    # Input arrives alphabetical — the order that previously mis-sorted.
+    paths = [
+        "docs/guides/whats-new-v314/README.md",
+        "docs/guides/whats-new-v319/README.md",
+        "docs/guides/whats-new-v35/README.md",
+        "docs/reference/b.md",
+        "docs/reference/a.md",
+    ]
+    titles = {p: p for p in paths}
+    nav = bs.build_nav(config, paths, titles)
+    urls = [c["url"] for c in nav[0]["children"]]
+    assert urls == [
+        "/{V}/guides/whats-new-v319/",
+        "/{V}/guides/whats-new-v314/",
+        "/{V}/guides/whats-new-v35/",
+        "/{V}/reference/a/",
+        "/{V}/reference/b/",
+    ]

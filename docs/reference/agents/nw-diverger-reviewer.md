@@ -13,4 +13,4 @@ Use as peer reviewer for nw-diverger outputs — validates JTBD rigor, research 
 
 ## Skills
 
-- [nw-diverger-review-criteria](../../../nWave/skills/nw-diverger-review-criteria/SKILL.md) — Review criteria for the nw-diverger-reviewer — validates JTBD rigor, research quality, option diversity, taste application correctness, and recommendation coherence in DIVERGE wave artifacts
+- [nw-diverger-review-criteria](../skills/nw-diverger-review-criteria.md) — Review criteria for the nw-diverger-reviewer — validates JTBD rigor, research quality, option diversity, taste application correctness, and recommendation coherence in DIVERGE wave artifacts
