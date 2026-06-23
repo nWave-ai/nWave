@@ -63,7 +63,7 @@ When I implement something with pi (a minimal, subagent-less harness), I want th
 
 #### Elevator Pitch
 Before: starting `pi` gives me a generic agent with no TDD discipline and no nWave crafter.
-After: run `$ pi` then `/skill:software-crafter` → sees the crafter persona loaded and announcing it will work in strict RED→GREEN→REFACTOR.
+After: run `$ pi` then `/skill:software-crafter` → sees the startup line `[nWave DES] enforcement active for pi` and the crafter announcing it will work in strict RED→GREEN→REFACTOR.
 Decision enabled: I decide to hand it a problem, trusting the TDD contract is now active.
 
 #### Acceptance criteria
@@ -93,12 +93,12 @@ Decision enabled: I trust that every line of implementation was demanded by a fa
 
 #### Elevator Pitch
 Before: the agent can stack multiple tests, refactor on red, or leave broken tests behind.
-After: when the crafter tries to start a new test before the suite is green, or commit with failing tests, pi blocks it → sees a reason naming the violated rule.
+After: when the crafter tries to start a new test before the suite is green, or `git commit` while tests fail, pi blocks it → sees e.g. `Suite is red — reach green before the next test.` or `Regression: 1 previously-green test now fails — restore green before commit.`
 Decision enabled: I trust the kata was built in strict single-test increments with a clean bar at every step.
 
 #### Acceptance criteria
 - Given the suite is red, when the crafter attempts to author the next failing test, then the step is blocked with a "reach green first" reason.
-- Given a refactor breaks a previously-green test, when the crafter attempts to commit, then the commit is blocked until green is restored (no-regression gate).
+- Given a refactor breaks a previously-green test, when the crafter runs `git commit` (a `bash` tool call), then the commit is blocked until green is restored — where **"green" = the most recent test-run `bash` tool_result exited 0** (per ADR-pi-001; the no-regression gate fires at the commit `bash` tool_call, NOT at the non-blocking `turn_end`).
 - Each enforced transition is recorded in the DES audit log with its phase (RED / GREEN / REFACTOR).
 
 ### Story 4 — Verify the cycle was followed via log + commit history
@@ -159,6 +159,17 @@ Backbone: **Install → Launch → Enforce (RED) → Enforce (GREEN/REFACTOR) �
 
 Each slice ships observable value; the full DoD demo lands at the end of Slice 03. Full-cycle gating (D2) is delivered cumulatively across 02–03.
 
+## Wave: DISCUSS / [REF] Worked examples (reference kata: FizzBuzz)
+
+Concrete trace grounding Stories 2–4 (real paths, real commands, real reason/output strings). The crafter is asked: *"implement FizzBuzz via strict TDD."*
+
+1. **RED allowed** — crafter writes `tests/test_fizzbuzz.py::test_returns_1_for_1` (a failing test). pi `write` `tool_call` → allowed (a failing test now exists). Audit: `HOOK_PRE_WRITE_ALLOWED`.
+2. **Impl-before-test BLOCKED (Story 2)** — crafter instead tries to write `src/fizzbuzz.py` with no failing test present. pi `write` `tool_call` → **blocked**, file unchanged, crafter sees `No failing test for this behavior — write the test first.` Audit: `HOOK_PRE_WRITE_BLOCKED`.
+3. **GREEN** — with the failing test present, crafter writes minimal `src/fizzbuzz.py` (`return "1"`). `write` allowed; the test-run `bash` tool_result exits 0 → phase recorded GREEN.
+4. **New-test-while-red BLOCKED (Story 3)** — suite is red; crafter tries to author `test_returns_2_for_2`. Blocked: `Suite is red — reach green before the next test.`
+5. **Regression-on-commit BLOCKED (Story 3)** — a refactor breaks `test_returns_1_for_1`; crafter runs `git commit -m "refactor"` (a `bash` tool call). Blocked until green: `Regression: 1 previously-green test now fails — restore green before commit.`
+6. **Provenance (Story 4)** — after the kata, `git log --format='%s %(trailers:key=Step-Id)'` shows `feat: fizz for 3  Step-Id: fizzbuzz-03` ordered RED→GREEN→REFACTOR, and `.nwave/des/logs/audit-*.log` holds the matching ordered phase + block/allow entries.
+
 ## Wave: DISCUSS / [REF] Wave decisions summary
 
 - Primary need: verifiable, enforced canonical TDD for the software-crafter inside pi, a minimal subagent-less harness.
@@ -170,3 +181,103 @@ Each slice ships observable value; the full DoD demo lands at the end of Slice 0
 ## Wave: DISCUSS / [REF] Handoff
 
 **To DESIGN (nw-solution-architect)** — full artifact set; key open design item is D6 (step-completion analog without subagents) and the pi-extension↔adapter protocol translation. **To DEVOPS (nw-platform-architect)** — `Outcome KPIs` only, to drive instrumentation of block/allow + phase telemetry on the existing audit surface. **Gate:** SPIKE-0 must pass before DESIGN commits to the `tool_call`-based enforcement path.
+
+## Wave: DESIGN / [REF] Step-completion model (D6 → D8)
+
+D6 resolved as **Hybrid** (ADR-PI-001). The pivot: `SubagentStopService.validate()` is a pure validation over `(execution_log_path, project_id, step_id, cwd)` — the subagent boundary is only the trigger cadence, not a dependency. Mapping:
+- RED ordering → pi `tool_call` (write/edit) → existing `pre-write` guard (in skeleton).
+- Suite state (red/green/regression) → bash test-run `tool_result` → recorded via existing DES phase CLI (no new format, D3).
+- Step completion → `git commit` `tool_call` boundary → unchanged `subagent-stop` action; failed validation returns `{block:true,reason}` so pi aborts the commit.
+- `turn_end`/`agent_end` → read-only reconciliation, never blocks (block honoring unverified, R2).
+
+Rejected: Option A commit-only (no within-cycle ordering, fails D2); Option B turn_end-only (block-at-turn_end unproven). Full alternatives in ADR-PI-001.
+
+## Wave: DESIGN / [REF] Components
+
+| Component | Path | Change |
+|-----------|------|--------|
+| pi DES extension | `nWave/templates/pi-des-extension.ts.template` | EXTEND (skeleton → full gate set; stays pure translator) |
+| pi installer plugin | `scripts/install/plugins/pi_des_plugin.py` | CREATE NEW (mirror `opencode_des_plugin.py`) |
+| Plugin registration | `scripts/install/install_nwave.py` | EXTEND (register `pi-des`, deps `["des"]`, when pi detected) |
+| Crafter skill | `nWave/skills` assets | REUSE (placed by DES plugin; contributed via `resources_discover`) |
+| Python DES engine + verifiers + audit | `src/des/...` | REUSE UNCHANGED (zero fork, D5) |
+| `install_paths` spawn resolvers | `scripts/shared/install_paths.py` | REUSE |
+
+## Wave: DESIGN / [REF] Activation + audit-dir
+
+Activation: `.nwave/local-config.json:{enabled_for_repo:true}` resolved by the existing Python `activation_gate` (dormant→exit 0/allow). Audit dir: extension MUST pin `DES_AUDIT_LOG_DIR` to project `.nwave/des/logs` on every spawn (`JsonlAuditLogWriter` defaults to process cwd). Both mandatory (SPIKE implications 2 & 3).
+
+## Wave: DESIGN / [REF] Handoff (DESIGN → DISTILL)
+
+C4 L1+L2 + ADR-PI-001/002/003 in `docs/product/architecture/`. **No external integrations → no contract tests** (D14). Open items for DISTILL/DELIVER: model-free acceptance for the commit-boundary block + red→green→regression sequence (R4); confirm pi `resources_discover` shape (R1) and extension-install location (R1, DEVOPS verify); confirm pi honors `{block:true}` on the `git commit` `tool_call`.
+
+## Wave: DISTILL / [REF] Scenario list with tags
+
+> Density = lean (Tier-1 only). The `.feature` files are the scenario SSOT. Built ON the inherited `@walking_skeleton` (untouched, GREEN). Test placement: `tests/des/acceptance/pi_harness/` (existing dir, DES acceptance precedent). 20 model-free scenarios + 1 `@requires_external` skip + 1 inherited skeleton.
+
+| Scenario | Feature file | Tags | Status |
+|----------|--------------|------|--------|
+| Starting pi in an activated project confirms DES enforcement is live | walking-skeleton | `@walking_skeleton @driving_port` | GREEN (inherited, untouched) |
+| A production write is translated to the RED gate and the engine's block is relayed verbatim | extension-translation-contract | `@US-2 @real-io @adapter-integration` | GREEN |
+| An allowed write is relayed as allow | extension-translation-contract | `@US-2 @real-io @adapter-integration` | GREEN |
+| A commit tool call is translated to the step-completion validation | extension-translation-contract | `@US-3 @adapter-integration` | RED |
+| A test-run result is translated to the suite-state recording action | extension-translation-contract | `@US-3 @adapter-integration` | RED |
+| A non-mutating read tool call is passed through untouched | extension-translation-contract | `@US-2 @adapter-integration` | GREEN |
+| A translator failure never blocks a legitimate tool call | extension-translation-contract | `@US-2 @error @adapter-integration` | GREEN |
+| The extension contains no allow or block decision of its own | extension-translation-contract | `@US-2 @adapter-integration` | GREEN |
+| Installing into a present pi config dir places the extension and manifest | installer-plugin-lifecycle | `@US-1 @real-io @adapter-integration` | RED |
+| Installing when pi is not present skips without failing | installer-plugin-lifecycle | `@US-1 @error @real-io @adapter-integration` | RED |
+| Installing before the DES library is present is refused with guidance | installer-plugin-lifecycle | `@US-1 @error @real-io @adapter-integration` | RED |
+| Verifying a completed install confirms the placed artifacts | installer-plugin-lifecycle | `@US-1 @real-io @adapter-integration` | RED |
+| Verifying before installing reports the missing extension | installer-plugin-lifecycle | `@US-1 @error @real-io @adapter-integration` | RED |
+| Reinstalling refreshes the extension without removing the operator's own pi files | installer-plugin-lifecycle | `@US-1 @real-io @adapter-integration` | RED |
+| Uninstalling removes every placed artifact and leaves the operator's files | installer-plugin-lifecycle | `@US-1 @real-io @adapter-integration` | RED |
+| Uninstalling when nothing was installed completes without error | installer-plugin-lifecycle | `@US-1 @error @real-io @adapter-integration` | RED |
+| Writing implementation before a failing test is blocked at the write boundary | tdd-enforcement-gates | `@US-2 @real-io @adapter-integration` | RED |
+| Writing the test first is allowed | tdd-enforcement-gates | `@US-2 @real-io @adapter-integration` | GREEN |
+| Committing a step that did not complete its phases is blocked at the commit boundary | tdd-enforcement-gates | `@US-3 @adapter-integration` | RED |
+| Committing a step that completed its phases with a trailered commit is allowed | tdd-enforcement-gates | `@US-3 @adapter-integration` | GREEN |
+| A live pi model turn honors the block on a real production write | tdd-enforcement-gates | `@US-3 @requires_external` | SKIPPED |
+
+Gate run: 8 PASSED · 12 FAILED (all `MISSING_FUNCTIONALITY`) · 1 SKIPPED. Detail: `distill/red-classification.md`.
+
+## Wave: DISTILL / [REF] WS strategy
+
+Walking skeleton INHERITED from SPIKE-0 (PROMOTED 2026-06-23), untouched and GREEN: `@walking_skeleton @driving_port` driving real pi 0.79.9 via subprocess `pi -e`, asserting the `[nWave DES] enforcement active for pi` health line. Per the retired-strategy model, this is the production-composition-root demo proof. DISTILL added the next layers (installer lifecycle, translation contract, gate wiring) ON the skeleton. No second walking skeleton authored.
+
+## Wave: DISTILL / [REF] Adapter coverage table (Mandate 6)
+
+| Driven adapter | `@real-io` scenario | Covered by |
+|----------------|---------------------|------------|
+| Rendered-template filesystem install (pi config dir) | YES | installer-plugin-lifecycle: install / reinstall / uninstall (real `tmp_path` pi dir, `PI_CONFIG_DIR` override) |
+| Install manifest writer (`.nwave-des-manifest.json`) | YES | installer-plugin-lifecycle: "install … manifest"; uninstall removes it |
+| Python DES adapter (`claude_code_hook_adapter`, REUSED UNCHANGED) | YES | extension-translation-contract + tdd-enforcement-gates: real `pre-write` / `subagent-stop` subprocess round-trips |
+| pi LLM backend (external, non-deterministic) | `@requires_external` skip | tdd-enforcement-gates: "A live pi model turn honors the block" — model-free analog asserted at the adapter round-trip |
+
+Zero `NO — MISSING` rows.
+
+## Wave: DISTILL / [REF] Driving Adapter coverage
+
+- **pi entry point (`pi -e` subprocess)** — covered by the inherited `@walking_skeleton @driving_port` scenario (real protocol: subprocess, exit status, stderr health line). Noted: this covers the pi driving adapter end-to-end.
+- **pi installer pi target (`PiDESPlugin` lifecycle)** — driving port exercised via `validate_prerequisites/install/verify/uninstall` over a real `InstallContext` with real FS I/O.
+- **pi `tool_call`/`tool_result` translation** — exercised model-free via the rendered-extension mapping contract + real DES adapter subprocess round-trip (SPIKE-0 Half-1 pattern; live-model path is `@requires_external`).
+
+## Wave: DISTILL / [REF] Scaffolds (Mandate 7)
+
+| Scaffold file | Marker | Methods |
+|---------------|--------|---------|
+| `scripts/install/plugins/pi_des_plugin.py` | `__SCAFFOLD__ = True` | `validate_prerequisites` / `install` / `verify` / `uninstall` each raise `AssertionError("…RED scaffold…")` |
+
+`grep -r "__SCAFFOLD__" scripts/install/plugins/pi_des_plugin.py` → present. DELIVER removes the marker when the plugin is implemented (GREEN). The extension template (`pi-des-extension.ts.template`) is the committed skeleton — EXTENDED in DELIVER, not scaffolded (it already exists and passes the skeleton test).
+
+## Wave: DISTILL / [REF] Test placement
+
+`tests/des/acceptance/pi_harness/` (existing dir; the inherited skeleton lives here). Precedent: DES acceptance tests under `tests/des/acceptance/`. Three new `.feature` files + matching `steps/test_*.py`; markers registered in the existing `conftest.py`.
+
+## Wave: DISTILL / [REF] Pre-requisites
+
+- DESIGN driving ports (brief.md): pi `tool_call`/`tool_result`, `git commit` boundary, `session_start`, `/skill:software-crafter`, nWave installer pi target. ADR-pi-001 (D6 Hybrid) is the spec for the gate scenarios.
+- DES engine REUSED UNCHANGED (`claude_code_hook_adapter` actions `pre-write` / `post-tool-use` / `subagent-stop` / `session-start`); zero fork (D5).
+- Env matrix: no DEVOPS wave → default `clean | with-pre-commit | with-stale-config` (WARN). Tests are env-agnostic (tmp_path + `PI_CONFIG_DIR` override + `DES_AUDIT_LOG_DIR` pin).
+- Infrastructure policy bootstrapped: `docs/architecture/atdd-infrastructure-policy.md`.
+- Deferred: outcomes registry (`OUT-PI-1`, schema.json absent); `@requires_external` live-model e2e; R1 pi config-dir confirmation; C7b interruption AT (LOW). See `distill/wave-decisions.md`.
