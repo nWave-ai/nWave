@@ -89,6 +89,7 @@ try:
     from scripts.install.plugins.opencode_commands_plugin import OpenCodeCommandsPlugin
     from scripts.install.plugins.opencode_des_plugin import OpenCodeDESPlugin
     from scripts.install.plugins.opencode_skills_plugin import OpenCodeSkillsPlugin
+    from scripts.install.plugins.pi_des_plugin import PiDESPlugin
     from scripts.install.plugins.registry import PluginRegistry
     from scripts.install.plugins.reviewer_signing_plugin import (
         ReviewerSigningPlugin,
@@ -414,6 +415,11 @@ class NWaveInstaller:
             codex_des = CodexDESPlugin()
             codex_des.set_dependencies(["des", "codex-skills"])
             registry.register(codex_des)
+        # pi plugins (registered when pi detected)
+        if target_platforms and "pi" in target_platforms:
+            pi_des = PiDESPlugin()
+            pi_des.set_dependencies(["des"])
+            registry.register(pi_des)
         return registry
 
     def install_framework(self) -> bool:
