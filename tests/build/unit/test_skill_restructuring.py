@@ -330,7 +330,8 @@ BULK_HASHES = {
     "nw-stress-analysis": "ad5e1b64848a4343e749ec99c61f3517",
     "nw-taste-evaluation": "93f3f75be13aae0ec1a260ca68af94b7",
     "nw-tbr-methodology": "40e44f3c469968c140bd7c107b536644",
-    "nw-tdd-methodology": "a86542d9b859a5ffcfdf6f2fd59834c3",
+    "nw-tdd-methodology": "f87ed0744eace983d0084106fabbf7a4",
+    # Hash updated 2026-06-23: COMMIT phase routed through des-commit (#51)
     # Hash updated 2026-05-26: LANGUAGE CONVENTION FRAME banner added
     # (prevent Python-leak in non-Python projects per user-reported friction).
     # Prior hash updated 2026-05-20: ATDD-pure slice-10 — AT-completion ledger

@@ -283,6 +283,73 @@ class TestLogPhaseMultipleEntriesSequential:
             assert events[i]["p"] == phase
 
 
+class TestLogPhaseConcurrentWritesNoLostUpdates:
+    """Regression for #51: concurrent des-log-phase appends must not lose entries.
+
+    The original read-modify-write (read_text -> append -> write_text) had no
+    file locking, so interleaved writers overwrote each other (last-writer-wins)
+    and DES audit-trail entries silently vanished during parallel DELIVER waves.
+    With an exclusive lock held across the whole RMW, every concurrent append
+    lands exactly once.
+    """
+
+    def test_concurrent_appends_all_land(self, tmp_path, mock_schema):
+        import threading
+
+        from des.cli.log_phase import main
+
+        _create_execution_log(tmp_path)
+
+        num_threads = 12
+        appends_per_thread = 8
+        expected = num_threads * appends_per_thread
+
+        barrier = threading.Barrier(num_threads)
+        errors: list[int] = []
+
+        def worker(tid: int) -> None:
+            # Release all writers simultaneously to maximise interleaving.
+            barrier.wait()
+            for i in range(appends_per_thread):
+                rc = main(
+                    [
+                        "--project-dir",
+                        str(tmp_path),
+                        "--step-id",
+                        f"{tid:02d}-{i:02d}",
+                        "--phase",
+                        "GREEN",
+                        "--status",
+                        "EXECUTED",
+                        "--data",
+                        "PASS",
+                    ]
+                )
+                if rc != 0:
+                    errors.append(rc)
+
+        threads = [
+            threading.Thread(target=worker, args=(t,)) for t in range(num_threads)
+        ]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+
+        assert not errors, f"some appends returned non-zero: {errors}"
+
+        log_data = json.loads((tmp_path / "execution-log.json").read_text())
+        events = log_data["events"]
+        assert len(events) == expected, (
+            f"expected {expected} events, found {len(events)} — "
+            "lost updates indicate the concurrent read-modify-write is not "
+            "serialized"
+        )
+        # Each (tid, i) pair carries a unique step-id; no losses, no duplicates.
+        unique_sids = {e["sid"] for e in events}
+        assert len(unique_sids) == expected
+
+
 class TestLogPhaseExecStats:
     """Test that --turns-used and --tokens-used produce structured entries with tu/tk."""
 

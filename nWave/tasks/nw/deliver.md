@@ -150,10 +150,13 @@ INPUT: "{feature-description}"
               If a test unrelated to this step fails, it means this step introduced a regression — fix before proceeding.
             Do NOT skip or defer failing tests at either level.
         c8. On failure → STOP. Do not proceed to next step.
-     d. **Parallel dispatch** — BLOCKED until DES CLI implements file locking.
-        The DES CLI (log_phase) uses read/modify/write on execution-log.json without serialization.
-        Concurrent agents cause last-write-wins data loss. Sequential dispatch (c1-c8) is
-        the ONLY safe mode. When file locking is implemented, parallel rules will be:
+     d. **Parallel dispatch** — NOT YET ENABLED; sequential dispatch (c1-c8) is the default.
+        The two concurrency hazards that blocked it are now fixed: execution-log writes are
+        serialized with an exclusive lock (issue #51 Issue 1), and step commits go through
+        `des-commit`, which locks the commit and scopes it to the step's owned files so a
+        parallel agent's staged work is never swept in (issue #51 Issue 2 / ADR-027).
+        Enabling parallel dispatch is now a separate rollout decision pending ADR-027's open
+        questions (e.g. owned-file completeness, lock granularity). When enabled, the rules will be:
         d1. Steps with disjoint `depends_on` chains AND disjoint `files_to_modify` may run concurrently
         d2. Launch one Agent per step (never batch) using run_in_background=true
         d3. Wait for ALL agents in the group to complete

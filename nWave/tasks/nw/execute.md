@@ -89,9 +89,20 @@ Load on-demand per phase as specified in your Skill Loading Strategy table.
    test is at the wrong abstraction level — stop and flag.
    Never move to new task or stop without committing green code.
 
-3. COMMIT - Stage and commit with conventional message.
-   Include git trailer: `Step-Id: {step-id}` (required for DES verification)
-   Example:
+3. COMMIT - Commit this step's owned files via `des-commit` (parallel-safe).
+   Use `des-commit` instead of raw `git add` / `git commit`. It holds an
+   exclusive lock and commits ONLY the paths you pass, so a parallel agent's
+   staged work is never swept into your commit (issue #51 / ADR-027). Pass
+   EVERY file you created or modified for this step (production + tests) as
+   `--owned-paths`; anything omitted is not committed.
+   ```
+   des-commit \
+     --owned-paths <all files this step created/modified> \
+     --step-id {step-id} \
+     --message "feat(feature-id): implement feature X"
+   ```
+   The `Step-Id: {step-id}` trailer (required for DES verification) is appended
+   automatically. Resulting commit:
    ```
    feat(feature-id): implement feature X
 

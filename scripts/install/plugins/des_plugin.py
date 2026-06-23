@@ -45,6 +45,7 @@ class DESPlugin(InstallationPlugin):
     # DES shims installed to ~/.claude/bin/
     DES_SHIMS = [
         "des-log-phase",
+        "des-commit",
         "des-init-log",
         "des-verify-integrity",
         "des-roadmap",
@@ -917,7 +918,7 @@ class DESPlugin(InstallationPlugin):
         context.logger.info(f"  ✅ Settings updated at {settings_file}")
 
     def _install_des_shims(self, context: InstallContext) -> PluginResult:
-        """Copy 5 DES CLI shims to ~/.claude/bin/ with mode 0o755.
+        """Copy the DES CLI shims to ~/.claude/bin/ with mode 0o755.
 
         Also prepends $HOME/.claude/bin to settings.json env.PATH so the
         shim command names are resolvable from the Bash tool without an

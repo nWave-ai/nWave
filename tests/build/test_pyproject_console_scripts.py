@@ -1,6 +1,6 @@
 """Tests for [project.scripts] entries in pyproject.toml.
 
-Asserts that the public CLI (nwave-ai) plus 5 DES CLI console scripts are
+Asserts that the public CLI (nwave-ai) plus 6 DES CLI console scripts are
 declared with correct module mappings.
 
 Regression-lock for issue #41: v3.12.0 wheel shipped without the nwave-ai
@@ -23,6 +23,7 @@ PYPROJECT_PATH = Path(__file__).parent.parent.parent / "pyproject.toml"
 EXPECTED_SCRIPTS = {
     "nwave-ai": "nwave_ai.cli:main",
     "des-log-phase": "des.cli.log_phase:main",
+    "des-commit": "des.cli.commit:main",
     "des-init-log": "des.cli.init_log:main",
     "des-verify-integrity": "des.cli.verify_deliver_integrity:main",
     "des-roadmap": "des.cli.roadmap:main",
@@ -35,11 +36,11 @@ def _load_pyproject() -> dict:
         return tomllib.load(f)
 
 
-def test_project_scripts_section_exists_with_6_entries() -> None:
+def test_project_scripts_section_exists_with_7_entries() -> None:
     data = _load_pyproject()
     scripts = data["project"]["scripts"]
-    assert len(scripts) == 6, (
-        f"Expected exactly 6 console script entries, got {len(scripts)}: {list(scripts.keys())}"
+    assert len(scripts) == 7, (
+        f"Expected exactly 7 console script entries, got {len(scripts)}: {list(scripts.keys())}"
     )
 
 

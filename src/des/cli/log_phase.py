@@ -24,11 +24,56 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 from des.domain.tdd_schema import TDDSchemaLoader
+
+
+try:
+    import fcntl
+
+    _HAS_FCNTL = True
+except ImportError:  # pragma: no cover - Windows has no fcntl
+    _HAS_FCNTL = False
+
+
+def _append_event_locked(log_path: Path, entry: dict[str, object]) -> None:
+    """Append an event under an exclusive file lock (last-writer-wins fix).
+
+    Parallel DELIVER waves run several ``des-log-phase`` processes against the
+    same ``execution-log.json``. The read-modify-write below must be serialized
+    or interleaved writers silently overwrite each other's appends (issue #51).
+    An ``fcntl.flock(LOCK_EX)`` held for the whole read+write window blocks
+    concurrent writers until this one finishes. The buffered write is flushed
+    and fsync'd *before* the lock is released, so the next writer can never read
+    a half-written file. On platforms without ``fcntl`` (Windows) we degrade to
+    the previous unlocked behaviour rather than fail.
+    """
+    with open(log_path, "r+", encoding="utf-8") as handle:
+        if _HAS_FCNTL:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            raw = handle.read()
+            log_data = json.loads(raw) if raw.strip() else {}
+            # Recover an empty/null/non-object root to a fresh dict so a
+            # malformed array/scalar root doesn't raise on item assignment.
+            if not isinstance(log_data, dict):
+                log_data = {}
+            if "events" not in log_data:
+                log_data["events"] = []
+            log_data["events"].append(entry)
+            log_data["schema_version"] = "3.0"
+            handle.seek(0)
+            handle.truncate()
+            handle.write(json.dumps(log_data, indent=2))
+            handle.flush()
+            os.fsync(handle.fileno())
+        finally:
+            if _HAS_FCNTL:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -135,15 +180,8 @@ def main(argv: list[str] | None = None) -> int:
         entry["tu"] = args.turns_used
         entry["tk"] = args.tokens_used
 
-    # JSON read-modify-write
-    log_data = json.loads(log_path.read_text())
-    if log_data is None:
-        log_data = {}
-    if "events" not in log_data:
-        log_data["events"] = []
-    log_data["events"].append(entry)
-    log_data["schema_version"] = "3.0"
-    log_path.write_text(json.dumps(log_data, indent=2))
+    # JSON read-modify-write, serialized across concurrent writers (issue #51)
+    _append_event_locked(log_path, entry)
 
     # Print entry to stdout (human-readable key=value format)
     parts = [

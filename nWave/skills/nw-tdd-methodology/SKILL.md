@@ -23,7 +23,7 @@ disable-model-invocation: true
 
 - **RED** absorbs PREPARE + RED_ACCEPTANCE + RED_UNIT (legacy 5-phase). Writes PBT unit tests targeting production code; unskips the corresponding AT scenario authored upstream by DISTILL. Exits via the **fail-for-right-reason gate** — both PBT unit + AT must fail with a semantically-correct error (AssertionError / expected-exception-not-thrown), not a collection error / import error / skip marker. The gate preserves RED→GREEN discipline atomically without separate phase boundaries.
 - **GREEN**: implement minimum production code making PBT unit + AT pass. Exit gate `all-tests-pass`.
-- **COMMIT**: stage + commit with `Step-Id:` trailer. Pre-commit hooks enforce style; F-DES-COMMIT-PHASE-CRAFTER-DEAD-PATH guidance in commit.yaml addresses adapter-probe annotation requirement.
+- **COMMIT**: commit this step's owned files via `des-commit` (carries the `Step-Id:` trailer and is parallel-safe — see issue #51 / ADR-027), not raw `git add`/`git commit`. F-DES-COMMIT-PHASE-CRAFTER-DEAD-PATH guidance in commit.yaml addresses adapter-probe annotation requirement.
 
 **DISTILL retains canonical AT authorship** (per `nw-distill` Mandate 7). RED phase in DELIVER does NOT write acceptance scenarios from scratch — it only unskips the scaffolds DISTILL produced.
 

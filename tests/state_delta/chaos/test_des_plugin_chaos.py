@@ -76,6 +76,7 @@ from scripts.install.plugins.des_plugin import DESPlugin
 
 _SHIM_NAMES = [
     "des-log-phase",
+    "des-commit",
     "des-init-log",
     "des-verify-integrity",
     "des-roadmap",
