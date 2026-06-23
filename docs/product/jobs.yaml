@@ -1,0 +1,40 @@
+# nWave product SSOT — validated Jobs-to-be-Done.
+# Bootstrapped by /nw-discuss for feature pi-harness (2026-06-22).
+jobs:
+  - id: pi-tdd-enforced-crafter
+    job_story: >-
+      When I implement something with pi (a minimal, subagent-less coding
+      agent), I want the crafter forced into canonical TDD — one test, minimal
+      implementation, green, refactor, repeat — so I can trust the code is
+      genuinely test-first without policing every step myself.
+    persona: pi-crafter-user
+    dimensions:
+      functional: >-
+        Produce working, fully test-driven code inside pi, with each line of
+        implementation demanded by a prior failing test.
+      emotional: >-
+        Confidence/trust that the TDD discipline was actually followed and is
+        auditable — not theater I have to take on faith.
+      social: >-
+        Be a team that ships verifiably test-first code regardless of which
+        agent harness an individual prefers.
+    four_forces:
+      push: >-
+        pi is intentionally minimal with no built-in TDD enforcement; agents
+        write implementation-first and can fake a green bar, and there is no
+        way to trust AI-generated tests were written first.
+      pull: >-
+        nWave's DES already enforces strict RED→GREEN→REFACTOR in Claude Code;
+        users want the identical guarantee inside pi.
+      anxiety: >-
+        pi has no subagents — will DES enforcement even attach? Integration
+        risk, and fear it will feel heavy in a deliberately minimal harness.
+      habit: >-
+        Developers currently rely on Claude Code for nWave and on trusting
+        agent output without independent verification.
+    opportunity:
+      importance: high
+      current_satisfaction: none   # pi has zero nWave support today
+      score: strong
+    status: validated
+    source: docs/feature/pi-harness/feature-delta.md
