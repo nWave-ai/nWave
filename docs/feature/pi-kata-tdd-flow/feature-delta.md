@@ -289,3 +289,48 @@ artifacts all present (ADR-PKT-001 + slices + SPIKE). N/A-with-rationale: C1b (n
 boundary), C5a/C5b (no mode flags), C7c (single agent, no concurrency claim). Full detail
 + Tier decision + Mandate-12 ratio (≈1.2× natural ceiling, config-shaped, compliant) in
 `distill/wave-decisions.md`.
+
+## Wave: DELIVER / [REF] Implementation summary
+
+The driving/bootstrap layer ships: `scripts/install/pi_kata/bootstrap.py` (deterministic kata-session bootstrap — reused `des-init-log`, atomic `kata-manifest.json` carrying project-id/step-id/cwd, activation-gated, idempotent), `scripts/install/pi_kata/transcript_context.py` (the synthesized-transcript assembler that activates the previously-inert commit gate by feeding the UNCHANGED `subagent-stop` engine the four exact DES markers + cwd), and the EXTENDED pi extension (`pi.registerCommand` kata bootstrap + commit-context branch on the bash `git commit` tool_call, pure relay) + plugin (render/register + crafter-skill cycle section). A single pi agent can now bootstrap a kata, drive per-test RED→GREEN→COMMIT recording, and have the commit gate block any incomplete step — all via the existing engine, **zero `src/des` change** (K2).
+
+## Wave: DELIVER / [REF] Files modified
+
+- **Production (new)**: `scripts/install/pi_kata/bootstrap.py`, `scripts/install/pi_kata/transcript_context.py`.
+- **Production (extended)**: `nWave/templates/pi-des-extension.ts.template` (registerCommand + commit-context branch), `scripts/install/plugins/pi_des_plugin.py` (render/register + crafter-skill placement + manifest).
+- **Tests**: `tests/des/acceptance/pi_kata_tdd_flow/` (3 `.feature` + steps); orchestrator fixes — `conftest.py` (colon-tag handling), slice-02 (`_no_des_context` allow-contract), slice-03 (skipped-step Given content).
+- **REUSE UNCHANGED**: `src/des` (des-init-log, des-log-phase, subagent-stop, GitCommitVerifier) — K2 verified empty diff.
+
+## Wave: DELIVER / [REF] Scenarios green
+
+`tests/des/acceptance/pi_kata_tdd_flow/` — **10 passed / 0 failed / 1 skipped** (2026-06-24). The skip is `@requires_external` (live pi model, SPIKE CI caveat). pi-harness regression: **21 passed / 1 skipped** (walking skeleton green).
+
+## Wave: DELIVER / [REF] DoD check
+
+1. Invoking the crafter self-initializes a DES log + first step — ✅ (`bootstrap_kata_session` → execution-log + manifest + step 01-01).
+2. Drives one-tiny-test-at-a-time RED→GREEN→COMMIT, self-decomposing — ✅ (crafter-skill section + advance_step_id; multi-step scenario green).
+3. Phases recorded via `des-log-phase` from pi — ✅ (reused CLI, install-resolved python).
+4. Commits carry `Step-Id`+`Task-Id` trailers — ✅.
+5. Committing an incomplete/unverified step blocked — ✅ (commit-context → unchanged subagent-stop blocks; slice-03 skip scenario green).
+6. Execution log + git history show the strict ordered cycle — ✅ (plan-order + commit-order scenarios green).
+7. Zero shared DES engine change — ✅ (K2 verified).
+8. Driving/bootstrap mechanism installed by the pi plugin — ✅ (registerCommand + render).
+9. Documented real kata run reproduces the flow — ⏳ live-model kata is `@requires_external` (deferred per CI caveat); model-free wiring fully asserted.
+
+## Wave: DELIVER / [REF] Demo Evidence — 2026-06-24
+
+Story 1 (self-bootstrap), model-free against the real Python entry point:
+```
+bootstrap_kata_session(project_root=<activated repo>, kata_id="fizzbuzz")
+  → {"status": "bootstrapped", "project_id": "fizzbuzz", "step_id": "01-01"}
+  → execution-log.json present: True ; kata-manifest.json present: True
+bootstrap in an unactivated repo → {"status": "refused"}  (no session, FS untouched)
+```
+Stories 2–3 gate behavior (block incomplete step at the commit boundary) is asserted model-free across the slice-02/03 acceptance scenarios; the live-model end-to-end kata is `@requires_external` (skipped, needs a backend).
+
+## Wave: DELIVER / [REF] Quality gates
+
+- DES integrity: ✅ "All 3 steps have complete DES traces" (RED→GREEN→COMMIT; 01-03 had a legitimate escalate→unblock→re-execute, all EXECUTED).
+- Adversarial review (`@nw-software-crafter-reviewer`): ✅ APPROVED, 0 defects; testing-theater = none (real engine via subprocess); 3 orchestrator test fixes all judged legitimate (not bug-masking); thin-translator + zero-fork verified.
+- Refactor (L1-L6): assessed clean. Mutation: SKIPPED (`nightly-delta`).
+- Commits: `5ac1494` (01-01), `96580407` (01-02), `1b4081d` (01-03) + test-infra fixes `2afa359`/`ba1c98e`/skipped-step.
