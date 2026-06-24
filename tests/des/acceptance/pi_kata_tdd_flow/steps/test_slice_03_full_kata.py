@@ -17,6 +17,7 @@ import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from tests.des.acceptance.pi_kata_tdd_flow.steps import kata_support as support
+from tests.des.acceptance.pi_kata_tdd_flow.steps.domain_types import TddPhase
 
 
 scenarios("../slice-03-full-kata.feature")
@@ -74,6 +75,20 @@ def _step_completed(world: dict, kata_id: str, step_id: str) -> None:
     support.commit_with_trailers(world["project"], step_id, kata_id)
 
 
+@given("the current step records a complete RED then GREEN then COMMIT cycle")
+def _records_complete_cycle(world: dict) -> None:
+    step = support.current_step(world["project"], world["kata_id"])
+    world["step_id"] = step
+    support.record_complete_cycle(world["project"], world["kata_id"], step)
+
+
+@given("the current step records only a RED phase")
+def _records_only_red(world: dict) -> None:
+    step = support.current_step(world["project"], world["kata_id"])
+    world["step_id"] = step
+    support.record_phase_only(world["project"], world["kata_id"], step, TddPhase.RED)
+
+
 @given("the kata manifest step-id is reverted to an earlier step mid-kata")
 def _revert_manifest(world: dict) -> None:
     world["step_id"] = "01-01"
@@ -128,6 +143,14 @@ def _validate_boundary(world: dict) -> None:
     world["exit"], world["stdout"] = code, out
 
 
+@when("the step completion is validated at the pre-commit boundary before committing")
+def _validate_pre_commit(world: dict) -> None:
+    code, out = support.validate_at_commit_boundary_pre_commit(
+        world["project"], world["kata_id"], world["step_id"]
+    )
+    world["exit"], world["stdout"] = code, out
+
+
 @when("the crafter solves the kata through self-driven strict TDD")
 def _solve_live(world: dict) -> None:  # pragma: no cover - skipped path
     raise AssertionError("unreachable: model backend skip fires first")
@@ -173,6 +196,41 @@ def _git_step_id_trailers(project: Path) -> list[str]:
 def _rejected_with_reason(world: dict) -> None:
     parsed = json.loads(world["stdout"])
     assert parsed.get("decision") == "block" and parsed.get("reason")
+
+
+@then("the step completion is allowed at the pre-commit boundary")
+def _allowed_pre_commit(world: dict) -> None:
+    # ALLOW = exit 0 + empty stdout (no block JSON). R1: a genuine verified
+    # allow emits SUBAGENT_STOP_PASSED -- it must NOT be a non-DES passthrough.
+    assert world["exit"] == 0, (
+        f"expected ALLOW, got exit {world['exit']}: {world['stdout']!r}"
+    )
+    assert world["stdout"].strip() == "", f"unexpected stdout: {world['stdout']!r}"
+    types = _event_types(world)
+    assert "HOOK_SUBAGENT_STOP_PASSED" in types, (
+        f"expected a genuine SUBAGENT_STOP_PASSED verdict (R1), got events: {types}"
+    )
+
+
+def _event_types(world: dict) -> list[str]:
+    return [e.get("event") for e in support.audit_events(world["project"])]
+
+
+@then("the commit gate never attempted commit verification")
+def _no_commit_verification(world: dict) -> None:
+    events = support.audit_events(world["project"])
+    types = _event_types(world)
+    assert "COMMIT_NOT_VERIFIED" not in types, (
+        f"GitCommitVerifier ran at pre-commit (the defect): events {types}"
+    )
+    assert "COMMIT_VERIFIED" not in types, (
+        f"GitCommitVerifier ran at pre-commit (the defect): events {types}"
+    )
+    blob = json.dumps(events)
+    assert "does not have any commits yet" not in blob, (
+        "audit log shows the 'no commits yet' git error -- the gate ran "
+        "GitCommitVerifier before the commit existed (the defect)"
+    )
 
 
 @then("the completed earlier step remains accepted")

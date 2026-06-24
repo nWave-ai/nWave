@@ -33,22 +33,36 @@ def build_transcript_content(
     kata_id: str,
     step_id: str,
     project_root: str,
+    phase_completeness_only: bool = False,
 ) -> str:
-    """Assemble the first-user-message content carrying the four DES markers.
+    """Assemble the first-user-message content carrying the DES markers.
 
-    The returned string contains all four markers in the exact comment syntax
-    the engine's ``DesMarkerParser`` recognizes. An empty/blank marker value
-    (e.g. ``kata_id=""``) yields a marker whose value cannot match ``\\S+``, so
-    the engine reads no DES context and degrades to a non-DES passthrough.
+    The returned string contains the markers in the exact comment syntax the
+    engine's ``DesMarkerParser`` recognizes. An empty/blank marker value (e.g.
+    ``kata_id=""``) yields a marker whose value cannot match ``\\S+``, so the
+    engine reads no DES context and degrades to a non-DES passthrough.
+
+    Two modes:
+
+    - FULL (default) — emits all four markers including ``DES-PROJECT-ROOT``.
+      Used by the post-hoc provenance path (step 01-02), which DOES verify the
+      commit trailer once the commit exists.
+    - phase-completeness-only — OMITS ``DES-PROJECT-ROOT`` (keeping the three
+      non-empty markers ``DES-VALIDATION`` + ``DES-PROJECT-ID`` + ``DES-STEP-ID``
+      so the engine still treats this as a genuine DES task, not a passthrough).
+      With no validated marker and (paired with) no payload ``cwd``, the engine
+      resolves ``effective_cwd=""`` and SKIPS ``GitCommitVerifier`` -- gating on
+      phase-completeness alone. This is the LIVE gate at the pre-commit
+      ``tool_call``, where the commit cannot yet exist.
     """
-    return "\n".join(
-        [
-            _VALIDATION_MARKER,
-            f"<!-- DES-PROJECT-ID : {kata_id} -->",
-            f"<!-- DES-STEP-ID : {step_id} -->",
-            f"<!-- DES-PROJECT-ROOT : {project_root} -->",
-        ]
-    )
+    markers = [
+        _VALIDATION_MARKER,
+        f"<!-- DES-PROJECT-ID : {kata_id} -->",
+        f"<!-- DES-STEP-ID : {step_id} -->",
+    ]
+    if not phase_completeness_only:
+        markers.append(f"<!-- DES-PROJECT-ROOT : {project_root} -->")
+    return "\n".join(markers)
 
 
 def write_synthesized_transcript(
@@ -57,6 +71,7 @@ def write_synthesized_transcript(
     kata_id: str,
     step_id: str,
     project_root: str,
+    phase_completeness_only: bool = False,
 ) -> None:
     """Write the one-line JSONL synthesized transcript to ``transcript_path``.
 
@@ -67,6 +82,7 @@ def write_synthesized_transcript(
         kata_id=kata_id,
         step_id=step_id,
         project_root=project_root,
+        phase_completeness_only=phase_completeness_only,
     )
     target = Path(transcript_path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -78,14 +94,20 @@ def build_subagent_stop_payload(
     *,
     transcript_path: str,
     project_root: str,
+    phase_completeness_only: bool = False,
 ) -> dict:
     """Build the ``subagent-stop`` stdin payload (Claude-Code protocol).
 
-    Returns ``{"agent_transcript_path": ..., "cwd": ...}`` -- the engine resolves
-    ``effective_cwd`` from the validated DES-PROJECT-ROOT marker (falling back to
-    ``cwd``) and runs ``GitCommitVerifier`` against the resolved repo (KD4).
+    FULL mode (default) returns ``{"agent_transcript_path": ..., "cwd": ...}`` --
+    the engine resolves ``effective_cwd`` from the validated DES-PROJECT-ROOT
+    marker (falling back to ``cwd``) and runs ``GitCommitVerifier`` against the
+    resolved repo (the post-hoc provenance path, step 01-02).
+
+    phase-completeness-only mode OMITS ``cwd`` so the engine resolves
+    ``effective_cwd=""`` and skips ``GitCommitVerifier`` -- the LIVE pre-commit
+    gate, where the commit cannot yet exist.
     """
-    return {
-        "agent_transcript_path": transcript_path,
-        "cwd": project_root,
-    }
+    payload: dict = {"agent_transcript_path": transcript_path}
+    if not phase_completeness_only:
+        payload["cwd"] = project_root
+    return payload

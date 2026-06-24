@@ -113,10 +113,16 @@ function bootstrapKataSession(projectRoot: string, kataId: string): DesResult {
 }
 
 // Commit-boundary context assembler (ADR-PKT-001 KD4): write the synthesized
-// one-line JSONL transcript carrying the four DES markers for (kataId, stepId,
-// projectRoot) via the reused pi_kata.transcript_context helper, returning the
-// transcript path the subagent-stop payload references. PURE assembly -- no
-// allow/block decision; the engine decides once the context is supplied.
+// one-line JSONL transcript in PHASE-COMPLETENESS-ONLY mode for (kataId, stepId)
+// via the reused pi_kata.transcript_context helper, returning the transcript path
+// the subagent-stop payload references. Phase-completeness-only OMITS the
+// DES-PROJECT-ROOT marker (keeping DES-VALIDATION + DES-PROJECT-ID + DES-STEP-ID
+// so the engine still treats this as a genuine DES task) so the engine -- paired
+// with a payload that omits cwd -- skips GitCommitVerifier and gates on phase
+// completeness alone. This is correct because the LIVE gate fires on the bash
+// `git commit` tool_call BEFORE the commit exists: at that order the commit
+// cannot be verified, only the phase state can. Commit-trailer PROVENANCE is a
+// post-hoc check (not the live blocker). PURE assembly -- no allow/block here.
 function writeCommitContextTranscript(
   transcriptPath: string,
   projectRoot: string,
@@ -126,7 +132,8 @@ function writeCommitContextTranscript(
   const src =
     "from pi_kata.transcript_context import write_synthesized_transcript;" +
     `write_synthesized_transcript(transcript_path=${pyStr(transcriptPath)}, ` +
-    `kata_id=${pyStr(kataId)}, step_id=${pyStr(stepId)}, project_root=${pyStr(projectRoot)})`;
+    `kata_id=${pyStr(kataId)}, step_id=${pyStr(stepId)}, project_root=${pyStr(projectRoot)}, ` +
+    `phase_completeness_only=True)`;
   return invokeKataHelper(src);
 }
 
@@ -268,15 +275,19 @@ export default function (pi: any) {
         });
         return relayEngineVerdict(result);
       }
-      // Step-completion gate: bash `git commit` -> subagent-stop. The shipped
-      // shim passed only {cwd, tool_name, tool_input}, which matches NEITHER
-      // engine protocol, so the gate always allowed (ADR-PKT-001 context). The
-      // kata driving layer (KD4) supplies DES context through the engine's
-      // existing Claude Code protocol: synthesize a transcript carrying the four
-      // markers for the manifest's current (kataId, stepId) and pass
-      // {agent_transcript_path, cwd}. The engine then runs phase-completeness +
-      // GitCommitVerifier and decides. When no kata session exists we fall back
-      // to the legacy payload (a non-DES passthrough = allow).
+      // Step-completion gate: bash `git commit` -> subagent-stop. The LIVE gate
+      // fires here, on the pre-commit tool_call, BEFORE the commit exists -- so it
+      // can only check PHASE COMPLETENESS, never the (not-yet-created) commit.
+      // The shipped shim passed only {cwd, tool_name, tool_input}, which matches
+      // NEITHER engine protocol, so the gate always allowed (ADR-PKT-001 context).
+      // The kata driving layer (KD4) supplies DES context through the engine's
+      // existing Claude Code protocol in PHASE-COMPLETENESS-ONLY mode: synthesize
+      // a transcript that OMITS DES-PROJECT-ROOT and pass {agent_transcript_path}
+      // WITHOUT cwd. With no validated marker and no cwd the engine resolves
+      // effective_cwd="" and SKIPS GitCommitVerifier -- it gates on RED+GREEN+COMMIT
+      // phase-completeness alone (an incomplete cycle blocks). Commit-trailer
+      // PROVENANCE is verified post-hoc/CI, NOT by this live blocker. When no kata
+      // session exists we fall back to the legacy payload (non-DES passthrough = allow).
       const command: string = input.command ?? "";
       if (name === "bash" && isGitCommitCommand(command)) {
         const kata = readKataContext(process.cwd());
@@ -290,7 +301,6 @@ export default function (pi: any) {
           );
           const result = invokeDESAdapter("subagent-stop", {
             agent_transcript_path: transcriptPath,
-            cwd: process.cwd(),
           });
           return relayEngineVerdict(result);
         }

@@ -119,11 +119,23 @@ run it verbatim (the bare `{python} -m des.cli.log_phase` cannot import `des`).
 
 2. **GREEN** -- write the minimum production code to pass; run the suite. Record \
 the `GREEN` phase the same way.
-3. **COMMIT** -- refactor if it adds value (suite stays green), then commit with \
-`Step-Id: <NN-NN>` and `Task-Id: <kata-id>` trailers. Record the `COMMIT` phase. \
-The commit boundary is verified by the shipped DES gate (synthesized transcript + \
-GitCommitVerifier): an incomplete cycle or a stale manifest step-id surfaces as a \
-blocked commit (`COMMIT_NOT_VERIFIED`), never a silent allow.
+3. **COMMIT** -- refactor if it adds value (suite stays green). Record the \
+`COMMIT` phase FIRST, and only THEN run `git commit`:
+
+   a. `PYTHONPATH={lib} {python} -m des.cli.log_phase --project-dir \
+docs/feature/<kata-id>/deliver --step-id <NN-NN> --phase COMMIT --status EXECUTED \
+--data PASS`
+
+   b. THEN `git commit` with `Step-Id: <NN-NN>` and `Task-Id: <kata-id>` trailers.
+
+   Order matters: the LIVE gate fires on the `git commit` tool_call, BEFORE the \
+commit exists -- so it can only check that this step recorded a complete \
+RED+GREEN+COMMIT cycle. Recording COMMIT before `git commit` means all three \
+phases are present when the gate runs; an incomplete cycle (or a stale manifest \
+step-id) then surfaces as a blocked commit on the MISSING PHASES, never a silent \
+allow. The commit-trailer PROVENANCE (Step-Id/Task-Id match) is NOT the live \
+blocker -- it is verified post-hoc (CI / a later provenance check), once the \
+commit exists.
 
 Recording uses the install-resolved interpreter + DES lib on `PYTHONPATH={lib}` \
 (the same spawn path the extension uses). Repeat until the kata is solved with a \

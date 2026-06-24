@@ -28,6 +28,26 @@ Feature: Solve a kata end-to-end, strictly verified
     Then the step completion is rejected at the commit boundary with a reason
     And the completed earlier step remains accepted
 
+  # Live-faithful pre-commit regression (step 01-01). The LIVE gate fires on the
+  # bash `git commit` tool_call, BEFORE the commit exists. Validating at that
+  # order, a complete RED+GREEN+COMMIT cycle must be ALLOWED on phase-completeness
+  # alone -- with NO commit-verification attempt (no COMMIT_NOT_VERIFIED, no "no
+  # commits yet"). An incomplete cycle must still BLOCK on the missing phases.
+  @US-3 @real-io @contract-shape:bounded-change
+  Scenario: A complete cycle is allowed at the pre-commit boundary before any commit exists
+    Given a kata "fizzbuzz" decomposed into an ordered step-by-step plan
+    And the current step records a complete RED then GREEN then COMMIT cycle
+    When the step completion is validated at the pre-commit boundary before committing
+    Then the step completion is allowed at the pre-commit boundary
+    And the commit gate never attempted commit verification
+
+  @US-3 @real-io @error @contract-shape:unbounded-preservation
+  Scenario: An incomplete cycle is blocked at the pre-commit boundary before any commit exists
+    Given a kata "fizzbuzz" decomposed into an ordered step-by-step plan
+    And the current step records only a RED phase
+    When the step completion is validated at the pre-commit boundary before committing
+    Then the step completion is rejected at the commit boundary with a reason
+
   @US-3 @real-io @error @contract-shape:unbounded-preservation
   Scenario: A reverted step-id in the manifest surfaces as a blocked commit
     Given a kata "fizzbuzz" with a step "01-02" recorded as a completed increment

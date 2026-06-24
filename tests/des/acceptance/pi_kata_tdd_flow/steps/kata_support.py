@@ -177,3 +177,65 @@ def validate_at_commit_boundary(
         transcript_path=str(transcript), project_root=str(project)
     )
     return subagent_stop_roundtrip(payload, cwd=project)
+
+
+def validate_at_commit_boundary_pre_commit(
+    project: Path, kata_id: str, step_id: str
+) -> tuple[int, str]:
+    """Validate at the LIVE pre-commit order: the commit does NOT exist yet.
+
+    The live gate fires on the bash ``git commit`` tool_call, BEFORE the commit
+    is created. This helper -- unlike ``validate_at_commit_boundary`` -- does NOT
+    commit first. It drives the phase-completeness-only mode: the synthesized
+    transcript OMITS the ``DES-PROJECT-ROOT`` marker and the payload OMITS ``cwd``,
+    so the engine resolves no validated marker and no cwd, skips GitCommitVerifier
+    (``if context.cwd ...``), and gates on phase-completeness alone. The relative
+    ``docs/feature/<kata>/deliver`` path still resolves against the subprocess cwd.
+    """
+    transcript = project / ".nwave" / "des" / "kata-transcript.jsonl"
+    transcript_context.write_synthesized_transcript(
+        transcript_path=str(transcript),
+        kata_id=kata_id,
+        step_id=step_id,
+        project_root=str(project),
+        phase_completeness_only=True,
+    )
+    payload = transcript_context.build_subagent_stop_payload(
+        transcript_path=str(transcript),
+        project_root=str(project),
+        phase_completeness_only=True,
+    )
+    return subagent_stop_roundtrip(payload, cwd=project)
+
+
+def record_phase_only(
+    project: Path, kata_id: str, step_id: str, phase: TddPhase
+) -> None:
+    """Record a single phase (for the incomplete-cycle pre-commit regression)."""
+    record_phase(project, kata_id, step_id, phase)
+
+
+def audit_events(project: Path) -> list[dict]:
+    """Read today's emitted DES audit events (port-exposed observable surface).
+
+    R1 anchor: the phase-only validation must emit a genuine
+    SUBAGENT_STOP_PASSED/FAILED -- NOT degrade to a non-DES passthrough (which
+    emits no decision event). Reading the events lets the regression assert both
+    the genuine verdict AND the absence of any commit-verification attempt.
+    """
+    from datetime import datetime, timezone
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    log_file = project / ".nwave" / "des" / "logs" / f"audit-{today}.log"
+    if not log_file.exists():
+        return []
+    events: list[dict] = []
+    for line in log_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return events
