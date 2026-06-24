@@ -6,8 +6,12 @@
  * in the Python DES engine -- this extension is a protocol translator only
  * (zero adapter fork; mirrors the OpenCode shim).
  *
- * pi has no subagents, so DES enforcement rides per-tool-call events:
- *   - tool_call   -> PreToolUse  (can block: { block: true, reason })
+ * pi has no subagents, so DES enforcement rides per-tool-call events
+ * (ADR-PI-001 D6 Hybrid). Commits and test runs flow through the bash tool
+ * (no dedicated git/test tool), so the translator classifies bash by command:
+ *   - tool_call   -> PreToolUse   (write/edit RED gate; can block)
+ *   - tool_call   -> SubagentStop (bash `git commit` step-completion; can block)
+ *   - tool_result -> PostToolUse  (bash test-run suite-state recording; never blocks)
  *   - session_start runs a startup self-test that confirms the DES engine is
  *     reachable and gating is live for this (activated) project.
  *
@@ -26,12 +30,15 @@ const HEALTH_LINE = "[nWave DES] enforcement active for pi";
 type DesResult = { exitCode: number; stdout: string };
 
 function invokeDESAdapter(action: string, ccJson: Record<string, unknown>): DesResult {
+  // Pin the audit log dir to the project's .nwave/des/logs so the JsonlAuditLogWriter
+  // does not default to the spawned process cwd (SPIKE-0 implication 3).
+  const auditLogDir = `${process.cwd()}/.nwave/des/logs`;
   const proc = spawnSync(
     PYTHON_PATH,
     ["-m", "des.adapters.drivers.hooks.claude_code_hook_adapter", action],
     {
       input: JSON.stringify(ccJson),
-      env: { ...process.env, PYTHONPATH },
+      env: { ...process.env, PYTHONPATH, DES_AUDIT_LOG_DIR: auditLogDir },
       encoding: "utf-8",
       timeout: 5000,
     },
@@ -39,11 +46,31 @@ function invokeDESAdapter(action: string, ccJson: Record<string, unknown>): DesR
   return { exitCode: proc.status ?? 1, stdout: (proc.stdout ?? "").toString() };
 }
 
+// Relay the engine's verdict: on exit 2, surface { block, reason }; otherwise allow.
+// This is the SOLE block decision in the translator -- it owns no enforcement logic.
+function relayEngineVerdict(result: DesResult): { block: boolean; reason: string } | undefined {
+  if (result.exitCode === 2) {
+    let reason = "DES enforcement blocked this action";
+    try {
+      const parsed = JSON.parse(result.stdout);
+      if (parsed.reason) reason = parsed.reason;
+    } catch {}
+    return { block: true, reason };
+  }
+  return undefined;
+}
+
 // Map a pi tool name to the Claude Code (action, tool_name) pair, or null.
 function mapTool(name: string): { action: string; toolName: string } | null {
   if (name === "write") return { action: "pre-write", toolName: "Write" };
   if (name === "edit") return { action: "pre-write", toolName: "Edit" };
   return null;
+}
+
+// A git commit flows through the bash tool; detect it from the command text so it
+// routes to the subagent-stop step-completion validation (ADR-PI-001 D6 Hybrid).
+function isGitCommitCommand(command: string): boolean {
+  return /\bgit\b[^\n]*\bcommit\b/.test(command);
 }
 
 export default function (pi: any) {
@@ -68,32 +95,62 @@ export default function (pi: any) {
     }
   });
 
-  // Gate: block write/edit when the DES engine returns a block decision.
+  // Gate: block write/edit when the DES engine returns a block decision; and
+  // block a `git commit` (carried by the bash tool) at the step-completion
+  // boundary via the subagent-stop validation. Both relay the engine's verdict.
   pi.on("tool_call", (event: any) => {
     const name: string = event?.toolName ?? event?.name ?? event?.tool ?? "";
-    const mapping = mapTool(name);
-    if (!mapping) return;
     const input = event?.input ?? {};
     try {
-      const result = invokeDESAdapter(mapping.action, {
-        cwd: process.cwd(),
-        tool_name: mapping.toolName,
-        tool_input: {
-          file_path: input.path ?? input.file_path ?? "",
-          content: input.content ?? "",
-        },
-      });
-      if (result.exitCode === 2) {
-        let reason = "DES enforcement blocked this action";
-        try {
-          const parsed = JSON.parse(result.stdout);
-          if (parsed.reason) reason = parsed.reason;
-        } catch {}
-        return { block: true, reason };
+      // Within-cycle RED gate: write/edit -> pre-write.
+      const mapping = mapTool(name);
+      if (mapping) {
+        const result = invokeDESAdapter(mapping.action, {
+          cwd: process.cwd(),
+          tool_name: mapping.toolName,
+          tool_input: {
+            file_path: input.path ?? input.file_path ?? "",
+            content: input.content ?? "",
+          },
+        });
+        return relayEngineVerdict(result);
+      }
+      // Step-completion gate: bash `git commit` -> subagent-stop.
+      const command: string = input.command ?? "";
+      if (name === "bash" && isGitCommitCommand(command)) {
+        const result = invokeDESAdapter("subagent-stop", {
+          cwd: process.cwd(),
+          tool_name: "Bash",
+          tool_input: { command },
+        });
+        return relayEngineVerdict(result);
       }
     } catch (err) {
       // Fail-open: a translator error must never block a legitimate tool call.
       process.stderr.write(`[nWave DES] subprocess error (fail-open): ${err}\n`);
+    }
+    return;
+  });
+
+  // Suite-state recording: a bash test-run tool_result carries the suite exit
+  // code; relay it to the post-tool-use action so the engine records red/green.
+  // This is a recording action -- it never blocks (D12 / ADR-PI-001).
+  pi.on("tool_result", (event: any) => {
+    const name: string = event?.toolName ?? event?.name ?? event?.tool ?? "";
+    if (name !== "bash") return;
+    const details = event?.details ?? {};
+    const command: string = details.command ?? "";
+    const exitCode: number | undefined = details.exitCode;
+    try {
+      invokeDESAdapter("post-tool-use", {
+        cwd: process.cwd(),
+        tool_name: "Bash",
+        tool_input: { command },
+        tool_response: { exit_code: exitCode },
+      });
+    } catch (err) {
+      // Fail-open: recording must never disrupt the agent.
+      process.stderr.write(`[nWave DES] suite-state recording error (fail-open): ${err}\n`);
     }
     return;
   });
