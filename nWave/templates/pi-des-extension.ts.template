@@ -33,6 +33,8 @@
  *                           (the installed scripts dir; ADR-PKT-001 KD3)
  */
 import { spawnSync } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const PYTHON_PATH = "{{PYTHON_PATH}}";
 const PYTHONPATH = "{{PYTHONPATH}}";
@@ -41,6 +43,18 @@ const PYTHONPATH = "{{PYTHONPATH}}";
 // PYTHONPATH so `python -c "from pi_kata...."` imports them (KD3).
 const KATA_PYTHONPATH = "{{KATA_PYTHONPATH}}";
 const HEALTH_LINE = "[nWave DES] enforcement active for pi";
+
+// Crafter-skill discovery (ADR-PI-003). The installer places the crafter skill at
+// `<pi-config>/software-crafter/SKILL.md` -- alongside this extension. pi loads
+// skills from the dirs an extension returns in the `resources_discover` result's
+// `skillPaths` (ResourcesDiscoverResult, pi 0.79.9). Resolve the placed skill dir
+// relative to THIS extension's own location so the wire holds wherever pi config
+// lives. Without this handler the skill is on disk but invisible to pi -- the
+// des-log-phase recording contract never reaches the model and the kata's
+// execution-log.json stays empty (the defect this fixes).
+const SKILL_DIRNAME = "software-crafter";
+const EXTENSION_DIR = dirname(fileURLToPath(import.meta.url));
+const CRAFTER_SKILL_DIR = join(EXTENSION_DIR, SKILL_DIRNAME);
 
 type DesResult = { exitCode: number; stdout: string };
 
@@ -194,6 +208,17 @@ export default function (pi: any) {
     } catch (err) {
       process.stderr.write(`[nWave DES] session start error (fail-open): ${err}\n`);
     }
+  });
+
+  // Crafter-skill contribution (ADR-PI-003): pi fires `resources_discover` after
+  // `session_start` so an extension can add resource dirs. Return the placed
+  // crafter skill dir in `skillPaths` so pi loads `software-crafter/SKILL.md` --
+  // the pi-runnable RED->GREEN->COMMIT cycle + per-phase des-log-phase recording
+  // contract the kata harness depends on. PURE resource contribution: no
+  // enforcement decision, no engine call. The skill content itself is owned by
+  // the installer-placed asset; this only points pi at it.
+  pi.on("resources_discover", () => {
+    return { skillPaths: [CRAFTER_SKILL_DIR] };
   });
 
   // Kata-bootstrap command (ADR-PKT-001 KD1/KD2): `/kata <kata-id>` deterministically

@@ -308,6 +308,26 @@ class PiDESPlugin(InstallationPlugin):
             if not skill_path.exists():
                 errors.append(f"pi crafter skill not found: {skill_path}")
 
+            # The skill being on disk is necessary but NOT sufficient: pi only
+            # loads it if the extension surfaces its dir via a resources_discover
+            # handler (ADR-PI-003). Verify the wire, not just file presence --
+            # otherwise the recording contract never reaches the model and the
+            # kata's execution-log.json stays empty (the defect this guards).
+            if extension_path.exists():
+                rendered = extension_path.read_text(encoding="utf-8")
+                if 'pi.on("resources_discover"' not in rendered:
+                    errors.append(
+                        "pi DES extension does not register a resources_discover "
+                        f"handler; the crafter skill at {skill_path} is on disk but "
+                        "not discoverable by pi (ADR-PI-003)"
+                    )
+                elif _SKILL_DIRNAME not in rendered:
+                    errors.append(
+                        f"pi DES extension does not surface the '{_SKILL_DIRNAME}' "
+                        "skill dir in resources_discover skillPaths; the crafter "
+                        "skill is on disk but not discoverable by pi (ADR-PI-003)"
+                    )
+
             manifest_path = pi_dir / _MANIFEST_FILENAME
             if not manifest_path.exists():
                 errors.append(f"pi DES manifest not found: {manifest_path}")
