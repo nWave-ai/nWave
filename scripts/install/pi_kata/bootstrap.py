@@ -32,9 +32,12 @@ MANIFEST_FILENAME = "kata-manifest.json"
 SESSION_MARKER_FILENAME = ".kata-session"
 LOCAL_CONFIG_RELPATH = Path(".nwave") / "local-config.json"
 INIT_LOG_MODULE = "des.cli.init_log"
+LOG_PHASE_MODULE = "des.cli.log_phase"
 
 STATUS_BOOTSTRAPPED = "bootstrapped"
 STATUS_REFUSED = "refused"
+
+PHASE_STATUS_EXECUTED = "EXECUTED"
 
 
 def bootstrap_kata_session(*, project_root: str, kata_id: str) -> dict:
@@ -93,7 +96,10 @@ def advance_step_id(*, project_root: str, kata_id: str) -> str:
     """Increment the manifest's current step-id (``01-NN`` convention, KD2).
 
     Atomic write + re-read-assert. Returns the new step-id. A fresh per-step id
-    is required every cycle (SPIKE constraint 3: never reuse a step-id).
+    is required every cycle (SPIKE constraint 3: never reuse a step-id) -- this
+    is the canonical step-advance the kata harness invokes between cycles so the
+    commit gate never re-validates an already-validated step-id and hits the
+    engine's anti-infinite-loop second-attempt-allow.
     """
     manifest_file = _deliver_dir(Path(project_root), kata_id) / MANIFEST_FILENAME
     manifest = _read_manifest_file(manifest_file)
@@ -107,6 +113,40 @@ def advance_step_id(*, project_root: str, kata_id: str) -> str:
             "kata manifest re-read mismatch after step-id advance (H3)"
         )
     return next_step_id
+
+
+def current_step_id(*, project_root: str, kata_id: str) -> str:
+    """Return the manifest's current step-id (the id the next cycle records)."""
+    manifest_file = _deliver_dir(Path(project_root), kata_id) / MANIFEST_FILENAME
+    return _read_manifest_file(manifest_file)["step_id"]
+
+
+def record_phase(
+    *,
+    project_root: str,
+    kata_id: str,
+    step_id: str,
+    phase: str,
+    status: str = PHASE_STATUS_EXECUTED,
+    data: str = "PASS",
+) -> None:
+    """Append one TDD phase to ``execution-log.json`` via the reused des CLI.
+
+    This is the canonical recording path the crafter skill prescribes: the
+    install-resolved ``python -m des.cli.log_phase`` spawn (same interpreter +
+    PYTHONPATH resolution as the bootstrap's ``des-init-log``). The kata harness
+    drives recording through HERE, not through a test-rigged interpreter, so the
+    live-wiring is exercised exactly as the model runs it. An empty
+    ``execution-log.json`` after a cycle is the regression this path guards.
+    """
+    _run_log_phase(
+        root=Path(project_root),
+        deliver=_deliver_dir(Path(project_root), kata_id),
+        step_id=step_id,
+        phase=phase,
+        status=status,
+        data=data,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -140,16 +180,49 @@ def _increment_step_id(step_id: str) -> str:
 
 
 def _run_init_log(*, root: Path, deliver: Path, kata_id: str) -> None:
-    subprocess.run(
-        [
-            _spawn_interpreter(),
-            "-m",
-            INIT_LOG_MODULE,
+    _spawn_des_cli(
+        root=root,
+        module=INIT_LOG_MODULE,
+        args=["--project-dir", str(deliver), "--feature-id", kata_id],
+    )
+
+
+def _run_log_phase(
+    *,
+    root: Path,
+    deliver: Path,
+    step_id: str,
+    phase: str,
+    status: str,
+    data: str,
+) -> None:
+    _spawn_des_cli(
+        root=root,
+        module=LOG_PHASE_MODULE,
+        args=[
             "--project-dir",
             str(deliver),
-            "--feature-id",
-            kata_id,
+            "--step-id",
+            step_id,
+            "--phase",
+            phase,
+            "--status",
+            status,
+            "--data",
+            data,
         ],
+    )
+
+
+def _spawn_des_cli(*, root: Path, module: str, args: list[str]) -> None:
+    """Spawn a reused des CLI with the install-resolved interpreter + PYTHONPATH.
+
+    The single skill-prescribed spawn shape shared by ``des-init-log`` and
+    ``des-log-phase`` (D-PKT-3): resolved interpreter, ``des`` on PYTHONPATH,
+    real subprocess, fail-loud (``check=True``).
+    """
+    subprocess.run(
+        [_spawn_interpreter(), "-m", module, *args],
         env={
             "PYTHONPATH": _des_lib_pythonpath(),
             "PATH": os.environ.get("PATH", ""),

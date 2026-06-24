@@ -100,9 +100,16 @@ def _crafter_invoked_live(world: dict, kata_id: str) -> None:  # pragma: no cove
 
 @when("the crafter completes every planned step in order")
 def _complete_all_steps(world: dict) -> None:
-    for step in world["plan"]:
+    # The manifest's current step-id is the source of truth for which step the
+    # next cycle records; between cycles the harness advances it deterministically
+    # (advance_step_id) so each RED gets a FRESH NN-NN -- never reusing a step-id
+    # (SPIKE constraint 3) that would trip the engine's second-attempt-allow.
+    for index, _planned in enumerate(world["plan"]):
+        step = support.current_step(world["project"], world["kata_id"])
         support.record_complete_cycle(world["project"], world["kata_id"], step)
         support.commit_with_trailers(world["project"], step, world["kata_id"])
+        if index < len(world["plan"]) - 1:
+            support.advance_to_next_step(world["project"], world["kata_id"])
 
 
 @when("the skipped step is validated at the commit boundary")

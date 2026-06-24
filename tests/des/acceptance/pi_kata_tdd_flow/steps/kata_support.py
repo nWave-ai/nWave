@@ -33,21 +33,8 @@ _SRC = _REPO_ROOT / "src"
 
 
 # --------------------------------------------------------------------------- #
-# Reused DES CLIs (UNCHANGED) + adapter round-trip
+# Reused subagent-stop adapter round-trip (UNCHANGED engine)
 # --------------------------------------------------------------------------- #
-
-
-def _run_des_cli(
-    module: str, args: list[str], cwd: Path
-) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, "-m", module, *args],
-        env={"PYTHONPATH": str(_SRC), "PATH": os.environ.get("PATH", "")},
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
 
 
 def subagent_stop_roundtrip(payload: dict, cwd: Path) -> tuple[int, str]:
@@ -132,30 +119,38 @@ def read_manifest(project: Path, kata_id: str) -> dict:
     return bootstrap.read_kata_manifest(project_root=str(project), kata_id=kata_id)
 
 
-def record_phase(
-    project: Path, kata_id: str, step_id: str, phase: TddPhase
-) -> subprocess.CompletedProcess:
-    return _run_des_cli(
-        "des.cli.log_phase",
-        [
-            "--project-dir",
-            str(deliver_dir(project, kata_id)),
-            "--step-id",
-            step_id,
-            "--phase",
-            phase.value,
-            "--status",
-            PhaseStatus.EXECUTED.value,
-            "--data",
-            "PASS",
-        ],
-        cwd=project,
+def record_phase(project: Path, kata_id: str, step_id: str, phase: TddPhase) -> None:
+    """Record one phase through the SKILL-PRESCRIBED install-resolved spawn.
+
+    Delegates to ``bootstrap.record_phase`` -- the canonical
+    ``python -m des.cli.log_phase`` invocation the crafter skill instructs the
+    model to run (install-resolved interpreter + PYTHONPATH), NOT a test-rigged
+    interpreter. This is the live-wiring the empty-log regression slipped past:
+    the old tests called the CLI with their own ``sys.executable`` + ``src`` on
+    PYTHONPATH, so a broken skill-path spawn would still have gone green.
+    """
+    bootstrap.record_phase(
+        project_root=str(project),
+        kata_id=kata_id,
+        step_id=step_id,
+        phase=phase.value,
+        status=PhaseStatus.EXECUTED.value,
+        data="PASS",
     )
 
 
 def record_complete_cycle(project: Path, kata_id: str, step_id: str) -> None:
     for phase in COMPLETE_CYCLE:
         record_phase(project, kata_id, step_id, phase)
+
+
+def advance_to_next_step(project: Path, kata_id: str) -> str:
+    """Advance the kata manifest to a fresh step-id (SPIKE constraint 3)."""
+    return bootstrap.advance_step_id(project_root=str(project), kata_id=kata_id)
+
+
+def current_step(project: Path, kata_id: str) -> str:
+    return bootstrap.current_step_id(project_root=str(project), kata_id=kata_id)
 
 
 def commit_with_trailers(project: Path, step_id: str, kata_id: str) -> None:
