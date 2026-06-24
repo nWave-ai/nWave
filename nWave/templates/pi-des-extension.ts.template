@@ -46,15 +46,22 @@ function invokeDESAdapter(action: string, ccJson: Record<string, unknown>): DesR
   return { exitCode: proc.status ?? 1, stdout: (proc.stdout ?? "").toString() };
 }
 
-// Relay the engine's verdict: on exit 2, surface { block, reason }; otherwise allow.
+// Relay the engine's verdict without inventing one. The two engine boundaries
+// signal a block differently and the translator surfaces whichever it emits:
+//   - pre-write RED gate: exit code 2 (+ JSON reason).
+//   - subagent-stop step-completion gate: exit 0 + JSON {"decision":"block"}
+//     (exit 2 would make Claude Code discard the stdout JSON, so the engine uses
+//     a JSON decision here -- ADR-PI-001 D5, engine reused unchanged).
 // This is the SOLE block decision in the translator -- it owns no enforcement logic.
 function relayEngineVerdict(result: DesResult): { block: boolean; reason: string } | undefined {
-  if (result.exitCode === 2) {
-    let reason = "DES enforcement blocked this action";
-    try {
-      const parsed = JSON.parse(result.stdout);
-      if (parsed.reason) reason = parsed.reason;
-    } catch {}
+  let reason = "DES enforcement blocked this action";
+  let jsonBlocked = false;
+  try {
+    const parsed = JSON.parse(result.stdout);
+    if (parsed.decision === "block") jsonBlocked = true;
+    if (parsed.reason) reason = parsed.reason;
+  } catch {}
+  if (result.exitCode === 2 || jsonBlocked) {
     return { block: true, reason };
   }
   return undefined;

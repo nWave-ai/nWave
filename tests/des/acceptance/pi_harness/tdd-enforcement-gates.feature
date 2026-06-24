@@ -39,6 +39,13 @@ Feature: pi forces the crafter through canonical RED to GREEN to refactor
     When the crafter attempts to commit the step
     Then the step completion is accepted at the commit boundary
 
+  @US-3
+  Scenario: An out-of-harness commit is caught post-hoc by the commit verifier
+    Given the crafter is working in an activated pi project
+    And the current step recorded a completed cycle committed outside the pi harness
+    When the step is validated at the commit boundary
+    Then the out-of-harness commit is caught by the commit verifier with a reason
+
   @US-3 @requires_external
   Scenario: A live pi model turn honors the block on a real production write
     Given a real pi model backend is available
