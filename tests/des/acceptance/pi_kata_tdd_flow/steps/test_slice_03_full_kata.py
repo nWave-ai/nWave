@@ -51,6 +51,14 @@ def _earlier_committed(world: dict) -> None:
 @given("a later step is committed without recording its cycle")
 def _later_skipped(world: dict) -> None:
     world["skipped_step"] = world["plan"][1]
+    # The crafter wrote code for this step but skipped recording its cycle, so the
+    # commit carries real content yet no RED/GREEN/COMMIT phases — the boundary
+    # must then block on the incomplete cycle. Without a change there is nothing
+    # to commit (the prior step left the tree clean), so create one here.
+    (world["project"] / f"step_{world['skipped_step']}.py").write_text(
+        "# implementation committed without a recorded TDD cycle\n",
+        encoding="utf-8",
+    )
     support.commit_with_trailers(world["project"], world["plan"][1], world["kata_id"])
 
 
