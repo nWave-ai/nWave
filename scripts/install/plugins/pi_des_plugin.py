@@ -110,8 +110,12 @@ at each new RED. Never reuse a step id across cycles.
 1. **RED** -- write one failing test for the next increment; confirm it fails for \
 the right reason. Record:
 
-   `{python} -m des.cli.log_phase --project-dir docs/feature/<kata-id>/deliver \
---step-id <NN-NN> --phase RED --status EXECUTED --data PASS`
+   `PYTHONPATH={lib} {python} -m des.cli.log_phase --project-dir \
+docs/feature/<kata-id>/deliver --step-id <NN-NN> --phase RED --status EXECUTED \
+--data PASS`
+
+   The `PYTHONPATH={lib}` prefix is REQUIRED on every `des.cli.log_phase` call: \
+run it verbatim (the bare `{python} -m des.cli.log_phase` cannot import `des`).
 
 2. **GREEN** -- write the minimum production code to pass; run the suite. Record \
 the `GREEN` phase the same way.

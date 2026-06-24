@@ -166,3 +166,27 @@ def test_verify_asserts_skill_is_discoverable_not_just_present(
         "even when the skill file still exists on disk -- discoverability is the "
         "contract, not mere file presence"
     )
+
+
+def test_skill_recording_command_carries_inline_pythonpath(installed_pi: dict) -> None:
+    """Regression: the rendered crafter skill's des.cli.log_phase recording command
+    MUST carry an inline ``PYTHONPATH=`` prefix. The model copies this command into
+    its bash tool verbatim; a bare ``{python} -m des.cli.log_phase`` cannot import
+    ``des`` (true in dev AND in a real install where des lives at the resolved lib
+    dir, not on the bare interpreter's path) -> phases would never record. Surfaced
+    by the live dogfood run (the empty-execution-log class)."""
+    skill = (installed_pi["pi_dir"] / _SKILL_DIRNAME / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    assert "des.cli.log_phase" in skill, (
+        "skill must instruct des.cli.log_phase recording"
+    )
+    # Every des.cli.log_phase invocation in the skill must be preceded by PYTHONPATH=
+    # on the same command (the rendered command, line-continuations stripped).
+    flat = skill.replace("\\\n", " ")
+    for line in flat.splitlines():
+        if "-m des.cli.log_phase" in line:
+            assert "PYTHONPATH=" in line, (
+                "des.cli.log_phase recording command lacks an inline PYTHONPATH= prefix "
+                f"-> the model's bare invocation cannot import des. Command: {line!r}"
+            )
