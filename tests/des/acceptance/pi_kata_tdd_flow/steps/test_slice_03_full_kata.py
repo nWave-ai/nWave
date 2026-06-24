@@ -249,3 +249,100 @@ def _live_ordered(world: dict) -> None:  # pragma: no cover - skipped path
 @then("an attempted step-skip was blocked at the commit boundary")
 def _live_skip_blocked(world: dict) -> None:  # pragma: no cover - skipped path
     raise AssertionError("unreachable: model backend skip fires first")
+
+
+# --------------------------------------------------------------------------- #
+# Post-hoc provenance backstop (step 01-02, R3 mitigation)
+#
+# The LIVE gate (step 01-01) verifies phase-completeness at the pre-commit
+# `tool_call` -- it canNOT verify a not-yet-existing commit. So a model could
+# record its COMMIT phase, pass the live gate, then NOT git-commit (or commit
+# with wrong trailers). This post-hoc check closes that gap: after the kata,
+# every step that recorded a COMMIT phase MUST map to a real
+# `Step-Id`+`Task-Id`-trailered commit (AND-semantics), by REUSING the
+# UNCHANGED engine `GitCommitVerifier`. Example-only (Mandate 11), no PBT
+# (Mandate 9): a single faithfully-committed-vs-recorded-but-not-committed
+# pair. Real tmp git repo + reused CLIs (@real-io). Engine reused UNCHANGED (K2).
+# --------------------------------------------------------------------------- #
+
+
+def test_provenance_passes_when_every_recorded_commit_step_was_committed(
+    tmp_path: Path,
+) -> None:
+    """A faithfully-committed kata: every recorded-COMMIT step maps to a commit."""
+    from scripts.install.pi_kata import provenance
+
+    project = support.make_activated_project(tmp_path)
+    kata_id = "fizzbuzz"
+    support.bootstrap_session(project, kata_id)
+
+    plan = list(_PLAN)
+    for index, _planned in enumerate(plan):
+        step = support.current_step(project, kata_id)
+        support.record_complete_cycle(project, kata_id, step)
+        support.commit_with_trailers(project, step, kata_id)
+        if index < len(plan) - 1:
+            support.advance_to_next_step(project, kata_id)
+
+    result = provenance.check_kata_provenance(
+        project_root=str(project), kata_id=kata_id
+    )
+
+    assert result.verified is True, (
+        f"expected provenance PASS, got unverified steps: {result.unverified_steps}"
+    )
+    assert result.unverified_steps == []
+    assert result.verified_steps == plan
+
+
+def test_provenance_fails_when_a_recorded_commit_step_was_never_committed(
+    tmp_path: Path,
+) -> None:
+    """The R3 gap: a step records its COMMIT phase but no matching commit exists."""
+    from scripts.install.pi_kata import provenance
+
+    project = support.make_activated_project(tmp_path)
+    kata_id = "fizzbuzz"
+    support.bootstrap_session(project, kata_id)
+
+    committed_step = support.current_step(project, kata_id)
+    support.record_complete_cycle(project, kata_id, committed_step)
+    support.commit_with_trailers(project, committed_step, kata_id)
+
+    # The model recorded a COMMIT phase for the next step but never git-committed
+    # it -- the "recorded-but-not-committed" gap the live gate cannot catch.
+    skipped_step = support.advance_to_next_step(project, kata_id)
+    support.record_complete_cycle(project, kata_id, skipped_step)
+
+    result = provenance.check_kata_provenance(
+        project_root=str(project), kata_id=kata_id
+    )
+
+    assert result.verified is False
+    assert result.unverified_steps == [skipped_step]
+    assert committed_step in result.verified_steps
+    assert skipped_step not in result.verified_steps
+
+
+def test_provenance_fails_when_a_recorded_commit_step_has_wrong_trailers(
+    tmp_path: Path,
+) -> None:
+    """A commit exists but carries a mismatched Task-Id -- AND-semantics rejects it."""
+    from scripts.install.pi_kata import provenance
+
+    project = support.make_activated_project(tmp_path)
+    kata_id = "fizzbuzz"
+    support.bootstrap_session(project, kata_id)
+
+    step = support.current_step(project, kata_id)
+    support.record_complete_cycle(project, kata_id, step)
+    # Commit carries the right Step-Id but a DIFFERENT Task-Id (cross-feature
+    # confusion) -- the AND-semantics Step-Id+Task-Id match must reject it.
+    support.commit_with_trailers(project, step, "some-other-kata")
+
+    result = provenance.check_kata_provenance(
+        project_root=str(project), kata_id=kata_id
+    )
+
+    assert result.verified is False
+    assert result.unverified_steps == [step]

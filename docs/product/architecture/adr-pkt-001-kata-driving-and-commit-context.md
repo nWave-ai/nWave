@@ -104,6 +104,41 @@ manifest-located `execution-log.json`, and runs `GitCommitVerifier` for
 the kata manifest. This is the ONLY way to get full commit verification at the pi
 boundary under K2; the direct protocol cannot (it skips the commit check).
 
+#### D-PKT-4 amendment (2026-06-24, fix-pi-kata-commit-gate-timing) — the settled gate/provenance split
+
+The original D-PKT-4 conflated two checks that must run at two *different times*.
+The COMMIT phase is recorded BEFORE the `git commit` runs (the crafter logs
+`des-log-phase … --phase COMMIT`, then the bash `git commit` fires the gate). So
+at the LIVE `subagent-stop` `tool_call` the commit does **not yet exist** — the
+gate cannot verify a not-yet-existing commit (R3). The settled split:
+
+- **LIVE gate = phase-completeness only, at the pre-commit `tool_call`** (step
+  01-01). The synthesized transcript runs in *phase-completeness-only* mode:
+  it OMITS the `DES-PROJECT-ROOT` marker and the payload OMITS `cwd`, so the
+  engine resolves `effective_cwd = ""` and SKIPS `GitCommitVerifier`
+  (`if context.cwd …` guard). The live gate asserts the RED+GREEN+COMMIT phases
+  are recorded; it makes NO commit-trailer claim (none is yet possible). This
+  *narrows* — does not contradict — the original D-PKT-4: the FULL four-marker +
+  `cwd` transcript is no longer used at the live boundary.
+- **Commit-trailer PROVENANCE = post-hoc, this module** (step 01-02,
+  `scripts/install/pi_kata/provenance.py`). AFTER the kata, every step that
+  recorded a COMMIT phase is verified against `git log` by REUSING the UNCHANGED
+  `GitCommitVerifier` with AND-semantics (`Step-Id` AND `Task-Id`). This is the
+  backstop that closes the R3 "recorded-but-not-committed" gap (a step that
+  passed the live gate but was never committed, or committed with wrong/missing
+  trailers). It is invocable from CI / a `des`-adjacent call and returns a
+  structured pass/fail naming any unverified steps. Zero `src/des/**` change
+  (K2): the original D-PKT-4 `GitCommitVerifier` reuse is preserved verbatim,
+  now applied post-commit where commits exist — instead of pre-commit where they
+  cannot.
+
+Rationale (R3): commit-trailer verification at the live pre-commit boundary was
+the original defect — `GitCommitVerifier` against a not-yet-existing commit
+either errors ("does not have any commits yet") or matches a stale prior commit.
+Splitting phase-completeness (live, cheap, no commit needed) from commit-trailer
+provenance (post-hoc, where the commit exists) is the only K2-compatible
+resolution.
+
 ## Alternatives Considered
 
 ### D-PKT-1 alternatives
