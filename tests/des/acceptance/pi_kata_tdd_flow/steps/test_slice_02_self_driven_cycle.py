@@ -145,5 +145,7 @@ def _no_accepted_increment(world: dict) -> None:
 
 @then("the boundary finds no DES context to verify")
 def _no_des_context(world: dict) -> None:
-    parsed = json.loads(world["stdout"])
-    assert parsed.get("decision") == "allow"
+    # The unchanged subagent-stop engine's allow/no-context contract is exit 0
+    # with EMPTY stdout (a silent allow — same contract as pi-harness
+    # _write_allowed), NOT a literal {"decision":"allow"} payload.
+    assert world["exit"] == 0 and world["stdout"].strip() == ""
