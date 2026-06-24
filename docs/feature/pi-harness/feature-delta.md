@@ -281,3 +281,47 @@ Zero `NO — MISSING` rows.
 - Env matrix: no DEVOPS wave → default `clean | with-pre-commit | with-stale-config` (WARN). Tests are env-agnostic (tmp_path + `PI_CONFIG_DIR` override + `DES_AUDIT_LOG_DIR` pin).
 - Infrastructure policy bootstrapped: `docs/architecture/atdd-infrastructure-policy.md`.
 - Deferred: outcomes registry (`OUT-PI-1`, schema.json absent); `@requires_external` live-model e2e; R1 pi config-dir confirmation; C7b interruption AT (LOW). See `distill/wave-decisions.md`.
+
+## Wave: DELIVER / [REF] Implementation summary
+
+The pi harness now installs and enforces DES end-to-end. The nWave installer renders the pi DES extension into pi's config dir (manifest-tracked, clean uninstall); the extension is a thin TS translator that maps pi lifecycle events to the unchanged Python DES engine — write/edit `tool_call` → `pre-write` RED gate, bash `git commit` `tool_call` → `subagent-stop` step-completion gate, bash test-run `tool_result` → `post-tool-use` suite-state recording, `session_start` → engine-reachability health line. Zero adapter fork (D5): the engine renders every verdict; the extension owns exactly one block decision (a verbatim relay). Delivered via 3 TDD steps (RED→GREEN→COMMIT each, DES-verified).
+
+## Wave: DELIVER / [REF] Files modified
+
+- **Production**: `scripts/install/plugins/pi_des_plugin.py` (NEW — installer plugin, mirrors `opencode_des_plugin.py`); `scripts/install/install_nwave.py` (register `PiDESPlugin`, deps `["des"]`, pi-gated); `nWave/templates/pi-des-extension.ts.template` (EXTENDED skeleton → full gate set).
+- **Tests**: `tests/des/acceptance/pi_harness/{installer-plugin-lifecycle,extension-translation-contract,tdd-enforcement-gates}.feature` + matching `steps/test_*.py` (+ A2 out-of-harness scenario).
+- **DES audit**: `docs/feature/pi-harness/deliver/{roadmap.json,execution-log.json}`.
+- **REUSE UNCHANGED**: `src/des/**` (engine, `SubagentStopService`, `GitCommitVerifier`, audit writer, activation gate) — zero fork verified.
+
+## Wave: DELIVER / [REF] Scenarios green
+
+`tests/des/acceptance/pi_harness/` — **21 passed / 0 failed / 1 skipped** (2026-06-24). The 1 skip is `@requires_external` (live pi model backend, SPIKE CI caveat). `@walking_skeleton` green (real `pi -e` subprocess).
+
+## Wave: DELIVER / [REF] DoD check
+
+1. `$ pi` launches with extension + crafter skill active — ✅ (walking skeleton + installer plugin).
+2. `/skill:software-crafter` loads + states TDD contract — ✅ (skill placed by plugin; `resources_discover`, A3 confirmed).
+3. Production-code edits blocked when no failing test — ✅ (write/edit→`pre-write` gate).
+4. New-test-before-green / regression-on-commit blocked — ✅ (commit→`subagent-stop` gate; suite-state recording).
+5. Block/allow + phases in DES JSONL audit log — ✅ (`DES_AUDIT_LOG_DIR` pinned).
+6. Commits carry `Step-Id` trailers, ordered RED→GREEN→REFACTOR — ✅ (engine `GitCommitVerifier`; A2 catches out-of-harness).
+7. Thin translator; Python adapter unmodified — ✅ (review-verified, `src/des/**` unchanged).
+8. Installer installs/uninstalls cleanly, manifest-tracked — ✅ (8 lifecycle scenarios).
+9. Documented kata run demonstrates DoD — ⏳ live-model kata is `@requires_external` (deferred per CI caveat); model-free wiring fully asserted.
+
+## Wave: DELIVER / [REF] Demo Evidence — 2026-06-24
+
+Story 1 Elevator Pitch (`$ pi` → enforcement active) executed against real pi 0.79.9:
+```
+$ pi --no-extensions -e <rendered-ext> --offline --no-session --no-tools -p "noop"
+[nWave DES] enforcement active for pi      (exit 0)
+```
+Stories 2–4 gate demos require a live model turn (`@requires_external`, skipped per SPIKE CI caveat); their enforcement wiring is asserted model-free in the acceptance suite.
+
+## Wave: DELIVER / [REF] Quality gates
+
+- DES integrity: ✅ "All 3 steps have complete DES traces" (RED→GREEN→COMMIT, `Step-Id`+`Task-Id` trailers).
+- Adversarial review (`@nw-software-crafter-reviewer`): ✅ APPROVED, 0 defects; testing-theater = none (real engine via subprocess); thin-translator invariant verified.
+- Refactor (L1-L6): assessed clean (no high-value refactors).
+- Mutation: SKIPPED (`nightly-delta` strategy — CI nightly).
+- Commits: `827cd6c` (01-01), `209c4bd` (01-02), `0900abc` (01-03).
