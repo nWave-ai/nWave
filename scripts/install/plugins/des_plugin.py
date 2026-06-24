@@ -32,6 +32,14 @@ class DESPlugin(InstallationPlugin):
     in settings.json (global config: permissions, other hooks, etc.).
     """
 
+    # Seconds allowed for the module-import verification subprocess. Sized for
+    # slow filesystems (WSL, especially Windows-mounted /mnt/c paths) where
+    # Python startup plus first-run .pyc compilation exceeds a tighter budget.
+    # A broken install fails fast with a non-zero return code, so a generous
+    # timeout only protects the slow-but-correct path — it cannot mask a real
+    # failure. See issue #73.
+    DES_VERIFY_IMPORT_TIMEOUT_SECONDS = 15
+
     # DES scripts installed to ~/.claude/scripts/
     DES_SCRIPTS = [
         "check_stale_phases.py",
@@ -1214,7 +1222,7 @@ class DESPlugin(InstallationPlugin):
                 ],
                 capture_output=True,
                 text=True,
-                timeout=5,
+                timeout=self.DES_VERIFY_IMPORT_TIMEOUT_SECONDS,
             )
             if result.returncode != 0:
                 errors.append(f"DES module import failed: {result.stderr}")

@@ -119,7 +119,13 @@ LEGACY 5-PHASE CONTRACT (ADR-024 era, pre-2026-05-07): PREPARE → RED_ACCEPTANC
 - Coverage maintained or improved
 
 # OUTCOME_RECORDING
-After ACTUALLY EXECUTING each phase, record via DES CLI:
+Immediately after ACTUALLY EXECUTING each phase — and BEFORE any
+permission-gated or interruption-prone command (e.g. `nix-build`, a network
+fetch, a long verification run) — record it via the DES CLI. Do NOT batch
+`des-log-phase` calls to end-of-run: a permission prompt or STOP between phases
+drops the un-written entries, leaving an incomplete trace (e.g. 3/5) that fails
+`des-verify-integrity` at finalize and forces a resume to re-log work already
+done.
 
     des-log-phase \
       --project-dir docs/feature/{feature-id}/deliver \
@@ -127,6 +133,14 @@ After ACTUALLY EXECUTING each phase, record via DES CLI:
       --phase {PHASE_NAME} \
       --status EXECUTED \
       --data PASS
+
+For `--status EXECUTED`, `--data` MUST be exactly `PASS` or `FAIL` — no prose,
+no prefix. The stop-hook StepCompletionValidator compares the value against
+`{PASS, FAIL}` exactly; anything else (e.g. `--data "PASS: unit layer folded
+into shape suite"`) is rejected as an INCOMPLETE_PHASE and the phase must be
+re-logged. Put any explanation in your report to the orchestrator, not in
+`--data`. Only `--status SKIPPED` may carry text — and only as a valid prefix
+(see below).
 
 For SKIPPED phases (genuinely not applicable):
 

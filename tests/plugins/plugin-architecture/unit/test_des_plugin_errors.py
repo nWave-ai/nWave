@@ -16,6 +16,7 @@ Domain: Plugin Infrastructure - DES Plugin Error Handling
 
 import logging
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -359,3 +360,51 @@ class TestDESPluginValidatePrerequisitesSuccess:
         result = plugin.validate_prerequisites(context)
 
         assert result.success, f"Expected success but got: {result.message}"
+
+
+# -----------------------------------------------------------------------------
+# Test: Module-import verification timeout (regression for #73)
+# -----------------------------------------------------------------------------
+
+
+class TestDESPluginVerifyImportTimeout:
+    """Regression guard for issue #73 — WSL installation timeout.
+
+    The DES module-import verification runs a subprocess that imports
+    ``DESOrchestrator``. On slow filesystems (notably WSL, especially under
+    Windows-mounted ``/mnt/c`` paths) Python startup plus first-run ``.pyc``
+    compilation exceeds the original 5s budget, failing a correct install with
+    a false-negative timeout. A broken install fails fast with a non-zero
+    return code, so a generous timeout cannot mask a real failure — only the
+    slow-but-correct path is affected.
+    """
+
+    def test_module_import_verification_uses_wsl_safe_timeout(
+        self,
+        project_root: Path,
+        clean_test_directory: Path,
+        test_logger: logging.Logger,
+    ):
+        """verify()'s import subprocess must allow >= 15s for slow WSL I/O."""
+        context = InstallContext(
+            claude_dir=clean_test_directory,
+            scripts_dir=project_root / "scripts" / "install",
+            templates_dir=project_root / "nWave" / "templates",
+            logger=test_logger,
+            project_root=project_root,
+            framework_source=None,
+            dry_run=False,
+        )
+
+        with patch("scripts.install.plugins.des_plugin.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stderr="")
+            DESPlugin().verify(context)
+
+        # verify() invokes subprocess.run exactly once: the import check.
+        assert mock_run.call_count == 1, (
+            "Expected a single import-verification subprocess call"
+        )
+        timeout = mock_run.call_args.kwargs["timeout"]
+        assert timeout >= 15, (
+            f"Import-verification timeout is {timeout}s; WSL needs >= 15s (issue #73)"
+        )

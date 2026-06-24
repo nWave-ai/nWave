@@ -55,16 +55,41 @@ def env(tmp_path):
             path.chmod(0o755)
 
         def stub_failing_doctor(self, exit_code: int = 7) -> None:
-            """nwave-ai stub that logs every call but exits non-zero on `doctor`.
+            """nwave-ai stub modelling a CLI whose `doctor` finds a real problem.
 
-            Lets a test assert that the script propagates `nwave-ai doctor`'s
-            exit code rather than swallowing it.
+            `doctor` exists (so the `doctor --help` capability probe exits 0),
+            but the actual health run exits non-zero. Lets a test assert the
+            script propagates that exit code rather than swallowing it.
             """
             path = self.bin / "nwave-ai"
             path.write_text(
                 "#!/bin/sh\n"
                 'printf "nwave-ai %s\\n" "$*" >> "$NWAVE_TEST_LOG"\n'
-                f'if [ "$1" = "doctor" ]; then exit {exit_code}; fi\n'
+                'if [ "$1" = "doctor" ]; then\n'
+                '    case "${2:-}" in\n'
+                "        --help|-h) exit 0 ;;\n"
+                f"        *) exit {exit_code} ;;\n"
+                "    esac\n"
+                "fi\n"
+                "exit 0\n"
+            )
+            path.chmod(0o755)
+
+        def stub_old_cli_without_doctor(self) -> None:
+            """nwave-ai stub modelling a build that predates `doctor` (#74).
+
+            Every `doctor` invocation — including the `doctor --help` capability
+            probe — fails the way the real old CLI does: it prints
+            ``Unknown command: doctor`` and exits non-zero. ``install`` succeeds.
+            """
+            path = self.bin / "nwave-ai"
+            path.write_text(
+                "#!/bin/sh\n"
+                'printf "nwave-ai %s\\n" "$*" >> "$NWAVE_TEST_LOG"\n'
+                'if [ "$1" = "doctor" ]; then\n'
+                '    echo "Unknown command: doctor" >&2\n'
+                "    exit 1\n"
+                "fi\n"
                 "exit 0\n"
             )
             path.chmod(0o755)
@@ -183,7 +208,7 @@ def test_auto_uses_uv_when_present(env):
     result = run(env)
     assert result.returncode == 0
     calls = env.calls()
-    assert "uv tool install nwave-ai" in calls
+    assert "uv tool install --reinstall nwave-ai" in calls
     assert "nwave-ai install" in calls
     assert not any(c.startswith("pipx") for c in calls)
 
@@ -195,7 +220,7 @@ def test_auto_prefers_uv_when_both_present(env):
     result = run(env)
     assert result.returncode == 0
     calls = env.calls()
-    assert "uv tool install nwave-ai" in calls
+    assert "uv tool install --reinstall nwave-ai" in calls
     assert not any(c.startswith("pipx") for c in calls)
 
 
@@ -224,7 +249,7 @@ def test_auto_pipx_only_with_yes_flag_proceeds(env):
     result = run(env, "--yes")
     assert result.returncode == 0
     calls = env.calls()
-    assert "pipx install nwave-ai" in calls
+    assert "pipx install --force nwave-ai" in calls
     assert "nwave-ai install" in calls
 
 
@@ -233,7 +258,7 @@ def test_auto_pipx_only_with_assume_yes_env_proceeds(env):
     env.stub("nwave-ai")
     result = run(env, env_vars={"NWAVE_ASSUME_YES": "1"})
     assert result.returncode == 0
-    assert "pipx install nwave-ai" in env.calls()
+    assert "pipx install --force nwave-ai" in env.calls()
 
 
 # --------------------------------------------------------------------------
@@ -263,7 +288,7 @@ def test_tool_pipx_explicit_consent_skips_prompt(env):
     env.stub("nwave-ai")
     result = run(env, "--tool", "pipx")  # stdin closed, no --yes
     assert result.returncode == 0
-    assert "pipx install nwave-ai" in env.calls()
+    assert "pipx install --force nwave-ai" in env.calls()
 
 
 def test_tool_pipx_missing_errors_with_pipx_instructions(env):
@@ -289,7 +314,7 @@ def test_tool_env_var_selects_pipx(env):
     env.stub("nwave-ai")
     result = run(env, env_vars={"NWAVE_INSTALLER_TOOL": "pipx"})
     assert result.returncode == 0
-    assert "pipx install nwave-ai" in env.calls()
+    assert "pipx install --force nwave-ai" in env.calls()
 
 
 # --------------------------------------------------------------------------
@@ -302,7 +327,7 @@ def test_cli_not_on_path_after_install_warns_instead_of_running(env):
     result = run(env)
     assert result.returncode == 0
     calls = env.calls()
-    assert "uv tool install nwave-ai" in calls
+    assert "uv tool install --reinstall nwave-ai" in calls
     assert "nwave-ai install" not in calls
     assert "not on your PATH" in result.stderr
     assert "uv tool update-shell" in result.stdout
@@ -322,6 +347,43 @@ def test_healthy_doctor_exits_zero(env):
     assert "complete" in result.stdout
 
 
+def test_old_cli_without_doctor_completes_without_failing(env):
+    """Regression for #74: a stale nwave-ai that predates `doctor` must not
+    turn an otherwise successful install into a failure.
+
+    The `doctor --help` capability probe detects the missing subcommand, so the
+    script skips the health check, tells the user how to upgrade, and still
+    exits 0 — instead of surfacing `Unknown command: doctor` as a hard failure.
+    """
+    env.stub("uv")
+    env.stub_old_cli_without_doctor()
+    result = run(env)
+    assert result.returncode == 0
+    calls = env.calls()
+    assert "nwave-ai install" in calls
+    # The real health check (`doctor` with no args) is never run on the old CLI.
+    assert "nwave-ai doctor" not in calls
+    # The user is pointed at the command that installs the version with doctor.
+    assert "predates" in result.stderr
+    assert "uv tool install --reinstall" in result.stderr
+
+
+def test_old_cli_upgrade_hint_matches_selected_tool_pipx(env):
+    """The pre-`doctor` upgrade hint must name the tool that was actually used.
+
+    When pipx is the selected installer, the hint must read
+    `pipx install --force`, not the uv command — a pipx user can't act on a
+    `uv tool install` instruction.
+    """
+    env.stub("pipx")  # pipx-only auto-detection -> SELECTED=pipx
+    env.stub_old_cli_without_doctor()
+    result = run(env, "--yes")  # pipx needs consent
+    assert result.returncode == 0
+    assert "predates" in result.stderr
+    assert "pipx install --force" in result.stderr
+    assert "uv tool install" not in result.stderr
+
+
 def test_doctor_failure_propagates_its_exit_code(env):
     env.stub("uv")
     env.stub_failing_doctor(exit_code=7)
@@ -330,7 +392,7 @@ def test_doctor_failure_propagates_its_exit_code(env):
     # a swallowed warning.
     assert result.returncode == 7
     calls = env.calls()
-    assert "uv tool install nwave-ai" in calls
+    assert "uv tool install --reinstall nwave-ai" in calls
     assert "nwave-ai install" in calls
     assert "nwave-ai doctor" in calls
     assert "reported problems" in result.stderr
@@ -346,7 +408,7 @@ def test_interactive_accept_proceeds_with_pipx(env):
     env.stub("nwave-ai")
     rc, _out = run_pty(env, answer="y\n")
     assert rc == 0
-    assert "pipx install nwave-ai" in env.calls()
+    assert "pipx install --force nwave-ai" in env.calls()
 
 
 def test_interactive_decline_shows_uv_instructions_and_installs_nothing(env):

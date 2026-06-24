@@ -182,29 +182,50 @@ esac
 case "$SELECTED" in
     uv)
         info "Installing ${NWAVE_PKG} with uv..."
-        uv tool install "$NWAVE_PKG"
+        # --reinstall forces the latest published version even when an older
+        # nwave-ai is already installed. A bare `uv tool install` no-ops on an
+        # existing install, which silently stranded users on stale builds whose
+        # CLI lacked newer subcommands like `doctor` (#74).
+        uv tool install --reinstall "$NWAVE_PKG"
         ;;
     pipx)
         info "Installing ${NWAVE_PKG} with pipx..."
-        pipx install "$NWAVE_PKG"
+        # --force reinstalls to the latest version even when nwave-ai is already
+        # present; a plain `pipx install` skips an existing install (#74).
+        pipx install --force "$NWAVE_PKG"
         ;;
 esac
 
 if has nwave-ai; then
     info "Running 'nwave-ai install'..."
     nwave-ai install
-    info "Running 'nwave-ai doctor'..."
-    # Propagate doctor's exit code: it is the authority on whether the
-    # installation is healthy (0) or has a real problem (non-zero). A
-    # non-blocking warning is reported by doctor as a passing check (0).
-    doctor_rc=0
-    nwave-ai doctor || doctor_rc=$?
-    if [ "$doctor_rc" -eq 0 ]; then
-        ok "nWave installation complete."
+    # Capability probe: the `doctor` subcommand was added after some early
+    # nwave-ai builds. The force-latest install above should guarantee it
+    # exists, but if a pinned or stale CLI still slips through we must not fail
+    # an otherwise healthy install with "Unknown command: doctor" (#74).
+    # `doctor --help` exits 0 on any CLI that supports the subcommand and
+    # non-zero on one that does not.
+    if nwave-ai doctor --help >/dev/null 2>&1; then
+        info "Running 'nwave-ai doctor'..."
+        # Propagate doctor's exit code: it is the authority on whether the
+        # installation is healthy (0) or has a real problem (non-zero). A
+        # non-blocking warning is reported by doctor as a passing check (0).
+        doctor_rc=0
+        nwave-ai doctor || doctor_rc=$?
+        if [ "$doctor_rc" -eq 0 ]; then
+            ok "nWave installation complete."
+        else
+            warn "'nwave-ai doctor' reported problems (exit ${doctor_rc}) — review the output above."
+        fi
+        exit "$doctor_rc"
     else
-        warn "'nwave-ai doctor' reported problems (exit ${doctor_rc}) — review the output above."
+        warn "Installed nwave-ai predates the 'doctor' health check — skipping it."
+        case "$SELECTED" in
+            uv)   warn "Upgrade to the latest with: uv tool install --reinstall ${NWAVE_PKG}" ;;
+            pipx) warn "Upgrade to the latest with: pipx install --force ${NWAVE_PKG}" ;;
+        esac
+        ok "nWave installation complete."
     fi
-    exit "$doctor_rc"
 else
     warn "${NWAVE_PKG} was installed but 'nwave-ai' is not on your PATH yet."
     case "$SELECTED" in
