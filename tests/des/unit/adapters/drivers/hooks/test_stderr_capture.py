@@ -58,12 +58,18 @@ def _run_handler_with_exception(monkeypatch, exception_factory, events=None):
     monkeypatch.setattr("sys.stdin", io.StringIO(_build_valid_pre_tool_use_stdin()))
     monkeypatch.setattr("builtins.print", lambda *a, **kw: None)
 
+    # The handler now calls create_pre_tool_use_service(deliverable_type=...)
+    # (ADR-PST-001, feature plugin-skill-deliverable-type). Absorb any args so
+    # the zero-arg exception factories keep raising regardless of call signature.
+    def _factory(*_args, **_kwargs):
+        return exception_factory()
+
     with (
         patch.object(hook_protocol, "_audit_writer_factory", return_value=writer),
         patch.object(
             service_factory,
             "create_pre_tool_use_service",
-            side_effect=exception_factory,
+            side_effect=_factory,
         ),
     ):
         exit_code = adapter.handle_pre_tool_use()

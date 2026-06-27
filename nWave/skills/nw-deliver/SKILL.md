@@ -156,6 +156,12 @@ At the start of execution, create these tasks using TaskCreate and follow them i
    - Log strategy for traceability. Note: strategy locks at deliver start; `CLAUDE.md` edits during delivery take effect next run.
    - Gate: strategy recorded.
 
+1.7. **Detect Deliverable Type** (ADR-PST-003 / DDD-6) — Read `deliverable_type` from the SAME `.nwave/des-config.json` the runtime gate uses — this is the single source of truth (`DESConfig.deliverable_type` precedence, ADR-PST-002): (1) declared project `.nwave/des-config.json` key `deliverable_type` if in the known set `{application, plugin, skill}`; (2) else global `~/.nwave/global-config.json` `defaults.deliverable_type`; (3) else root-only FS detection; (4) a present-but-typo'd value resolves to the safe default (treated as `application`). Do NOT re-detect independently — read what the gate reads so the verification plan and the enforcement gate never diverge.
+   - `application` (or unresolved) → store `application`. Verification plan UNCHANGED (pytest / Hypothesis routing, `@nw-software-crafter-reviewer`).
+   - `plugin` → store `plugin`. The Phase 4 verification plan branches (see Phase 4).
+   - `skill` → store `skill`. The Phase 4 verification plan branches (see Phase 4).
+   - Gate: deliverable type read from `.nwave/des-config.json` and stored for Phase 4 routing.
+
 2. **Phase 1 — Roadmap Creation + Review** — Gate: roadmap created, integrity verified, reviewer approved.
    - a. Skip if `docs/feature/{feature-id}/deliver/roadmap.json` exists with `validation.status == "approved"`. If found in `design/` instead, move to `deliver/` and log warning.
    - b. Dispatch `@nw-solution-architect` to create `roadmap.json` (load `~/.claude/skills/nw-roadmap/SKILL.md`). Step IDs MUST match `NN-NN` format (01-01, 01-02). If `distill/` exists, architect MUST populate `test_file` and `scenario_name` per step.
@@ -193,11 +199,18 @@ At the start of execution, create these tasks using TaskCreate and follow them i
    - a. Collect modified files: `git diff --name-only {base-commit}..HEAD -- '*.py' | sort -u`. Split into PRODUCTION_FILES (`src/`) and TEST_FILES (`tests/`).
    - b. Run `/nw-refactor {files} --levels L1-L6` via selected crafter with DES orchestrator markers: `<!-- DES-VALIDATION : required -->`, `<!-- DES-PROJECT-ID : {feature-id} -->`, `<!-- DES-MODE : orchestrator -->`.
 
-5. **Phase 4 — Adversarial Review** — [SKIP if `rigor.review_enabled = false` or `rigor.reviewer_model = "skip"`]. Gate: review passed or one revision complete.
+5. **Phase 4 — Adversarial Review** — [SKIP if `rigor.review_enabled = false` or `rigor.reviewer_model = "skip"`]. Gate: review passed or one revision complete. **Reviewer routing branches on the deliverable type stored in step 1.7** (ADR-PST-003 / DDD-6):
+   **`application` (or unresolved)** — UNCHANGED:
    - a. Dispatch `/nw-review @nw-software-crafter-reviewer implementation "{execution-log-path}"` with `model=rigor.reviewer_model` and DES orchestrator markers.
    - b. If `rigor.double_review = true` → run review a second time with different scope focus.
    - c. Scope: ALL files modified during feature; includes Testing Theater 7-pattern detection.
    - d. One revision pass on rejection → proceed.
+
+   **`plugin`** — dispatch `@nw-plugin-validator` (Claude Code plugin structure/schema) AND `@nw-skill-reviewer` (SKILL.md quality), both on Haiku, plus `@nw-software-crafter-reviewer` for any application-layer code in the same feature. Verification evidence is behavioral Gherkin + example-interaction evidence (the plugin demonstrated through its real invocation path), with optional `bats`/`shellcheck` for any shell. NOT pytest/Hypothesis-centric. One revision pass on rejection → proceed.
+
+   **`skill`** — dispatch `@nw-skill-reviewer` (SKILL.md quality, Haiku). Do NOT dispatch `@nw-plugin-validator` (no plugin structure to validate). Verification evidence is behavioral Gherkin. One revision pass on rejection → proceed.
+
+   **Authoring stays with `@nw-agent-builder`**: when a plugin/skill review finds content to author or rewrite, route the fix to `@nw-agent-builder` — the validators/reviewers are read-only. The four `*-development` specialist agents remain DEFERRED.
 
 6. **Phase 5 — Mutation Testing** — [SKIP if `rigor.mutation_enabled = false`]. Gate: ≥80% kill rate or strategy skip logged.
    - `per-feature` → gate ≥80% kill rate (load `~/.claude/skills/nw-mutation-test/SKILL.md`).

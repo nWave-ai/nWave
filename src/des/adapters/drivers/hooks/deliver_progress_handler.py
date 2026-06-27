@@ -30,16 +30,18 @@ REMAINING_PHASES_REMINDER = (
 def _resolve_deliver_paths(cwd: str, project_id: str) -> tuple[Path, Path, Path]:
     """Resolve paths for roadmap, execution-log, and progress files.
 
-    Uses wave-agnostic resolution: checks deliver/ first, then scans for any
-    single wave subdir containing execution-log.json. Falls back to deliver/
-    on error so downstream missing-file handling is preserved.
+    Discovers the docs base from disk (reusing the step 01-01 resolver), so a
+    project namespaced under the override base docs/nwave/feature is found
+    instead of being silently missed under a hardcoded docs/feature. Wave
+    resolution checks deliver/ first, then scans for any single wave subdir
+    containing execution-log.json. Falls back to docs/feature/<id>/deliver on
+    error so downstream missing-file handling is preserved.
     """
-    base = Path(cwd) / "docs" / "feature"
     try:
-        exec_log_path = resolve_execution_log_path(project_id, base=base)
+        exec_log_path = resolve_execution_log_path(project_id, cwd=Path(cwd))
         wave_dir = exec_log_path.parent
     except (FileNotFoundError, ValueError):
-        wave_dir = base / project_id / "deliver"
+        wave_dir = Path(cwd) / "docs" / "feature" / project_id / "deliver"
         exec_log_path = wave_dir / "execution-log.json"
     return (
         wave_dir / "roadmap.json",

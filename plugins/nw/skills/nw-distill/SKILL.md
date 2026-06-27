@@ -105,7 +105,7 @@ Every `### [REF] Inherited commitments` block MUST have exactly four columns in 
 
 ### [REF] Inherited commitments
 
-| Origin | Commitment | DDD | Impact |
+| Origin | Commitment | DDR | Impact |
 |--------|------------|-----|--------|
 | n/a | <commitment text> | n/a | <impact text> |
 ```
@@ -113,13 +113,13 @@ Every `### [REF] Inherited commitments` block MUST have exactly four columns in 
 Column semantics:
 - **Origin**: wave and row reference of the upstream commitment (e.g., `DISCUSS#row1`) or `n/a` for root commitments
 - **Commitment**: the specific commitment inherited or newly introduced in this wave
-- **DDD**: Design Decision Document reference that authorizes any change (e.g., `DDD-3`) or `n/a` / `(none)` when not applicable
+- **DDR**: Design Decision Record reference that authorizes any change (e.g., `DDR-3`) or `n/a` / `(none)` when not applicable. (Renamed from `DDD` to avoid colliding with Domain-Driven Design — issue #50. The legacy `DDD` column and `DDD-N` references are still accepted during the deprecation window.)
 - **Impact**: substantive description (>=10 words or a consequence verb from the verb list) of the commitment's effect on the system
 
 ### Validator rules (E1+E2)
 
 - **E1 (SectionPresent)**: every `## Wave: <NAME>` heading must match the canonical pattern. Known wave names: DISCOVER, DISCUSS, DESIGN, DEVOPS, DISTILL, DELIVER. Near-misses get a did-you-mean suggestion.
-- **E2 (ColumnsPresent)**: every `### [REF] Inherited commitments` block must have a header row with the four required columns (Origin, Commitment, DDD, Impact) in any order, case-insensitive.
+- **E2 (ColumnsPresent)**: every `### [REF] Inherited commitments` block must have a header row with the four required columns (Origin, Commitment, DDR, Impact) in any order, case-insensitive. The legacy `DDD` header is also accepted.
 
 ### Incremental authoring
 
@@ -581,6 +581,7 @@ Before writing any scenario, read SSOT and feature delta artifacts.
 5. **Read SPIKE Findings** (if spike was run) — Read `docs/feature/{feature-id}/spike/findings.md` and `docs/feature/{feature-id}/spike/wave-decisions.md`. Check what assumptions were validated, what failed, performance measurements, and the **promotion decision** (PROMOTE / DISCARD / PIVOT). Update acceptance criteria if spike findings contradict DISCUSS. Gate: files read if present, marked as not found if absent.
 5b. **Read Walking Skeleton** (only if SPIKE promoted a walking skeleton) — Read the existing `tests/{test-type-path}/{feature-id}/acceptance/walking-skeleton.feature` and the `src/` modules it exercises. The walking skeleton is **already committed and green** — your job in DISTILL is to build **additional** scenarios and integration tests on top of it, not to rewrite it. Identify the driving adapter it uses, the e2e path it exercises, and the scenarios it does NOT yet cover (happy-path variants, error paths, adapter integration). Gate: walking-skeleton.feature read, scenario tagged `@walking_skeleton` confirmed green, or marked as not found.
 6. **Read DEVOPS Artifacts** — Read `docs/feature/{feature-id}/devops/wave-decisions.md`. Check for infrastructure constraints affecting tests. Gate: file read or marked missing.
+6b. **Read Deliverable Type** (ADR-PST-003 / DDD-6) — Read `deliverable_type` from the SAME `.nwave/des-config.json` the DES runtime gate uses — this is the single source of truth (`DESConfig.deliverable_type` precedence, ADR-PST-002): (1) declared project `.nwave/des-config.json` key `deliverable_type` if in the known set `{application, plugin, skill}`; (2) else global `~/.nwave/global-config.json` `defaults.deliverable_type`; (3) else root-only FS detection; (4) a present-but-typo'd value resolves to the safe default (treated as `application`). Do NOT re-detect independently — read what the gate reads so the Final Wave Review Gate routing and the enforcement gate never diverge. Store the resolved type to route the Final Wave Review Gate (see below). Gate: deliverable type read from `.nwave/des-config.json` and stored.
 7. **Check Migration Gate** — If `docs/product/` does not exist but `docs/feature/` has existing features, STOP. Guide the user to `docs/guides/migrating-to-ssot-model/README.md`. If greenfield, prior waves should have bootstrapped `docs/product/` already. Gate: migration confirmed or greenfield confirmed.
 8. **Reconcile Assumptions** — Check whether any acceptance test assumptions contradict prior wave decisions or SPIKE findings. Use `wave-decisions.md` and `spike/findings.md` files to detect upstream changes. Gate: zero contradictions or contradictions listed for user resolution.
 
@@ -866,11 +867,29 @@ AFTER all DISTILL Tier-1 [REF] sections are appended to `feature-delta.md` and a
 
 5. **Block DELIVER handoff** — do not hand off to DELIVER until all four verdicts are APPROVED or CONDITIONALLY_APPROVED with documented action items in DELIVER scope. Gate: zero blockers, zero high (or accepted-with-conditions).
 
+6. **Deliverable-type verification routing** — based on the deliverable type read in Prior Wave Reading step 6b, the verification plan adds type-specific verification beyond the four-reviewer gate. See the **Deliverable-Type Verification Routing** section below for the per-type plan. Gate: type-specific verification applied (or noted N/A for `application`).
+
 **Cost**: 4 Haiku reviewers in parallel ≈ $0.05-0.20 per feature. Trades small cost for late-feedback-blast-radius reduction (full chain visible).
 
 **Structural-correctness reviewer never skips**: `rigor.reviewer_model: "skip"` applies to the three scale-sensitive cost-driven reviewers (Eclipse / Architect / Forge) only. Sentinel (`@nw-acceptance-designer-reviewer`) ALWAYS dispatches regardless of rigor cascade or scenario count fast-path — it is the structural-correctness reviewer (Gherkin antipatterns, hexagonal boundary, scaffold integrity), and silent skip masks the bug class issue #52 fixed.
 
 **Per-wave review trigger override**: even with this final gate, a wave-skill may have triggered its own per-wave review (DoR ambiguity, contested ADR, novel deployment target, etc.). Per-wave reviewer outputs are PR-ephemeral, not committed; they inform the wave's primary agent in real time but don't substitute for this final gate.
+
+## Deliverable-Type Verification Routing (ADR-PST-003 / DDD-6)
+
+The verification plan branches on the `deliverable_type` resolved in Prior Wave Reading step 6b — read from the SAME `.nwave/des-config.json` the DES runtime gate uses (single source of truth, `DESConfig.deliverable_type` precedence). The four-reviewer Final Wave Review Gate above always runs; this section declares the ADDITIONAL, type-specific verification.
+
+| Deliverable type | Verification plan |
+|---|---|
+| **`application`** (or unresolved) | UNCHANGED — pytest / Hypothesis routing. No plugin or skill reviewer. The four-reviewer gate (Sentinel reviews the scenarios/scaffolds) is the verification. |
+| **`plugin`** | `@nw-plugin-validator` (Claude Code plugin structure/schema) + `@nw-skill-reviewer` (SKILL.md quality) + **behavioral Gherkin** scenarios + **example-interaction evidence** (the plugin demonstrated through its real invocation path) + optional `bats`/`shellcheck` for any shell. NOT pytest/Hypothesis-centric. |
+| **`skill`** | `@nw-skill-reviewer` (SKILL.md quality) + **behavioral Gherkin** scenarios. Do NOT dispatch `@nw-plugin-validator` (no plugin structure to validate). |
+
+**Mixed plugin/skill features** (a plugin that also bundles application-layer code) get `@nw-software-crafter-reviewer` on that code at **DELIVER Phase 4**, not here — DISTILL has no execution log to review, so the crafter-reviewer is intentionally absent from this DISTILL table (see `nw-deliver` Phase 4 for the symmetric DELIVER routing).
+
+**Authoring routing**: plugin/skill AUTHORING (writing the plugin manifest, hooks, commands, agents, or SKILL.md content) routes to `@nw-agent-builder`. `@nw-plugin-validator` and `@nw-skill-reviewer` are read-only verification agents — they review, they do not author. The four `*-development` specialist agents remain DEFERRED (not created).
+
+**Single-source-of-truth invariant**: the routing here and the DES enforcement gate both read `deliverable_type` from `.nwave/des-config.json` via `DESConfig.deliverable_type`. Never re-detect the type independently — divergence between the verification plan and the enforcement gate is the failure this routing prevents.
 
 ## Polyglot Adapter Matrix
 

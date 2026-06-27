@@ -9,12 +9,12 @@ from dataclasses import dataclass, field
 class CommitmentRow:
     origin: str
     commitment: str
-    ddd: str
+    ddr: str
     impact: str
 
 
 @dataclass(frozen=True)
-class DDDEntry:
+class DDREntry:
     number: int
     text: str
 
@@ -23,7 +23,7 @@ class DDDEntry:
 class WaveSection:
     name: str
     rows: tuple[CommitmentRow, ...]
-    ddd_entries: tuple[DDDEntry, ...]
+    ddr_entries: tuple[DDREntry, ...]
     gherkin_blocks: tuple[str, ...] = field(default_factory=tuple)
 
 

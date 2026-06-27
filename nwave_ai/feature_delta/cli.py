@@ -182,7 +182,7 @@ def init_scaffold_command(
     delta_path = target_dir / "feature-delta.md"
 
     _EMPTY_TABLE = (
-        "| Origin | Commitment | DDD | Impact |\n"
+        "| Origin | Commitment | DDR | Impact |\n"
         "|--------|------------|-----|--------|\n"
     )
     _WAVE_SECTION = (
@@ -223,8 +223,35 @@ def migrate_feature_command(feature_dir: str | None = None) -> int:
         print("Usage: migrate-feature <directory>", file=sys.stderr)
         return 1
 
+    # Normalize the legacy DDD decision column/refs to DDR before migrating
+    # gherkin (issue #50 deprecation window). Independent of the gherkin
+    # round-trip; only rewrites the feature-delta.md when it actually changes.
+    _normalize_delta_columns(feature_dir)
+
     MigrationApplier().probe()
     return MigrationApplier().apply(feature_dir)
+
+
+def _normalize_delta_columns(feature_dir: str) -> None:
+    """Rewrite a legacy DDD feature-delta.md to the canonical DDR form.
+
+    No-op when the directory or feature-delta.md is absent, or when the file is
+    already in DDR form. Pure side-effect helper for migrate-feature.
+    """
+    from nwave_ai.feature_delta.domain.normalize import normalize_decision_refs
+
+    base = Path(feature_dir)
+    if not base.is_absolute():
+        base = Path.cwd() / base
+    delta_path = base / "feature-delta.md"
+    if not delta_path.is_file():
+        return
+
+    original = delta_path.read_text(encoding="utf-8")
+    normalized = normalize_decision_refs(original)
+    if normalized != original:
+        delta_path.write_text(normalized, encoding="utf-8")
+        print(f"normalized DDD→DDR decision column in {delta_path}", file=sys.stderr)
 
 
 _HELP_TEXT = """\

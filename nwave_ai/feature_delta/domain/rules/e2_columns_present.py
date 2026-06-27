@@ -1,8 +1,13 @@
 """E2: ColumnsPresent rule — commitments table header validation.
 
 Rule: every ``### [REF] Inherited commitments`` block MUST have a header row
-containing exactly the four columns: Origin | Commitment | DDD | Impact (in
-that order, case-insensitive).
+containing the four columns: Origin | Commitment | DDR | Impact (case-insensitive,
+any order).
+
+The decision column is canonically ``DDR`` ("Design Decision Record"). The legacy
+header ``DDD`` is still accepted for backward compatibility (issue #50 — the old
+name collided with Domain-Driven Design); a deprecation window keeps existing
+feature-delta.md files valid.
 
 Missing or reordered columns are reported as E2 violations with file:line
 and a remediation string.
@@ -15,8 +20,10 @@ import re
 from nwave_ai.feature_delta.domain.violations import ValidationViolation
 
 
-# The four required column names, in order.
-_REQUIRED_COLUMNS = ("Origin", "Commitment", "DDD", "Impact")
+# Always-required column names.
+_REQUIRED_COLUMNS = ("Origin", "Commitment", "Impact")
+# The decision column: DDR canonical, DDD accepted as a legacy alias (issue #50).
+_DECISION_COLUMN_ALIASES = ("DDR", "DDD")
 
 _COMMITMENTS_HEADING = re.compile(
     r"###\s+\[REF\]\s+Inherited commitments", re.IGNORECASE
@@ -67,6 +74,10 @@ def check(text: str, file_path: str) -> tuple[ValidationViolation, ...]:
                 missing = [
                     col for col in _REQUIRED_COLUMNS if col.upper() not in columns_upper
                 ]
+                if not any(
+                    alias.upper() in columns_upper for alias in _DECISION_COLUMN_ALIASES
+                ):
+                    missing.append(_DECISION_COLUMN_ALIASES[0])
                 if missing:
                     missing_str = ", ".join(f"'{m}'" for m in missing)
                     violations.append(
@@ -79,7 +90,7 @@ def check(text: str, file_path: str) -> tuple[ValidationViolation, ...]:
                             remediation=(
                                 f"Add missing column(s) {missing_str} to the "
                                 f"commitments table header. "
-                                f"Expected: | Origin | Commitment | DDD | Impact |"
+                                f"Expected: | Origin | Commitment | DDR | Impact |"
                             ),
                         )
                     )

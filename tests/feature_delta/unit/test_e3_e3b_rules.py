@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from nwave_ai.feature_delta.domain.model import (
     CommitmentRow,
-    DDDEntry,
+    DDREntry,
     FeatureDeltaModel,
     WaveSection,
 )
@@ -18,9 +18,9 @@ from nwave_ai.feature_delta.domain.rules import e3_non_empty_rows, e3b_cherry_pi
 
 
 def _row(
-    commitment: str, ddd: str = "n/a", impact: str = "some impact"
+    commitment: str, ddr: str = "n/a", impact: str = "some impact"
 ) -> CommitmentRow:
-    return CommitmentRow(origin="n/a", commitment=commitment, ddd=ddd, impact=impact)
+    return CommitmentRow(origin="n/a", commitment=commitment, ddr=ddr, impact=impact)
 
 
 def _model(*sections: WaveSection) -> FeatureDeltaModel:
@@ -40,7 +40,7 @@ def test_e3_flags_empty_commitment_cell():
             _row("real commitment"),
             _row(""),  # empty Commitment cell
         ),
-        ddd_entries=(),
+        ddr_entries=(),
     )
     model = _model(section)
 
@@ -56,7 +56,7 @@ def test_e3_passes_when_all_cells_filled():
     section = WaveSection(
         name="DESIGN",
         rows=(_row("real commitment"),),
-        ddd_entries=(),
+        ddr_entries=(),
     )
     model = _model(section)
 
@@ -79,7 +79,7 @@ def test_e3b_flags_cherry_pick_without_ddd():
             _row("commitment-2"),
             _row("commitment-3"),
         ),
-        ddd_entries=(),
+        ddr_entries=(),
     )
     design = WaveSection(
         name="DESIGN",
@@ -88,7 +88,7 @@ def test_e3b_flags_cherry_pick_without_ddd():
             _row("commitment-2"),
             # commitment-3 silently dropped
         ),
-        ddd_entries=(),  # no DDD authorization
+        ddr_entries=(),  # no DDR authorization
     )
     model = _model(discuss, design)
 
@@ -110,7 +110,7 @@ def test_e3b_passes_authorized_removal_with_ddd():
             _row("commitment-2"),
             _row("commitment-3"),
         ),
-        ddd_entries=(),
+        ddr_entries=(),
     )
     design = WaveSection(
         name="DESIGN",
@@ -119,8 +119,8 @@ def test_e3b_passes_authorized_removal_with_ddd():
             _row("commitment-2"),
             # commitment-3 dropped but DDD-1 authorizes it
         ),
-        ddd_entries=(
-            DDDEntry(number=1, text="drop CLI commitment because feature is API-only"),
+        ddr_entries=(
+            DDREntry(number=1, text="drop CLI commitment because feature is API-only"),
         ),
     )
     model = _model(discuss, design)

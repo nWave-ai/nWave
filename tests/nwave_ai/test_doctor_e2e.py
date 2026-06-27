@@ -115,14 +115,16 @@ def stage_healthy_install(base: Path) -> Path:
 
 
 def test_doctor_reports_healthy_install(tmp_path: Path) -> None:
-    """Healthy staged install: runner returns 8 results, all passed=True.
+    """Healthy staged install: runner returns 9 results, all passed=True.
 
     Given a complete fake ~/.claude with shims, settings.json, DES module,
     and framework directories,
     When doctor runs,
-    Then all 8 checks pass and there are no failures.
+    Then all 9 checks pass and there are no failures.
 
     Step 02-02 added DensityCheck (D6 + D12), bumping the count from 7 to 8.
+    The claude-code-attribution-migration feature added AttributionCheck (R7),
+    a read-only diagnostic that always passes, bumping the count from 8 to 9.
     A fresh tmp_path home has no `~/.nwave/global-config.json`, so density
     resolves to the lean default branch and the check passes.
     """
@@ -131,7 +133,7 @@ def test_doctor_reports_healthy_install(tmp_path: Path) -> None:
 
     results = run_doctor(context)
 
-    assert len(results) == 8, f"Expected 8 results, got {len(results)}"
+    assert len(results) == 9, f"Expected 9 results, got {len(results)}"
     failed = [r for r in results if not r.passed]
     assert not failed, "Expected all checks to pass, but these failed: " + ", ".join(
         f"{r.check_name}: {r.message}" for r in failed

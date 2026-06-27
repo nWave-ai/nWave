@@ -86,4 +86,4 @@ def test_e2_returns_violation_on_missing_ddd_column():
     assert len(violations) >= 1
     v = violations[0]
     assert v.rule == "E2"
-    assert "DDD" in v.offender or "DDD" in v.remediation
+    assert "DDR" in v.offender or "DDR" in v.remediation

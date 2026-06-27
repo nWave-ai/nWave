@@ -11,6 +11,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from scripts.shared.git_hooks_paths import resolve_hooks_dir
@@ -159,13 +160,14 @@ def _read_shim_template() -> str:
         "#!/bin/sh\n"
         "# nWave attribution hook -- chains with existing hook\n"
         'HOOK_DIR="$(dirname "$0")"\n'
-        'if [ -f "$HOOK_DIR/prepare-commit-msg.nwave-original" ]; then\n'
+        'if [ -x "$HOOK_DIR/prepare-commit-msg.nwave-original" ]; then\n'
         '    "$HOOK_DIR/prepare-commit-msg.nwave-original" "$@" || exit $?\n'
         "fi\n"
         'if ! command -v "{{PYTHON_CMD}}" >/dev/null 2>&1; then\n'
         '    echo "nWave attribution: python3 not found, skipping" >&2\n'
         "    exit 0\n"
         "fi\n"
+        '[ -f "{{HOOK_SCRIPT_PATH}}" ] || exit 0\n'
         '"{{PYTHON_CMD}}" "{{HOOK_SCRIPT_PATH}}" "$@"\n'
     )
 
@@ -306,3 +308,551 @@ def remove_attribution_hook(config_dir: Path | None = None) -> None:
             original_path.rename(shim_path)
         except OSError:
             pass
+
+
+# ---------------------------------------------------------------------------
+# settings.json attribution surface (ADR-CA-004/005).
+#
+# Drives commit attribution through Claude Code's first-party
+# ~/.claude/settings.json `attribution.{commit,pr}` surface, replacing the
+# retired prepare-commit-msg git hook. The locked managed payload below is
+# written verbatim and also serves as the idempotency baseline (H2).
+# ---------------------------------------------------------------------------
+
+NWAVE_MANAGED_COMMIT = (
+    "🤖 Generated with Claude Code\n\n"
+    "Co-Authored-By: Claude <noreply@anthropic.com>\n"
+    "Co-Authored-By: nWave <nwave@nwave.ai>"
+)
+NWAVE_MANAGED_PR = (
+    "🤖 Generated with [Claude Code](https://claude.ai/code) — "
+    "[nWave](https://github.com/nwaveai)"
+)
+
+# Classification of the current settings.json attribution.commit relative to
+# the recorded baseline (H2).
+ATTRIBUTION_FRESH = "fresh"  # no attribution.commit recorded
+ATTRIBUTION_NWAVE_MANAGED = (
+    "nwave_managed"  # matches last_written_value (safe to rewrite)
+)
+ATTRIBUTION_USER_MANAGED = "user_managed"  # the developer authored it (never stomp)
+ATTRIBUTION_UNAVAILABLE = "unavailable"  # ~/.claude absent or settings.json corrupt
+
+_SETTINGS_FILENAME = "settings.json"
+
+
+def _default_claude_dir(claude_dir: Path | None) -> Path:
+    """Resolve the Claude config directory (sandbox-aware via Path.home())."""
+    return claude_dir if claude_dir is not None else Path.home() / ".claude"
+
+
+def _default_config_dir(config_dir: Path | None) -> Path:
+    """Resolve the nWave bookkeeping directory (sandbox-aware via Path.home())."""
+    return config_dir if config_dir is not None else Path.home() / ".nwave"
+
+
+def read_claude_settings(claude_dir: Path | None = None) -> dict | None:
+    """Read ~/.claude/settings.json.
+
+    Returns the parsed settings dict, an empty dict when ~/.claude/ exists but
+    settings.json does not, or None when ~/.claude/ is absent (Q5: Claude Code
+    not installed → caller warn+skips). Raises ValueError when settings.json
+    exists but is not valid JSON, so the caller can warn+skip without stomping
+    a corrupt file.
+    """
+    claude_dir = _default_claude_dir(claude_dir)
+    if not claude_dir.exists():
+        return None
+    settings_path = claude_dir / _SETTINGS_FILENAME
+    if not settings_path.exists():
+        return {}
+    try:
+        return json.loads(settings_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError(f"settings.json is not valid JSON: {exc}") from exc
+
+
+def _write_settings_atomic(claude_dir: Path, settings: dict) -> None:
+    """Atomically write settings.json (temp file + os.replace), 2-space indent,
+    insertion order preserved, trailing newline (Q6/Q8)."""
+    claude_dir.mkdir(parents=True, exist_ok=True)
+    settings_path = claude_dir / _SETTINGS_FILENAME
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(claude_dir), prefix=".settings-", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        Path(tmp_name).replace(settings_path)
+    except BaseException:
+        try:
+            Path(tmp_name).unlink()
+        except OSError:
+            pass
+        raise
+
+
+def classify_attribution_value(
+    config_dir: Path | None = None,
+    claude_dir: Path | None = None,
+) -> str:
+    """Classify the current attribution.commit relative to the recorded
+    last_written_value (H2): "fresh" | "nwave_managed" | "user_managed" |
+    "unavailable" (~/.claude absent or settings.json corrupt).
+
+    A value matching the managed payload is treated as nWave-managed even when
+    no baseline was recorded, so a re-install over a prior nWave write is
+    idempotent.
+    """
+    try:
+        settings = read_claude_settings(claude_dir)
+    except ValueError:
+        return ATTRIBUTION_UNAVAILABLE
+    if settings is None:
+        return ATTRIBUTION_UNAVAILABLE
+    current = (settings.get("attribution") or {}).get("commit")
+    if current is None:
+        return ATTRIBUTION_FRESH
+
+    gconf = read_global_config(_default_config_dir(config_dir))
+    last_written = (gconf.get("attribution") or {}).get("last_written_value")
+    if current in (last_written, NWAVE_MANAGED_COMMIT):
+        return ATTRIBUTION_NWAVE_MANAGED
+    return ATTRIBUTION_USER_MANAGED
+
+
+def write_settings_attribution(
+    config_dir: Path | None = None,
+    claude_dir: Path | None = None,
+) -> bool:
+    """Write the managed attribution.{commit,pr} block into settings.json.
+
+    Idempotency/collision (H2/D4):
+      - fresh / already-nWave-managed → write the managed payload (idempotent).
+      - user-managed → leave the developer's value untouched; record it as
+        previous_user_value for later restoration.
+
+    Preserves all other settings.json keys (Q6 insertion order). Atomic write
+    (Q8). Returns False (warn+skip) when ~/.claude/ is absent (Q5) or
+    settings.json is corrupt — never stomps in those cases.
+    """
+    config_dir = _default_config_dir(config_dir)
+    try:
+        settings = read_claude_settings(claude_dir)
+    except ValueError:
+        return False
+    if settings is None:
+        return False
+
+    classification = classify_attribution_value(config_dir, claude_dir)
+    if classification == ATTRIBUTION_USER_MANAGED:
+        user_value = (settings.get("attribution") or {}).get("commit")
+        config = read_global_config(config_dir)
+        attribution = config.setdefault("attribution", {})
+        attribution["previous_user_value"] = user_value
+        write_global_config(config_dir, config)
+        return False
+
+    attribution = settings.setdefault("attribution", {})
+    attribution["commit"] = NWAVE_MANAGED_COMMIT
+    attribution["pr"] = NWAVE_MANAGED_PR
+    _write_settings_atomic(_default_claude_dir(claude_dir), settings)
+
+    config = read_global_config(config_dir)
+    book = config.setdefault("attribution", {})
+    book["enabled"] = True
+    book["last_written_value"] = NWAVE_MANAGED_COMMIT
+    write_global_config(config_dir, config)
+    return True
+
+
+def remove_settings_attribution(
+    config_dir: Path | None = None,
+    claude_dir: Path | None = None,
+) -> None:
+    """Remove the managed attribution key from settings.json only when it still
+    matches what nWave wrote; preserve a user-modified value untouched (H4).
+
+    Leaves all neighbouring settings.json keys intact. No-op when ~/.claude/ is
+    absent or the value is user-managed.
+    """
+    config_dir = _default_config_dir(config_dir)
+    try:
+        settings = read_claude_settings(claude_dir)
+    except ValueError:
+        return
+    if settings is None:
+        return
+
+    classification = classify_attribution_value(config_dir, claude_dir)
+    if classification != ATTRIBUTION_NWAVE_MANAGED:
+        return
+
+    attribution = settings.get("attribution")
+    if isinstance(attribution, dict):
+        attribution.pop("commit", None)
+        attribution.pop("pr", None)
+        if not attribution:
+            settings.pop("attribution", None)
+    _write_settings_atomic(_default_claude_dir(claude_dir), settings)
+
+    config = read_global_config(config_dir)
+    book = config.get("attribution")
+    if isinstance(book, dict):
+        book.pop("last_written_value", None)
+        write_global_config(config_dir, config)
+
+
+# ---------------------------------------------------------------------------
+# Legacy settings.json attribution cleanup on upgrade (DDD-3).
+#
+# DDD-3 mandates a BEHAVIORAL contract (on upgrade, a nWave-written
+# settings.json attribution.{commit,pr} block is removed while a user-modified
+# value is preserved). This is the one-shot upgrade cleanup, parallel to
+# migrate_legacy_hook (which retires the prepare-commit-msg shim). It REUSES the
+# retained migration primitives classify_attribution_value (to decide whether the
+# block is nWave-written) and remove_settings_attribution (the removal primitive,
+# which itself classifies and only removes a nWave-managed value). The AB-4/AB-5
+# behaviour is asserted through the real AttributionPlugin.install driving port.
+# ---------------------------------------------------------------------------
+
+
+def migrate_legacy_settings_attribution(
+    config_dir: Path | None = None,
+    claude_dir: Path | None = None,
+) -> bool:
+    """One-shot legacy settings.json attribution cleanup on upgrade (DDD-3).
+
+    Contract: remove a previously nWave-written ``attribution.{commit,pr}`` block
+    (classifier baseline = nWave-managed), preserve a user-modified value
+    untouched, fail-open on absent/corrupt settings.json (warn+skip, never
+    raise). Returns True only when a legacy nWave-managed block was cleaned.
+
+    Reuses ``classify_attribution_value`` to recognise the nWave-managed baseline
+    and ``remove_settings_attribution`` verbatim as the removal primitive (which
+    is itself a no-op on absent/corrupt/user-managed settings, so fail-open and
+    preserve-user are inherited rather than re-implemented).
+    """
+    classification = classify_attribution_value(config_dir, claude_dir)
+    if classification != ATTRIBUTION_NWAVE_MANAGED:
+        return False
+    remove_settings_attribution(config_dir, claude_dir)
+    return True
+
+
+def _git_path(*args: str) -> Path | None:
+    """Run a fail-open ``git rev-parse`` probe, returning a Path or None.
+
+    Any subprocess failure (git absent, not a repo, timeout) yields None so the
+    caller can skip that candidate -- migration must never raise.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", *args],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    return Path(result.stdout.strip())
+
+
+def _effective_hookspath() -> Path | None:
+    """Effective (unscoped: local > global) ``core.hooksPath``, expanded.
+
+    Fail-open: returns None when unset or git is unavailable.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "config", "core.hooksPath"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    raw = result.stdout.strip()
+    return Path(os.path.expandvars(str(Path(raw).expanduser())))
+
+
+def _candidate_hooks_dirs(recorded: str | None, git_dir: Path | None) -> list[Path]:
+    """Enumerate EVERY hooks dir git could resolve the shim into (root cause B).
+
+    The shim must be removed wherever git would actually look for it, not just
+    the bounded set (recorded config + ``_resolve_hooks_dir``) the pre-fix code
+    scanned. A worktree, a local ``core.hooksPath``, a stale recorded value, or
+    a shim installed via the historical ``--show-toplevel`` resolution all place
+    the shim outside that bounded set, leaving it orphaned when its runtime
+    target is deleted. Each git probe is fail-open; the result is de-duplicated
+    by resolved absolute path while preserving discovery order.
+    """
+    candidates: list[Path | None] = []
+    if recorded:
+        candidates.append(Path(recorded))
+    if git_dir is not None:
+        candidates.append(git_dir / "hooks")
+    else:
+        try:
+            candidates.append(_resolve_hooks_dir())
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+            pass
+        # Worktree-local hooks dir.
+        candidates.append(_git_path("--git-path", "hooks"))
+        # Toplevel .git/hooks -- the historical --show-toplevel target.
+        toplevel = _git_path("--show-toplevel")
+        if toplevel is not None:
+            candidates.append(toplevel / ".git" / "hooks")
+        # Effective core.hooksPath (local > global).
+        candidates.append(_effective_hookspath())
+
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        try:
+            key = candidate.resolve()
+        except OSError:
+            key = candidate
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(candidate)
+    return unique
+
+
+def migrate_legacy_hook(
+    config_dir: Path | None = None,
+    claude_dir: Path | None = None,
+    git_dir: Path | None = None,
+) -> bool:
+    """One-shot legacy-hook migration (H5/D6).
+
+    Detects and dismantles the retired prepare-commit-msg shim: removes the
+    shim, restores any chained .nwave-original, deletes the runtime copy in
+    ~/.nwave/hooks/, and defensively unsets a historical global core.hooksPath
+    that resolves to ~/.nwave/hooks/ (and only that value). Returns True when a
+    legacy hook was found and dismantled.
+    """
+    config_dir = _default_config_dir(config_dir)
+    migrated = False
+
+    # 1. Remove the shim from EVERY candidate hooks dir git could resolve.
+    config = read_global_config(config_dir)
+    recorded = (config.get("attribution") or {}).get("hooks_dir")
+    shim_dirs = _candidate_hooks_dirs(recorded, git_dir)
+
+    for hooks_dir in shim_dirs:
+        shim_path = hooks_dir / _HOOK_SHIM_NAME
+        original_path = hooks_dir / f"{_HOOK_SHIM_NAME}{_HOOK_ORIGINAL_SUFFIX}"
+        if shim_path.exists():
+            try:
+                content = shim_path.read_text(encoding="utf-8")
+                if "nwave_attribution_hook" in content:
+                    shim_path.unlink()
+                    migrated = True
+            except OSError:
+                pass
+        if original_path.exists():
+            try:
+                original_path.rename(shim_path)
+            except OSError:
+                pass
+
+    # 2. Delete the runtime copy in ~/.nwave/hooks/.
+    runtime = config_dir / "hooks" / _HOOK_SCRIPT_NAME
+    if runtime.exists():
+        try:
+            runtime.unlink()
+            migrated = True
+        except OSError:
+            pass
+
+    # 3. Defensively unset a historical core.hooksPath == ~/.nwave/hooks/ (D6).
+    _reverse_historical_hookspath(config_dir)
+
+    return migrated
+
+
+def _reverse_historical_hookspath(config_dir: Path) -> None:
+    """Unset global core.hooksPath only when it resolves to config_dir/hooks/.
+
+    Leaves any other value (Husky, corporate, user-chosen) untouched (D6).
+    """
+    nwave_hooks = (config_dir / "hooks").resolve()
+    try:
+        result = subprocess.run(
+            ["git", "config", "--global", "core.hooksPath"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return
+    if result.returncode != 0 or not result.stdout.strip():
+        return
+    configured = result.stdout.strip()
+    resolved = Path(os.path.expandvars(str(Path(configured).expanduser()))).resolve()
+    if resolved != nwave_hooks:
+        return
+    try:
+        subprocess.run(
+            ["git", "config", "--global", "--unset", "core.hooksPath"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+
+
+# ---------------------------------------------------------------------------
+# PreToolUse commit-attribution hook registration (ADR-CA-006 D6/D7/O-4).
+#
+# The net-new E7 surface: install (and `nwave-ai attribution on|off`) register/
+# remove a `Bash`/`pre-commit-attribution` PreToolUse entry in
+# ~/.claude/settings.json, gated by `attribution.enabled`, COEXISTING with the
+# existing DES `pre-bash` execution-log guard (append, never replace). The entry
+# routes to the (E6-extended) `claude_code_hook_adapter pre-tool-use` adapter,
+# whose `handle_pre_tool_use` calls `emit_commit_attribution_mutation` on Bash
+# `git commit` commands. Mirrors the DES hook-registration pattern in
+# des_plugin.py: $HOME-based command for cross-machine portability, a unique
+# marker comment, atomic write, append-never-replace, idempotent.
+# ---------------------------------------------------------------------------
+
+# The action token tagging the commit-attribution PreToolUse entry, so it is
+# recognizable and removable independently of the `pre-bash` guard.
+ATTRIBUTION_HOOK_ACTION = "pre-commit-attribution"
+
+# Unique marker comment prefixing the registered command. Mirrors the DES
+# `# des-hook:pre-bash` convention so the entry is identifiable and removable
+# without touching the DES guards or any operator-authored hook.
+_ATTRIBUTION_HOOK_MARKER = f"# des-hook:{ATTRIBUTION_HOOK_ACTION}"
+
+# PreToolUse adapter action that routes to handle_pre_tool_use ->
+# emit_commit_attribution_mutation (hook_router maps "pre-tool-use").
+_ATTRIBUTION_ADAPTER_ACTION = "pre-tool-use"
+
+
+def _attribution_hook_command(claude_dir: Path) -> str:
+    """Build the $HOME-portable PreToolUse command for the attribution entry.
+
+    Mirrors DESPlugin._generate_hook_command: PYTHONPATH points at the installed
+    lib, the interpreter is resolved portably ($HOME form for the default
+    ~/.claude, absolute otherwise), and the adapter is invoked with the
+    `pre-tool-use` action so handle_pre_tool_use -> emit_commit_attribution_mutation
+    runs on Bash git-commit commands. The marker comment makes the entry
+    identifiable and independently removable.
+    """
+    if claude_dir == Path.home() / ".claude":
+        lib_path = "$HOME/.claude/lib/python"
+    else:
+        lib_path = str(claude_dir / "lib" / "python")
+    python_cmd = _resolve_python_path()
+    return (
+        f"{_ATTRIBUTION_HOOK_MARKER}\n"
+        f"PYTHONPATH={lib_path} {python_cmd} -m "
+        f"des.adapters.drivers.hooks.claude_code_hook_adapter "
+        f"{_ATTRIBUTION_ADAPTER_ACTION}"
+    )
+
+
+def _is_attribution_hook_entry(entry: dict) -> bool:
+    """Whether a hooks.PreToolUse entry is the commit-attribution entry."""
+    if not isinstance(entry, dict):
+        return False
+    return any(
+        _ATTRIBUTION_HOOK_MARKER in hook.get("command", "")
+        for hook in entry.get("hooks", [])
+        if isinstance(hook, dict)
+    )
+
+
+def register_attribution_hook(
+    enabled: bool,
+    claude_dir: Path | None = None,
+) -> bool:
+    """Register the Bash commit-attribution PreToolUse hook when enabled.
+
+    When ``enabled`` is True, append a ``Bash``-matcher PreToolUse entry routing
+    to the ``pre-tool-use`` adapter (tagged ``pre-commit-attribution``) into
+    ``~/.claude/settings.json hooks.PreToolUse``, preserving every existing entry
+    (the DES ``pre-bash`` guard and any operator-authored hook) and never
+    duplicating on re-run. When ``enabled`` is False, ensure no such entry is
+    present. Warn+skip (return False) when ``~/.claude`` is absent or
+    ``settings.json`` is corrupt — never stomp.
+
+    Returns True when an entry is registered, False otherwise (gate closed,
+    config absent/corrupt).
+    """
+    if not enabled:
+        unregister_attribution_hook(claude_dir)
+        return False
+
+    claude_dir = _default_claude_dir(claude_dir)
+    try:
+        settings = read_claude_settings(claude_dir)
+    except ValueError:
+        # Corrupt settings.json — warn+skip, never stomp.
+        return False
+    if settings is None:
+        # ~/.claude absent (Claude Code not installed) — warn+skip.
+        return False
+
+    hooks = settings.setdefault("hooks", {})
+    pre_tool_use = hooks.setdefault("PreToolUse", [])
+
+    # Idempotent: never duplicate on re-register.
+    if any(_is_attribution_hook_entry(entry) for entry in pre_tool_use):
+        return True
+
+    pre_tool_use.append(
+        {
+            "matcher": "Bash",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": _attribution_hook_command(claude_dir),
+                }
+            ],
+        }
+    )
+    _write_settings_atomic(claude_dir, settings)
+    return True
+
+
+def unregister_attribution_hook(claude_dir: Path | None = None) -> None:
+    """Remove ONLY the commit-attribution PreToolUse entry from settings.json.
+
+    Leaves the DES ``pre-bash`` guard and every other PreToolUse entry intact
+    (remove the attribution entry, never the guards). No-op when ``~/.claude`` is
+    absent or the entry is not present.
+    """
+    claude_dir = _default_claude_dir(claude_dir)
+    try:
+        settings = read_claude_settings(claude_dir)
+    except ValueError:
+        # Corrupt settings.json — leave untouched.
+        return
+    if settings is None:
+        return
+
+    pre_tool_use = settings.get("hooks", {}).get("PreToolUse")
+    if not isinstance(pre_tool_use, list):
+        return
+
+    remaining = [
+        entry for entry in pre_tool_use if not _is_attribution_hook_entry(entry)
+    ]
+    if len(remaining) == len(pre_tool_use):
+        # Nothing to remove — idempotent no-op (skip the write entirely).
+        return
+
+    settings["hooks"]["PreToolUse"] = remaining
+    _write_settings_atomic(claude_dir, settings)

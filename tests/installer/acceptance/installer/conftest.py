@@ -95,22 +95,22 @@ def installer_result(project_root, tmp_path_factory):
         )
         subprocess.run = lambda *a, **kw: mock_completed
 
-        # --- Patch AttributionPlugin hook lifecycle to prevent real FS writes ---
-        # AttributionPlugin() defaults self._config_dir to Path.home() / ".nwave",
-        # and install_attribution_hook's _resolve_hooks_dir falls through to a
-        # cwd-relative .git/hooks/ when subprocess returns empty stdout (as the
-        # mock above does). Without patching, the installer writes to the real
-        # ~/.nwave/ and .git/hooks/ of whichever repo the tests run from.
+        # --- Patch AttributionPlugin lifecycle (ADR-CA-007) ---
+        # AttributionPlugin() defaults self._config_dir to Path.home() / ".nwave".
+        # Post ADR-CA-007 install no longer writes the retired settings credit;
+        # it registers the PreToolUse hook via register_attribution_hook (targets
+        # Path.home() / ".claude") and records the preference. Without
+        # neutralizing them the full-installer TUI test would mutate the real
+        # ~/.nwave/ and ~/.claude/ of whichever machine the tests run from.
+        # migrate_legacy_hook probes git config / .git/hooks; stub it too.
         import scripts.install.attribution_utils as _attr_utils
         import scripts.install.plugins.attribution_plugin as _attr_plugin
 
-        original_install_hook_utils = _attr_utils.install_attribution_hook
-        original_install_hook_plugin = _attr_plugin.install_attribution_hook
+        original_register_hook = _attr_plugin.register_attribution_hook
+        original_migrate = _attr_plugin.migrate_legacy_hook
         original_write_pref = _attr_utils.write_attribution_preference
-        _attr_plugin.install_attribution_hook = lambda config_dir=None: (
-            claude_config_dir / ".nwave" / "hooks" / "prepare-commit-msg"
-        )
-        _attr_utils.install_attribution_hook = _attr_plugin.install_attribution_hook
+        _attr_plugin.register_attribution_hook = lambda *a, **kw: True
+        _attr_plugin.migrate_legacy_hook = lambda *a, **kw: False
         _attr_utils.write_attribution_preference = lambda *a, **kw: None
 
         # --- Set argv ---
@@ -139,8 +139,8 @@ def installer_result(project_root, tmp_path_factory):
         PathUtils.get_opencode_config_dir = original_get_opencode
         PreflightChecker.run_all_checks = original_run_checks
         subprocess.run = original_subprocess_run
-        _attr_utils.install_attribution_hook = original_install_hook_utils
-        _attr_plugin.install_attribution_hook = original_install_hook_plugin
+        _attr_plugin.register_attribution_hook = original_register_hook
+        _attr_plugin.migrate_legacy_hook = original_migrate
         _attr_utils.write_attribution_preference = original_write_pref
         sys.argv = original_argv
         if original_opencode_env is None:

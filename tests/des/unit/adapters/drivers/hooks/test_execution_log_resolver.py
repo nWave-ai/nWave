@@ -169,6 +169,71 @@ class TestResolveExecutionLogPath:
         assert result == expected
 
 
+class TestResolveExecutionLogPathOverrideBase:
+    """p2 regression: resolver must DISCOVER the docs base, not hardcode it.
+
+    The bug (RCA p2): the resolver only ever searched the single ``base`` the
+    caller passed (always ``docs/feature``). Override projects namespace their
+    artifacts under ``docs/nwave/feature/{id}/{wave}/`` (the standard nWave
+    Project Conventions override), so the hook never found their log.
+
+    These tests drive resolution through ``cwd`` (the only signal the
+    autonomous hook has) so the resolver must SEARCH candidate bases. Litmus:
+    if the resolver only resolved the hardcoded ``docs/feature`` base, every
+    test here FAILS.
+
+    Test Budget: 3 behaviors x 2 = 6 max. Using 3 focused tests.
+    """
+
+    def test_discovers_log_under_override_base_from_cwd(self, tmp_path):
+        """Behavior 7: log lives under docs/nwave/feature → discovered from cwd.
+
+        With nothing under the default docs/feature base, the resolver must
+        still find the override-base log when given only the project root.
+        """
+        project_id = "welcome-call-webhook-cleanup"
+        override_dir = tmp_path / "docs" / "nwave" / "feature" / project_id / "bugfix"
+        override_dir.mkdir(parents=True)
+        log = override_dir / "execution-log.json"
+        log.write_text("{}")
+
+        result = resolve_execution_log_path(project_id, cwd=tmp_path)
+
+        assert result == log
+
+    def test_prefers_non_default_base_when_both_bases_have_logs(self, tmp_path):
+        """Behavior 8: dual-write workaround present → prefer non-default base.
+
+        §10 dual-write materializes a stale mirror under docs/feature. The
+        precedence rule chooses docs/nwave/feature over docs/feature instead of
+        raising ambiguity.
+        """
+        project_id = "dual-written-feature"
+        default_dir = tmp_path / "docs" / "feature" / project_id / "deliver"
+        default_dir.mkdir(parents=True)
+        (default_dir / "execution-log.json").write_text("{}")
+        override_dir = tmp_path / "docs" / "nwave" / "feature" / project_id / "deliver"
+        override_dir.mkdir(parents=True)
+        override_log = override_dir / "execution-log.json"
+        override_log.write_text("{}")
+
+        result = resolve_execution_log_path(project_id, cwd=tmp_path)
+
+        assert result == override_log
+
+    def test_default_base_still_resolves_from_cwd(self, tmp_path):
+        """Behavior 9: common case (default base only) is unchanged."""
+        project_id = "plain-feature"
+        deliver_dir = tmp_path / "docs" / "feature" / project_id / "deliver"
+        deliver_dir.mkdir(parents=True)
+        log = deliver_dir / "execution-log.json"
+        log.write_text("{}")
+
+        result = resolve_execution_log_path(project_id, cwd=tmp_path)
+
+        assert result == log
+
+
 # ---------------------------------------------------------------------------
 # Hook-level integration tests: subagent_stop with wave-specific log paths
 # ---------------------------------------------------------------------------
@@ -225,6 +290,43 @@ class TestSubagentStopWithWaveAgnosticLogs:
         bugfix_dir = tmp_path / "docs" / "feature" / project_id / "bugfix"
         bugfix_dir.mkdir(parents=True)
         (bugfix_dir / "execution-log.json").write_text(_complete_exec_log(project_id))
+
+        _setup_git_repo(tmp_path, feature_id=project_id)
+
+        hook_input = _make_hook_input(transcript, str(tmp_path))
+        monkeypatch.setattr("sys.stdin", __import__("io").StringIO(hook_input))
+        captured = []
+        monkeypatch.setattr("builtins.print", captured.append)
+
+        exit_code = handle_subagent_stop()
+
+        assert exit_code == 0
+        assert len(captured) == 0, (
+            f"Allow path should produce no stdout. Got: {captured}"
+        )
+
+    def test_subagent_stop_succeeds_for_override_base_project(
+        self, tmp_path, monkeypatch
+    ):
+        """p2 regression: log under docs/nwave/feature → stop hook allows.
+
+        Reproduces the override-namespaced project the hook previously failed.
+        The hook reconstructs the path from cwd; with only docs/nwave/feature
+        populated it must still resolve and allow the stop.
+        """
+        project_id = "welcome-call-webhook-cleanup"
+        prompt = (
+            "<!-- DES-VALIDATION : required -->\n"
+            f"<!-- DES-PROJECT-ID : {project_id} -->\n"
+            "<!-- DES-STEP-ID : 01-01 -->\n"
+            "Execute step"
+        )
+        transcript = _make_transcript(tmp_path, prompt)
+
+        # Log lives under the OVERRIDE base, not docs/feature
+        override_dir = tmp_path / "docs" / "nwave" / "feature" / project_id / "bugfix"
+        override_dir.mkdir(parents=True)
+        (override_dir / "execution-log.json").write_text(_complete_exec_log(project_id))
 
         _setup_git_repo(tmp_path, feature_id=project_id)
 

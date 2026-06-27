@@ -1,4 +1,4 @@
-"""E3b: CherryPickCheck rule — downstream row count >= upstream OR DDD-authorized."""
+"""E3b: CherryPickCheck rule — downstream row count >= upstream OR DDR-authorized."""
 
 from __future__ import annotations
 
@@ -24,14 +24,14 @@ def _wave_index(name: str) -> int:
 
 def check(model: FeatureDeltaModel) -> tuple[ValidationViolation, ...]:
     """Check E3b: for each consecutive wave pair (DISCUSS→DESIGN only for v1.0),
-    downstream must not drop rows without DDD ratification.
+    downstream must not drop rows without DDR ratification.
 
     A "cherry-pick" occurs when:
       - upstream wave has N commitment rows
       - downstream wave has M < N commitment rows
-      - the downstream wave has no DDD entries authorizing removals
+      - the downstream wave has no DDR entries authorizing removals
 
-    When downstream has DDD entries (any), the removals are considered authorized.
+    When downstream has DDR entries (any), the removals are considered authorized.
 
     Returns a tuple of ValidationViolation objects (empty = clean).
     """
@@ -60,11 +60,11 @@ def check(model: FeatureDeltaModel) -> tuple[ValidationViolation, ...]:
             continue
 
         # Downstream has fewer rows.
-        # If there are DDD entries in the downstream section, removals are authorized.
-        if downstream.ddd_entries:
+        # If there are DDR entries in the downstream section, removals are authorized.
+        if downstream.ddr_entries:
             continue
 
-        # No DDD entries — each missing row is a violation.
+        # No DDR entries — each missing row is a violation.
         # Identify which upstream commitments are absent from downstream.
         downstream_commitments = {r.commitment.strip() for r in downstream.rows}
         for row in upstream.rows:
@@ -79,7 +79,7 @@ def check(model: FeatureDeltaModel) -> tuple[ValidationViolation, ...]:
                         file=model.feature_id,
                         line=1,
                         offender=commitment,
-                        remediation="Add DDD entry OR restore row",
+                        remediation="Add DDR entry OR restore row",
                     )
                 )
 

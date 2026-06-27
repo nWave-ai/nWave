@@ -4,7 +4,8 @@ ValidationErrorDetector: Domain service for detecting validation errors in step 
 Detects validation failures for missing mandatory sections and TDD phases,
 generating specific recovery guidance explaining WHY and HOW to fix each error.
 
-Uses canonical TDD cycle from step-tdd-cycle-schema.json v4.0 (single source of truth).
+Uses the ADR-025 TDD canon from the schema with per-step dispatch: the legacy
+5-phase sequence for legacy step files, the canonical 3-phase sequence otherwise.
 
 Implements AC-005.1 and AC-005.4:
 - AC-005.1: Identifies missing required step file fields and invalid phase sequences
@@ -50,6 +51,13 @@ class ValidationErrorDetector:
         "required_acceptance_test",
         "tdd_cycle",
     ]
+
+    # The complete legacy-only (v4) phase set. A step recording all three is a
+    # legacy log and is validated against the legacy sequence (ADR-025 per-log
+    # dispatch); anything else uses the canonical 3-phase order (issue #65).
+    _LEGACY_ONLY_PHASES: frozenset[str] = frozenset(
+        {"PREPARE", "RED_ACCEPTANCE", "RED_UNIT"}
+    )
 
     def __init__(self, schema: TDDSchema | None = None):
         """Initialize detector with TDD schema.
@@ -117,8 +125,19 @@ class ValidationErrorDetector:
         return []
 
     def _get_valid_phase_sequence(self, phase_names: list[str]) -> tuple[str, ...]:
-        """Return canonical TDD cycle from schema."""
-        return self.VALID_PHASE_SEQUENCE
+        """Return the valid phase sequence for the step's canon.
+
+        ADR-025 per-log dispatch: auto-detect from the recorded phases — the
+        legacy 5-phase sequence only when the complete legacy-only set
+        {PREPARE, RED_ACCEPTANCE, RED_UNIT} is present (so legacy step files
+        validate against their own order for audit replay), otherwise the
+        canonical 3-phase sequence. Mirrors
+        ExecutionLogValidator._resolve_active_phases (issue #65).
+        """
+        recorded = {name for name in phase_names if name}
+        if self._LEGACY_ONLY_PHASES.issubset(recorded):
+            return self._schema.legacy_phases
+        return self._schema.tdd_phases
 
     def _check_phase_ordering(
         self, phase_names: list[str], valid_sequence: list[str]

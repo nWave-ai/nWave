@@ -16,6 +16,10 @@ from pathlib import Path
 
 
 try:
+    from scripts.install.attribution_utils import (
+        NWAVE_MANAGED_COMMIT,
+        remove_settings_attribution,
+    )
     from scripts.install.install_des_hooks import DESHookInstaller
     from scripts.install.install_nwave import print_logo
     from scripts.install.install_utils import (
@@ -26,6 +30,10 @@ try:
         confirm_action,
     )
 except ImportError:
+    from attribution_utils import (
+        NWAVE_MANAGED_COMMIT,
+        remove_settings_attribution,
+    )
     from install_des_hooks import DESHookInstaller
     from install_nwave import print_logo
     from install_utils import (
@@ -417,6 +425,32 @@ class NWaveUninstaller:
             else:
                 self.logger.warn("  ⚠️ DES hooks not found (may not be installed)")
 
+    def remove_attribution(self) -> None:
+        """Remove the nWave-managed attribution payload from settings.json.
+
+        Mirrors remove_des_hooks: dry-run guard + fail-safe try/except so an
+        attribution-removal failure NEVER aborts the uninstall. Delegates to the
+        already-hardened remove_settings_attribution, which removes the payload
+        only when it still matches what nWave wrote (a user-modified value is
+        preserved) and leaves neighbouring settings.json keys intact and ordered.
+
+        claude_dir is passed EXPLICITLY so CLAUDE_CONFIG_DIR / non-standard
+        installs are honoured; omitting it would default to ~/.claude and
+        reintroduce the residue bug under isolation.
+        """
+        if self.dry_run:
+            self.logger.info(
+                "  🚨 [DRY RUN] Would remove nWave attribution from settings.json"
+            )
+            return
+
+        with self.logger.progress_spinner("  🚧 Removing nWave attribution..."):
+            try:
+                remove_settings_attribution(claude_dir=self.claude_config_dir)
+                self.logger.info("  🗑️ Removed nWave attribution from settings.json")
+            except Exception as exc:  # fail-safe: never abort the uninstall
+                self.logger.warn(f"  ⚠️ Attribution removal skipped: {exc}")
+
     def validate_removal(self) -> bool:
         """Validate complete removal."""
         if self.dry_run:
@@ -430,8 +464,9 @@ class NWaveUninstaller:
         manifest_file = self.claude_config_dir / "nwave-manifest.txt"
         install_log = self.claude_config_dir / "nwave-install.log"
 
-        # Check DES hooks removed
+        # Check DES hooks + managed attribution removed
         des_hooks_removed = True
+        attribution_removed = True
         settings_file = self.claude_config_dir / "settings.json"
         if settings_file.exists():
             try:
@@ -444,6 +479,12 @@ class NWaveUninstaller:
                             in hooks_str
                         ):
                             des_hooks_removed = False
+                    # Fail only on the MANAGED value; a user-modified credit must
+                    # NOT fail validation (compare to the constant, not presence).
+                    if (config.get("attribution") or {}).get(
+                        "commit"
+                    ) == NWAVE_MANAGED_COMMIT:
+                        attribution_removed = False
             except (OSError, json.JSONDecodeError):
                 pass
 
@@ -451,6 +492,7 @@ class NWaveUninstaller:
             ("Agents", not agents_nw_dir.exists()),
             ("Commands", not commands_nw_dir.exists()),
             ("DES Hooks", des_hooks_removed),
+            ("Attribution", attribution_removed),
             ("Manifest", not manifest_file.exists()),
             ("Install Log", not install_log.exists()),
         ]
@@ -614,6 +656,7 @@ def main():
     uninstaller.remove_commands()
     uninstaller.remove_lib_python()
     uninstaller.remove_des_hooks()
+    uninstaller.remove_attribution()
     uninstaller.remove_config_files()
     uninstaller.remove_backups()
 

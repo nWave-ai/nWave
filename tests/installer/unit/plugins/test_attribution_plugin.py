@@ -1,43 +1,25 @@
 """Unit tests for AttributionPlugin.
 
-Tests validate install-time consent flow through the driving port
+Tests validate install-time setup through the driving port
 (AttributionPlugin.install/verify) and assert at driven port boundaries
-(global-config.json file system).
+(global-config.json + settings.json).
 
-Test Budget: 6 behaviors x 2 = 12 max. Using 6 tests (1 per behavior).
+Post-migration (ADR-CA-004): install drives ~/.claude/settings.json via
+write_settings_attribution and dismantles any legacy hook via
+migrate_legacy_hook, instead of installing a prepare-commit-msg git hook.
+The plugin-install/upgrade tests neutralize those two side-effecting functions
+(patched in the module-scoped autouse fixture) and assert the bookkeeping the
+plugin records in global-config.json plus the delegation to the settings
+writer. The retained install_attribution_hook regression class still exercises
+the kept hook function directly (Q9 keeps the runtime one release).
 
 Behaviors tested:
-1. Interactive accept default -> attribution enabled in config
-2. Interactive decline -> attribution disabled in config
-3. Non-interactive (no TTY) -> defaults off, no prompt issued
-4. Existing preference -> prompt skipped (upgrade path)
+1. Fresh install -> attribution enabled in config + settings writer invoked
+2. Install MUST be non-blocking -- never prompts (Fabio RCA)
+3. Non-interactive (no TTY) -> defaults on, no prompt issued
+4. Existing preference -> preserved (upgrade path)
 5. Missing config directory -> created automatically
 6. Plugin error -> never blocks core installation (exception-safe)
-
-State-delta migration summary
-------------------------------
-CONVERTED (9 tests) — state-delta + implicit-unchanged invariant:
-  - test_interactive_accept_default: multi-slot config write; catches undeclared mutations
-  - test_existing_preference_skips_prompt: implicit-unchanged; whole config universe frozen
-  - test_missing_config_dir_created: filesystem (dir) + config slot; multi-state
-  - test_upgrade_preserves_enabled: explicit "preserve" semantic; config unchanged before/after
-  - test_upgrade_preserves_disabled: same pattern, disabled=False
-  - test_upgrade_missing_preference_prompts: attribution created + rigor key preserved
-  - test_local_hooks_path_takes_precedence: filesystem slot; hook path is state output
-  - test_no_hooks_path_installs_to_git_default: same pattern, different hooks dir
-  - test_install_succeeds_in_git_worktree: filesystem slot; worktree shared hooks dir
-
-KEPT as-is (9 tests) — no state-delta benefit:
-  - test_install_never_prompts: primary assertion is mock.assert_not_called() (interaction)
-  - test_non_interactive_defaults_on: primary assertion is mock.assert_not_called() (interaction)
-  - test_never_blocks_core_install: asserts result fields on error path; no meaningful state written
-  - test_verify_passes_with_attribution_key: single property (result.success)
-  - test_verify_passes_without_config_file: single property (result.success)
-  - test_plugin_priority_is_200: single property (plugin.priority)
-  - test_plugin_name_is_attribution: single property (plugin.name)
-  - test_install_never_sets_global_hooks_path: pure interaction test (captured calls list)
-  - test_explicit_git_dir_bypasses_git_probing: primary assertion is subprocess_calls == [];
-    filesystem assertion converted inline
 """
 
 import hashlib
@@ -154,36 +136,33 @@ def guard_git_hooks():
 
 
 # ---------------------------------------------------------------------------
-# Isolation fixture: mock install_attribution_hook in the attribution_plugin
-# module to prevent tests from writing to the real .git/hooks/ directory.
-# The plugin tests validate consent flow, not hook installation (tested
-# separately in TestAttributionHookInstallation with subprocess mocks).
+# Isolation fixture: neutralize the settings.json + migration side effects in
+# the attribution_plugin module so plugin tests cannot write to the real
+# ~/.claude/ or probe the surrounding repo's .git/hooks/. The plugin tests
+# validate the global-config bookkeeping + delegation, not the settings writer
+# itself (tested by the acceptance suite + attribution_utils unit tests).
 #
-# Module-scoped autouse: applies to EVERY test class in this module
-# (TestAttributionPluginInstall, TestAttributionPluginVerify,
-# TestAttributionPluginMetadata, TestAttributionUpgradePreservation,
-# TestAttributionHookInstallation) without requiring opt-in at the class
-# or function level. This prevents regressions where a new test class
-# forgets to request the fixture and accidentally runs the real hook
-# installation against the project's .git/hooks/ directory.
+# Module-scoped autouse: applies to EVERY test class in this module without
+# requiring opt-in, preventing a new test class from accidentally running the
+# real settings write / git probe.
 # ---------------------------------------------------------------------------
 @pytest.fixture(autouse=True, scope="module")
-def mock_install_attribution_hook(tmp_path_factory: pytest.TempPathFactory):
-    """Prevent plugin.install() from calling real install_attribution_hook.
+def isolate_attribution_side_effects():
+    """Prevent plugin.install() from probing the surrounding repo's git config.
 
-    The real function resolves hooks dir from the process's git config,
-    which points to the project's .git/hooks/ -- corrupting it with a
-    tmp_path-based hook script path that becomes invalid after the test.
-
-    Module-scoped so the patch covers every test class, including future
-    additions, with no per-class opt-in required.
+    Post ADR-CA-007 the install no longer writes the retired
+    ``settings.json attribution.{commit,pr}`` credit, so there is no write
+    branch to force. ``register_attribution_hook`` is left REAL — it targets the
+    per-test ``tmp_path/.claude`` sandbox (via ``context.claude_dir``), so the
+    hook registration is observable without touching the operator's real home.
+    Only ``migrate_legacy_hook`` (which probes real git config / .git/hooks) is
+    neutralized here.
     """
-    mock_hooks_dir = tmp_path_factory.mktemp("attribution_mock_hooks")
     with patch(
-        "scripts.install.plugins.attribution_plugin.install_attribution_hook",
-        return_value=mock_hooks_dir / "prepare-commit-msg",
-    ) as mock_hook:
-        yield mock_hook
+        "scripts.install.plugins.attribution_plugin.migrate_legacy_hook",
+        return_value=False,
+    ):
+        yield
 
 
 def _make_context(tmp_path: Path) -> InstallContext:
@@ -208,11 +187,40 @@ def _read_global_config(config_dir: Path) -> dict:
         return json.load(f)
 
 
+def _read_claude_settings(claude_dir: Path) -> dict:
+    """Read the sandbox ~/.claude/settings.json, or {} when absent."""
+    settings_path = claude_dir / "settings.json"
+    if not settings_path.exists():
+        return {}
+    with open(settings_path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _settings_attribution_commit(claude_dir: Path) -> str | None:
+    """Return the retired settings.json attribution.commit value, if any."""
+    settings = _read_claude_settings(claude_dir)
+    return (settings.get("attribution") or {}).get("commit")
+
+
+def _attribution_hook_registered(claude_dir: Path) -> bool:
+    """True when a pre-commit-attribution PreToolUse hook entry is present."""
+    settings = _read_claude_settings(claude_dir)
+    entries = settings.get("hooks", {}).get("PreToolUse", [])
+    return any(
+        "pre-commit-attribution" in hook.get("command", "")
+        for entry in entries
+        if isinstance(entry, dict)
+        for hook in entry.get("hooks", [])
+        if isinstance(hook, dict)
+    )
+
+
 class TestAttributionPluginInstall:
     """Tests for AttributionPlugin.install() driving port."""
 
     def test_interactive_accept_default(self, tmp_path: Path) -> None:
-        """TTY present, empty input (default) -> attribution enabled; no other keys mutated."""
+        """TTY present, empty input (default) -> hook registered + preference
+        recorded, but NO retired settings.json credit written (ADR-CA-007)."""
         context = _make_context(tmp_path)
         nwave_dir = tmp_path / ".nwave"
         plugin = AttributionPlugin(config_dir=nwave_dir)
@@ -239,6 +247,9 @@ class TestAttributionPluginInstall:
                 "attribution.trailer": set_to("Co-Authored-By: nWave <nwave@nwave.ai>"),
             },
         )
+        # ADR-CA-007: hook is the sole mechanism; no settings credit is written.
+        assert _attribution_hook_registered(context.claude_dir) is True
+        assert _settings_attribution_commit(context.claude_dir) is None
 
     def test_install_never_prompts(self, tmp_path: Path) -> None:
         """Install MUST be non-blocking -- never calls input() (Fabio RCA).
@@ -263,9 +274,13 @@ class TestAttributionPluginInstall:
         mock_input.assert_not_called()
         config = _read_global_config(nwave_dir)
         assert config["attribution"]["enabled"] is True
+        # ADR-CA-007: hook registered, no retired settings credit written.
+        assert _attribution_hook_registered(context.claude_dir) is True
+        assert _settings_attribution_commit(context.claude_dir) is None
 
     def test_non_interactive_defaults_on(self, tmp_path: Path) -> None:
-        """No TTY -> attribution defaults to on, no prompt issued."""
+        """No TTY -> attribution defaults to on; hook registered + preference
+        recorded, NO retired settings credit written (ADR-CA-007)."""
         context = _make_context(tmp_path)
         nwave_dir = tmp_path / ".nwave"
         plugin = AttributionPlugin(config_dir=nwave_dir)
@@ -281,6 +296,9 @@ class TestAttributionPluginInstall:
         config = _read_global_config(nwave_dir)
         assert config["attribution"]["enabled"] is True
         mock_input.assert_not_called()
+        # ADR-CA-007: hook registered, no retired settings credit written.
+        assert _attribution_hook_registered(context.claude_dir) is True
+        assert _settings_attribution_commit(context.claude_dir) is None
 
     def test_existing_preference_skips_prompt(self, tmp_path: Path) -> None:
         """Config already has attribution key -> no prompt; whole config universe frozen."""

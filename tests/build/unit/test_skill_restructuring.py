@@ -214,7 +214,10 @@ BULK_HASHES = {
     "nw-cicd-and-deployment": "2195ace1646b4c0ced64070d57bb542a",
     "nw-cognitive-load-management": "3e06303c46182b62288a7bffeb342909",
     "nw-cognitive-load-theory": "3f710887e887cdea6555b301b104902b",
-    "nw-collaboration-and-handoffs": "88a1f50ed559281ac672f784253eb843",
+    # Hash updated 2026-06-12: claude-code-attribution-migration (057c8543) —
+    # consolidated to a single Claude-trailer source in the collaboration
+    # templates (removed 8 duplicate-trailer lines).
+    "nw-collaboration-and-handoffs": "b51d3cd2f3f6e61a65857af1025bec7c",
     "nw-collapse-detection": "d9d627bef17d03649583302e18482570",
     "nw-command-design-patterns": "ed39642cc074ad30d53cf345a915c45d",
     "nw-command-optimization-workflow": "c9152d7ea4b3c1657ebcac9a439fcdee",

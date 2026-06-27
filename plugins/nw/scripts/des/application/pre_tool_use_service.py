@@ -33,6 +33,11 @@ class PreToolUseService(PreToolUsePort):
       1. Parse DES markers via DesMarkerParser
       2. Block step-id tasks without DES markers via DesEnforcementPolicy
          - If enforced: log HOOK_PRE_TOOL_USE_BLOCKED, return block
+      2.5. Whole-project exemption (ADR-PST-001): if deliverable_type is in
+         DesEnforcementPolicy.EXEMPT_DELIVERABLE_TYPES (plugin/skill), log
+         HOOK_PRE_TOOL_USE_ALLOWED and return allow immediately — a plugin/skill
+         project is not policed at all (no completeness/structure validation).
+         Unreachable for application/None (not in the exempt set).
       3. If not DES task: log HOOK_PRE_TOOL_USE_ALLOWED, return allow immediately
          (no prompt validation — non-DES tasks pass through)
       4. Validate marker completeness via MarkerCompletenessPolicy
@@ -51,6 +56,7 @@ class PreToolUseService(PreToolUsePort):
         time_provider: TimeProvider,
         enforcement_policy: DesEnforcementPolicy | None = None,
         completeness_policy: MarkerCompletenessPolicy | None = None,
+        deliverable_type: str | None = None,
     ) -> None:
         self._marker_parser = marker_parser
         self._prompt_validator = prompt_validator
@@ -58,6 +64,10 @@ class PreToolUseService(PreToolUsePort):
         self._time_provider = time_provider
         self._enforcement_policy = enforcement_policy
         self._completeness_policy = completeness_policy
+        # ADR-PST-001 (feature plugin-skill-deliverable-type): resolved once per
+        # dispatch by the DESConfig adapter, threaded pure into policy.check().
+        # ``None`` keeps the app-code enforcement path byte-identical.
+        self._deliverable_type = deliverable_type
 
     def validate(
         self,
@@ -79,7 +89,9 @@ class PreToolUseService(PreToolUsePort):
 
         # Step 2: Enforce DES markers on step-id references (applies to all tasks)
         if self._enforcement_policy:
-            enforcement = self._enforcement_policy.check(input_data.prompt)
+            enforcement = self._enforcement_policy.check(
+                input_data.prompt, self._deliverable_type
+            )
             if enforcement.is_enforced:
                 self._log_blocked(
                     enforcement.reason or "DES_MARKERS_MISSING", hook_id=hook_id
@@ -88,6 +100,21 @@ class PreToolUseService(PreToolUsePort):
                     reason=enforcement.reason or "DES_MARKERS_MISSING",
                     recovery_suggestions=enforcement.recovery_suggestions,
                 )
+
+            # Whole-project exemption (ADR-PST-001): declaring plugin/skill exempts
+            # ALL step dispatches for that project -- the policy has already
+            # certified is_enforced=False, so the service honors that verdict at
+            # whole-project granularity and allows immediately, without re-imposing
+            # discipline via marker-completeness/prompt-structure validation. The
+            # service only THREADS this context; the enforcement decision stays in
+            # the pure policy. App-code (None/application) is unaffected: it never
+            # enters this branch, so its path is byte-identical.
+            if (
+                self._deliverable_type
+                in self._enforcement_policy.EXEMPT_DELIVERABLE_TYPES
+            ):
+                self._log_allowed(context="deliverable_type_exempt", hook_id=hook_id)
+                return HookDecision.allow()
 
         if not markers.is_des_task:
             # Non-DES task (no step-id enforcement triggered): allow immediately

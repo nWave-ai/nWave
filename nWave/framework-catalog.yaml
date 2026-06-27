@@ -1,5 +1,5 @@
 name: nWave
-version: 3.20.0
+version: 3.20.1
 description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192SPIKE\u2192DESIGN\u2192\
   DEVOPS\u2192DISTILL\u2192DELIVER methodology with visual architecture lifecycle\
   \ management"
@@ -133,6 +133,20 @@ agents:
     role: agent_design_review
     public: true
     description: Reviews agent specifications for compliance and quality
+  plugin-validator:
+    wave: CROSS_WAVE
+    priority: 2
+    role: plugin_structure_review
+    public: true
+    description: Validates Claude Code plugin structure and schema (manifest, layout,
+      hook/command/agent registration) for deliverable_type plugin
+  skill-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: skill_quality_review
+    public: true
+    description: Reviews SKILL.md quality (structure, scope, frontmatter); reuses
+      nw-agent-builder skill assets for deliverable_type plugin/skill
   ddd-architect-reviewer:
     wave: CROSS_WAVE
     priority: 2

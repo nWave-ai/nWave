@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
@@ -11,14 +12,81 @@ from nwave_ai.doctor.context import DoctorContext
 from nwave_ai.doctor.formatter import render_human, render_json
 from nwave_ai.doctor.runner import run_doctor
 from scripts.install.attribution_utils import (
-    install_attribution_hook,
+    migrate_legacy_hook,
+    migrate_legacy_settings_attribution,
     read_attribution_preference,
     read_global_config,
-    remove_attribution_hook,
+    register_attribution_hook,
+    unregister_attribution_hook,
     write_attribution_preference,
     write_global_config,
 )
 from scripts.shared.install_paths import GLOBAL_CONFIG_FILENAME
+
+
+# ---------------------------------------------------------------------------
+# DES module bootstrap.
+#
+# The published wheel ships the ``des`` package at
+# ``site-packages/nWave/lib/python/des/`` (a Hatch force-include destination),
+# NOT as a top-level ``des/`` package — so a bare ``import des`` fails unless
+# that directory is on ``sys.path``. Several CLI verbs import ``des``: some
+# unguarded (``project``, ``status``, ``plugin install`` → hard crash) and some
+# guarded (``install`` PM-recording, ``doctor`` activation → silent degrade).
+# ``main()`` dispatches most verbs WITHOUT going through ``main_with_argv``, so
+# this bootstrap runs at import time to cover every entry point at once.
+#
+# No-op in the dev tree / editable install, where ``des`` already resolves from
+# ``src/des``.
+# ---------------------------------------------------------------------------
+
+
+def _bundled_des_paths(pkg_dir: Path, home: Path) -> list[Path]:
+    """Existing directories that may contain an importable ``des`` package.
+
+    ``pkg_dir`` is the installed ``nwave_ai`` package dir; in the wheel its
+    parent is ``site-packages`` where ``nWave/lib/python`` sits beside it. The
+    installer's copy under ``~/.claude/lib/python`` is the fallback. Returned in
+    priority order, existing-only.
+    """
+    candidates = [
+        pkg_dir.parent / "nWave" / "lib" / "python",  # wheel-bundled (self-contained)
+        home / ".claude" / "lib" / "python",  # installer copy
+    ]
+    return [p for p in candidates if (p / "des").is_dir()]
+
+
+def _ensure_des_importable(
+    pkg_dir: Path | None = None,
+    home: Path | None = None,
+    *,
+    is_importable: Callable[[], bool] | None = None,
+) -> Path | None:
+    """Prepend the bundled ``des`` location to ``sys.path`` when ``des`` is missing.
+
+    No-op (returns ``None``) when ``des`` already resolves. Otherwise prepends
+    the first existing bundled location and returns it. Idempotent.
+    """
+    if is_importable is None:
+        import importlib.util
+
+        importable = importlib.util.find_spec("des") is not None
+    else:
+        importable = is_importable()
+    if importable:
+        return None
+
+    pkg_dir = pkg_dir if pkg_dir is not None else Path(__file__).resolve().parent
+    home = home if home is not None else Path.home()
+    for path in _bundled_des_paths(pkg_dir, home):
+        entry = str(path)
+        if entry not in sys.path:
+            sys.path.insert(0, entry)
+        return path
+    return None
+
+
+_ensure_des_importable()
 
 
 # ---------------------------------------------------------------------------
@@ -332,22 +400,74 @@ def _handle_attribution(args: list[str]) -> int:
 
     if action == "on":
         write_attribution_preference(config_dir, enabled=True)
-        install_attribution_hook(config_dir)
-        print("Attribution enabled. Your commits will include the nWave credit line.")
+        # ADR-CA-007: the settings.json credit write surface is retired. The
+        # activation-gated PreToolUse commit-attribution hook is the SOLE
+        # attribution mechanism, so enabling registers it (and only it).
+        # Ensure ~/.claude exists so the hook has a home, then register it
+        # idempotently. Contained so a registration fault never fails the
+        # toggle (belt-and-suspenders).
+        claude_dir = Path.home() / ".claude"
+        registered = False
+        try:
+            claude_dir.mkdir(parents=True, exist_ok=True)
+            registered = register_attribution_hook(enabled=True)
+        except Exception:
+            pass
+        if registered:
+            print(
+                "Attribution enabled. New Claude commits will carry the nWave "
+                "credit via the commit-attribution hook. Restart Claude (don't "
+                "/resume older sessions) for this to take effect."
+            )
+        else:
+            print(
+                "Attribution enabled, but the commit-attribution hook could not "
+                "be registered (Claude Code config absent or user-modified)."
+            )
         return 0
 
     if action == "off":
         write_attribution_preference(config_dir, enabled=False)
-        remove_attribution_hook(config_dir)
+        # ADR-CA-007 DDD-3: clean any legacy nWave-managed settings credit,
+        # preserving a user-modified value. Route through the claude_dir seam
+        # explicitly so the sandbox injection holds (fail-open: never raises).
+        migrate_legacy_settings_attribution(
+            config_dir, claude_dir=Path.home() / ".claude"
+        )
+        # ADR-CA-006: disabling removes ONLY the commit-attribution hook entry,
+        # leaving the DES guards intact. Contained so it never breaks the toggle.
+        try:
+            unregister_attribution_hook()
+        except Exception:
+            pass
+        # Root cause C: 'off' is the remediation affordance, so it must also
+        # remove the orphaned legacy prepare-commit-msg git shim (hardened in
+        # migrate_legacy_hook to scan every candidate hooks dir). Without this,
+        # a machine already broken by an orphaned shim cannot recover with the
+        # obvious command. Contained so it never breaks the toggle (fail-open).
+        try:
+            migrate_legacy_hook(config_dir=config_dir)
+        except Exception:
+            pass
         print(
-            "Attribution disabled. Your commits will not include the nWave credit line."
+            "Attribution disabled. New Claude sessions will not carry the nWave "
+            "credit line. Restart Claude (don't /resume older sessions) for this "
+            "to take effect."
         )
         return 0
 
     if action == "status":
+        # ADR-CA-007: the EFFECTIVE attribution scope is the preference
+        # (attribution.enabled) AND this repo's resolved activation. Report
+        # BOTH so a user can tell on+active from on+inactive. Reuse the
+        # canonical resolve_activation policy over the marker + global mode —
+        # never re-derive it here (DDD discipline, mirrors the doctor check).
         preference = read_attribution_preference(config_dir)
         if preference is True:
             print("Attribution is currently on.")
+            active = _repo_attribution_active()
+            scope = "active" if active else "inactive"
+            print(f"Attribution is {scope} for this repo.")
         else:
             print("Attribution is currently off.")
         return 0
@@ -355,6 +475,28 @@ def _handle_attribution(args: list[str]) -> int:
     print(f"Unknown attribution action: {action}", file=sys.stderr)
     print("Usage: nwave-ai attribution <on|off|status>", file=sys.stderr)
     return 1
+
+
+def _repo_attribution_active() -> bool:
+    """Resolve THIS repo's activation, failing to INACTIVE on a read error.
+
+    Reuses the canonical ``resolve_activation`` policy over the two scalars the
+    ``DESConfig`` reader exposes (marker ``enabled_for_repo`` + global
+    ``activation.mode``) — the policy is NOT re-derived here (mirrors the
+    activation-aware doctor check).
+
+    On a config-read exception we fail to INACTIVE (return False), matching the
+    activation gate's fail-to-inactive-under-opt-in semantics: a diagnostic must
+    never be more optimistic than the enforcement gate.
+    """
+    try:
+        from des.adapters.driven.config.des_config import DESConfig
+        from des.domain.activation_policy import resolve_activation
+
+        config = DESConfig(cwd=Path.cwd())
+        return resolve_activation(config.enabled_for_repo, config.activation_mode)
+    except Exception:
+        return False
 
 
 def _handle_doctor(args: list[str]) -> int:

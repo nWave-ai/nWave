@@ -5,7 +5,7 @@ Usage:
       --project-dir docs/feature/my-feature/deliver \\
       --feature-id my-feature
 
-Creates: {"schema_version": "3.0", "feature_id": "my-feature", "events": []}
+Creates: {"schema_version": "5.0", "feature_id": "my-feature", "events": []}
 
 Workflow-mode awareness (ADR-028 D4.1):
     The execution log belongs to the classic, roadmap-based DELIVER spine.
@@ -167,9 +167,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: execution-log.json already exists at {log_path}")
         return 1
 
-    # Create execution log with v3.0 schema
+    # Create execution log with the ADR-025 v5.0 (3-phase canon) schema, so new
+    # DELIVER logs default to RED/GREEN/COMMIT (issue #65). Legacy v4 logs stay
+    # valid for audit-log replay via per-log dispatch.
     log_data = {
-        "schema_version": "3.0",
+        "schema_version": "5.0",
         "feature_id": args.feature_id,
         "events": [],
     }

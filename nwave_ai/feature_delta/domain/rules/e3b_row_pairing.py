@@ -5,7 +5,7 @@ Each downstream commitment row carries an Origin column value like
 
 Bijection rule:
 - Every upstream row must have at least one downstream successor (paired
-  via Origin) OR be authorized via a DDD entry in the downstream section.
+  via Origin) OR be authorized via a DDR entry in the downstream section.
 - Multi-pair (1 upstream → N downstream) is valid (refinement).
 - Orphan downstream rows (Origin pointing to non-existent upstream index)
   are also reported as violations.
@@ -42,7 +42,7 @@ def check_row_pairing(model: FeatureDeltaModel) -> tuple[ValidationViolation, ..
 
     For each consecutive wave pair, every upstream row must be cited by
     at least one downstream row via its Origin column, or authorized by
-    a DDD entry in the downstream section.
+    a DDR entry in the downstream section.
 
     Returns a tuple of ValidationViolation objects (empty = clean).
     """
@@ -78,13 +78,13 @@ def check_row_pairing(model: FeatureDeltaModel) -> tuple[ValidationViolation, ..
                 if wave_name == upstream_wave:
                     cited_upstream_ids.add(f"{upstream_wave}#row{row_num}")
 
-        # If downstream has DDD entries, removals are considered authorized.
-        ddd_authorized = bool(downstream.ddd_entries)
+        # If downstream has DDR entries, removals are considered authorized.
+        ddr_authorized = bool(downstream.ddr_entries)
 
         # Check each upstream row.
         for row_index, _row in enumerate(upstream.rows, start=1):
             row_id = f"{upstream_wave}#row{row_index}"
-            if row_id not in cited_upstream_ids and not ddd_authorized:
+            if row_id not in cited_upstream_ids and not ddr_authorized:
                 violations.append(
                     ValidationViolation(
                         rule="E3b-row",
@@ -94,7 +94,7 @@ def check_row_pairing(model: FeatureDeltaModel) -> tuple[ValidationViolation, ..
                         offender=row_id,
                         remediation=(
                             f"Add 'Origin: {row_id}' to a downstream row in "
-                            f"{downstream.name}, or add a DDD entry authorizing removal."
+                            f"{downstream.name}, or add a DDR entry authorizing removal."
                         ),
                     )
                 )

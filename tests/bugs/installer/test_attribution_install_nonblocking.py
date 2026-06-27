@@ -35,13 +35,28 @@ pytestmark = pytest.mark.xdist_group("git_hooks")
 
 
 @pytest.fixture(autouse=True)
-def _isolate_hook_installation(tmp_path: Path):
-    """Prevent the plugin from touching real .git/hooks/ during tests."""
-    with patch(
-        "scripts.install.plugins.attribution_plugin.install_attribution_hook",
-        return_value=tmp_path / ".nwave" / "hooks" / "prepare-commit-msg",
-    ) as mock_hook:
-        yield mock_hook
+def _isolate_attribution_side_effects():
+    """Prevent the plugin from touching ~/.claude/settings.json or probing git.
+
+    Post-ADR-CA-007 install no longer WRITES the settings.json attribution
+    credit (that surface is retired): it registers the activation-gated
+    PreToolUse hook and migrates the legacy hook. Both real-FS side effects are
+    stubbed so the non-blocking regression assertions exercise only the
+    prompt-free control flow. ``register_attribution_hook`` is the symbol the
+    plugin still imports (``write_settings_attribution`` no longer exists on the
+    plugin module), so the patch re-points onto it.
+    """
+    with (
+        patch(
+            "scripts.install.plugins.attribution_plugin.register_attribution_hook",
+            return_value=True,
+        ),
+        patch(
+            "scripts.install.plugins.attribution_plugin.migrate_legacy_hook",
+            return_value=False,
+        ),
+    ):
+        yield
 
 
 @pytest.fixture

@@ -68,7 +68,7 @@ class MandatorySectionChecker:
         "DES_METADATA",  # Step metadata and command
         "AGENT_IDENTITY",  # Which agent executes this step
         "TASK_CONTEXT",  # What needs to be implemented
-        "TDD_PHASES",  # All TDD phases to execute (schema v4.0 canonical)
+        "TDD_PHASES",  # All TDD phases to execute (3-phase canon per ADR-025)
         "QUALITY_GATES",  # Quality validation criteria
         "OUTCOME_RECORDING",  # How to track progress
         "RECORDING_INTEGRITY",  # Skip prefixes + anti-fraud rules
@@ -81,7 +81,7 @@ class MandatorySectionChecker:
         "DES_METADATA": "Add DES_METADATA section with step file path and command name",
         "AGENT_IDENTITY": "Add AGENT_IDENTITY section specifying which agent executes this step",
         "TASK_CONTEXT": "Add TASK_CONTEXT section describing what needs to be implemented",
-        "TDD_PHASES": "Add TDD_PHASES section listing all 5 phases: PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN, COMMIT",
+        "TDD_PHASES": "Add TDD_PHASES section covering the 3-phase canon (RED, GREEN, COMMIT) per ADR-025",
         "QUALITY_GATES": "Add QUALITY_GATES section defining validation criteria (G1-G6)",
         "OUTCOME_RECORDING": "Add OUTCOME_RECORDING section describing how to track phase completion",
         "RECORDING_INTEGRITY": (
@@ -147,8 +147,9 @@ class TDDPhaseValidator:
     """
     Validates that required TDD phases are mentioned in prompt.
 
-    Uses canonical 5-phase TDD cycle from step-tdd-cycle-schema.json v4.0:
-    PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN, COMMIT
+    Uses the canonical 3-phase TDD cycle per ADR-025: RED, GREEN, COMMIT.
+    The legacy 5-phase contract (PREPARE, RED_ACCEPTANCE, RED_UNIT, GREEN,
+    COMMIT) remains accepted for replay of pre-2026-05-07 audit logs.
 
     Note: REVIEW moved to deliver-level Phase 4 (Adversarial Review)
     Note: REFACTOR moved to deliver-level Phase 3 (Complete Refactoring L1-L4)
@@ -169,7 +170,7 @@ class TDDPhaseValidator:
         """
         Validate that all required TDD phases are mentioned in prompt.
 
-        Uses canonical 5-phase TDD cycle from schema (single source of truth).
+        Uses the canonical 3-phase TDD cycle from schema (single source of truth).
 
         Detects phases by looking for patterns:
         - Numbered list items (e.g., "1. PREPARE")
@@ -272,7 +273,8 @@ class ExecutionLogValidator:
     """
     Validates phase execution log for state violations and schema compliance.
 
-    Uses canonical TDD cycle from step-tdd-cycle-schema.json v4.0.
+    Uses the canonical 3-phase TDD cycle per ADR-025 (legacy 5-phase v4 logs
+    remain accepted via per-log schema_version dispatch).
     Detects abandoned phases, missing required fields, and invalid state sequences
     to ensure phase execution logs are complete and consistent.
     """
@@ -495,7 +497,8 @@ class TemplateValidator:
         """
         Validate a complete prompt for mandatory sections and phases.
 
-        Uses canonical TDD cycle from step-tdd-cycle-schema.json v4.0.
+        Validates the embedded phase_execution_log against its own canon via
+        ADR-025 per-log dispatch (legacy v4 5-phase or canonical v5 3-phase).
 
         Args:
             prompt: The full prompt text to validate
@@ -516,10 +519,13 @@ class TemplateValidator:
 
         # Extract and parse phase_execution_log from prompt
         execution_log_data = self._extract_execution_log_from_prompt(prompt)
-        # Validate with schema (always v4.0)
-        execution_log_errors = self.execution_log_validator.validate(
-            execution_log_data, schema_version="4.0"
-        )
+        # Validate the embedded log against its own canon (ADR-025 per-log
+        # dispatch). Omitting schema_version lets ExecutionLogValidator
+        # auto-detect: legacy 5-phase only when the complete legacy-only set
+        # {PREPARE, RED_ACCEPTANCE, RED_UNIT} is present, otherwise the
+        # canonical 3-phase. Forcing "4.0" here was the last live-path layer
+        # that rejected valid 3-phase prompts (issue #65).
+        execution_log_errors = self.execution_log_validator.validate(execution_log_data)
 
         all_errors = (
             marker_errors + section_errors + phase_errors + execution_log_errors

@@ -40,10 +40,10 @@ def _model_with_impact(impact: str) -> FeatureDeltaModel:
     row = CommitmentRow(
         origin="DISCUSS#row1",
         commitment="some commitment",
-        ddd="n/a",
+        ddr="n/a",
         impact=impact,
     )
-    section = WaveSection(name="DESIGN", rows=(row,), ddd_entries=())
+    section = WaveSection(name="DESIGN", rows=(row,), ddr_entries=())
     return FeatureDeltaModel(feature_id="test", sections=(section,))
 
 

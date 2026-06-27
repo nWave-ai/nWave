@@ -299,6 +299,82 @@ class TestSubagentStopWithClaudeCodeProtocol:
             f"Allow path should produce no output. Got: {captured}"
         )
 
+    def test_des_subagent_with_override_base_execution_log(self, tmp_path, monkeypatch):
+        """p2 regression: complete log under docs/nwave/feature → allowed.
+
+        The project namespaces artifacts under the standard nWave override
+        base. The hook reconstructs the path from cwd only; with the log under
+        docs/nwave/feature it must still resolve and allow the stop.
+        """
+        import subprocess as sp
+
+        project_id = "test-project"
+        prompt = (
+            "<!-- DES-VALIDATION: required -->\n"
+            f"<!-- DES-PROJECT-ID: {project_id} -->\n"
+            "<!-- DES-STEP-ID: 01-01 -->\n"
+            "Execute step"
+        )
+        transcript = _make_transcript(str(tmp_path), prompt)
+
+        # Log lives under the OVERRIDE base, not docs/feature
+        override_dir = tmp_path / "docs" / "nwave" / "feature" / project_id / "deliver"
+        override_dir.mkdir(parents=True)
+        exec_log = override_dir / "execution-log.json"
+        exec_log.write_text(
+            json.dumps(
+                {
+                    "project_id": project_id,
+                    "events": [
+                        "01-01|PREPARE|EXECUTED|PASS|2026-02-06T10:00:00Z",
+                        "01-01|RED_ACCEPTANCE|EXECUTED|PASS|2026-02-06T10:05:00Z",
+                        "01-01|RED_UNIT|EXECUTED|PASS|2026-02-06T10:10:00Z",
+                        "01-01|GREEN|EXECUTED|PASS|2026-02-06T10:20:00Z",
+                        "01-01|REVIEW|EXECUTED|PASS|2026-02-06T10:30:00Z",
+                        "01-01|REFACTOR_CONTINUOUS|SKIPPED|CHECKPOINT_PENDING: Minimal|2026-02-06T10:35:00Z",
+                        "01-01|COMMIT|EXECUTED|PASS|2026-02-06T11:00:00Z",
+                    ],
+                },
+                indent=2,
+            )
+        )
+
+        sp.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
+        sp.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=str(tmp_path),
+            capture_output=True,
+        )
+        sp.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=str(tmp_path),
+            capture_output=True,
+        )
+        sp.run(["git", "add", "."], cwd=str(tmp_path), capture_output=True)
+        sp.run(
+            [
+                "git",
+                "commit",
+                "-m",
+                f"feat: implement step\n\nStep-Id: 01-01\nTask-Id: {project_id}",
+            ],
+            cwd=str(tmp_path),
+            capture_output=True,
+        )
+
+        hook_input = self._make_hook_input(transcript, str(tmp_path))
+        monkeypatch.setattr("sys.stdin", __import__("io").StringIO(hook_input))
+
+        captured = []
+        monkeypatch.setattr("builtins.print", captured.append)
+
+        exit_code = handle_subagent_stop()
+
+        assert exit_code == 0
+        assert len(captured) == 0, (
+            f"Allow path should produce no output. Got: {captured}"
+        )
+
     def test_des_subagent_with_incomplete_execution_log_blocked(
         self, tmp_path, monkeypatch
     ):

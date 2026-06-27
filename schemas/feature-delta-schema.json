@@ -35,7 +35,7 @@
     },
     "CommitmentRow": {
       "type": "object",
-      "description": "A single row in a wave commitments table (Origin | Commitment | DDD | Impact).",
+      "description": "A single row in a wave commitments table (Origin | Commitment | DDR | Impact).",
       "required": ["commitment", "impact"],
       "additionalProperties": false,
       "properties": {
@@ -47,9 +47,9 @@
           "minLength": 1,
           "description": "Non-empty commitment text (E3)."
         },
-        "ddd": {
+        "ddr": {
           "type": "string",
-          "description": "DDD reference or 'n/a'."
+          "description": "DDR (Design Decision Record) reference or 'n/a'. Legacy 'DDD' column accepted for back-compat (issue #50)."
         },
         "impact": {
           "type": "string",
@@ -65,14 +65,14 @@
     },
     "DesignDecision": {
       "type": "object",
-      "description": "A DDD entry ratifying a design change (E3b, E5 ratification).",
+      "description": "A DDR (Design Decision Record) entry ratifying a design change (E3b, E5 ratification).",
       "required": ["id", "status", "reason"],
       "additionalProperties": false,
       "properties": {
         "id": {
           "type": "string",
-          "description": "Decision identifier — DDD-N pattern.",
-          "pattern": "^DDD-[0-9]+$"
+          "description": "Decision identifier — DDR-N pattern. Legacy DDD-N accepted for back-compat (issue #50).",
+          "pattern": "^DD[DR]-[0-9]+$"
         },
         "status": {
           "type": "string",
@@ -86,9 +86,13 @@
         }
       }
     },
+    "DDREntry": {
+      "$ref": "#/definitions/DesignDecision",
+      "description": "Alias for DesignDecision — DDREntry and DesignDecision are the same type."
+    },
     "DDDEntry": {
       "$ref": "#/definitions/DesignDecision",
-      "description": "Alias for DesignDecision — DDDEntry and DesignDecision are the same type."
+      "description": "Legacy alias for DesignDecision (renamed to DDREntry, issue #50). Retained for back-compat."
     }
   },
   "properties": {

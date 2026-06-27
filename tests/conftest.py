@@ -701,11 +701,68 @@ def pytest_html_report_title(report):
     report.title = "nWave Test Report"
 
 
+# ---------------------------------------------------------------------------
+# pytest-bdd gherkin tag handling (root scope)
+#
+# pytest 9.1.0 (changelog #14442) re-enabled --strict-markers / --strict-config
+# declared via addopts after they were silently ignored through 9.0.x. The suite
+# carries pytest-bdd gherkin traceability tags (@US-3, @real-io,
+# @contract-shape:bounded-change …) that are NOT registered markers. Without a
+# pytest_bdd_apply_tag hook these surface as collection errors under the now-real
+# strict-markers gate.
+#
+# This root hook applies a tag as a mark iff it is a registered marker, and
+# otherwise consumes it (returns the function unchanged) so the gherkin metadata
+# stays grep-able without generating strict-markers noise. Real
+# @pytest.mark.<typo> mistakes remain rejected — only gherkin tags are consumed.
+#
+# The registered marker set is read live from the markers ini SSOT at hook-call
+# time (no hard-coded duplicate list), so markers other conftests register
+# dynamically via config.addinivalue_line are honoured too. Mirrors the per-track
+# pattern in tests/installer/acceptance/installer_orphan_sweep/conftest.py.
+#
+# pytest_bdd_apply_tag is firstresult, and per-directory conftest hooks fire
+# before the root conftest (pytest scope-precedence rule). The four existing
+# per-track hooks always return non-None, so they win for their dirs via that
+# ordering. This root hook only fires for tracks without a local hook.
+# ---------------------------------------------------------------------------
+
+_pytest_config = None
+
+
 def pytest_configure(config):
-    """Add project metadata to HTML report header."""
+    """Add project metadata to HTML report header; capture config for tag lookup."""
+    global _pytest_config
+    _pytest_config = config
+
     if hasattr(config, "_metadata"):
         config._metadata["Project"] = "nwave"
         config._metadata["Framework"] = "nWave"
+
+
+def _registered_marker_names() -> set[str]:
+    """Registered marker names from the markers ini (SSOT), read live.
+
+    Resolved at hook-call time (during collection, after every conftest's
+    pytest_configure has run) rather than snapshotted once — so markers
+    registered dynamically via config.addinivalue_line in sub-conftests
+    (e.g. the bug-track "failing" marker) are included. Snapshotting in
+    pytest_configure raced that dynamic registration and could consume a
+    marker another conftest depended on. Each entry is "name: description"
+    → take the token before the first ":" or whitespace.
+    """
+    if _pytest_config is None:
+        return set()
+    return {
+        entry.split(":", 1)[0].split()[0] for entry in _pytest_config.getini("markers")
+    }
+
+
+def pytest_bdd_apply_tag(tag, function):
+    """Apply registered markers; consume gherkin metadata tags without marking."""
+    if tag in _registered_marker_names():
+        return getattr(pytest.mark, tag)(function)
+    return function
 
 
 def pytest_html_results_summary(prefix, summary, postfix):

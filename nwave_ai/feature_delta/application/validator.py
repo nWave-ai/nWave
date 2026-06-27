@@ -172,7 +172,7 @@ class ValidationOrchestrator:
             for v in e2_violations:
                 print(
                     f"{violation_prefix} [{v.rule}] {target.name}:{v.line} — "
-                    f"missing column 'DDD'. {v.remediation}",
+                    f"missing column 'DDR'. {v.remediation}",
                     file=sys.stderr,
                 )
         elif emit_pass:
@@ -198,7 +198,7 @@ class ValidationOrchestrator:
         for v in e3b_violations:
             print(
                 f"{violation_prefix} [{v.rule}] {target.name}:{v.line} — "
-                f"commitment '{v.offender}' dropped without DDD ratification. "
+                f"commitment '{v.offender}' dropped without DDR ratification. "
                 f"{v.remediation}",
                 file=sys.stderr,
             )

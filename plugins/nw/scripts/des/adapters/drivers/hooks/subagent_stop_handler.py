@@ -212,7 +212,7 @@ def _resolve_des_context(
 
         resolved = resolve_execution_log_path(
             project_id,
-            base=_Path(effective_cwd) / "docs" / "feature",
+            cwd=_Path(effective_cwd),
         )
         execution_log_path = str(resolved)
     except (FileNotFoundError, ValueError) as exc:

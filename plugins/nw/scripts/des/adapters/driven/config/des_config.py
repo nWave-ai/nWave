@@ -28,6 +28,15 @@ if TYPE_CHECKING:
     from des.domain.pending_update_flag import PendingUpdateFlag
 
 
+# Closed set of declarable deliverable types (ADR-PST-002). A declared value
+# outside this set is treated as absent -> safe default (``None``).
+_KNOWN_DELIVERABLE_TYPES = frozenset({"application", "plugin", "skill"})
+
+# Positive deliverable markers from FS detection. ``"application"`` is the
+# absence of a marker, so it resolves to the ``None`` sentinel, NOT itself.
+_POSITIVE_DELIVERABLE_MARKERS = frozenset({"plugin", "skill"})
+
+
 class DESConfig:
     """
     Configuration loader for DES settings.
@@ -173,6 +182,86 @@ class DESConfig:
         marker_data = self._load_json_file(marker_path)
         value = marker_data.get("enabled_for_repo")
         return value if isinstance(value, bool) else None
+
+    @property
+    def deliverable_type(self) -> str | None:
+        """Resolved project deliverable type (ADR-PST-002) -- RED scaffold.
+
+        DISTILL scaffold (feature plugin-skill-deliverable-type, issue #66).
+        Resolution precedence (first match wins), implemented by DELIVER:
+          1. declared ``.nwave/des-config.json`` -> ``deliverable_type`` (if in
+             the known set ``{application, plugin, skill}``);
+          2. declared global ``~/.nwave/global-config.json`` ->
+             ``defaults.deliverable_type``;
+          3. root-only FS detection (``deliverable_type_detector``) -- fallback
+             ONLY when the declaration is FULLY ABSENT;
+          4. unknown / typo'd declared value (present-but-bad, project OR global)
+             -> SAFE DEFAULT (enforcement ON; returns ``None``) + a config-load
+             warning. It does NOT fall through to detection (revised 2026-06-26,
+             review non-blocker 2). Mirrors the ``activation_mode`` pattern
+             (``des_config.py``: bad value -> hardcoded safe default, no detection
+             fallback). A typo'd repo with a root ``skills/`` dir therefore stays
+             enforced -- detection must not silently rescue a malformed declaration.
+
+        Returns ``None`` (NOT ``"application"``) when nothing resolves -- the
+        unresolved state is distinguishable from a positive ``application``
+        declaration (HIGH-1 adapter contract). The enforcement fail-safe does NOT
+        depend on this return value: the policy's closed exempt set
+        (ADR-PST-001) is the load-bearing guarantee.
+
+        Pure read over a bounded universe ``{declared_project, declared_global,
+        ROOT-ONLY dir_listing}`` -- never mutates, never recurses nested dirs.
+
+        Implemented to date (steps 01-01 + 01-03 -- positive resolution path):
+          - project declaration in the known set -> that value (authoritative);
+          - project declaration PRESENT-but-bad (typo'd) -> safe default ``None``,
+            WITHOUT falling through (a malformed declaration is never silently
+            rescued -- the typo fail-safe edge is finalised in step 03-02);
+          - project declaration ABSENT -> fall through to the global
+            ``defaults.deliverable_type`` (machine-wide default);
+          - global default in the known set -> that value;
+          - nothing resolves -> ``None``.
+        Root-only FS detection (precedence step 3) is phase 02 -- the seam is the
+        fall-through that currently terminates at ``None`` once the global default
+        is exhausted; detection slots in there without disturbing the declared
+        branches above.
+        """
+        declared = self._config_data.get("deliverable_type")
+        if declared is not None:
+            # Present -> the project's word is authoritative (good or typo'd);
+            # a typo'd value never falls through to the global default.
+            return declared if declared in _KNOWN_DELIVERABLE_TYPES else None
+        # Project silent: the machine-wide default stands in (precedence step 2).
+        defaults = self._global_config_data.get("defaults", {})
+        global_default = (
+            defaults.get("deliverable_type") if isinstance(defaults, dict) else None
+        )
+        if global_default in _KNOWN_DELIVERABLE_TYPES:
+            return global_default
+        # Nothing declared (project or global): fall through to root-only FS
+        # detection (precedence step 3, ADR-PST-002). Reached ONLY when the
+        # declaration is FULLY ABSENT -- a present-but-typo'd value short-circuits
+        # to ``None`` above and never arrives here.
+        return self._detect_deliverable_type()
+
+    def _detect_deliverable_type(self) -> str | None:
+        """Root-only FS detection rung; ``None`` for an unmarked (application) tree.
+
+        Delegates to ``deliverable_type_detector`` over the project root (the
+        ``.nwave/des-config.json``'s grandparent). An ``"application"`` detection
+        means "no positive marker" -> ``None`` (HIGH-1: the unresolved sentinel,
+        distinguishable from a declared ``application``). A positive
+        ``plugin``/``skill`` marker resolves to that type.
+        """
+        from des.adapters.driven.config.deliverable_type_detector import (
+            detect_deliverable_type,
+        )
+
+        detected = detect_deliverable_type(self._config_path.parent.parent)
+        # Only a POSITIVE marker resolves; an ``"application"`` detection means
+        # "no positive marker" -> ``None`` (HIGH-1 sentinel). Using
+        # ``_KNOWN_DELIVERABLE_TYPES`` here would wrongly return ``"application"``.
+        return detected if detected in _POSITIVE_DELIVERABLE_MARKERS else None
 
     def _nearest_marker(self) -> Path | None:
         """Nearest ``.nwave/local-config.json`` at or above the project dir.

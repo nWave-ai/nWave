@@ -33,7 +33,9 @@ from scripts.install.preflight_checker import CheckResult, PreflightChecker
 pytestmark = pytest.mark.xdist_group("installer_walking_skeleton")
 
 
-def _apply_patches(original_logger_init, claude_config_dir, opencode_config_dir):
+def _apply_patches(
+    original_logger_init, claude_config_dir, opencode_config_dir, home_dir
+):
     """Mirror of conftest._apply_patches (no shared import to keep test self-contained)."""
     originals = {
         "logger_init": Logger.__init__,
@@ -43,6 +45,7 @@ def _apply_patches(original_logger_init, claude_config_dir, opencode_config_dir)
         "subprocess_run": subprocess.run,
         "argv": sys.argv,
         "opencode_env": os.environ.get("OPENCODE_CONFIG_DIR"),
+        "home_env": os.environ.get("HOME"),
     }
 
     def plain_logger_init(self, *args, **kwargs):
@@ -53,6 +56,12 @@ def _apply_patches(original_logger_init, claude_config_dir, opencode_config_dir)
     PathUtils.get_claude_config_dir = staticmethod(lambda: claude_config_dir)
     PathUtils.get_opencode_config_dir = staticmethod(lambda: opencode_config_dir)
     os.environ["OPENCODE_CONFIG_DIR"] = str(opencode_config_dir)
+    # HOME → temp. install_nwave.main() runs the attribution plugin, whose
+    # migrate_legacy_hook deletes ~/.nwave/hooks/nwave_attribution_hook.py via
+    # Path.home(). Without this redirect the install phase below wipes the
+    # developer's REAL attribution hook, breaking subsequent commits. (The
+    # get_claude_config_dir patch only covers ~/.claude, not ~/.nwave.)
+    os.environ["HOME"] = str(home_dir)
 
     passing = [
         CheckResult(
@@ -95,6 +104,10 @@ def _restore_patches(originals, original_logger_init):
         os.environ.pop("OPENCODE_CONFIG_DIR", None)
     else:
         os.environ["OPENCODE_CONFIG_DIR"] = originals["opencode_env"]
+    if originals["home_env"] is None:
+        os.environ.pop("HOME", None)
+    else:
+        os.environ["HOME"] = originals["home_env"]
 
 
 @pytest.fixture(scope="module")
@@ -102,9 +115,10 @@ def post_uninstall_state(tmp_path_factory) -> dict:
     """Run install → uninstall against a fresh tmp config dir, return residual snapshot."""
     claude_config_dir = tmp_path_factory.mktemp("claude_residuals")
     opencode_config_dir = tmp_path_factory.mktemp("opencode_residuals")
+    home_dir = tmp_path_factory.mktemp("home_residuals")
     original_logger_init = Logger.__init__
     originals = _apply_patches(
-        original_logger_init, claude_config_dir, opencode_config_dir
+        original_logger_init, claude_config_dir, opencode_config_dir, home_dir
     )
 
     try:

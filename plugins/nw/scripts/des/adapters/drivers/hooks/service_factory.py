@@ -32,12 +32,17 @@ from des.ports.driven_ports.audit_log_writer import AuditLogWriter
 def create_pre_tool_use_service(
     *,
     audit_writer_factory: Callable[[], AuditLogWriter] | None = None,
+    deliverable_type: str | None = None,
 ) -> PreToolUseService:
     """Create PreToolUseService with production dependencies.
 
     Args:
         audit_writer_factory: Optional callable returning an AuditLogWriter.
             Falls back to ``create_audit_writer`` if None.
+        deliverable_type: Resolved project deliverable type (ADR-PST-001,
+            feature plugin-skill-deliverable-type). Threaded into the service so
+            ``validate()`` can pass it pure into ``DesEnforcementPolicy.check``.
+            ``None`` (default) preserves the existing app-code behaviour exactly.
 
     Returns:
         PreToolUseService configured for production use
@@ -53,6 +58,7 @@ def create_pre_tool_use_service(
         time_provider=time_provider,
         enforcement_policy=DesEnforcementPolicy(),
         completeness_policy=MarkerCompletenessPolicy(),
+        deliverable_type=deliverable_type,
     )
 
 

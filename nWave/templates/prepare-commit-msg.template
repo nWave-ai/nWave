@@ -1,11 +1,12 @@
 #!/bin/sh
 # nWave attribution hook -- chains with existing hook
 HOOK_DIR="$(dirname "$0")"
-if [ -f "$HOOK_DIR/prepare-commit-msg.nwave-original" ]; then
+if [ -x "$HOOK_DIR/prepare-commit-msg.nwave-original" ]; then
     "$HOOK_DIR/prepare-commit-msg.nwave-original" "$@" || exit $?
 fi
 if ! command -v "{{PYTHON_CMD}}" >/dev/null 2>&1; then
     echo "nWave attribution: python3 not found, skipping" >&2
     exit 0
 fi
+[ -f "{{HOOK_SCRIPT_PATH}}" ] || exit 0
 "{{PYTHON_CMD}}" "{{HOOK_SCRIPT_PATH}}" "$@"

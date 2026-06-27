@@ -10,11 +10,11 @@ from nwave_ai.feature_delta.domain.violations import ValidationViolation
 if TYPE_CHECKING:
     from nwave_ai.feature_delta.domain.model import FeatureDeltaModel
 
-_REQUIRED_FIELDS = ("origin", "commitment", "ddd", "impact")
+_REQUIRED_FIELDS = ("origin", "commitment", "ddr", "impact")
 _FIELD_LABELS = {
     "origin": "Origin",
     "commitment": "Commitment",
-    "ddd": "DDD",
+    "ddr": "DDR",
     "impact": "Impact",
 }
 

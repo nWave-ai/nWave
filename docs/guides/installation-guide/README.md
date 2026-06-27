@@ -328,6 +328,45 @@ Commit `.nwave/local-config.json` so teammates inherit the same nWave state. For
 
 ---
 
+## Commit Attribution
+
+Installation enables commit attribution **by default**. It adds a dual
+`Co-Authored-By` trailer (Claude + nWave) to commits Claude makes, by writing a
+managed string to the `attribution.commit` key in `~/.claude/settings.json`:
+
+```jsonc
+"attribution": {
+  "commit": "🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nCo-Authored-By: nWave <nwave@nwave.ai>",
+  "pr": "…"
+}
+```
+
+Toggle it with the CLI (`nwave-ai` must be on your PATH — see
+[`nwave-ai` not found](#nwave-ai-not-found-after-install); from a source
+checkout use `uv run nwave-ai …` instead):
+
+```bash
+nwave-ai attribution status   # show current state
+nwave-ai attribution off      # remove the nWave credit (deletes the attribution key)
+nwave-ai attribution on       # re-enable it
+```
+
+> **⚠️ Changes apply to new sessions only.** Claude Code reads `attribution.commit`
+> when a session **starts**, not per commit. After toggling, **restart Claude** for
+> it to take effect — and do **not** `/resume` a conversation created before the
+> change, because a resumed session replays its original setting and will keep
+> using the old value. A commit reflects the current setting only if it comes from
+> a session created *after* the change.
+
+`attribution off` removes only nWave's credit. Claude Code's **own**
+co-authorship line (`🤖 Generated with Claude Code` + `Co-Authored-By: Claude`) is
+controlled separately by Claude Code's `includeCoAuthoredBy` setting, which nWave
+does not change. Set `"includeCoAuthoredBy": false` in `~/.claude/settings.json`
+to suppress that as well.
+
+Attribution is **global** (it lives in `~/.claude/` and `~/.nwave/`); there is no
+per-project opt-out.
+
 ## Per-Project Configuration
 
 To customize DES behavior for a specific project, create `.nwave/des-config.json` in your project directory:

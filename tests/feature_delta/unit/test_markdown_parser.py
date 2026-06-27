@@ -54,4 +54,4 @@ def test_parser_emits_two_wave_sections_with_commitment_rows():
     design = next(s for s in model.sections if s.name == "DESIGN")
     assert len(design.rows) == 1
     assert "framework-agnostic" in design.rows[0].commitment
-    assert design.rows[0].ddd in ("(none)", "none", "")
+    assert design.rows[0].ddr in ("(none)", "none", "")

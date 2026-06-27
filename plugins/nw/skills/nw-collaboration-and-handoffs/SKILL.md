@@ -66,8 +66,6 @@ feat(<component>): <business-value-description>
 - Tests: <test coverage details>
 - Architecture: <architectural layer(s) touched>
 - E2E Status: <enabled/disabled with reason>
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### 2. Mikado Discovery
@@ -78,8 +76,6 @@ Discovery: [SpecificClass.Method(parameters)] requires [ExactPrerequisite] in [F
 - Tree: docs/mikado/<goal-name>.mikado.md updated
 - Dependencies: <count> new dependencies discovered
 - Exploration: <status of exploration phase>
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### 3. Mikado Implementation
@@ -90,8 +86,6 @@ feat(mikado): Implement leaf node - <node-description>
 - Mikado Node: <specific node from tree>
 - Tree Progress: <completed-count>/<total-count> leaves complete
 - Tests: All passing
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### 4. Refactoring Transformation
@@ -104,6 +98,4 @@ refactor(level-N): <atomic-transformation-description>
 - Files: <list of modified files>
 - Tests: All passing
 - Mikado: <mikado-node-reference> (when applicable)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```

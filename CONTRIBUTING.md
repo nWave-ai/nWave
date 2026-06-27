@@ -42,6 +42,29 @@ leave it to be discovered after a long test wait.
 
 Confirm with `flock --version`.
 
+### Prerequisite: commit identity
+
+Set your git identity before the first commit, and tell git never to guess one:
+
+```bash
+git config --global user.name "<your-name>"            # replace with YOUR real name
+git config --global user.email "<your-email>"          # replace with YOUR real email, or a GitHub no-reply address
+git config --global user.useConfigOnly true            # one-time: never guess user@hostname
+```
+
+`user.useConfigOnly true` (git 2.8+) stops git from inventing a
+`you@your-machine.local` identity when `user.email` is unset — the most common
+way a misconfigured identity slips into history. It is **preventive**: the commit
+fails loudly instead of being created with a guessed identity.
+
+This pairs with the identity gates the hooks enforce (and CI re-enforces): a
+commit or push is **refused** if its author *or* committer email is a known
+placeholder (`test@example.com`, `t@t.com`), a reserved/placeholder domain
+(`example.com`, `test.com`, `localhost`, `*.local`), empty, or malformed.
+Legitimate anonymous GitHub addresses (`*@users.noreply.github.com`) are always
+allowed. If a commit is rejected, fix the identity with the `git config` commands
+above and re-commit — the gate names which field (author/committer) was rejected.
+
 ## Pre-commit Hooks
 
 Hooks run automatically on every commit:

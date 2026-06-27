@@ -22,7 +22,7 @@ Feature: Feature-delta validation catches cross-wave drift before merge
     Then the exit code is 0
     And stderr names the offender file and line of the DESIGN row
     And stderr contains the protocol surface "WSGI" as missing downstream
-    And stderr suggests adding a DDD entry or restoring the commitment
+    And stderr suggests adding a DDR entry or restoring the commitment
     And no file outside the path argument was modified
 
   # ------------------------------------------------------------------
@@ -53,7 +53,7 @@ Feature: Feature-delta validation catches cross-wave drift before merge
     Given a feature-delta where the DESIGN commitments table omits the "DDD" column
     When the maintainer runs the validator
     Then the exit code is 0
-    And stderr contains "missing column 'DDD'"
+    And stderr contains "missing column 'DDR'"
     And stderr names the file and line of the malformed table header
 
   # ------------------------------------------------------------------
@@ -87,7 +87,7 @@ Feature: Feature-delta validation catches cross-wave drift before merge
     When the maintainer runs the validator
     Then the exit code is 0
     And stderr names the missing commitment by Commitment-column text
-    And stderr suggests "Add DDD entry OR restore row"
+    And stderr suggests "Add DDR entry OR restore row"
 
   @US-03 @AC-4
   Scenario: Authorized commitment removal passes E3b by ratification
@@ -171,7 +171,7 @@ Feature: Feature-delta validation catches cross-wave drift before merge
     When the maintainer runs the validator with rule R2 enabled
     Then the exit code is 1
     And stderr names the offender row
-    And stderr suggests citing DDD-N or row#N
+    And stderr suggests citing DDR-N or row#N
 
   @US-12 @AC-3
   Scenario: Row citation in Impact passes E4 v1.1

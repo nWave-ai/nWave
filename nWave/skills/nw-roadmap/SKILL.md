@@ -56,8 +56,21 @@ Goal: {goal-description}
 
 # Test paradigm mandate (STANDING 2026-05-05) — apply per test level
 
-For EVERY step's `implementation_notes`, include this directive verbatim
-unless the step is documented as exempt:
+GUARD — emit by deliverable_type (ADR-PST-003 / OPEN-5-A): the mandate
+block below applies ONLY when `deliverable_type == application` (or when
+deliverable_type is unset — application is the default). For a plugin/skill
+deliverable, do NOT emit the mandate; instead include this one-line directive
+in each step's `implementation_notes`:
+
+  STRUCTURAL VERIFICATION (mandatory, plugin/skill): This step ships prompt
+  text / config / docs, not application code, so the Hypothesis + state-delta
+  unit mandate does not apply. Verify the deliverable structurally — a golden
+  assertion (skill-lint) over the changed markdown/config asserting the
+  required block is present and correctly shaped — gated at CI + pre-push.
+
+When `deliverable_type == application` (or unset), for EVERY step's
+`implementation_notes`, include this directive verbatim unless the step is
+documented as exempt:
 
   TEST PARADIGM (mandatory): Unit tests for this step MUST be written as
   property-based tests using Hypothesis @given strategies + state-delta

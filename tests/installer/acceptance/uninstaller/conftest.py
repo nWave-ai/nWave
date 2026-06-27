@@ -24,7 +24,9 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
-def _apply_patches(original_logger_init, claude_config_dir, opencode_config_dir):
+def _apply_patches(
+    original_logger_init, claude_config_dir, opencode_config_dir, home_dir
+):
     """Apply shared patches: plain Logger, config dir redirect, subprocess mock.
 
     Returns a dict of originals for cleanup.
@@ -37,7 +39,16 @@ def _apply_patches(original_logger_init, claude_config_dir, opencode_config_dir)
         "subprocess_run": subprocess.run,
         "argv": sys.argv,
         "opencode_env": os.environ.get("OPENCODE_CONFIG_DIR"),
+        "home_env": os.environ.get("HOME"),
     }
+
+    # HOME → temp. The uninstaller resolves ~/.nwave (global-config + attribution
+    # hook) via Path.home(), which is NOT covered by the get_claude_config_dir
+    # patch. Without this, `uninstall --force` deletes the developer's REAL
+    # ~/.nwave/hooks/nwave_attribution_hook.py, breaking subsequent commits
+    # (prepare-commit-msg can no longer find the hook). Path.home() honors $HOME
+    # on POSIX, so redirecting the env var isolates it.
+    os.environ["HOME"] = str(home_dir)
 
     # Force plain text Logger (no Rich)
     def plain_logger_init(self, *args, **kwargs):
@@ -95,6 +106,10 @@ def _restore_patches(originals, original_logger_init):
         os.environ.pop("OPENCODE_CONFIG_DIR", None)
     else:
         os.environ["OPENCODE_CONFIG_DIR"] = originals["opencode_env"]
+    if originals["home_env"] is None:
+        os.environ.pop("HOME", None)
+    else:
+        os.environ["HOME"] = originals["home_env"]
 
 
 @pytest.fixture(scope="module")
@@ -106,10 +121,11 @@ def uninstaller_result(project_root, tmp_path_factory):
     """
     claude_config_dir = tmp_path_factory.mktemp("claude_config_uninstall")
     opencode_config_dir = tmp_path_factory.mktemp("opencode_config_uninstall")
+    home_dir = tmp_path_factory.mktemp("home_uninstall")
     original_logger_init = Logger.__init__
 
     originals = _apply_patches(
-        original_logger_init, claude_config_dir, opencode_config_dir
+        original_logger_init, claude_config_dir, opencode_config_dir, home_dir
     )
 
     try:

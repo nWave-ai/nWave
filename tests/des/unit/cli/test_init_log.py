@@ -1,7 +1,7 @@
 """Unit tests for des.cli.init_log CLI module.
 
-Tests the init_log CLI tool that initializes execution-log.json with
-schema v3.0 format. All tests use tmp_path fixture.
+Tests the init_log CLI tool that initializes execution-log.json with the
+ADR-025 v5.0 (3-phase canon) schema. All tests use tmp_path fixture.
 
 Test Budget: 4 distinct behaviors x 1 = 4 tests.
 
@@ -29,7 +29,7 @@ def test_creates_execution_log_successfully(tmp_path):
     assert log_path.exists()
 
     data = json.loads(log_path.read_text())
-    assert data["schema_version"] == "3.0"
+    assert data["schema_version"] == "5.0"
     assert data["feature_id"] == "my-feature"
     assert data["events"] == []
 

@@ -99,10 +99,10 @@ def _stderr_protocol_surface(cli_result, surface: str) -> None:
     assert surface in cli_result.stderr
 
 
-@then("stderr suggests adding a DDD entry or restoring the commitment")
+@then("stderr suggests adding a DDR entry or restoring the commitment")
 def _stderr_remediation(cli_result) -> None:
     text = cli_result.stderr.lower()
-    assert "ddd" in text and ("restore" in text or "add" in text)
+    assert "ddr" in text and ("restore" in text or "add" in text)
 
 
 @then("no file outside the path argument was modified")
@@ -739,10 +739,10 @@ def _then_offender_row(cli_result) -> None:
     )
 
 
-@then("stderr suggests citing DDD-N or row#N")
+@then("stderr suggests citing DDR-N or row#N")
 def _then_suggest_citation(cli_result) -> None:
     text = cli_result.stderr.lower()
-    assert "ddd" in text or "row#" in text or "row" in text, (
+    assert "ddr" in text or "row#" in text or "row" in text, (
         f"expected citation hint in stderr, got {cli_result.stderr!r}"
     )
 

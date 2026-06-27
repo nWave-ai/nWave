@@ -17,24 +17,24 @@ from nwave_ai.feature_delta.domain.rules.e3b_row_pairing import check_row_pairin
 def _make_model(
     discuss_rows: list[tuple[str, str]],
     design_rows: list[tuple[str, str]],
-    design_ddd_entries: tuple = (),
+    design_ddr_entries: tuple = (),
 ) -> FeatureDeltaModel:
     """Build a minimal FeatureDeltaModel for testing."""
     discuss = WaveSection(
         name="DISCUSS",
         rows=tuple(
-            CommitmentRow(origin=origin, commitment=commit, ddd="n/a", impact="impact")
+            CommitmentRow(origin=origin, commitment=commit, ddr="n/a", impact="impact")
             for origin, commit in discuss_rows
         ),
-        ddd_entries=(),
+        ddr_entries=(),
     )
     design = WaveSection(
         name="DESIGN",
         rows=tuple(
-            CommitmentRow(origin=origin, commitment=commit, ddd="n/a", impact="impact")
+            CommitmentRow(origin=origin, commitment=commit, ddr="n/a", impact="impact")
             for origin, commit in design_rows
         ),
-        ddd_entries=design_ddd_entries,
+        ddr_entries=design_ddr_entries,
     )
     return FeatureDeltaModel(
         feature_id="test",

@@ -6,7 +6,7 @@ import re
 
 from nwave_ai.feature_delta.domain.model import (
     CommitmentRow,
-    DDDEntry,
+    DDREntry,
     FeatureDeltaModel,
     WaveSection,
 )
@@ -18,7 +18,8 @@ _TABLE_ROW = re.compile(r"^\|(.+)\|")
 _DESIGN_DECISIONS_HEADING = re.compile(
     r"^###\s+\[REF\]\s+Design Decisions", re.IGNORECASE
 )
-_DDD_BULLET = re.compile(r"^-\s+DDD-(\d+):\s+(.+)")
+# Design-decision bullet: DDR-N canonical; legacy DDD-N accepted (issue #50).
+_DECISION_BULLET = re.compile(r"^-\s+DD[DR]-(\d+):\s+(.+)")
 
 _HEADER_ROW = re.compile(r"^\|\s*Origin\s*\|", re.IGNORECASE)
 _FENCED_GHERKIN_OPEN = re.compile(r"^```gherkin\s*$")
@@ -40,7 +41,7 @@ def _parse_row(line: str) -> CommitmentRow | None:
     return CommitmentRow(
         origin=cells[0],
         commitment=cells[1],
-        ddd=cells[2],
+        ddr=cells[2],
         impact=cells[3],
     )
 
@@ -59,10 +60,10 @@ class MarkdownSectionParser:
         sections: list[WaveSection] = []
         current_wave: str | None = None
         current_rows: list[CommitmentRow] = []
-        current_ddd_entries: list[DDDEntry] = []
+        current_ddr_entries: list[DDREntry] = []
         current_gherkin_blocks: list[str] = []
         in_table = False
-        in_ddd_section = False
+        in_decision_section = False
         in_gherkin_block = False
         gherkin_block_lines: list[str] = []
         feature_id = ""
@@ -91,16 +92,16 @@ class MarkdownSectionParser:
                         WaveSection(
                             name=current_wave,
                             rows=tuple(current_rows),
-                            ddd_entries=tuple(current_ddd_entries),
+                            ddr_entries=tuple(current_ddr_entries),
                             gherkin_blocks=tuple(current_gherkin_blocks),
                         )
                     )
                 current_wave = wave_match.group(1)
                 current_rows = []
-                current_ddd_entries = []
+                current_ddr_entries = []
                 current_gherkin_blocks = []
                 in_table = False
-                in_ddd_section = False
+                in_decision_section = False
                 continue
 
             if current_wave is None:
@@ -115,26 +116,26 @@ class MarkdownSectionParser:
                 in_gherkin_block = True
                 gherkin_block_lines = []
                 in_table = False
-                in_ddd_section = False
+                in_decision_section = False
                 continue
 
             if "### [REF] Inherited commitments" in line:
                 in_table = True
-                in_ddd_section = False
+                in_decision_section = False
                 continue
 
             if _DESIGN_DECISIONS_HEADING.match(line):
-                in_ddd_section = True
+                in_decision_section = True
                 in_table = False
                 continue
 
-            if in_ddd_section:
-                ddd_match = _DDD_BULLET.match(line)
-                if ddd_match:
-                    current_ddd_entries.append(
-                        DDDEntry(
-                            number=int(ddd_match.group(1)),
-                            text=ddd_match.group(2).strip(),
+            if in_decision_section:
+                decision_match = _DECISION_BULLET.match(line)
+                if decision_match:
+                    current_ddr_entries.append(
+                        DDREntry(
+                            number=int(decision_match.group(1)),
+                            text=decision_match.group(2).strip(),
                         )
                     )
                 continue
@@ -154,7 +155,7 @@ class MarkdownSectionParser:
                 WaveSection(
                     name=current_wave,
                     rows=tuple(current_rows),
-                    ddd_entries=tuple(current_ddd_entries),
+                    ddr_entries=tuple(current_ddr_entries),
                     gherkin_blocks=tuple(current_gherkin_blocks),
                 )
             )

@@ -5,9 +5,12 @@ PASS if word_count(impact) >= 10 OR impact contains >= 1 word from verbs.
 FAIL otherwise — impact too vague.
 
 v1.1 logic (additive over v1.0): Impact MUST additionally contain a
-structural citation: DDD-\\d+ OR row#\\d+ (case-insensitive for row#).
+structural citation: DDR-\\d+ OR row#\\d+ (case-insensitive for row#).
 Pure prose without citation fails even if v1.0 word-count/verb passes.
 Closes stressor S1: word-padding bypass empirical from spdd-bench.
+
+The decision-record citation is canonically DDR-N; the legacy DDD-N form is
+still accepted for backward compatibility (issue #50).
 """
 
 from __future__ import annotations
@@ -21,7 +24,8 @@ from nwave_ai.feature_delta.domain.violations import ValidationViolation
 if TYPE_CHECKING:
     from nwave_ai.feature_delta.domain.model import FeatureDeltaModel
 
-_CITATION_PATTERN = re.compile(r"DDD-\d+|row#\d+|#row\d+", re.IGNORECASE)
+# DDR-N canonical; legacy DDD-N accepted (issue #50).
+_CITATION_PATTERN = re.compile(r"DD[DR]-\d+|row#\d+|#row\d+", re.IGNORECASE)
 
 
 def check_v1_0(
@@ -52,7 +56,7 @@ def check_v1_0(
                 remediation=(
                     "Provide an Impact value with >= 10 words OR a consequence verb "
                     "(e.g. ratifies, preserves, removes, restricts, deprecates). "
-                    "v1.1 will additionally require a DDD-N or row citation."
+                    "v1.1 will additionally require a DDR-N or row citation."
                 ),
             )
         )
@@ -64,10 +68,10 @@ def check_v1_1(
     model: FeatureDeltaModel, verbs: tuple[str, ...]
 ) -> tuple[ValidationViolation, ...]:
     """
-    E4 v1.1: PASS if v1.0 baseline passes AND impact contains DDD-N or row#N citation.
+    E4 v1.1: PASS if v1.0 baseline passes AND impact contains DDR-N or row#N citation.
 
     Closes stressor S1: word-padding bypass blocked by requiring a structural reference.
-    US-12 AC-1: DDD-\\d+ citation passes.
+    US-12 AC-1: DDR-\\d+ citation passes (legacy DDD-\\d+ also accepted).
     US-12 AC-2: word-padding without citation fails.
     US-12 AC-3: row#\\d+ citation passes.
     """
@@ -90,8 +94,8 @@ def check_v1_1(
                 line=row_index,
                 offender=impact[:80] if impact else "(empty)",
                 remediation=(
-                    "E4 v1.1 requires a structural citation: DDD-N or row#N. "
-                    "Add a DDD entry reference (e.g. DDD-1) or a row citation "
+                    "E4 v1.1 requires a structural citation: DDR-N or row#N. "
+                    "Add a DDR entry reference (e.g. DDR-1) or a row citation "
                     "(e.g. DISCUSS#row3 or row#3) in the Impact column."
                 ),
             )

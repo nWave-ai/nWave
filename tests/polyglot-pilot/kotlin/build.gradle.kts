@@ -10,7 +10,7 @@
 //   ./gradlew test      # via wrapper (if generated)
 
 plugins {
-    kotlin("jvm") version "1.9.24"
+    kotlin("jvm") version "2.4.0"
 }
 
 group = "nwave.polyglot"
@@ -21,9 +21,9 @@ repositories {
 }
 
 dependencies {
-    testImplementation("io.kotest:kotest-runner-junit5:5.8.1")
-    testImplementation("io.kotest:kotest-assertions-core:5.8.1")
-    testImplementation("io.kotest:kotest-property:5.8.1")
+    testImplementation("io.kotest:kotest-runner-junit5:6.2.1")
+    testImplementation("io.kotest:kotest-assertions-core:6.2.1")
+    testImplementation("io.kotest:kotest-property:6.2.1")
 }
 
 kotlin {

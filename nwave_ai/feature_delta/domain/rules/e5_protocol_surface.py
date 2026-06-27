@@ -16,11 +16,11 @@ def check(
 ) -> tuple[ValidationViolation, ...]:
     """
     Check that protocol-surface verbs present in DISCUSS commitments
-    are still present in DESIGN commitments (or ratified by a DDD entry).
+    are still present in DESIGN commitments (or ratified by a DDR entry).
 
     For each pattern in `patterns`, if any DISCUSS commitment contains it
     but no DESIGN commitment contains it AND no DESIGN row has a non-empty
-    DDD ratification, it is a violation.
+    DDR ratification, it is a violation.
 
     Returns a tuple of ValidationViolation objects (empty = clean).
     """
@@ -36,11 +36,11 @@ def check(
     discuss_text = " ".join(r.commitment for r in discuss_section.rows)
     design_text = " ".join(r.commitment for r in design_section.rows)
 
-    # Collect DDD ratifications: any DESIGN row with a non-empty, non-placeholder DDD cell.
-    ratified_ddds = {
-        r.ddd.strip()
+    # Collect DDR ratifications: any DESIGN row with a non-empty, non-placeholder DDR cell.
+    ratified_ddrs = {
+        r.ddr.strip()
         for r in design_section.rows
-        if r.ddd.strip() and r.ddd.strip().lower() not in ("n/a", "(none)", "none", "")
+        if r.ddr.strip() and r.ddr.strip().lower() not in ("n/a", "(none)", "none", "")
     }
 
     violations: list[ValidationViolation] = []
@@ -50,8 +50,8 @@ def check(
         if pattern.upper() in design_text.upper():
             continue
         # Pattern present in DISCUSS but missing from DESIGN.
-        # Check if any DDD entry ratifies the downgrade.
-        if ratified_ddds:
+        # Check if any DDR entry ratifies the downgrade.
+        if ratified_ddrs:
             continue
         line_hint = 1  # Line numbers not tracked in v1; use 1 as sentinel.
         offender_file = model.feature_id
@@ -63,7 +63,7 @@ def check(
                 line=line_hint,
                 offender=pattern,
                 remediation=(
-                    f"Add a DDD entry ratifying the removal of '{pattern}' "
+                    f"Add a DDR entry ratifying the removal of '{pattern}' "
                     f"or restore the commitment in DESIGN."
                 ),
             )
