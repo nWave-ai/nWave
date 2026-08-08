@@ -84,5 +84,18 @@ def test_des_commit_help_documents_required_task_id(capsys) -> None:
     with pytest.raises(SystemExit):
         module.main(argv=["--help"])
     help_text = capsys.readouterr().out
+
+    # The usage line is where argparse signals requiredness: optional options
+    # are bracketed ("[--repo-dir REPO_DIR]"), required ones are not. argparse
+    # wraps that line, so compare on a whitespace-collapsed copy.
+    usage_line = help_text.split("\n\n", 1)[0]
+    usage = " ".join(usage_line.split())
+    assert "--task-id TASK_ID" in usage, (
+        f"--task-id is absent from the usage line: {usage!r}"
+    )
+    assert "[--task-id" not in usage, (
+        f"--task-id is presented as optional in the usage line: {usage!r}"
+    )
+    # And it is documented, naming the trailer key it produces.
     assert "--task-id" in help_text
     assert "Task-Id" in help_text

@@ -92,7 +92,7 @@ class TestDesCommitScoping:
                 "--step-id",
                 "01-01",
                 "--task-id",
-                "44",
+                "auth-upgrade",
                 "--message",
                 "feat: add a",
             ]
@@ -124,7 +124,7 @@ class TestDesCommitScoping:
                 "--step-id",
                 "02-03",
                 "--task-id",
-                "44",
+                "auth-upgrade",
                 "--message",
                 "feat: add a",
             ]
@@ -162,7 +162,7 @@ class TestDesCommitConcurrentNoCrossStaging:
                     "--step-id",
                     f"{idx:02d}-01",
                     "--task-id",
-                    "44",
+                    "auth-upgrade",
                     "--message",
                     f"feat: add {files[idx]}",
                 ]
@@ -196,7 +196,13 @@ class TestDesCommitConcurrentNoCrossStaging:
         assert all_committed == set(files)
 
 
-def _run(tmp_path, owned, step_id="01-01", message="feat: change", task_id="44"):
+def _run(
+    tmp_path,
+    owned,
+    step_id="01-01",
+    message="feat: change",
+    task_id="auth-upgrade",
+):
     from des.cli.commit import main
 
     argv = ["--repo-dir", str(tmp_path)]
@@ -215,20 +221,32 @@ class TestDesCommitTaskIdTrailer:
     """
 
     def test_commit_carries_task_id_trailer(self, tmp_path):
+        """Both keys SHALL be readable by git's own trailer parser.
+
+        Asserted via ``%(trailers:key=...)`` rather than a substring search over
+        ``%B``: a substring search also matches a key that landed where git's
+        trailer parsing cannot see it (mid-body, or in a second paragraph after
+        the real trailer block), which is exactly the defect issue #78 fixes.
+        """
         _init_git_repo(tmp_path)
         (tmp_path / "a.py").write_text("owned = 1\n")
 
-        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="44") == 0
+        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="auth-upgrade") == 0
 
-        body = _git(tmp_path, "log", "-1", "--format=%B")
-        assert "Step-Id: 02-03" in body
-        assert "Task-Id: 44" in body
+        step = _git(
+            tmp_path, "log", "-1", "--format=%(trailers:key=Step-Id,valueonly)"
+        ).strip()
+        task = _git(
+            tmp_path, "log", "-1", "--format=%(trailers:key=Task-Id,valueonly)"
+        ).strip()
+        assert step == "02-03"
+        assert task == "auth-upgrade"
 
     def test_both_trailers_parse_as_git_trailers(self, tmp_path):
         _init_git_repo(tmp_path)
         (tmp_path / "a.py").write_text("owned = 1\n")
 
-        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="44") == 0
+        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="auth-upgrade") == 0
 
         task = _git(
             tmp_path, "log", "-1", "--format=%(trailers:key=Task-Id,valueonly)"
@@ -236,7 +254,7 @@ class TestDesCommitTaskIdTrailer:
         step = _git(
             tmp_path, "log", "-1", "--format=%(trailers:key=Step-Id,valueonly)"
         ).strip()
-        assert task == "44"
+        assert task == "auth-upgrade"
         assert step == "02-03"
 
     def test_trailers_join_existing_trailer_block(self, tmp_path):
@@ -249,7 +267,7 @@ class TestDesCommitTaskIdTrailer:
                 tmp_path,
                 ["a.py"],
                 step_id="02-03",
-                task_id="44",
+                task_id="auth-upgrade",
                 message="feat: add a\n\nBody text.\n\nIssue: #78",
             )
             == 0
@@ -262,7 +280,7 @@ class TestDesCommitTaskIdTrailer:
             tmp_path, "log", "-1", "--format=%(trailers:key=Task-Id,valueonly)"
         ).strip()
         assert issue == "#78"
-        assert task == "44"
+        assert task == "auth-upgrade"
 
     def test_commit_satisfies_verifier_dual_grep(self, tmp_path):
         """The produced commit passes the verifier that gates SubagentStop."""
@@ -271,12 +289,12 @@ class TestDesCommitTaskIdTrailer:
         _init_git_repo(tmp_path)
         (tmp_path / "a.py").write_text("owned = 1\n")
 
-        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="44") == 0
+        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="auth-upgrade") == 0
 
         result = GitCommitVerifier().verify_commit(
             step_id="02-03",
             cwd=str(tmp_path),
-            feature_id_filter="44",
+            feature_id_filter="auth-upgrade",
         )
         assert result.verified, result.error_reason
 
