@@ -29,6 +29,9 @@ import json
 import sys
 from pathlib import Path
 
+from des.cli._log_discovery import describe_other_logs, find_other_logs_in_worktree
+from des.domain.result import Failure
+
 
 ATDD_PURE_MODE = "atdd_pure"
 
@@ -124,6 +127,16 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Feature identifier (kebab-case, e.g., my-feature)",
     )
+    parser.add_argument(
+        "--allow-duplicate-log",
+        action="store_true",
+        help=(
+            "Create the log even when another execution-log.json for the same "
+            "feature id already exists elsewhere under the git worktree root. "
+            "Use only when a second, deliberately separate log is intended "
+            "(issue #79)."
+        ),
+    )
     return parser
 
 
@@ -166,6 +179,41 @@ def main(argv: list[str] | None = None) -> int:
     if log_path.exists():
         print(f"Error: execution-log.json already exists at {log_path}")
         return 1
+
+    # Issue #79: a relative --project-dir resolves against the process CWD. An
+    # agent that cd'd into a monorepo subdirectory mid-DELIVER would otherwise
+    # start a SECOND, divergent log for a feature that already has a canonical
+    # one elsewhere in this worktree. Fail loudly naming both paths; the
+    # deliberate-second-log case has an explicit opt-out.
+    if not args.allow_duplicate_log:
+        scan = find_other_logs_in_worktree(project_dir, feature_id=args.feature_id)
+        if isinstance(scan, Failure):
+            # The guard could not run. Initialization still proceeds: this check
+            # is a safety net, not a precondition, and des-init-log must remain
+            # usable outside a git worktree. But the operator is told the net
+            # was not in place — a silent skip here would recreate exactly the
+            # undetected fork the guard exists to prevent.
+            print(
+                "Warning: could not check for an existing execution log "
+                f"({scan.error}). Proceeding without the duplicate-log guard; "
+                "if this feature already has a log elsewhere, the audit trail "
+                "is now split (issue #79).",
+                file=sys.stderr,
+            )
+        elif scan.value:
+            listed = "\n".join(describe_other_logs(scan))
+            print(
+                f"Error: an execution log for feature '{args.feature_id}' already "
+                f"exists elsewhere in this git worktree.\n"
+                f"       would create: {log_path.absolute()}\n"
+                f"       existing log(s):\n{listed}\n"
+                "       Creating a second log splits the DELIVER audit trail "
+                "(issue #79). Point --project-dir at the existing log's "
+                "directory, or pass --allow-duplicate-log when a separate log "
+                "is intended.",
+                file=sys.stderr,
+            )
+            return 1
 
     # Create execution log with the ADR-025 v5.0 (3-phase canon) schema, so new
     # DELIVER logs default to RED/GREEN/COMMIT (issue #65). Legacy v4 logs stay
