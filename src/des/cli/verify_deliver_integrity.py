@@ -32,7 +32,8 @@ import sys
 from pathlib import Path
 
 from des.adapters.driven.config.des_config import DESConfig
-from des.cli._log_discovery import find_sibling_logs
+from des.cli._log_discovery import describe_sibling_logs, find_sibling_logs
+from des.domain.result import Failure
 from des.cli.init_log import ATDD_PURE_MODE, _resolve_workflow_mode
 from des.domain._roadmap_helpers import (
     extract_step_ids as _extract_step_ids,
@@ -216,12 +217,22 @@ def main(argv: list[str] | None = None) -> int:
         # Issue #79: the same relative project_dir denotes a different absolute
         # directory once the caller's CWD has changed, so name the log(s) that
         # exist elsewhere in this worktree instead of reporting a bare miss.
-        print(f"Error: execution-log.json not found at {exec_log_path.absolute()}")
-        siblings = find_sibling_logs(project_dir)
-        if siblings:
-            print("       An execution log exists elsewhere in this git worktree:")
-            for path in siblings:
-                print(f"         - {path}")
+        print(
+            f"Error: execution-log.json not found at {exec_log_path.absolute()}",
+            file=sys.stderr,
+        )
+        scan = find_sibling_logs(project_dir)
+        detail = describe_sibling_logs(scan)
+        if isinstance(scan, Failure):
+            for line in detail:
+                print(line, file=sys.stderr)
+        elif detail:
+            print(
+                "       An execution log exists elsewhere in this git worktree:",
+                file=sys.stderr,
+            )
+            for line in detail:
+                print(line, file=sys.stderr)
         return 2
 
     exec_log = json.loads(exec_log_path.read_text())

@@ -92,7 +92,9 @@ def test_log_phase_names_the_existing_log_when_relative_dir_misses(
     )
 
     assert exit_code == 1
-    output = capsys.readouterr().out
+    # Diagnostics go to stderr, matching des-init-log and the other DES CLIs.
+    captured = capsys.readouterr()
+    output = captured.err
     assert str(canonical / "execution-log.json") in output, (
         "the diagnostic must name the existing canonical log, not only the miss"
     )
@@ -193,3 +195,126 @@ def test_init_log_ignores_a_log_for_a_different_feature(
 
     assert exit_code == 0
     assert (other / "execution-log.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Failure paths of the discovery helper.
+#
+# The whole point of #79 is that a silent failure hid a real problem, so the
+# helper must not fail silently either: "found nothing" and "could not look"
+# have to reach the operator as different messages.
+# ---------------------------------------------------------------------------
+
+
+def test_scan_failure_is_reported_rather_than_read_as_no_siblings(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    """WHEN the sibling scan cannot run, the system SHALL say so.
+
+    Outside a git worktree the scan is impossible. Printing nothing would be
+    indistinguishable from "no other log exists" — the exact confusion this
+    change removes.
+    """
+    project_dir = tmp_path / "not-a-repo" / "deliver"
+    project_dir.mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = log_phase.main(
+        [
+            "--project-dir",
+            str(project_dir),
+            "--step-id",
+            "01-01",
+            "--phase",
+            "GREEN",
+            "--status",
+            "EXECUTED",
+            "--data",
+            "PASS",
+        ]
+    )
+
+    message = capsys.readouterr().err
+    assert exit_code == 1
+    assert "could not scan for other execution logs" in message, (
+        "a scan that could not run must be reported, not rendered as silence"
+    )
+
+
+def test_corrupt_sibling_log_is_reported_not_silently_filtered(
+    worktree: Path, capsys, monkeypatch
+) -> None:
+    """WHEN a sibling log cannot be parsed, the system SHALL still report it.
+
+    A corrupt audit trail is a louder problem than a missing one. Treating an
+    unreadable log as "some other feature's log" would drop the strongest
+    evidence that something is wrong.
+    """
+    stray = worktree / "apps" / "website" / "deliver"
+    stray.mkdir(parents=True)
+    (stray / "execution-log.json").write_text('{"feature_id": "brand-visual')
+
+    missing = worktree / "docs" / "feature" / "other-feature" / "deliver"
+    missing.mkdir(parents=True)
+    monkeypatch.chdir(worktree)
+
+    log_phase.main(
+        [
+            "--project-dir",
+            str(missing),
+            "--step-id",
+            "01-01",
+            "--phase",
+            "GREEN",
+            "--status",
+            "EXECUTED",
+            "--data",
+            "PASS",
+        ]
+    )
+
+    message = capsys.readouterr().err
+    assert str(stray / "execution-log.json") in message, (
+        "an unparseable sibling log must still be named"
+    )
+    assert "WARNING" in message and "not valid JSON" in message, (
+        "the operator must be told the log is corrupt, and why"
+    )
+
+
+def test_a_file_merely_ending_in_the_log_name_is_not_a_sibling(
+    worktree: Path, capsys, monkeypatch
+) -> None:
+    """A suffix match is not a filename match.
+
+    ``my-execution-log.json`` is a different file. A git pathspec without
+    ``:(glob)`` magic would select it, because ``*`` there matches across path
+    separators as a plain suffix.
+    """
+    decoy_dir = worktree / "apps" / "website"
+    decoy_dir.mkdir(parents=True, exist_ok=True)
+    (decoy_dir / "my-execution-log.json").write_text("{}")
+
+    missing = worktree / "docs" / "feature" / "other-feature" / "deliver"
+    missing.mkdir(parents=True)
+    monkeypatch.chdir(worktree)
+
+    log_phase.main(
+        [
+            "--project-dir",
+            str(missing),
+            "--step-id",
+            "01-01",
+            "--phase",
+            "GREEN",
+            "--status",
+            "EXECUTED",
+            "--data",
+            "PASS",
+        ]
+    )
+
+    message = capsys.readouterr().err
+    assert "my-execution-log.json" not in message, (
+        "a file whose name merely ends in the log name is not an execution log"
+    )

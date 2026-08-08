@@ -29,7 +29,8 @@ import json
 import sys
 from pathlib import Path
 
-from des.cli._log_discovery import find_sibling_logs
+from des.cli._log_discovery import describe_sibling_logs, find_sibling_logs
+from des.domain.result import Failure
 
 
 ATDD_PURE_MODE = "atdd_pure"
@@ -185,9 +186,22 @@ def main(argv: list[str] | None = None) -> int:
     # one elsewhere in this worktree. Fail loudly naming both paths; the
     # deliberate-second-log case has an explicit opt-out.
     if not args.allow_duplicate_log:
-        siblings = find_sibling_logs(project_dir, feature_id=args.feature_id)
-        if siblings:
-            listed = "\n".join(f"         - {path}" for path in siblings)
+        scan = find_sibling_logs(project_dir, feature_id=args.feature_id)
+        if isinstance(scan, Failure):
+            # The guard could not run. Initialization still proceeds: this check
+            # is a safety net, not a precondition, and des-init-log must remain
+            # usable outside a git worktree. But the operator is told the net
+            # was not in place — a silent skip here would recreate exactly the
+            # undetected fork the guard exists to prevent.
+            print(
+                "Warning: could not check for an existing execution log "
+                f"({scan.error}). Proceeding without the duplicate-log guard; "
+                "if this feature already has a log elsewhere, the audit trail "
+                "is now split (issue #79).",
+                file=sys.stderr,
+            )
+        elif scan.value:
+            listed = "\n".join(describe_sibling_logs(scan))
             print(
                 f"Error: an execution log for feature '{args.feature_id}' already "
                 f"exists elsewhere in this git worktree.\n"

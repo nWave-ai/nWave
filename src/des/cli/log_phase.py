@@ -29,7 +29,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from des.cli._log_discovery import find_sibling_logs
+from des.cli._log_discovery import describe_sibling_logs, find_sibling_logs
+from des.domain.result import Failure
 from des.domain.tdd_schema import TDDSchemaLoader
 
 
@@ -168,17 +169,30 @@ def main(argv: list[str] | None = None) -> int:
         # string miss the canonical log. Name the log(s) that DO exist in this
         # worktree so the agent re-points --project-dir instead of re-running
         # des-init-log and forking the audit trail.
-        print(f"Error: execution-log.json not found at {log_path.absolute()}")
-        siblings = find_sibling_logs(project_dir)
-        if siblings:
-            print("       An execution log exists elsewhere in this git worktree:")
-            for path in siblings:
-                print(f"         - {path}")
+        print(
+            f"Error: execution-log.json not found at {log_path.absolute()}",
+            file=sys.stderr,
+        )
+        scan = find_sibling_logs(project_dir)
+        detail = describe_sibling_logs(scan)
+        if isinstance(scan, Failure):
+            # The scan itself failed. Say so — silence here would read as "no
+            # other log exists", which is the confusion issue #79 is about.
+            for line in detail:
+                print(line, file=sys.stderr)
+        elif detail:
+            print(
+                "       An execution log exists elsewhere in this git worktree:",
+                file=sys.stderr,
+            )
+            for line in detail:
+                print(line, file=sys.stderr)
             print(
                 "       The --project-dir was resolved against the current "
                 f"working directory ({Path.cwd()}). Re-point --project-dir at "
                 "the existing log's directory rather than initializing a "
-                "second log."
+                "second log.",
+                file=sys.stderr,
             )
         return 1
 
