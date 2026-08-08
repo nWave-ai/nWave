@@ -22,7 +22,7 @@ re-running the cascade.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 
 DensityMode = Literal["lean", "full"]
@@ -30,16 +30,13 @@ ExpansionPromptMode = Literal[
     "ask", "always-skip", "always-expand", "smart", "ask-intelligent"
 ]
 
-# Accepted `documentation.expansion_prompt` values, in documentation order.
-# Kept in sync with `ExpansionPromptMode` and with
-# `docs/reference/global-config.md` / `docs/guides/configuring-doc-density.md`.
-_ACCEPTED_EXPANSION_PROMPTS: tuple[str, ...] = (
-    "ask",
-    "always-skip",
-    "always-expand",
-    "smart",
-    "ask-intelligent",
-)
+# Accepted `documentation.expansion_prompt` values, derived from the type so the
+# runtime check and the type annotation cannot disagree. A restatement kept in
+# sync by comment would let a value added to `ExpansionPromptMode` type-check
+# clean while the resolver rejected it at runtime — the worst pairing.
+# `get_args` preserves declaration order, so the error message still lists the
+# values in documentation order.
+_ACCEPTED_EXPANSION_PROMPTS: tuple[str, ...] = get_args(ExpansionPromptMode)
 
 
 @dataclass(frozen=True)

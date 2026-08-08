@@ -19,9 +19,17 @@ Coverage (per task spec):
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+from typing import get_args
+
 import pytest
 
-from scripts.shared.density_config import Density, resolve_density
+from scripts.shared.density_config import (
+    Density,
+    ExpansionPromptMode,
+    resolve_density,
+)
 
 
 def test_empty_config_returns_lean_default() -> None:
@@ -166,3 +174,105 @@ def test_non_object_documentation_section_names_the_offender():
     """A malformed section raises ValueError, not AttributeError."""
     with pytest.raises(ValueError, match="documentation"):
         resolve_density({"documentation": "lean"})
+
+
+# --- documented vocabulary ------------------------------------------------
+#
+# `_ACCEPTED_EXPANSION_PROMPTS` now derives from `ExpansionPromptMode` via
+# `get_args`, so code cannot drift from itself. Prose cannot derive — the three
+# documents below restate the vocabulary for human readers, and that
+# restatement drifting from the type IS the defect issue #84 records:
+# `ask-intelligent` was accepted by the resolver while no document listed it.
+# These tests are the gate that would have caught it.
+
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+
+# Each doc is addressed by a markdown section plus the enumerating phrase inside
+# it, never a line number, so the tests survive reflow, reordering, and edits
+# elsewhere in the page. Both documents enumerate other vocabularies too
+# (`rigor.profile`, `update_check`), hence the section scoping. A moved anchor
+# fails loudly with an instruction rather than silently passing.
+_ENUMERATION_ANCHORS = (
+    (
+        "docs/reference/global-config.md",
+        "#### `documentation.expansion_prompt`",
+        "Valid values:",
+    ),
+    (
+        "docs/guides/configuring-doc-density.md",
+        "### Use case 4",
+        "**Accepted values**:",
+    ),
+)
+
+
+def _section_lines(text: str, heading_prefix: str) -> list[str]:
+    """Return the lines of the markdown section opened by `heading_prefix`."""
+    lines = text.splitlines()
+    starts = [i for i, line in enumerate(lines) if line.startswith(heading_prefix)]
+    if not starts:
+        return []
+    start = starts[0]
+    for offset, line in enumerate(lines[start + 1 :], start=start + 1):
+        if line.startswith("#"):
+            return lines[start:offset]
+    return lines[start:]
+
+
+def _backticked_values_after(line: str, anchor: str) -> set[str]:
+    """Return the bare backticked value tokens following `anchor` on `line`.
+
+    Filtered to lowercase/hyphen tokens so incidental backticked prose in the
+    same sentence (`documentation.expansion_prompt`, `--expand`) is not mistaken
+    for a listed value.
+    """
+    tail = line.split(anchor, 1)[1]
+    return {
+        token
+        for token in re.findall(r"`([^`]+)`", tail)
+        if re.fullmatch(r"[a-z][a-z-]*", token)
+    }
+
+
+@pytest.mark.parametrize(("relative_path", "heading", "anchor"), _ENUMERATION_ANCHORS)
+def test_documented_expansion_prompt_enumeration_matches_the_type(
+    relative_path: str, heading: str, anchor: str
+) -> None:
+    """Each doc's enumerating sentence lists exactly the accepted values."""
+    text = (_REPO_ROOT / relative_path).read_text(encoding="utf-8")
+    section = _section_lines(text, heading)
+    assert section, (
+        f"section {heading!r} not found in {relative_path}; it was renamed or "
+        "removed — update this test's heading anchor."
+    )
+
+    matching = [line for line in section if anchor in line]
+    assert matching, (
+        f"phrase {anchor!r} not found under {heading!r} in {relative_path}; the "
+        "enumerating sentence moved or was reworded — update this test's anchor."
+    )
+
+    documented: set[str] = set()
+    for line in matching:
+        documented |= _backticked_values_after(line, anchor)
+
+    assert documented == set(get_args(ExpansionPromptMode))
+
+
+def test_resolution_contract_skill_mentions_every_accepted_value() -> None:
+    """The contract skill has no single enumerating sentence to anchor on.
+
+    It threads the values through per-value bullets and a cascade paragraph, so
+    the gate here is presence rather than set equality: every accepted value is
+    described somewhere. That catches the #84 direction (a value the contract
+    never mentions); the converse — prose naming a value the type dropped — is
+    left to the two enumeration tests above, which do check equality.
+    """
+    text = (
+        _REPO_ROOT / "nWave/skills/nw-density-resolution-contract/SKILL.md"
+    ).read_text(encoding="utf-8")
+
+    missing = [
+        value for value in get_args(ExpansionPromptMode) if f'`"{value}"`' not in text
+    ]
+    assert not missing, f"undocumented in the resolution contract: {missing}"
