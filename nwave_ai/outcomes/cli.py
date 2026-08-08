@@ -5,9 +5,13 @@ service calls (RegistryService.register, CollisionDetector.check,
 RegistryService.collision_check_for_id) and maps results to exit codes
 per feature-delta DESIGN:
 
-    register:    0 success, 2 duplicate id
+    register:    0 success, 2 duplicate id or invalid outcome,
+                 3 packaged schema resource unavailable
     check:       0 no collisions, 1 collision detected
     check-delta: 0 zero collisions across delta, 1 if any collision
+
+    all:         4 the registry path is unusable (read-only filesystem,
+                 permission denied, or the path is not a regular file)
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from typing import get_args
 
 from nwave_ai.outcomes.adapters.yaml_registry import YamlRegistryAdapter
 from nwave_ai.outcomes.application.collision_detector import (
@@ -26,12 +31,32 @@ from nwave_ai.outcomes.application.registry_service import (
     DuplicateOutcomeIdError,
     InvalidOutcomeError,
     RegistryService,
+    SchemaResourceUnavailableError,
     UnknownOutcomeIdError,
 )
-from nwave_ai.outcomes.domain.outcome import InputShape, Outcome, OutputShape
+from nwave_ai.outcomes.domain.outcome import (
+    InputShape,
+    Outcome,
+    OutcomeKind,
+    OutputShape,
+)
 
 
 _OUT_ID_PATTERN = re.compile(r"\bOUT-[A-Z0-9-]+\b")
+
+# Derived, not restated: `OutcomeKind` in the domain is the single definition of
+# the kind vocabulary. The JSON Schema enum cannot be derived at runtime (it is
+# static data shipped in the wheel), so it is pinned to this same tuple by
+# tests/outcomes/unit/test_schema_validation.py instead.
+_KIND_CHOICES = get_args(OutcomeKind)
+
+
+class RegistryPathUnusableError(Exception):
+    """Raised when the registry path cannot be read or created.
+
+    Signals an environment problem (read-only filesystem, permission denied,
+    a path occupied by a directory), never a malformed outcome.
+    """
 
 
 _DEFAULT_REGISTRY = Path("docs") / "product" / "outcomes" / "registry.yaml"
@@ -53,7 +78,7 @@ def handle_outcomes(argv: list[str]) -> int:
     reg.add_argument(
         "--kind",
         required=True,
-        choices=["specification", "operation", "invariant"],
+        choices=_KIND_CHOICES,
     )
     reg.add_argument("--input-shape", required=True)
     reg.add_argument("--output-shape", required=True)
@@ -74,7 +99,11 @@ def handle_outcomes(argv: list[str]) -> int:
     chd.add_argument("delta_path", type=Path)
 
     args = parser.parse_args(argv)
-    registry_path = _ensure_registry(args.registry)
+    try:
+        registry_path = _ensure_registry(args.registry)
+    except RegistryPathUnusableError as err:
+        print(f"ERROR: {err}", file=sys.stderr)
+        return 4
 
     if args.cmd == "register":
         return _run_register(args, registry_path)
@@ -86,13 +115,29 @@ def handle_outcomes(argv: list[str]) -> int:
 
 
 def _ensure_registry(registry_path: Path) -> Path:
-    """Create an empty registry skeleton if missing, then return the path."""
-    if not registry_path.exists():
+    """Create an empty registry skeleton if missing, then return the path.
+
+    Raises:
+        RegistryPathUnusableError: when the path exists but is not a regular
+            file, or when the directory or skeleton file cannot be created
+            (read-only filesystem, permission denied, a parent that is a file).
+    """
+    if registry_path.exists():
+        if not registry_path.is_file():
+            raise RegistryPathUnusableError(
+                f"registry path {registry_path} exists but is not a regular file"
+            )
+        return registry_path
+    try:
         registry_path.parent.mkdir(parents=True, exist_ok=True)
         registry_path.write_text(
             'schema_version: "0.1"\noutcomes: []\n',
             encoding="utf-8",
         )
+    except OSError as err:
+        raise RegistryPathUnusableError(
+            f"cannot create registry at {registry_path}: {err}"
+        ) from err
     return registry_path
 
 
@@ -102,6 +147,14 @@ def _run_register(args: argparse.Namespace, registry_path: Path) -> int:
     outcome = _build_outcome_from_args(args)
     try:
         service.register(outcome)
+    except SchemaResourceUnavailableError as err:
+        print(f"ERROR: {err}", file=sys.stderr)
+        print(
+            "Reinstall nwave-ai (e.g. `uv tool install --force nwave-ai`) "
+            "to restore the packaged outcomes schema.",
+            file=sys.stderr,
+        )
+        return 3
     except (DuplicateOutcomeIdError, InvalidOutcomeError) as err:
         print(f"ERROR: {err}", file=sys.stderr)
         return 2
