@@ -13,7 +13,7 @@ argument-hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrad
 
 Finalize a completed feature: verify all steps done|create evolution document|migrate lasting artifacts to permanent directories|clean up temporary workspace. Agent gathers project data|analyzes execution history|writes summaries|migrates|cleans up.
 
-`docs/feature/{feature-id}/` is a **temporary workspace** — it exists during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value migrate to permanent directories; the rest is discarded.
+`docs/feature/{feature-id}/` is the **feature workspace** — it is populated during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value are **copied** to permanent directories. WHEN finalize completes, the system SHALL retain `docs/feature/{feature-id}/`: the wave matrix derives status from this directory, so removing it would make finalized features disappear from the matrix. Only session markers and resume state are deleted.
 
 ## Usage
 
@@ -82,10 +82,10 @@ These are process scaffolding — valuable during delivery, disposable after:
 
 1. List all remaining files in `docs/feature/{feature-id}/` after migration
 2. Show the list to the user for approval
-3. On approval: `rm -rf docs/feature/{feature-id}/`
-4. If `docs/feature/` directory is now empty: remove it too
+3. Preserve the workspace — `docs/feature/{feature-id}/` is NOT deleted. The wave matrix derives status from this directory. Removing it would make finalized features disappear from the matrix. The evolution doc in `docs/evolution/` is the summary; the feature directory is the history.
+4. On approval, delete session artifacts only: `.nwave/des/deliver-session.json`, `deliver/.develop-progress.json`, and temp files. Do NOT delete wave artifacts (discuss/, design/, distill/, deliver/).
 
-**NEVER delete without user approval.** Show exactly what will be removed.
+**NEVER delete without user approval.** Show exactly what will be deleted.
 
 ### Phase D — Post-Cleanup Verification
 
@@ -94,7 +94,7 @@ These are process scaffolding — valuable during delivery, disposable after:
 3. Optionally invoke /nw-document for reference docs (skip with --skip-docs)
 4. Commit in logical groups:
    - Commit 1: evolution doc + migrated artifacts
-   - Commit 2: workspace cleanup (removal)
+   - Commit 2: session-artifact cleanup (feature workspace itself retained)
 
 ## Agent Invocation
 
@@ -121,8 +121,9 @@ The invoked agent MUST create a task list from its workflow phases at the start 
 - [ ] ADRs migrated to docs/adrs/ (if any)
 - [ ] Scenario docs migrated to docs/scenarios/{feature}/ (if any)
 - [ ] UX journeys migrated to docs/ux/{feature}/ (if any)
-- [ ] User approved cleanup before workspace removal
-- [ ] Workspace directory removed: docs/feature/{feature-id}/
+- [ ] User approved the session-artifact cleanup list
+- [ ] Workspace directory retained: docs/feature/{feature-id}/ (wave artifacts intact)
+- [ ] Session artifacts deleted: .nwave/des/deliver-session.json, .develop-progress.json, temp files
 - [ ] Architecture docs updated to "IMPLEMENTED" status
 - [ ] Committed and pushed
 
@@ -168,7 +169,7 @@ docs/
 ```
 /nw-finalize @nw-platform-architect "auth-upgrade"
 ```
-Verifies all steps done. Creates evolution doc. Migrates `design/architecture-design.md` → `docs/architecture/auth-upgrade/`, ADRs → `docs/adrs/`, test-scenarios → `docs/scenarios/auth-upgrade/`. Shows remaining files, user approves, removes workspace. Commits.
+Verifies all steps done. Creates evolution doc. Migrates `design/architecture-design.md` → `docs/architecture/auth-upgrade/`, ADRs → `docs/adrs/`, test-scenarios → `docs/scenarios/auth-upgrade/`. Shows remaining files, user approves, deletes session markers only — `docs/feature/auth-upgrade/` is retained. Commits.
 
 ### Example 2: Blocked by incomplete steps
 ```
@@ -179,7 +180,7 @@ Pre-dispatch gate finds step 02-03 status IN_PROGRESS. Returns: "BLOCKED: 1 inco
 ## Next Wave
 
 **Handoff To**: Feature complete - no next wave
-**Deliverables**: docs/evolution/YYYY-MM-DD-{feature-id}.md, migrated artifacts, cleaned workspace
+**Deliverables**: docs/evolution/YYYY-MM-DD-{feature-id}.md, migrated artifacts, retained feature workspace with session artifacts cleared
 
 ## Expected Outputs
 
@@ -189,5 +190,5 @@ docs/architecture/{feature}/ (migrated design docs)
 docs/adrs/ADR-*.md (migrated ADRs)
 docs/scenarios/{feature}/ (migrated test scenarios)
 docs/ux/{feature}/ (migrated UX journeys, if any)
-Removed: docs/feature/{feature-id}/
+Retained: docs/feature/{feature-id}/ (wave artifacts; session markers deleted)
 ```

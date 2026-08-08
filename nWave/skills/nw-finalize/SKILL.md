@@ -14,7 +14,7 @@ argument-hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrad
 
 Finalize a completed feature: verify all steps done|create evolution document|migrate lasting artifacts to permanent directories|clean up temporary workspace. Agent gathers project data|analyzes execution history|writes summaries|migrates|cleans up.
 
-`docs/feature/{feature-id}/` is a **temporary workspace** — it exists during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value migrate to permanent directories; the rest is discarded.
+`docs/feature/{feature-id}/` is the **feature workspace** — it is populated during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value are **copied** to permanent directories. WHEN finalize completes, the system SHALL retain `docs/feature/{feature-id}/`: the wave-status matrix derives feature status from this directory, so removing it would make finalized features disappear from the matrix. Only session markers and resume state are deleted.
 
 ## Usage
 
@@ -95,7 +95,7 @@ These are process scaffolding — valuable during delivery, disposable after:
 2. **Update architecture doc statuses** — Change any "FUTURE DESIGN" labels to "IMPLEMENTED" in migrated architecture docs. Gate: no stale FUTURE DESIGN labels.
 3. **Optionally generate reference docs** — Invoke /nw-document unless `--skip-docs` flag provided. Gate: docs generated or skipped.
 4. **Commit evolution doc and artifacts** — Commit 1: evolution doc + migrated artifacts. Gate: commit created.
-5. **Commit workspace cleanup** — Commit 2: workspace removal. Gate: commit created and pushed.
+5. **Commit session-artifact cleanup** — Commit 2: removal of session markers and resume state only; `docs/feature/{feature-id}/` and its wave artifacts stay tracked. Gate: commit created and pushed.
 
 ## Agent Invocation
 
@@ -119,8 +119,9 @@ Finalize: {feature-id}
 - [ ] ADRs migrated to docs/adrs/ (if any)
 - [ ] Scenario docs migrated to docs/scenarios/{feature}/ (if any)
 - [ ] UX journeys migrated to docs/ux/{feature}/ (if any)
-- [ ] User approved cleanup before workspace removal
-- [ ] Workspace directory removed: docs/feature/{feature-id}/
+- [ ] User approved the session-artifact cleanup list
+- [ ] Workspace directory retained: docs/feature/{feature-id}/ (wave artifacts intact)
+- [ ] Session artifacts removed: .nwave/des/deliver-session.json, .develop-progress.json, temp files
 - [ ] Architecture docs updated to "IMPLEMENTED" status
 - [ ] Committed and pushed
 
@@ -165,7 +166,7 @@ docs/
 ```
 /nw-finalize @nw-platform-architect "auth-upgrade"
 ```
-Verifies all steps done. Creates evolution doc. Migrates `design/architecture-design.md` → `docs/architecture/auth-upgrade/`, ADRs → `docs/adrs/`, test-scenarios → `docs/scenarios/auth-upgrade/`. Shows remaining files, user approves, removes workspace. Commits.
+Verifies all steps done. Creates evolution doc. Migrates `design/architecture-design.md` → `docs/architecture/auth-upgrade/`, ADRs → `docs/adrs/`, test-scenarios → `docs/scenarios/auth-upgrade/`. Shows remaining files, user approves, removes session markers only — `docs/feature/auth-upgrade/` is retained. Commits.
 
 ### Example 2: Blocked by incomplete steps
 ```
@@ -176,7 +177,7 @@ Pre-dispatch gate finds step 02-03 status IN_PROGRESS. Returns: "BLOCKED: 1 inco
 ## Next Wave
 
 **Handoff To**: Feature complete - no next wave
-**Deliverables**: docs/evolution/YYYY-MM-DD-{feature-id}.md, migrated artifacts, cleaned workspace
+**Deliverables**: docs/evolution/YYYY-MM-DD-{feature-id}.md, migrated artifacts, retained feature workspace with session artifacts cleaned
 
 ## Expected Outputs
 
@@ -186,5 +187,5 @@ docs/architecture/{feature}/ (migrated design docs)
 docs/adrs/ADR-*.md (migrated ADRs)
 docs/scenarios/{feature}/ (migrated test scenarios)
 docs/ux/{feature}/ (migrated UX journeys, if any)
-Removed: docs/feature/{feature-id}/
+Retained: docs/feature/{feature-id}/ (wave artifacts; session markers removed)
 ```
