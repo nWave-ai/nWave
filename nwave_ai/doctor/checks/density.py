@@ -105,14 +105,18 @@ class DensityCheck:
             return CheckResult(
                 passed=False,
                 error_code="DENSITY_RESOLUTION_FAILED",
-                message=(
-                    "Documentation density could not be resolved: "
-                    f"{exc}. Check `rigor.profile` in ~/.nwave/global-config.json."
-                ),
+                # The resolver raises for more than one reason now (bad
+                # rigor.profile, bad documentation.expansion_prompt, a
+                # non-object config section). Hardcoding a rigor.profile
+                # diagnosis would misdirect the user for every other cause, so
+                # the resolver's own message — which names the offending key
+                # and its accepted values — is the diagnosis.
+                message=f"Documentation density could not be resolved: {exc}",
                 remediation=(
-                    "Set `rigor.profile` to one of: lean, standard, thorough, "
-                    "exhaustive, custom — or set `documentation.density` "
-                    "explicitly to 'lean' or 'full'."
+                    "Correct the key named above in ~/.nwave/global-config.json. "
+                    "`rigor.profile` accepts: lean, standard, thorough, "
+                    "exhaustive, custom. `documentation.density` accepts 'lean' "
+                    "or 'full'."
                 ),
             )
         return CheckResult(

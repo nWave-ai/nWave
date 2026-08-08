@@ -117,7 +117,52 @@ def test_unknown_expansion_prompt_error_names_accepted_values() -> None:
         assert accepted in message
 
 
-def test_known_expansion_prompt_without_density_is_accepted() -> None:
-    """A recognised expansion_prompt alone does not raise."""
+def test_known_expansion_prompt_without_density_is_accepted_and_applied() -> None:
+    """A recognised expansion_prompt alone is accepted AND takes effect.
+
+    Asserting only the provenance would let this pass while the user's value was
+    silently discarded, which is the defect issue #84 records.
+    """
     config = {"documentation": {"expansion_prompt": "smart"}}
-    assert resolve_density(config).provenance == "default"
+    density = resolve_density(config)
+
+    assert density.expansion_prompt == "smart"
+    assert density.mode == "lean"
+
+
+def test_explicit_expansion_prompt_survives_rigor_profile_inheritance():
+    """WHEN expansion_prompt is set without density, the value SHALL take effect.
+
+    Validating a value and then discarding it is the silent no-op issue #84
+    records, dressed up as strictness.
+    """
+    density = resolve_density(
+        {"documentation": {"expansion_prompt": "always-skip"}, "rigor": {"profile": "thorough"}}
+    )
+
+    assert density.expansion_prompt == "always-skip"
+    assert "explicit_expansion_prompt" in density.provenance
+
+
+def test_explicit_expansion_prompt_survives_the_hard_default():
+    """The same holds with neither density nor rigor.profile present."""
+    density = resolve_density({"documentation": {"expansion_prompt": "always-expand"}})
+
+    assert density.expansion_prompt == "always-expand"
+    assert density.mode == "lean", "only the prompt is overridden, not the density"
+
+
+def test_explicit_null_expansion_prompt_is_rejected():
+    """An explicit JSON null is a mistake, not a request for the default.
+
+    `.get(key, default)` returns the stored None when the key is present, so
+    treating null as absent lets None reach the resolved Density.
+    """
+    with pytest.raises(ValueError, match="expansion_prompt"):
+        resolve_density({"documentation": {"expansion_prompt": None}})
+
+
+def test_non_object_documentation_section_names_the_offender():
+    """A malformed section raises ValueError, not AttributeError."""
+    with pytest.raises(ValueError, match="documentation"):
+        resolve_density({"documentation": "lean"})

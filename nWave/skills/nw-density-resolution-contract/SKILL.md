@@ -34,7 +34,7 @@ Before emitting any Tier-1 section, resolve the active documentation density:
    - `"always-expand"` → equivalent to `mode = "full"` for this run; auto-render every Tier-2 item.
    - `"smart"` → out of scope for v1 (per OQ-3); treat as `"ask"` until heuristic is empirically tuned.
 
-The resolver itself encodes the D12 cascade: explicit `documentation.density` override > `rigor.profile` mapping (`lean`→`lean`, `standard`→`lean`+`ask`, `thorough`→`full`, `exhaustive`→`full`+all-expansions, `custom`→`lean`+`ask`) > hard default `lean`+`ask`. Wave skills MUST NOT replicate the cascade locally — call `resolve_density(global_config)` and trust its output.
+The resolver itself encodes the D12 cascade: explicit `documentation.density` override > `rigor.profile` mapping (`lean`→`lean`, `standard`→`lean`+`ask-intelligent`, `thorough`→`full`, `exhaustive`→`full`+all-expansions, `custom`→`lean`+`ask-intelligent`) > hard default `lean`+`ask-intelligent`. **WHERE** `documentation.expansion_prompt` is set explicitly, it overrides the prompt in every branch, including the `rigor.profile` and hard-default branches. Wave skills MUST NOT replicate the cascade locally — call `resolve_density(global_config)` and trust its output.
 
 **Section heading prefix convention (per D2)**: every emitted section starts with `## Wave: <NAME> / [REF] <Section>` for Tier-1; `## Wave: <NAME> / [WHY] <Section>` or `## Wave: <NAME> / [HOW] <Section>` for Tier-2. Validator `scripts/validation/validate_feature_delta.py` enforces the regex `^## Wave: \w+ / \[(REF|WHY|HOW)\] .+$` on every wave heading.
 
