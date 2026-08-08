@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nwave.ai/schemas/outcomes/outcome.json",
+  "title": "Outcome registry entry",
+  "description": "One registered outcome — a shipped capability identified by an OUT-id. Canonical key order: id, kind, summary, feature, inputs, output, keywords, artifact, related, superseded_by.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "kind",
+    "summary",
+    "feature",
+    "inputs",
+    "output",
+    "keywords",
+    "artifact",
+    "related",
+    "superseded_by"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^OUT-[A-Z0-9-]+$",
+      "description": "Registry-unique outcome identifier."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["specification", "operation", "invariant"],
+      "description": "Outcome category."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-line human summary. May be empty."
+    },
+    "feature": {
+      "type": "string",
+      "description": "Feature slug the outcome belongs to."
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["shape"],
+        "properties": {
+          "shape": {
+            "type": "string",
+            "description": "Canonical type expression of one input."
+          }
+        }
+      },
+      "description": "At least one input shape."
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shape"],
+      "properties": {
+        "shape": {
+          "type": "string",
+          "description": "Canonical type expression of the output."
+        }
+      }
+    },
+    "keywords": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {"type": "string"},
+      "description": "Up to six intent keywords used by Tier-2 collision scoring."
+    },
+    "artifact": {
+      "type": "string",
+      "description": "Repo-relative path of the implementing artifact. May be empty."
+    },
+    "related": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^OUT-[A-Z0-9-]+$"},
+      "description": "OUT-ids of related outcomes."
+    },
+    "superseded_by": {
+      "type": ["string", "null"],
+      "pattern": "^OUT-[A-Z0-9-]+$",
+      "description": "OUT-id that supersedes this outcome, or null."
+    }
+  }
+}

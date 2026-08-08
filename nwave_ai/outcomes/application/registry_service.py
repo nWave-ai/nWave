@@ -2,16 +2,21 @@
 and JSON Schema validation.
 
 Driving port: register / load. Drives the RegistryReader and
-RegistryWriter driven ports. Validates every outcome against
-docs/product/outcomes/schema.json before persistence (fail-fast on
-malformed entries — protects the registry contract).
+RegistryWriter driven ports. Validates every outcome against the packaged
+schema resource ``nwave_ai/outcomes/schema.json`` before persistence
+(fail-fast on malformed entries — protects the registry contract).
+
+The schema is a package resource, not a repo-relative file: it must travel
+with the code into every install. Resolving it by walking out of the package
+lands in ``site-packages`` and breaks ``outcomes register`` for every user
+who installed the wheel.
 """
 
 from __future__ import annotations
 
 import json
 from functools import lru_cache
-from pathlib import Path
+from importlib import resources
 
 from jsonschema import Draft7Validator
 from jsonschema import ValidationError as JsonSchemaValidationError
@@ -24,13 +29,16 @@ from nwave_ai.outcomes.ports.registry_io import (  # noqa: TC001  # runtime DI
 )
 
 
-_SCHEMA_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "docs"
-    / "product"
-    / "outcomes"
-    / "schema.json"
-)
+_SCHEMA_PACKAGE = "nwave_ai.outcomes"
+_SCHEMA_RESOURCE = "schema.json"
+
+
+class SchemaResourceUnavailableError(Exception):
+    """Raised when the packaged outcomes schema cannot be read or parsed.
+
+    Signals a broken installation (the resource is missing from the wheel or
+    unreadable), never a malformed outcome.
+    """
 
 
 class DuplicateOutcomeIdError(Exception):
@@ -51,7 +59,30 @@ class UnknownOutcomeIdError(Exception):
 
 @lru_cache(maxsize=1)
 def _load_validator() -> Draft7Validator:
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    """Return the validator built from the packaged schema resource.
+
+    Raises:
+        SchemaResourceUnavailableError: when the resource is missing,
+            unreadable, or not valid JSON.
+    """
+    try:
+        raw = (
+            resources.files(_SCHEMA_PACKAGE)
+            .joinpath(_SCHEMA_RESOURCE)
+            .read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, ModuleNotFoundError, OSError) as err:
+        raise SchemaResourceUnavailableError(
+            f"outcomes schema resource {_SCHEMA_PACKAGE}/{_SCHEMA_RESOURCE} "
+            f"is unreadable — the nwave-ai installation is incomplete: {err}"
+        ) from err
+    try:
+        schema = json.loads(raw)
+    except json.JSONDecodeError as err:
+        raise SchemaResourceUnavailableError(
+            f"outcomes schema resource {_SCHEMA_PACKAGE}/{_SCHEMA_RESOURCE} "
+            f"is not valid JSON: {err}"
+        ) from err
     return Draft7Validator(schema)
 
 

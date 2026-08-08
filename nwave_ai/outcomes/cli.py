@@ -5,7 +5,8 @@ service calls (RegistryService.register, CollisionDetector.check,
 RegistryService.collision_check_for_id) and maps results to exit codes
 per feature-delta DESIGN:
 
-    register:    0 success, 2 duplicate id
+    register:    0 success, 2 duplicate id or invalid outcome,
+                 3 packaged schema resource unavailable
     check:       0 no collisions, 1 collision detected
     check-delta: 0 zero collisions across delta, 1 if any collision
 """
@@ -26,6 +27,7 @@ from nwave_ai.outcomes.application.registry_service import (
     DuplicateOutcomeIdError,
     InvalidOutcomeError,
     RegistryService,
+    SchemaResourceUnavailableError,
     UnknownOutcomeIdError,
 )
 from nwave_ai.outcomes.domain.outcome import InputShape, Outcome, OutputShape
@@ -102,6 +104,14 @@ def _run_register(args: argparse.Namespace, registry_path: Path) -> int:
     outcome = _build_outcome_from_args(args)
     try:
         service.register(outcome)
+    except SchemaResourceUnavailableError as err:
+        print(f"ERROR: {err}", file=sys.stderr)
+        print(
+            "Reinstall nwave-ai (e.g. `uv tool install --force nwave-ai`) "
+            "to restore the packaged outcomes schema.",
+            file=sys.stderr,
+        )
+        return 3
     except (DuplicateOutcomeIdError, InvalidOutcomeError) as err:
         print(f"ERROR: {err}", file=sys.stderr)
         return 2

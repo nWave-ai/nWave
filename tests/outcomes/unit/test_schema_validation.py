@@ -1,6 +1,7 @@
 """Unit test: JSON Schema validates registry entries.
 
-Loads docs/product/outcomes/schema.json (draft-07) and asserts:
+Loads the packaged schema resource ``nwave_ai/outcomes/schema.json``
+(draft-07) and asserts:
 - a valid canonical entry passes
 - entries missing required fields fail
 - entries with invalid kind/id pattern fail
@@ -9,19 +10,18 @@ Loads docs/product/outcomes/schema.json (draft-07) and asserts:
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from importlib import resources
 
 import pytest
 from jsonschema import Draft7Validator, ValidationError
 
 
-_SCHEMA_PATH = (
-    Path(__file__).parents[3] / "docs" / "product" / "outcomes" / "schema.json"
-)
-
-
 def _load_schema() -> dict:
-    return json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    return json.loads(
+        resources.files("nwave_ai.outcomes")
+        .joinpath("schema.json")
+        .read_text(encoding="utf-8")
+    )
 
 
 def _valid_entry() -> dict:
