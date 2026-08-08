@@ -16,19 +16,20 @@ Provenance: feature `lean-wave-documentation` — D2 (schema-typed sections), D4
 Each wave emits a single `feature-delta.md` whose headings are typed `[REF]` (always emitted) or `[WHY]/[HOW]` (lazy expansions). Tier-1 is the always-on baseline; Tier-2 is the lazily-rendered expansion catalog. The `.feature` file (DISTILL) and other machine artifacts remain the SSOT for executable content; the wave-delta sections are pointers + structured summaries.
 
 - **Tier-1 [REF]** — emitted under `## Wave: <NAME> / [REF] <Section>` headings on every run. Wave-specific list of `[REF]` sections lives in each wave skill.
-- **Tier-2 EXPANSION CATALOG** — NOT emitted by default. Rendered only when explicitly requested via `--expand <id>` (DDD-2) or via the wave-end interactive prompt when `expansion_prompt = "ask"`. Each item has a one-line description (per D10) so the menu fits in a single render. Each emitted Tier-2 section is headed `## Wave: <NAME> / [WHY] <Section>` or `## Wave: <NAME> / [HOW] <Section>`. The catalog itself is wave-specific.
+- **Tier-2 EXPANSION CATALOG** — NOT emitted by default. Rendered only when explicitly requested via `--expand <id>` (DDD-2) or via the wave-end interactive prompt when `expansion_prompt` is `"ask"` or `"ask-intelligent"`. Each item has a one-line description (per D10) so the menu fits in a single render. Each emitted Tier-2 section is headed `## Wave: <NAME> / [WHY] <Section>` or `## Wave: <NAME> / [HOW] <Section>`. The catalog itself is wave-specific.
 
 ## Density resolution (per D12)
 
 Before emitting any Tier-1 section, resolve the active documentation density:
 
 1. **Read** `~/.nwave/global-config.json`. Treat missing/malformed config as empty dict (fall back to defaults).
-2. **Call** `resolve_density(global_config)` from `scripts/shared/density_config.py`. The function returns a `Density` value object with fields `mode` (`"lean"` | `"full"`), `expansion_prompt` (`"ask"` | `"always-skip"` | `"always-expand"` | `"smart"`), and `provenance` (the cascade branch that produced this result).
+2. **Call** `resolve_density(global_config)` from `scripts/shared/density_config.py`. The function returns a `Density` value object with fields `mode` (`"lean"` | `"full"`), `expansion_prompt` (`"ask"` | `"ask-intelligent"` | `"always-skip"` | `"always-expand"` | `"smart"`), and `provenance` (the cascade branch that produced this result).
 3. **Branch on `density.mode`**:
    - `lean` → emit ONLY Tier-1 `[REF]` sections. Do NOT auto-render Tier-2 items.
    - `full` → emit Tier-1 `[REF]` sections PLUS all Tier-2 expansion items rendered under their `[WHY]` / `[HOW]` headings. This is auto-expansion (no menu).
 4. **At wave end**, branch on `density.expansion_prompt`:
    - `"ask"` → present the expansion menu (Tier-2 catalog with one-line descriptions per D10) and append user-selected items as `## Wave: <NAME> / [WHY|HOW] <Section>` headings.
+   - `"ask-intelligent"` → the fresh-install default. **WHEN** the wave ends, the system SHALL present a scoped menu holding only those Tier-2 catalog items whose trigger fired during this wave. **WHERE** no trigger fired, the system SHALL present no menu.
    - `"always-skip"` → no menu, no extra sections (idempotent re-runs, CI mode).
    - `"always-expand"` → equivalent to `mode = "full"` for this run; auto-render every Tier-2 item.
    - `"smart"` → out of scope for v1 (per OQ-3); treat as `"ask"` until heuristic is empirically tuned.
@@ -83,7 +84,7 @@ The wave-skill harness invokes the helper `scripts/shared/telemetry.py:write_den
 
 **When to emit**:
 
-- One event per user choice in the expansion menu when `expansion_prompt = "ask"` (`choice = "expand"` for selected items, `choice = "skip"` with `expansion_id = "*"` if the user skips the entire menu).
+- One event per user choice in the expansion menu when `expansion_prompt` is `"ask"` or `"ask-intelligent"` (`choice = "expand"` for selected items, `choice = "skip"` with `expansion_id = "*"` if the user skips the entire menu).
 - One synthetic `choice = "skip"` event with `expansion_id = "*"` when `expansion_prompt = "always-skip"` (records the skipped menu opportunity).
 - One `choice = "expand"` event per Tier-2 item rendered when `mode = "full"` or `expansion_prompt = "always-expand"`.
 

@@ -124,9 +124,13 @@ Specifies the default detail level for wave output. Valid values: `lean`, `full`
 
 #### `documentation.expansion_prompt` (string, optional)
 
-Controls when wave end prompts offer optional expansions (JTBD narrative, alternatives, migration playbooks, etc.). Valid values: `ask`, `always-skip`, `always-expand`, `smart`.
+Controls when wave end prompts offer optional expansions (JTBD narrative, alternatives, migration playbooks, etc.). Valid values: `ask`, `ask-intelligent`, `always-skip`, `always-expand`, `smart`.
 
-- **`ask`**: (Default) At the end of each wave, prompt the user with a menu of available expansions. User can select one-shot additions without re-running the wave.
+**IF** `documentation.expansion_prompt` holds a value outside that set, the density resolver **SHALL** reject the configuration with an error naming the accepted values.
+
+- **`ask`**: At the end of each wave, prompt the user with a menu of all available expansions. User can select one-shot additions without re-running the wave.
+
+- **`ask-intelligent`**: (Fresh-install default since Decision 4, 2026-04-28) At the end of each wave, prompt the user with a **scoped** menu instead of the full catalog: only those Tier-2 items whose trigger fired during the wave are offered. Trigger detection lives in the wave skill prose, not in the resolver. **WHERE** no trigger fired, no menu is shown.
 
 - **`always-skip`**: Never prompt; skip all expansions. Equivalent to always pressing "skip all" at the menu. Useful for fully automated / CI flows where user input is not expected.
 
@@ -136,10 +140,11 @@ Controls when wave end prompts offer optional expansions (JTBD narrative, altern
 
 **Default behavior** (if key absent):
 - If `rigor.profile` is `lean`, inherit `always-skip`.
-- If `rigor.profile` is `standard` or `custom`, inherit `ask`.
+- If `rigor.profile` is `standard` or `custom`, inherit `ask-intelligent`.
 - If `rigor.profile` is `thorough` or `exhaustive`, inherit `always-expand`.
+- If neither key is present (fresh install), the hard default is `ask-intelligent`.
 
-**Note on interactivity**: When `expansion_prompt: "ask"`, the wave reaches an interactive prompt at the end. This requires a terminal (TTY). Non-interactive runs (e.g., CI pipelines) default to `always-skip` behavior.
+**Note on interactivity**: When `expansion_prompt` is `ask` or `ask-intelligent`, the wave reaches an interactive prompt at the end. This requires a terminal (TTY). Non-interactive runs (e.g., CI pipelines) default to `always-skip` behavior.
 
 **Example**:
 ```json

@@ -124,6 +124,31 @@ Or explicitly:
 
 ---
 
+### Use case 4: I want a scoped expansion menu (`ask-intelligent`)
+
+**Situation**: The full `ask` menu lists every Tier-2 expansion in the catalog, most of which are irrelevant to the wave you just ran. You want to be offered only what this wave actually surfaced.
+
+**Solution**:
+
+```json
+{
+  "documentation": {
+    "expansion_prompt": "ask-intelligent"
+  }
+}
+```
+
+**This is the fresh-install default** (Decision 4, 2026-04-28). A fresh `nwave-ai install` writes `"expansion_prompt": "ask-intelligent"` into `~/.nwave/global-config.json`, and it is also the value the resolver falls back to when neither `documentation.expansion_prompt` nor `rigor.profile` is set.
+
+**Result**:
+- **WHEN** a wave ends, the system **SHALL** show a menu containing only those Tier-2 expansions whose trigger fired during that wave — not the whole catalog.
+- **WHERE** no trigger fired, no menu is shown and the wave ends at its lean baseline.
+- Trigger detection lives in the wave skill prose, not in the density resolver.
+
+**Accepted values**: `ask`, `ask-intelligent`, `always-skip`, `always-expand`, `smart`. **IF** `documentation.expansion_prompt` holds anything else, the density resolver **SHALL** reject the configuration with an error naming the accepted values, rather than silently ignoring the setting.
+
+---
+
 ## Ad-hoc expansion (override at wave time)
 
 Even with `density: "lean"` and `expansion_prompt: "always-skip"`, you can request more detail during a specific wave **without** changing your global config.
@@ -144,7 +169,7 @@ When running a wave, pass the `--expand` flag with a comma-separated list of exp
 
 ### Method 2: Respond to the wave-end prompt
 
-If `expansion_prompt: "ask"`:
+If `expansion_prompt` is `"ask"` (full catalog) or `"ask-intelligent"` (only triggered items):
 
 ```bash
 /nw-discuss my-complex-feature
@@ -196,10 +221,12 @@ Your `rigor` profile affects the default density if you don't explicitly set `do
 | Profile | If `density` unset | If `density` unset |
 |---------|---|---|
 | `lean` | → density: `"lean"` | → expansion_prompt: `"always-skip"` |
-| `standard` | → density: `"lean"` | → expansion_prompt: `"ask"` |
+| `standard` | → density: `"lean"` | → expansion_prompt: `"ask-intelligent"` |
 | `thorough` | → density: `"full"` | → expansion_prompt: `"always-expand"` |
 | `exhaustive` | → density: `"full"` | → expansion_prompt: `"always-expand"` |
-| `custom` | → density: `"lean"` (fallback) | → expansion_prompt: `"ask"` (fallback) |
+| `custom` | → density: `"lean"` (fallback) | → expansion_prompt: `"ask-intelligent"` (fallback) |
+
+**No `rigor.profile`, no `documentation` block** (fresh install): density `"lean"`, expansion_prompt `"ask-intelligent"`.
 
 **What this means**:
 
@@ -292,7 +319,7 @@ Pick one. It's saved and never prompted again (idempotent).
 
 ### Q: What if I'm running in CI (non-interactive)?
 
-**A**: When there's no terminal (TTY), interactive prompts are skipped. nWave defaults to `always-skip` behavior for expansions, even if `expansion_prompt: "ask"` is set. Lean output is still produced. To include specific expansions in CI:
+**A**: When there's no terminal (TTY), interactive prompts are skipped. nWave defaults to `always-skip` behavior for expansions, even if `expansion_prompt` is `"ask"` or `"ask-intelligent"`. Lean output is still produced. To include specific expansions in CI:
 
 ```bash
 /nw-discuss my-feature --expand jtbd-narrative
