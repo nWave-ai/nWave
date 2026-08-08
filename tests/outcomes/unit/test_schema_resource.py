@@ -13,6 +13,7 @@ schema as a resource of the ``nwave_ai.outcomes`` package.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -80,8 +81,12 @@ def test_register_succeeds_in_installed_shape_without_repo_docs_tree(
             "k",
         ],
         cwd=project,
+        # Inherit the running interpreter's environment rather than asserting a
+        # POSIX layout ("/usr/bin:/bin" is wrong on Windows and on Nix). The
+        # isolation this test needs is PYTHONPATH + cwd, both overridden below;
+        # nothing else in the parent environment can point back at the checkout.
         env={
-            "PATH": "/usr/bin:/bin",
+            **os.environ,
             "PYTHONPATH": str(site_packages),
             "HOME": str(tmp_path / "home"),
         },

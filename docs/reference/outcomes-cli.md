@@ -28,6 +28,8 @@ nwave-ai outcomes [--registry PATH] check-delta DELTA_PATH
 
 If the registry path does not exist, `register` and `check` create an empty skeleton (`schema_version: "0.1"`, `outcomes: []`) before proceeding. `check-delta` does the same.
 
+If the path cannot be read or created — a read-only filesystem, a denied permission, or a path occupied by a directory — every subcommand exits **4** and prints `ERROR: <cause>` naming the path on stderr.
+
 ## Verdict matrix
 
 The detector runs two tiers and combines them into a verdict.
@@ -77,6 +79,7 @@ nwave-ai outcomes register --id OUT-ID --kind KIND \
 | 0    | Outcome registered successfully.                                     |
 | 2    | Duplicate `--id` (already in registry), or invalid Outcome (schema). |
 | 3    | The packaged JSON Schema could not be loaded — the installation is incomplete. Reinstall `nwave-ai`. |
+| 4    | The registry path is unusable (read-only filesystem, permission denied, or not a regular file). |
 
 ### Output
 
@@ -135,6 +138,7 @@ nwave-ai outcomes check --input-shape SHAPE --output-shape SHAPE \
 |------|------------------------------------|
 | 0    | No collisions detected (`clean`).  |
 | 1    | One or more collisions detected.   |
+| 4    | The registry path is unusable.     |
 
 ### Output
 
@@ -221,6 +225,7 @@ nwave-ai outcomes check-delta DELTA_PATH
 | 0    | Zero collisions across all referenced OUT-ids.             |
 | 1    | One or more referenced OUT-ids collide with another entry. |
 | 2    | `delta_path` does not exist.                               |
+| 4    | The registry path is unusable.                             |
 
 ### Output
 

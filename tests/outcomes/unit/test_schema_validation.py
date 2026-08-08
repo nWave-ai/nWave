@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from importlib import resources
+from typing import get_args
 
 import pytest
 from jsonschema import Draft7Validator, ValidationError
@@ -69,6 +70,20 @@ def test_invalid_entries_fail_schema(
     assert expected_path_fragment in str(exc.value), (
         f"expected '{expected_path_fragment}' in error: {exc.value}"
     )
+
+
+def test_schema_kind_enum_agrees_with_the_domain_literal() -> None:
+    """The schema enum and ``OutcomeKind`` are one vocabulary, not two.
+
+    ``nwave_ai/outcomes/cli.py`` derives its argparse ``choices`` from
+    ``OutcomeKind`` directly, so it cannot drift. The schema is static JSON
+    shipped in the wheel and cannot derive anything at runtime — this test is
+    what keeps it pinned. Adding a fourth kind fails here until the enum in
+    ``schema.json`` is updated too.
+    """
+    from nwave_ai.outcomes.domain.outcome import OutcomeKind
+
+    assert tuple(_load_schema()["properties"]["kind"]["enum"]) == get_args(OutcomeKind)
 
 
 def test_missing_required_field_fails_schema() -> None:
