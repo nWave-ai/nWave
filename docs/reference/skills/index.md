@@ -222,7 +222,7 @@
 
 ## nw-finalize
 
-- [nw-finalize](nw-finalize.md) — Archives a completed feature to docs/evolution/, migrates lasting artifacts to permanent directories, and cleans up the temporary workspace. Use after all implementation steps pass and mutation testing completes.
+- [nw-finalize](nw-finalize.md) — Archives a completed feature to docs/evolution/, migrates lasting artifacts to permanent directories, preserves the workspace, and cleans session artifacts. Use after all implementation steps pass and mutation testing completes.
 
 ## nw-five-whys-methodology
 
