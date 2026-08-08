@@ -21,10 +21,12 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+# plugins/nw/** is the release-pipeline-managed marketplace payload and is on
+# the mirror denylist, so it is not edited from an external PR. Only the two
+# source assets are guarded here.
 FINALIZE_ASSETS = (
     Path("nWave/skills/nw-finalize/SKILL.md"),
     Path("nWave/tasks/nw/finalize.md"),
-    Path("plugins/nw/commands/finalize.md"),
 )
 
 # Patterns that assert destruction of the feature workspace.
