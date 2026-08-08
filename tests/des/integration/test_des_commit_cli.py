@@ -394,3 +394,85 @@ class TestDesCommitIndexHygiene:
             if line.strip()
         }
         assert "a.py" not in unstaged
+
+
+class TestDesCommitTrailerConflicts:
+    """The trailer key is detected by parsing, not by substring search.
+
+    A substring test over the whole message is how issue #78 gets recreated
+    inside its own fix: a message that merely MENTIONS the key suppresses the
+    real trailer, the commit is created anyway, and the SubagentStop verifier
+    rejects it later with no indication why.
+    """
+
+    def test_key_mentioned_in_prose_does_not_suppress_the_trailer(self, tmp_path):
+        """WHEN the message body mentions the key as text, the trailer is still written."""
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+
+        assert (
+            _run(
+                tmp_path,
+                ["a.py"],
+                step_id="02-03",
+                task_id="auth-upgrade",
+                message="fix: correct Step-Id: parsing in the verifier",
+            )
+            == 0
+        )
+
+        step = _git(tmp_path, "log", "-1", "--format=%(trailers:key=Step-Id,valueonly)")
+        task = _git(tmp_path, "log", "-1", "--format=%(trailers:key=Task-Id,valueonly)")
+        assert step.strip() == "02-03", "prose mention must not suppress the trailer"
+        assert task.strip() == "auth-upgrade"
+
+    def test_conflicting_trailer_is_refused_not_silently_discarded(self, tmp_path):
+        """IF the message already carries the key with a different value, refuse.
+
+        Silently keeping either value produces a commit the verifier rejects,
+        which is precisely the failure this CLI change exists to prevent.
+        """
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+        before = _git(tmp_path, "rev-parse", "HEAD").strip()
+
+        exit_code = _run(
+            tmp_path,
+            ["a.py"],
+            step_id="02-03",
+            task_id="auth-upgrade",
+            message="feat: change\n\nTask-Id: some-other-feature",
+        )
+
+        assert exit_code == 2, "a conflicting trailer must be a usage error"
+        assert _git(tmp_path, "rev-parse", "HEAD").strip() == before, (
+            "no commit may be created when the trailer contract cannot be satisfied"
+        )
+
+    def test_matching_existing_trailer_is_accepted(self, tmp_path):
+        """A key already present with the SAME value is left alone, not duplicated."""
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+
+        assert (
+            _run(
+                tmp_path,
+                ["a.py"],
+                step_id="02-03",
+                task_id="auth-upgrade",
+                message="feat: change\n\nTask-Id: auth-upgrade",
+            )
+            == 0
+        )
+
+        body = _git(tmp_path, "log", "-1", "--format=%B")
+        assert body.count("Task-Id:") == 1, "the trailer must not be duplicated"
+
+    def test_blank_task_id_is_a_usage_error(self, tmp_path):
+        """An empty value passes argparse but produces a commit the verifier rejects."""
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+        before = _git(tmp_path, "rev-parse", "HEAD").strip()
+
+        assert _run(tmp_path, ["a.py"], task_id="   ") == 2
+        assert _git(tmp_path, "rev-parse", "HEAD").strip() == before
