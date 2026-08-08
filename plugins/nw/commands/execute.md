@@ -99,21 +99,14 @@ Load on-demand per phase as specified in your Skill Loading Strategy table.
    des-commit \
      --owned-paths <all files this step created/modified> \
      --step-id {step-id} \
-     --task-id {feature-id} \
      --message "feat(feature-id): implement feature X"
    ```
-   `--task-id` is REQUIRED and takes the BARE feature id — `{feature-id}`, not
-   `#{feature-id}`. WHEN the SubagentStop hook verifies the commit, the system
-   SHALL require BOTH `Step-Id: {step-id}` AND `Task-Id: {feature-id}` on the
-   same commit; IF either trailer is missing or the Task-Id value is not the
-   bare feature id, the hook blocks with `COMMIT_NOT_VERIFIED`.
-   Both trailers are appended automatically as one trailer block. Resulting
-   commit:
+   The `Step-Id: {step-id}` trailer (required for DES verification) is appended
+   automatically. Resulting commit:
    ```
    feat(feature-id): implement feature X
 
    Step-Id: 02-01
-   Task-Id: auth-upgrade
    ```
 
 LEGACY 5-PHASE CONTRACT (ADR-024 era, pre-2026-05-07): PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT. Preserved for audit-log replay only — new work uses the 3-phase canon above. Audit-log entries referencing RED_ACCEPTANCE/RED_UNIT/PREPARE represent merged sub-steps now folded into RED.
