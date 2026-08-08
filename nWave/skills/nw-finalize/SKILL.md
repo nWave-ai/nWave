@@ -1,6 +1,6 @@
 ---
 name: nw-finalize
-description: "Archives a completed feature to docs/evolution/, migrates lasting artifacts to permanent directories, preserves the feature workspace, and cleans session artifacts. Use after all implementation steps pass and mutation testing completes."
+description: "Archives a completed feature to docs/evolution/, migrates lasting artifacts to permanent directories, preserves the workspace, and cleans session artifacts. Use after all implementation steps pass and mutation testing completes."
 user-invocable: false
 argument-hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrade"'
 ---
@@ -12,9 +12,9 @@ argument-hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrad
 
 ## Overview
 
-Finalize a completed feature: verify all steps done|create evolution document|migrate lasting artifacts to permanent directories|preserve the feature workspace|clean session artifacts. Agent gathers project data|analyzes execution history|writes summaries|migrates|preserves the source history.
+Finalize a completed feature: verify all steps done|create evolution document|migrate lasting artifacts to permanent directories|preserve the workspace|clean session artifacts. Agent gathers project data|analyzes execution history|writes summaries|migrates|preserves the source history.
 
-`docs/feature/{feature-id}/` is the **feature workspace** — it is populated during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value are **copied** to permanent directories. WHEN finalize completes, the system SHALL retain `docs/feature/{feature-id}/`. Only session markers and resume state are deleted. See Phase C step 3 for why retention is required.
+`docs/feature/{feature-id}/` is the **workspace** — it is populated during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value are **copied** to permanent directories. WHEN finalize completes, the system SHALL retain `docs/feature/{feature-id}/`. Only session markers and resume state are deleted. See Phase C step 3 for why retention is required.
 
 ## Usage
 
@@ -56,7 +56,7 @@ Before dispatching, verify all work is done — prevents archiving incomplete fe
 
 #### Destination Map
 
-| Source (feature workspace) | Destination (permanent) | Condition |
+| Source (workspace) | Destination (permanent) | Condition |
 |---|---|---|
 | `design/architecture-design.md` | `docs/architecture/{feature}/` | If exists |
 | `design/component-boundaries.md` | `docs/architecture/{feature}/` | If exists |
@@ -92,7 +92,7 @@ finalize removes are the session artifacts named in Phase C step 4.
 
 1. **List the removal candidates** — List ONLY the files this phase would remove, by exact path:
    - `docs/feature/{feature-id}/deliver/.develop-progress.json`
-   - `.nwave/des/deliver-session.json` (outside the feature workspace — list it explicitly, it is easy to miss)
+   - `.nwave/des/deliver-session.json` (outside the workspace — list it explicitly, it is easy to miss)
 
    This list is the deletion set. It is NOT an inventory of the workspace: everything else under `docs/feature/{feature-id}/` stays. Gate: list produced, containing only the paths above that actually exist.
 2. **Present for approval** — Show that exact list and request approval. The user approves the set that will be deleted, and nothing wider. Gate: user explicitly approves.
@@ -193,7 +193,7 @@ Pre-dispatch gate finds step 02-03 status IN_PROGRESS. Returns: "BLOCKED: 1 inco
 ## Next Wave
 
 **Handoff To**: Feature complete - no next wave
-**Deliverables**: docs/evolution/YYYY-MM-DD-{feature-id}.md, migrated artifacts, retained feature workspace with session artifacts cleaned
+**Deliverables**: docs/evolution/YYYY-MM-DD-{feature-id}.md, migrated artifacts, retained workspace with session artifacts cleaned
 
 ## Expected Outputs
 
