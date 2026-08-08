@@ -31,13 +31,49 @@ FINALIZE_ASSETS = (
 
 # Patterns that assert destruction of the feature workspace.
 REMOVAL_PATTERNS = (
-    re.compile(r"rm\s+-rf\s+docs/feature", re.IGNORECASE),
-    re.compile(r"workspace\s+(removal|removed)", re.IGNORECASE),
-    re.compile(r"removes?\s+(the\s+)?workspace", re.IGNORECASE),
+    # Any destructive verb aimed at the feature workspace path, however phrased.
+    # The first pattern is the general one; the rest catch phrasings that do not
+    # name the path on the same line.
+    re.compile(
+        r"(rm\s+-rf|delete|deletes|deleted|remove|removes|removed|purge|purged)"
+        r"[^\n]{0,40}docs/feature",
+        re.IGNORECASE,
+    ),
+    re.compile(r"docs/feature[^\n]{0,40}(is|are|be)\s+(deleted|removed|purged)", re.IGNORECASE),
+    re.compile(r"workspace\s+(removal|removed|deleted|deletion|purged)", re.IGNORECASE),
+    re.compile(r"(removes?|deletes?|purges?)\s+(the\s+)?(feature\s+)?workspace", re.IGNORECASE),
     re.compile(r"cleaned\s+workspace", re.IGNORECASE),
-    re.compile(r"Removed:\s*docs/feature", re.IGNORECASE),
-    re.compile(r"Workspace\s+directory\s+removed", re.IGNORECASE),
+    re.compile(r"(Removed|Deleted):\s*docs/feature", re.IGNORECASE),
+    re.compile(r"temporary\s+workspace", re.IGNORECASE),
+    # "discard" applied to wave artifacts reads as deletion even when the author
+    # meant "not copied" — the ambiguity that made this bug survivable.
+    re.compile(r"Why\s+discard", re.IGNORECASE),
+    re.compile(r"disposable\s+after", re.IGNORECASE),
 )
+
+
+# A line may legitimately mention removal while asserting retention — "removes
+# session markers only; docs/feature/{id}/ is retained" is correct and must not
+# trip the guard. Proximity alone cannot separate the two, so a line carrying an
+# explicit retention marker is exempt. This is the guard's known limit: it
+# detects unqualified removal claims, not every conceivable phrasing.
+RETENTION_MARKERS = (
+    re.compile(r"is\s+retained", re.IGNORECASE),
+    re.compile(r"(is|are)\s+NOT\s+(deleted|removed)", re.IGNORECASE),
+    re.compile(r"Do\s+NOT\s+(delete|remove)", re.IGNORECASE),
+    re.compile(r"preserv", re.IGNORECASE),
+    re.compile(r"never\s+means", re.IGNORECASE),
+    re.compile(r"not\s+copied", re.IGNORECASE),
+    re.compile(r"stays?\s+in", re.IGNORECASE),
+    re.compile(r"remain", re.IGNORECASE),
+)
+
+
+def _asserts_removal(line: str) -> bool:
+    """True when *line* claims the workspace is destroyed, unqualified."""
+    if any(marker.search(line) for marker in RETENTION_MARKERS):
+        return False
+    return any(pattern.search(line) for pattern in REMOVAL_PATTERNS)
 
 
 @pytest.mark.parametrize("asset", FINALIZE_ASSETS, ids=lambda p: str(p))
@@ -48,8 +84,7 @@ def test_finalize_asset_never_asserts_workspace_removal(asset: Path) -> None:
     offenders = [
         f"{asset}:{lineno}: {line.strip()}"
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
-        for pattern in REMOVAL_PATTERNS
-        if pattern.search(line)
+        if _asserts_removal(line)
     ]
 
     assert not offenders, "workspace-removal assertions found:\n" + "\n".join(offenders)

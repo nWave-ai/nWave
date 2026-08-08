@@ -38,6 +38,10 @@ Before dispatching, verify all work is done — prevents archiving incomplete fe
 
 ### Phase A — Evolution Document
 
+0. **Refuse a second finalize** — **IF** `docs/evolution/*-{feature-id}.md` already exists, the system SHALL stop with "ALREADY FINALIZED: {feature-id} — see docs/evolution/{file}. Re-run with --force to re-migrate." and SHALL NOT write a second evolution doc or re-copy any artifact. Gate: no existing evolution doc, or `--force` given.
+
+   Preserving the workspace makes `/nw-finalize` re-runnable, so this check is what stops a second run from writing a conflicting post-mortem and overwriting permanent copies that were edited since the first run. When the workspace was deleted, "project directory not found" happened to provide this; it no longer does.
+
 1. **Gather source data** — Read `execution-log.json` + `roadmap.json` (the step log and plan), and all `*/wave-decisions.md` files. Gate: source files read.
 2. **Extract key decisions** — Pull decisions, issues, and lessons from wave-decisions files. Gate: decisions list assembled.
 3. **Write evolution doc** — Create `docs/evolution/YYYY-MM-DD-{feature-id}.md` with: feature summary, business context, key decisions, work completed (from `execution-log.json`), lessons learned, issues encountered, links to migrated permanent artifacts. Gate: file written.
@@ -65,31 +69,39 @@ Before dispatching, verify all work is done — prevents archiving incomplete fe
 
 Research docs (`docs/research/`) are already in a permanent location — no migration needed.
 
-#### What NOT to Migrate (Discard)
+#### What NOT to Migrate (stays in the workspace)
 
-These are process scaffolding — valuable during delivery, disposable after:
+These are process scaffolding: they have no readership outside the feature, so
+they are NOT copied to the permanent directories. They are NOT deleted either —
+they remain in `docs/feature/{feature-id}/` as the feature's history.
 
-| File pattern | Why discard |
+**"Not migrated" means "not copied". It never means "deleted".** The only files
+finalize removes are the session artifacts named in Phase C step 4.
+
+| File pattern | Why it is not copied |
 |---|---|
-| `deliver/execution-log.json` | Audit trail — captured in evolution doc |
-| `deliver/roadmap.json` | Step plan — superseded by evolution doc + git history |
-| `deliver/.develop-progress.json` | Resume state — temporary |
-| `design/review-*.md` | Review findings captured in evolution doc |
-| `discuss/dor-checklist.md` | Process gate, not lasting value |
+| `deliver/execution-log.json` | Audit trail — summarized in the evolution doc; the log itself stays, `des-verify-integrity` and `/nw-continue` read it |
+| `deliver/roadmap.json` | Step plan — superseded by the evolution doc + git history for outside readers |
+| `design/review-*.md` | Review findings summarized in the evolution doc |
+| `discuss/dor-checklist.md` | Process gate, no lasting audience |
 | `discuss/shared-artifacts-registry.md` | Process scaffolding |
 | `discuss/prioritization.md` | Superseded by roadmap execution |
 | `*/wave-decisions.md` | Key decisions extracted into evolution doc |
 
-### Phase C — Cleanup Workspace
+### Phase C — Remove Session Artifacts
 
-1. **List remaining files** — List all files still in `docs/feature/{feature-id}/` after migration. Gate: list produced.
-2. **Present for approval** — Show the exact list to the user and request approval. Gate: user explicitly approves.
-3. **Preserve workspace** — `docs/feature/{feature-id}/` is NOT deleted. The wave matrix derives status from this directory. Removing it would make finalized features disappear from the matrix. The evolution doc in `docs/evolution/` is the summary; the feature directory is the history. Gate: directory preserved, session markers removed.
-4. **Clean session artifacts only** — Remove `.nwave/des/deliver-session.json`, `.develop-progress.json`, and any temp files. Do NOT remove wave artifacts (discuss/, design/, distill/, deliver/). Gate: session markers removed, wave artifacts intact.
+1. **List the removal candidates** — List ONLY the files this phase would remove, by exact path:
+   - `docs/feature/{feature-id}/deliver/.develop-progress.json`
+   - `.nwave/des/deliver-session.json` (outside the feature workspace — list it explicitly, it is easy to miss)
+
+   This list is the deletion set. It is NOT an inventory of the workspace: everything else under `docs/feature/{feature-id}/` stays. Gate: list produced, containing only the paths above that actually exist.
+2. **Present for approval** — Show that exact list and request approval. The user approves the set that will be deleted, and nothing wider. Gate: user explicitly approves.
+3. **Preserve workspace** — `docs/feature/{feature-id}/` is NOT deleted. The wave matrix derives status from this directory. Removing it would make finalized features disappear from the matrix. The evolution doc in `docs/evolution/` is the summary; the feature directory is the history. Gate: directory preserved.
+4. **Remove the approved set only** — Delete exactly the paths approved in step 2. Do NOT remove wave artifacts (`discuss/`, `design/`, `distill/`, `deliver/`), and do NOT delete anything matched by a pattern rather than named in the list. **IF** a file appears to be temporary but was not in the approved list, the system SHALL leave it. Gate: approved paths removed, wave artifacts intact.
 
 **NEVER delete without user approval.** Show exactly what will be removed.
 
-### Phase D — Post-Cleanup Verification
+### Phase D — Post-Finalize Verification
 
 1. **Verify migrated files** — Confirm every file copied in Phase B exists at its destination. Gate: all destinations present.
 2. **Update architecture doc statuses** — Change any "FUTURE DESIGN" labels to "IMPLEMENTED" in migrated architecture docs. Gate: no stale FUTURE DESIGN labels.
@@ -159,6 +171,10 @@ docs/
 | Project directory not found | "Project not found: docs/feature/{feature-id}/" |
 | Incomplete steps | Block finalization, list incomplete steps |
 | No files to migrate | Log "No lasting artifacts found — skipping Phase B" and proceed to cleanup |
+| `execution-log.json` missing | BLOCK: "Cannot verify completion — docs/feature/{feature-id}/deliver/execution-log.json not found." Never treat an absent log as "all steps done". |
+| `execution-log.json` unparseable | BLOCK: "docs/feature/{feature-id}/deliver/execution-log.json is not valid JSON: {reason}." Never treat an unreadable log as complete. |
+| `execution-log.json` has zero events | BLOCK: "docs/feature/{feature-id}/deliver/execution-log.json records no phases — nothing to verify." An empty log satisfies "every step is DONE" vacuously; it must not. |
+| Feature already finalized | BLOCK: "ALREADY FINALIZED: {feature-id} — see docs/evolution/{file}. Re-run with --force to re-migrate." |
 
 ## Examples
 

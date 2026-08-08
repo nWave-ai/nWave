@@ -36,6 +36,8 @@ Parse execution-log.json, verify every step has status DONE. If any step is not 
 
 ### Phase A — Evolution Document
 
+**IF** `docs/evolution/*-{feature-id}.md` already exists, STOP with "ALREADY FINALIZED: {feature-id} — see docs/evolution/{file}. Re-run with --force to re-migrate." Do not write a second evolution doc and do not re-copy any artifact. Preserving the workspace makes this command re-runnable; without this check a second run writes a conflicting post-mortem and overwrites permanent copies edited since the first run.
+
 Create `docs/evolution/YYYY-MM-DD-{feature-id}.md` with:
 - Feature summary, business context, key decisions
 - Steps completed (from execution-log.json)
@@ -63,31 +65,35 @@ Scan `docs/feature/{feature-id}/` and migrate artifacts with lasting value to pe
 
 Research docs (`docs/research/`) are already in a permanent location — no migration needed.
 
-#### What NOT to Migrate (Discard)
+#### What NOT to Migrate (stays in the workspace)
 
-These are process scaffolding — valuable during delivery, disposable after:
+These are process scaffolding: they have no readership outside the feature, so
+they are NOT copied to the permanent directories. They are NOT deleted either —
+they remain in `docs/feature/{feature-id}/` as the feature's history.
 
-| File pattern | Why discard |
+**"Not migrated" means "not copied". It never means "deleted".** The only files
+finalize removes are the session artifacts named in Phase C.
+
+| File pattern | Why it is not copied |
 |---|---|
-| `deliver/execution-log.json` | Audit trail captured in evolution doc |
-| `deliver/roadmap.json` | Step plan — superseded by evolution doc + git history |
-| `deliver/.develop-progress.json` | Resume state — temporary |
-| `design/review-*.md` | Review findings captured in evolution doc |
-| `distill/acceptance-review.md` | Test review — tests themselves remain in `tests/` |
-| `discuss/dor-validation.md` | Process gate, not lasting value |
-| `discuss/shared-artifacts-registry.md` | Process scaffolding (if exists) |
-| `*/wave-decisions.md` | Key decisions extracted into evolution doc |
+| `deliver/execution-log.json` | Audit trail summarized in the evolution doc; the log itself stays, `des-verify-integrity` and `/nw-continue` read it |
+| `deliver/roadmap.json` | Step plan — superseded by the evolution doc + git history for outside readers |
+| `design/review-*.md` | Review findings summarized in the evolution doc |
+| `distill/acceptance-review.md` | Test review — the tests themselves live in `tests/` |
+| `discuss/dor-validation.md` | Process gate, no lasting audience |
+| `discuss/shared-artifacts-registry.md` | Process scaffolding (if it exists) |
+| `*/wave-decisions.md` | Key decisions extracted into the evolution doc |
 
-### Phase C — Cleanup Workspace
+### Phase C — Remove Session Artifacts
 
-1. List all remaining files in `docs/feature/{feature-id}/` after migration
-2. Show the list to the user for approval
+1. List ONLY the removal candidates, by exact path — `docs/feature/{feature-id}/deliver/.develop-progress.json` and `.nwave/des/deliver-session.json` (the latter sits outside the feature workspace; list it explicitly). This is the deletion set, not an inventory of the workspace.
+2. Show that exact list to the user for approval. The user approves the set that will be deleted, and nothing wider.
 3. Preserve the workspace — `docs/feature/{feature-id}/` is NOT deleted. The wave matrix derives status from this directory. Removing it would make finalized features disappear from the matrix. The evolution doc in `docs/evolution/` is the summary; the feature directory is the history.
-4. On approval, delete session artifacts only: `.nwave/des/deliver-session.json`, `deliver/.develop-progress.json`, and temp files. Do NOT delete wave artifacts (discuss/, design/, distill/, deliver/).
+4. On approval, delete exactly the approved paths. Do NOT delete wave artifacts (discuss/, design/, distill/, deliver/), and do NOT delete anything matched by a pattern rather than named in the approved list. IF a file looks temporary but was not approved, leave it.
 
 **NEVER delete without user approval.** Show exactly what will be deleted.
 
-### Phase D — Post-Cleanup Verification
+### Phase D — Post-Finalize Verification
 
 1. Verify all migrated files exist in their destinations
 2. Update architecture doc statuses from "FUTURE DESIGN" to "IMPLEMENTED"
@@ -162,6 +168,10 @@ docs/
 | Project directory not found | "Project not found: docs/feature/{feature-id}/" |
 | Incomplete steps | Block finalization, list incomplete steps |
 | No files to migrate | Log "No lasting artifacts found — skipping Phase B" and proceed to cleanup |
+| `execution-log.json` missing | BLOCK: "Cannot verify completion — docs/feature/{feature-id}/deliver/execution-log.json not found." Never treat an absent log as "all steps done". |
+| `execution-log.json` unparseable | BLOCK: "docs/feature/{feature-id}/deliver/execution-log.json is not valid JSON: {reason}." Never treat an unreadable log as complete. |
+| `execution-log.json` has zero events | BLOCK: "docs/feature/{feature-id}/deliver/execution-log.json records no phases — nothing to verify." An empty log satisfies "every step is DONE" vacuously; it must not. |
+| Feature already finalized | BLOCK: "ALREADY FINALIZED: {feature-id} — see docs/evolution/{file}. Re-run with --force to re-migrate." |
 
 ## Examples
 
