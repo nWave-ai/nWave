@@ -22,13 +22,21 @@ re-running the cascade.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 
 DensityMode = Literal["lean", "full"]
 ExpansionPromptMode = Literal[
     "ask", "always-skip", "always-expand", "smart", "ask-intelligent"
 ]
+
+# Accepted `documentation.expansion_prompt` values, derived from the type so the
+# runtime check and the type annotation cannot disagree. A restatement kept in
+# sync by comment would let a value added to `ExpansionPromptMode` type-check
+# clean while the resolver rejected it at runtime — the worst pairing.
+# `get_args` preserves declaration order, so the error message still lists the
+# values in documentation order.
+_ACCEPTED_EXPANSION_PROMPTS: tuple[str, ...] = get_args(ExpansionPromptMode)
 
 
 @dataclass(frozen=True)
@@ -91,6 +99,44 @@ def _from_rigor_profile(profile: str) -> Density:
     )
 
 
+_ABSENT = object()
+
+
+def _validate_expansion_prompt(value: Any) -> None:
+    """Reject a `documentation.expansion_prompt` outside the accepted set.
+
+    An ABSENT key is valid — the cascade supplies a default. A key that is
+    PRESENT must carry an accepted value, and that includes an explicit JSON
+    `null`: `{"expansion_prompt": null}` is a configuration mistake, not a way
+    to request the default, and treating it as absent lets `None` reach the
+    resolved Density.
+    """
+    if value is _ABSENT:
+        return
+    if value not in _ACCEPTED_EXPANSION_PROMPTS:
+        raise ValueError(
+            f"Unknown documentation.expansion_prompt {value!r}; "
+            f"expected one of {list(_ACCEPTED_EXPANSION_PROMPTS)}."
+        )
+
+
+def _section(global_config: dict[str, Any], key: str) -> dict[str, Any]:
+    """Return a mapping section of the config, or raise naming the offender.
+
+    `global_config.get(key, {})` assumes the value is a dict. A scalar or list
+    there raises AttributeError several lines later, which reaches the user as
+    an internal error rather than as "your config is malformed, and here is
+    where".
+    """
+    section = global_config.get(key, {})
+    if not isinstance(section, dict):
+        raise ValueError(
+            f"Config key {key!r} must be an object, got "
+            f"{type(section).__name__}: {section!r}."
+        )
+    return section
+
+
 def resolve_density(global_config: dict[str, Any]) -> Density:
     """Return the active documentation density via the D12 cascade.
 
@@ -113,28 +159,53 @@ def resolve_density(global_config: dict[str, Any]) -> Density:
         and provenance.
 
     Raises:
-        ValueError: rigor.profile is set to an unknown value.
+        ValueError: rigor.profile is set to an unknown value, or
+            documentation.expansion_prompt is outside the accepted set.
     """
+    # Step 0: reject an unrecognised expansion_prompt outright. Without this
+    # the value is silently carried (or silently ignored), leaving the user no
+    # signal that their setting does nothing.
+    documentation = _section(global_config, "documentation")
+    explicit_prompt = documentation.get("expansion_prompt", _ABSENT)
+    _validate_expansion_prompt(explicit_prompt)
+
+    # An explicitly-set expansion_prompt is honoured by EVERY branch below, not
+    # only by the explicit-density branch. Validating a value and then
+    # discarding it in two of three branches would leave the user's setting a
+    # silent no-op — the very complaint issue #84 records — while adding the
+    # appearance of strictness.
+    def _with_explicit_prompt(density: Density) -> Density:
+        if explicit_prompt is _ABSENT:
+            return density
+        if density.expansion_prompt == explicit_prompt:
+            return density
+        return Density(
+            mode=density.mode,
+            expansion_prompt=explicit_prompt,
+            provenance=f"{density.provenance}+explicit_expansion_prompt",
+        )
+
     # Step 1: explicit override wins — both density and expansion_prompt.
-    documentation = global_config.get("documentation", {})
     explicit_mode = documentation.get("density")
     if explicit_mode is not None:
         return Density(
             mode=explicit_mode,
-            expansion_prompt=documentation.get("expansion_prompt", "ask-intelligent"),
+            expansion_prompt=(
+                explicit_prompt if explicit_prompt is not _ABSENT else "ask-intelligent"
+            ),
             provenance="explicit_override",
         )
 
     # Step 2: rigor.profile inheritance per D12.
-    rigor_profile = global_config.get("rigor", {}).get("profile")
+    rigor_profile = _section(global_config, "rigor").get("profile")
     if rigor_profile is not None:
-        return _from_rigor_profile(rigor_profile)
+        return _with_explicit_prompt(_from_rigor_profile(rigor_profile))
 
     # Step 3: hard default — fresh install, no documentation, no rigor.
     # Per Decision 4 (2026-04-28), the fresh-install default is
     # ("lean", "ask-intelligent"): emit minimal Tier-1 baseline, then
     # show a scoped expansion menu only when triggers fire (the wave
     # skill prose owns trigger detection).
-    return Density(
-        mode="lean", expansion_prompt="ask-intelligent", provenance="default"
+    return _with_explicit_prompt(
+        Density(mode="lean", expansion_prompt="ask-intelligent", provenance="default")
     )
