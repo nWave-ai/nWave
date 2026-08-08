@@ -1,6 +1,6 @@
 ---
 name: nw-finalize
-description: "Archives a completed feature to docs/evolution/, migrates lasting artifacts to permanent directories, and cleans up the temporary workspace. Use after all implementation steps pass and mutation testing completes."
+description: "Archives a completed feature to docs/evolution/, migrates lasting artifacts to permanent directories, preserves the feature workspace, and cleans session artifacts. Use after all implementation steps pass and mutation testing completes."
 user-invocable: false
 argument-hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrade"'
 ---
@@ -12,7 +12,7 @@ argument-hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrad
 
 ## Overview
 
-Finalize a completed feature: verify all steps done|create evolution document|migrate lasting artifacts to permanent directories|clean up temporary workspace. Agent gathers project data|analyzes execution history|writes summaries|migrates|cleans up.
+Finalize a completed feature: verify all steps done|create evolution document|migrate lasting artifacts to permanent directories|preserve the feature workspace|clean session artifacts. Agent gathers project data|analyzes execution history|writes summaries|migrates|preserves the source history.
 
 `docs/feature/{feature-id}/` is the **feature workspace** — it is populated during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value are **copied** to permanent directories. WHEN finalize completes, the system SHALL retain `docs/feature/{feature-id}/`: the wave-status matrix derives feature status from this directory, so removing it would make finalized features disappear from the matrix. Only session markers and resume state are deleted.
 
@@ -52,7 +52,7 @@ Before dispatching, verify all work is done — prevents archiving incomplete fe
 
 #### Destination Map
 
-| Source (temporary workspace) | Destination (permanent) | Condition |
+| Source (feature workspace) | Destination (permanent) | Condition |
 |---|---|---|
 | `design/architecture-design.md` | `docs/architecture/{feature}/` | If exists |
 | `design/component-boundaries.md` | `docs/architecture/{feature}/` | If exists |
