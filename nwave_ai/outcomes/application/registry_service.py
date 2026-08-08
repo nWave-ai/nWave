@@ -71,7 +71,11 @@ def _load_validator() -> Draft7Validator:
             .joinpath(_SCHEMA_RESOURCE)
             .read_text(encoding="utf-8")
         )
-    except (FileNotFoundError, ModuleNotFoundError, OSError) as err:
+    # UnicodeDecodeError derives from ValueError, not OSError, so a resource
+    # that exists but is not valid UTF-8 would escape an OSError-only clause and
+    # reach the user as a raw traceback. FileNotFoundError is a subclass of
+    # OSError and is listed only for the reader's benefit.
+    except (OSError, UnicodeDecodeError) as err:
         raise SchemaResourceUnavailableError(
             f"outcomes schema resource {_SCHEMA_PACKAGE}/{_SCHEMA_RESOURCE} "
             f"is unreadable — the nwave-ai installation is incomplete: {err}"

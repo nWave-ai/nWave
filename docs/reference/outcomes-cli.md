@@ -76,6 +76,7 @@ nwave-ai outcomes register --id OUT-ID --kind KIND \
 |------|----------------------------------------------------------------------|
 | 0    | Outcome registered successfully.                                     |
 | 2    | Duplicate `--id` (already in registry), or invalid Outcome (schema). |
+| 3    | The packaged JSON Schema could not be loaded — the installation is incomplete. Reinstall `nwave-ai`. |
 
 ### Output
 
@@ -263,7 +264,7 @@ nwave-ai outcomes check-delta docs/feature/my-feature/feature-delta.md
 
 ## Registry schema
 
-The registry file is YAML matching the JSON Schema at `docs/product/outcomes/schema.json` (draft-07). Each entry is one element of the top-level `outcomes:` list.
+The registry file is YAML matching the JSON Schema shipped inside the package at `nwave_ai/outcomes/schema.json` (draft-07). Each entry is one element of the top-level `outcomes:` list.
 
 ### Top-level structure
 
@@ -346,5 +347,5 @@ Threshold: ≥ 0.4 → Tier-2 fires.
 - **[Your First Outcome](../guides/outcomes-first-outcome/README.md)** — tutorial for new authors.
 - **[How to resolve a collision](../guides/howto-resolve-outcomes-collision.md)** — triage flagged candidates.
 - **[Why an outcomes registry?](../product/outcomes/README.md)** — design rationale and locked decisions.
-- **JSON Schema** — `docs/product/outcomes/schema.json`.
+- **JSON Schema** — `nwave_ai/outcomes/schema.json`, loaded as a package resource so it travels with the install.
 - **Seeded registry** — `docs/product/outcomes/registry.yaml`.

@@ -16,6 +16,8 @@ import json
 import shutil
 import subprocess
 import sys
+
+import pytest
 from importlib import resources
 from pathlib import Path
 
@@ -96,3 +98,68 @@ def test_register_succeeds_in_installed_shape_without_repo_docs_tree(
     registry = project / "docs" / "product" / "outcomes" / "registry.yaml"
     data = yaml.safe_load(registry.read_text(encoding="utf-8"))
     assert [o["id"] for o in data["outcomes"]] == ["OUT-1"]
+
+
+class TestSchemaResourceFailureIsDiagnosable:
+    """A missing or corrupt schema resource must explain itself, not traceback.
+
+    The CLI advertises exit 3 with a reinstall hint for this case. Before these
+    tests that whole branch was unexercised — the improvement the change claims
+    was itself unverified.
+    """
+
+    def test_unreadable_resource_raises_a_named_error(self, monkeypatch):
+        """An OSError reading the resource becomes SchemaResourceUnavailableError."""
+        from nwave_ai.outcomes.application import registry_service
+
+        registry_service._load_validator.cache_clear()
+        monkeypatch.setattr(
+            registry_service.resources,
+            "files",
+            lambda _pkg: (_ for _ in ()).throw(OSError("disk gone")),
+        )
+        try:
+            with pytest.raises(registry_service.SchemaResourceUnavailableError) as err:
+                registry_service._load_validator()
+            assert "installation is incomplete" in str(err.value)
+        finally:
+            registry_service._load_validator.cache_clear()
+
+    def test_non_utf8_resource_raises_a_named_error(self, monkeypatch, tmp_path):
+        """UnicodeDecodeError is a ValueError, so an OSError-only clause misses it."""
+        from nwave_ai.outcomes.application import registry_service
+
+        class _BadBytes:
+            def joinpath(self, _name):
+                return self
+
+            def read_text(self, encoding="utf-8"):
+                raise UnicodeDecodeError(encoding, b"\xff\xfe", 0, 1, "invalid start byte")
+
+        registry_service._load_validator.cache_clear()
+        monkeypatch.setattr(registry_service.resources, "files", lambda _pkg: _BadBytes())
+        try:
+            with pytest.raises(registry_service.SchemaResourceUnavailableError):
+                registry_service._load_validator()
+        finally:
+            registry_service._load_validator.cache_clear()
+
+    def test_corrupt_json_resource_names_the_parse_failure(self, monkeypatch):
+        """A resource that is present but not JSON says so."""
+        from nwave_ai.outcomes.application import registry_service
+
+        class _NotJson:
+            def joinpath(self, _name):
+                return self
+
+            def read_text(self, encoding="utf-8"):
+                return "{not json"
+
+        registry_service._load_validator.cache_clear()
+        monkeypatch.setattr(registry_service.resources, "files", lambda _pkg: _NotJson())
+        try:
+            with pytest.raises(registry_service.SchemaResourceUnavailableError) as err:
+                registry_service._load_validator()
+            assert "not valid JSON" in str(err.value)
+        finally:
+            registry_service._load_validator.cache_clear()
