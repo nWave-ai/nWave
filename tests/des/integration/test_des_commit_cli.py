@@ -9,7 +9,8 @@ without cross-staging each other's work. The contract:
 2. Another agent's staged work is left staged (not reset) after the call.
 3. Concurrent callers serialize on a file lock, so none hit git's index.lock
    contention and none sweep up a neighbour's files.
-4. The commit carries the ``Step-Id:`` trailer DES integrity gates rely on.
+4. The commit carries the ``Step-Id:`` and ``Task-Id:`` trailers DES
+   integrity gates rely on (issue #78).
 
 These use a real git repo (subprocess), matching
 ``tests/des/acceptance/test_git_commit_verification.py``.
@@ -20,6 +21,8 @@ from __future__ import annotations
 import subprocess
 import threading
 from pathlib import Path
+
+import pytest
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -88,6 +91,8 @@ class TestDesCommitScoping:
                 "a.py",
                 "--step-id",
                 "01-01",
+                "--task-id",
+                "44",
                 "--message",
                 "feat: add a",
             ]
@@ -118,6 +123,8 @@ class TestDesCommitScoping:
                 "a.py",
                 "--step-id",
                 "02-03",
+                "--task-id",
+                "44",
                 "--message",
                 "feat: add a",
             ]
@@ -154,6 +161,8 @@ class TestDesCommitConcurrentNoCrossStaging:
                     files[idx],
                     "--step-id",
                     f"{idx:02d}-01",
+                    "--task-id",
+                    "44",
                     "--message",
                     f"feat: add {files[idx]}",
                 ]
@@ -187,13 +196,113 @@ class TestDesCommitConcurrentNoCrossStaging:
         assert all_committed == set(files)
 
 
-def _run(tmp_path, owned, step_id="01-01", message="feat: change"):
+def _run(tmp_path, owned, step_id="01-01", message="feat: change", task_id="44"):
     from des.cli.commit import main
 
     argv = ["--repo-dir", str(tmp_path)]
     argv += ["--owned-paths", *owned]
-    argv += ["--step-id", step_id, "--message", message]
+    argv += ["--step-id", step_id, "--task-id", task_id, "--message", message]
     return main(argv)
+
+
+class TestDesCommitTaskIdTrailer:
+    """des-commit emits the Task-Id trailer the stop-hook verifier greps (issue #78).
+
+    WHEN a step is committed via des-commit, the system SHALL record both
+    ``Step-Id:`` and ``Task-Id:`` in ONE well-formed final trailer block, so the
+    SubagentStop verifier's dual ``--all-match`` grep matches and trailer-parsing
+    consumers (``git interpret-trailers`` / ``%(trailers)``) see both keys.
+    """
+
+    def test_commit_carries_task_id_trailer(self, tmp_path):
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+
+        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="44") == 0
+
+        body = _git(tmp_path, "log", "-1", "--format=%B")
+        assert "Step-Id: 02-03" in body
+        assert "Task-Id: 44" in body
+
+    def test_both_trailers_parse_as_git_trailers(self, tmp_path):
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+
+        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="44") == 0
+
+        task = _git(
+            tmp_path, "log", "-1", "--format=%(trailers:key=Task-Id,valueonly)"
+        ).strip()
+        step = _git(
+            tmp_path, "log", "-1", "--format=%(trailers:key=Step-Id,valueonly)"
+        ).strip()
+        assert task == "44"
+        assert step == "02-03"
+
+    def test_trailers_join_existing_trailer_block(self, tmp_path):
+        """A message already ending in a trailer block keeps one trailer block."""
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+
+        assert (
+            _run(
+                tmp_path,
+                ["a.py"],
+                step_id="02-03",
+                task_id="44",
+                message="feat: add a\n\nBody text.\n\nIssue: #78",
+            )
+            == 0
+        )
+
+        issue = _git(
+            tmp_path, "log", "-1", "--format=%(trailers:key=Issue,valueonly)"
+        ).strip()
+        task = _git(
+            tmp_path, "log", "-1", "--format=%(trailers:key=Task-Id,valueonly)"
+        ).strip()
+        assert issue == "#78"
+        assert task == "44"
+
+    def test_commit_satisfies_verifier_dual_grep(self, tmp_path):
+        """The produced commit passes the verifier that gates SubagentStop."""
+        from des.adapters.driven.git.git_commit_verifier import GitCommitVerifier
+
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+
+        assert _run(tmp_path, ["a.py"], step_id="02-03", task_id="44") == 0
+
+        result = GitCommitVerifier().verify_commit(
+            step_id="02-03",
+            cwd=str(tmp_path),
+            feature_id_filter="44",
+        )
+        assert result.verified, result.error_reason
+
+    def test_missing_task_id_is_a_usage_error(self, tmp_path):
+        """IF --task-id is omitted, the system SHALL fail fast at the producer."""
+        from des.cli.commit import main
+
+        _init_git_repo(tmp_path)
+        (tmp_path / "a.py").write_text("owned = 1\n")
+
+        with pytest.raises(SystemExit) as exc:
+            main(
+                [
+                    "--repo-dir",
+                    str(tmp_path),
+                    "--owned-paths",
+                    "a.py",
+                    "--step-id",
+                    "02-03",
+                    "--message",
+                    "feat: add a",
+                ]
+            )
+
+        assert exc.value.code == 2
+        assert _commit_count(tmp_path) == 1  # nothing was committed
 
 
 class TestDesCommitHookCannotCrossStage:

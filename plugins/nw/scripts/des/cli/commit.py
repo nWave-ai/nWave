@@ -26,6 +26,7 @@ Usage:
       --repo-dir . \\
       --owned-paths src/foo.py tests/test_foo.py \\
       --step-id 02-03 \\
+      --task-id 44 \\
       --message "feat: add foo"
 
 Exit codes:
@@ -38,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -78,9 +80,22 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Step identifier (e.g., 02-03); recorded as a Step-Id trailer",
     )
     parser.add_argument(
+        "--task-id",
+        required=True,
+        help=(
+            "Feature/task identifier, bare value (e.g. 44, not #44); recorded as "
+            "a Task-Id trailer. Required: the SubagentStop commit verifier greps "
+            "for 'Task-Id: {project_id}' AND 'Step-Id: {step_id}' on the same "
+            "commit, so a commit without it is rejected as COMMIT_NOT_VERIFIED"
+        ),
+    )
+    parser.add_argument(
         "--message",
         required=True,
-        help="Commit message subject/body (Step-Id trailer appended if absent)",
+        help=(
+            "Commit message subject/body (Step-Id and Task-Id trailers appended "
+            "if absent)"
+        ),
     )
     return parser
 
@@ -98,11 +113,39 @@ def _git(
     )
 
 
-def _with_step_id_trailer(message: str, step_id: str) -> str:
-    """Append a ``Step-Id:`` trailer unless the message already carries one."""
-    if "Step-Id:" in message:
-        return message
-    return f"{message}\n\nStep-Id: {step_id}"
+_TRAILER_LINE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*:\s|^\s+\S")
+
+
+def _ends_with_trailer_block(message: str) -> bool:
+    """True when the message's final paragraph is already a git trailer block."""
+    paragraphs = message.rstrip("\n").split("\n\n")
+    if len(paragraphs) < 2:
+        # Only the subject paragraph exists; a subject is never a trailer block,
+        # even when it looks like one ("feat: change").
+        return False
+    lines = [line for line in paragraphs[-1].splitlines() if line.strip()]
+    return bool(lines) and all(_TRAILER_LINE.match(line) for line in lines)
+
+
+def _with_id_trailers(message: str, step_id: str, task_id: str) -> str:
+    """Append ``Step-Id:`` and ``Task-Id:`` as one well-formed final trailer block.
+
+    WHEN the message already ends in a trailer block, the system SHALL join the
+    new trailers to that block rather than opening a second paragraph, so
+    ``git interpret-trailers`` / ``%(trailers)`` see every key. Trailers already
+    present in the message are left as the caller wrote them.
+    """
+    body = message.rstrip("\n")
+    additions = []
+    if "Step-Id:" not in body:
+        additions.append(f"Step-Id: {step_id}")
+    if "Task-Id:" not in body:
+        additions.append(f"Task-Id: {task_id}")
+    if not additions:
+        return body
+
+    separator = "\n" if _ends_with_trailer_block(body) else "\n\n"
+    return body + separator + "\n".join(additions)
 
 
 def _commit_owned_locked(
@@ -185,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     owned_paths: list[str] = list(args.owned_paths)
-    message = _with_step_id_trailer(args.message, args.step_id)
+    message = _with_id_trailers(args.message, args.step_id, args.task_id)
 
     exit_code, error = _commit_owned_locked(repo, owned_paths, message)
     if exit_code != 0:

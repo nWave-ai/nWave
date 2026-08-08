@@ -1,4 +1,4 @@
-"""Fast-gate CLI --help contract tests for all 5 DES CLI modules.
+"""Fast-gate CLI --help contract tests for all 6 DES CLI modules.
 
 Asserts that every DES CLI entry point accepts --help (and -h) and signals
 success (exit code 0). Two compliant implementation patterns exist:
@@ -24,6 +24,7 @@ _DES_CLI_MODULES = [
     "des.cli.verify_deliver_integrity",
     "des.cli.roadmap",
     "des.cli.health_check",
+    "des.cli.commit",
 ]
 
 
@@ -69,3 +70,19 @@ def test_cli_main_accepts_short_help_with_zero_exit(module_name: str) -> None:
     assert exit_code == 0, (
         f"{module_name}.main(argv=['-h']) signalled exit code {exit_code!r}, expected 0"
     )
+
+
+@pytest.mark.fast_gate
+def test_des_commit_help_documents_required_task_id(capsys) -> None:
+    """des-commit --help SHALL advertise the required --task-id option (issue #78).
+
+    WHEN a crafter reads des-commit's help, the system SHALL name --task-id as
+    required, so the Task-Id trailer the SubagentStop verifier greps cannot be
+    silently omitted.
+    """
+    module = importlib.import_module("des.cli.commit")
+    with pytest.raises(SystemExit):
+        module.main(argv=["--help"])
+    help_text = capsys.readouterr().out
+    assert "--task-id" in help_text
+    assert "Task-Id" in help_text
