@@ -92,3 +92,32 @@ def test_unknown_rigor_profile_raises_value_error() -> None:
     config = {"rigor": {"profile": "ludicrous"}}
     with pytest.raises(ValueError, match="ludicrous"):
         resolve_density(config)
+
+
+def test_unknown_expansion_prompt_raises_value_error() -> None:
+    """Strict: an unrecognised expansion_prompt is rejected, not silently kept."""
+    config = {"documentation": {"density": "lean", "expansion_prompt": "sometimes"}}
+    with pytest.raises(ValueError, match="sometimes"):
+        resolve_density(config)
+
+
+def test_unknown_expansion_prompt_error_names_accepted_values() -> None:
+    """The rejection message enumerates the accepted expansion_prompt set."""
+    config = {"documentation": {"expansion_prompt": "sometimes"}}
+    with pytest.raises(ValueError) as excinfo:
+        resolve_density(config)
+    message = str(excinfo.value)
+    for accepted in (
+        "ask",
+        "always-skip",
+        "always-expand",
+        "smart",
+        "ask-intelligent",
+    ):
+        assert accepted in message
+
+
+def test_known_expansion_prompt_without_density_is_accepted() -> None:
+    """A recognised expansion_prompt alone does not raise."""
+    config = {"documentation": {"expansion_prompt": "smart"}}
+    assert resolve_density(config).provenance == "default"

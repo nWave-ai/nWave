@@ -30,6 +30,17 @@ ExpansionPromptMode = Literal[
     "ask", "always-skip", "always-expand", "smart", "ask-intelligent"
 ]
 
+# Accepted `documentation.expansion_prompt` values, in documentation order.
+# Kept in sync with `ExpansionPromptMode` and with
+# `docs/reference/global-config.md` / `docs/guides/configuring-doc-density.md`.
+_ACCEPTED_EXPANSION_PROMPTS: tuple[str, ...] = (
+    "ask",
+    "always-skip",
+    "always-expand",
+    "smart",
+    "ask-intelligent",
+)
+
 
 @dataclass(frozen=True)
 class Density:
@@ -91,6 +102,23 @@ def _from_rigor_profile(profile: str) -> Density:
     )
 
 
+def _validate_expansion_prompt(value: Any) -> None:
+    """Reject a `documentation.expansion_prompt` outside the accepted set.
+
+    A missing key is valid — the cascade supplies a default. Any present value
+    that is not one of `_ACCEPTED_EXPANSION_PROMPTS` raises ValueError naming
+    the accepted set, so a typo surfaces as a fixable error instead of a
+    silent no-op.
+    """
+    if value is None:
+        return
+    if value not in _ACCEPTED_EXPANSION_PROMPTS:
+        raise ValueError(
+            f"Unknown documentation.expansion_prompt {value!r}; "
+            f"expected one of {list(_ACCEPTED_EXPANSION_PROMPTS)}."
+        )
+
+
 def resolve_density(global_config: dict[str, Any]) -> Density:
     """Return the active documentation density via the D12 cascade.
 
@@ -113,10 +141,16 @@ def resolve_density(global_config: dict[str, Any]) -> Density:
         and provenance.
 
     Raises:
-        ValueError: rigor.profile is set to an unknown value.
+        ValueError: rigor.profile is set to an unknown value, or
+            documentation.expansion_prompt is outside the accepted set.
     """
-    # Step 1: explicit override wins — both density and expansion_prompt.
+    # Step 0: reject an unrecognised expansion_prompt outright. Without this
+    # the value is silently carried (or silently ignored), leaving the user no
+    # signal that their setting does nothing.
     documentation = global_config.get("documentation", {})
+    _validate_expansion_prompt(documentation.get("expansion_prompt"))
+
+    # Step 1: explicit override wins — both density and expansion_prompt.
     explicit_mode = documentation.get("density")
     if explicit_mode is not None:
         return Density(
