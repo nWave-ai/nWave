@@ -17,6 +17,9 @@ The fix is loud failure, not silent re-anchoring:
 - WHEN ``des-init-log`` would create a log for a feature id that already has an
   ``execution-log.json`` elsewhere under the git worktree root, the system SHALL
   refuse, naming BOTH paths, and SHALL NOT write a second log.
+- WHEN ``des-verify-integrity`` finds no ``execution-log.json`` at the resolved
+  project directory, the system SHALL name the log(s) that exist elsewhere under
+  the git worktree root, and SHALL report a scan that could not run.
 - WHERE ``--allow-duplicate-log`` is passed, ``des-init-log`` SHALL create the log
   regardless of the sibling log (the legitimate deliberate-second-log case).
 
@@ -33,14 +36,29 @@ from pathlib import Path
 
 import pytest
 
-from des.cli import init_log, log_phase
+from des.cli import init_log, log_phase, verify_deliver_integrity
 
 
 FEATURE_ID = "brand-visual-system"
 
 
 def _git_repo(root: Path) -> None:
+    """Initialise a git repo that ignores the developer's global git config.
+
+    The discovery helper enumerates candidates with ``git ls-files
+    --exclude-standard``, which honours ``core.excludesFile`` — so on a machine
+    whose global gitignore happens to exclude ``docs/``, ``apps/`` or
+    ``*.json``, these fixtures would produce different results than on CI. The
+    people most likely to run this suite are exactly the ones with elaborate
+    global ignores, so the fixture repo pins the setting to an empty file.
+    """
     subprocess.run(["git", "init", "-q", str(root)], check=True)
+    empty_ignore = root / ".git" / "empty-global-ignore"
+    empty_ignore.write_text("")
+    subprocess.run(
+        ["git", "-C", str(root), "config", "core.excludesFile", str(empty_ignore)],
+        check=True,
+    )
 
 
 @pytest.fixture
@@ -317,4 +335,86 @@ def test_a_file_merely_ending_in_the_log_name_is_not_a_sibling(
     message = capsys.readouterr().err
     assert "my-execution-log.json" not in message, (
         "a file whose name merely ends in the log name is not an execution log"
+    )
+
+
+# ---------------------------------------------------------------------------
+# des-verify-integrity shares the same missing-log branch.
+#
+# The Phase 6 closure gate is where a forked log does the most damage: it
+# reports an incomplete trace for a directory that is not the one the run
+# actually wrote to. Its diagnostic must carry the same evidence as
+# des-log-phase's, so both CLIs are exercised, not just the two that write.
+# ---------------------------------------------------------------------------
+
+
+def _roadmap(path: Path) -> None:
+    path.write_text(
+        json.dumps(
+            {
+                "roadmap": {
+                    "project_id": FEATURE_ID,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "total_steps": 1,
+                },
+                "phases": [
+                    {
+                        "id": "01",
+                        "name": "Phase One",
+                        "steps": [
+                            {
+                                "id": "01-01",
+                                "name": "First",
+                                "criteria": ["the first step is done"],
+                            }
+                        ],
+                    }
+                ],
+            },
+            indent=2,
+        )
+    )
+
+
+def test_verify_integrity_names_the_existing_log_when_relative_dir_misses(
+    worktree: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The closure gate must name the log that DOES exist, not a bare miss."""
+    canonical_log = (
+        worktree / "docs" / "feature" / FEATURE_ID / "deliver" / "execution-log.json"
+    )
+    subdir_deliver = (
+        worktree / "apps" / "website" / "docs" / "feature" / FEATURE_ID / "deliver"
+    )
+    _roadmap(subdir_deliver / "roadmap.json")
+    monkeypatch.chdir(worktree / "apps" / "website")
+
+    exit_code = verify_deliver_integrity.main([f"docs/feature/{FEATURE_ID}/deliver"])
+
+    assert exit_code == 2
+    output = capsys.readouterr().err
+    assert str(canonical_log) in output, (
+        "the closure gate must name the existing canonical log, not only the miss"
+    )
+
+
+def test_verify_integrity_reports_a_scan_that_could_not_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """WHEN the scan cannot run, the closure gate SHALL say so, not stay silent."""
+    project_dir = tmp_path / "not-a-repo" / "deliver"
+    project_dir.mkdir(parents=True)
+    _roadmap(project_dir / "roadmap.json")
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = verify_deliver_integrity.main([str(project_dir)])
+
+    assert exit_code == 2
+    message = capsys.readouterr().err
+    assert "could not scan for other execution logs" in message, (
+        "a scan that could not run must be reported, not rendered as silence"
     )

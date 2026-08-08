@@ -1,4 +1,8 @@
-"""Discover sibling ``execution-log.json`` files within a git worktree (issue #79).
+"""Discover other ``execution-log.json`` files within a git worktree (issue #79).
+
+"Other" means anywhere under the git worktree root at ANY depth — not only the
+directories adjacent to the target. The single path excluded is the log inside
+the target directory itself, which the caller already knows about.
 
 ``--project-dir`` is resolved implicitly against the *process* CWD by every DES
 log CLI. When an agent ``cd``s into a monorepo subdirectory mid-DELIVER, the same
@@ -33,14 +37,16 @@ from des.domain.result import Failure, Result, Success
 
 LOG_FILENAME = "execution-log.json"
 
-#: Upper bound on reported siblings — the diagnostic needs a name, not a census.
+#: Upper bound on REPORTED logs — the diagnostic needs a name, not a census. The
+#: scan itself is unbounded: every candidate is enumerated and matched, and only
+#: the sorted result list is truncated to this many entries.
 MAX_REPORTED_LOGS = 10
 
 _GIT_TIMEOUT_SECONDS = 10
 
 
 @dataclass(frozen=True)
-class SiblingLog:
+class WorktreeLog:
     """One ``execution-log.json`` found under the worktree root.
 
     ``feature_id`` is the id recorded inside the file. ``unreadable_reason`` is
@@ -76,7 +82,9 @@ def _run_git(args: list[str], cwd: Path) -> Result[str, str]:
     except FileNotFoundError:
         return Failure("git executable not found on PATH")
     except subprocess.TimeoutExpired:
-        return Failure(f"git {args[0]} timed out after {_GIT_TIMEOUT_SECONDS}s in {cwd}")
+        return Failure(
+            f"git {args[0]} timed out after {_GIT_TIMEOUT_SECONDS}s in {cwd}"
+        )
     except OSError as exc:
         return Failure(f"could not run git in {cwd}: {exc}")
 
@@ -175,15 +183,19 @@ def _list_candidate_logs(root: Path) -> Result[list[Path], str]:
         return result
 
     return Success(
-        [(root / relative).resolve() for relative in result.value.split("\0") if relative]
+        [
+            (root / relative).resolve()
+            for relative in result.value.split("\0")
+            if relative
+        ]
     )
 
 
-def find_sibling_logs(
+def find_other_logs_in_worktree(
     target_dir: Path,
     feature_id: str | None = None,
     limit: int = MAX_REPORTED_LOGS,
-) -> Result[list[SiblingLog], str]:
+) -> Result[list[WorktreeLog], str]:
     """Return ``execution-log.json`` files under *target_dir*'s worktree root.
 
     The log directly inside *target_dir* is excluded — the caller already knows
@@ -212,7 +224,7 @@ def find_sibling_logs(
         return Failure(f"cannot enumerate logs: {candidates_result.error}")
 
     excluded = target_dir.absolute().resolve()
-    matches: list[SiblingLog] = []
+    matches: list[WorktreeLog] = []
 
     for log_path in sorted(candidates_result.value):
         if log_path.parent == excluded:
@@ -221,13 +233,15 @@ def find_sibling_logs(
         if unreadable is None and feature_id is not None and found_id != feature_id:
             continue
         matches.append(
-            SiblingLog(path=log_path, feature_id=found_id, unreadable_reason=unreadable)
+            WorktreeLog(
+                path=log_path, feature_id=found_id, unreadable_reason=unreadable
+            )
         )
 
     return Success(matches[:limit])
 
 
-def describe_sibling_logs(result: Result[list[SiblingLog], str]) -> list[str]:
+def describe_other_logs(result: Result[list[WorktreeLog], str]) -> list[str]:
     """Render *result* as operator-facing diagnostic lines.
 
     A failed scan produces a line saying the scan failed and why — never

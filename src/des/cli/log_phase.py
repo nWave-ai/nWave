@@ -29,7 +29,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from des.cli._log_discovery import describe_sibling_logs, find_sibling_logs
+from des.cli._log_discovery import describe_other_logs, find_other_logs_in_worktree
 from des.domain.result import Failure
 from des.domain.tdd_schema import TDDSchemaLoader
 
@@ -173,8 +173,8 @@ def main(argv: list[str] | None = None) -> int:
             f"Error: execution-log.json not found at {log_path.absolute()}",
             file=sys.stderr,
         )
-        scan = find_sibling_logs(project_dir)
-        detail = describe_sibling_logs(scan)
+        scan = find_other_logs_in_worktree(project_dir)
+        detail = describe_other_logs(scan)
         if isinstance(scan, Failure):
             # The scan itself failed. Say so — silence here would read as "no
             # other log exists", which is the confusion issue #79 is about.

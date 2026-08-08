@@ -29,7 +29,7 @@ import json
 import sys
 from pathlib import Path
 
-from des.cli._log_discovery import describe_sibling_logs, find_sibling_logs
+from des.cli._log_discovery import describe_other_logs, find_other_logs_in_worktree
 from des.domain.result import Failure
 
 
@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     # one elsewhere in this worktree. Fail loudly naming both paths; the
     # deliberate-second-log case has an explicit opt-out.
     if not args.allow_duplicate_log:
-        scan = find_sibling_logs(project_dir, feature_id=args.feature_id)
+        scan = find_other_logs_in_worktree(project_dir, feature_id=args.feature_id)
         if isinstance(scan, Failure):
             # The guard could not run. Initialization still proceeds: this check
             # is a safety net, not a precondition, and des-init-log must remain
@@ -201,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
         elif scan.value:
-            listed = "\n".join(describe_sibling_logs(scan))
+            listed = "\n".join(describe_other_logs(scan))
             print(
                 f"Error: an execution log for feature '{args.feature_id}' already "
                 f"exists elsewhere in this git worktree.\n"
