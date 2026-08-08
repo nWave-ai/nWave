@@ -29,6 +29,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from des.cli._log_discovery import find_sibling_logs
 from des.domain.tdd_schema import TDDSchemaLoader
 
 
@@ -162,7 +163,23 @@ def main(argv: list[str] | None = None) -> int:
     project_dir = Path(args.project_dir)
     log_path = project_dir / "execution-log.json"
     if not log_path.exists():
-        print(f"Error: execution-log.json not found at {log_path}")
+        # Issue #79: --project-dir resolves against the process CWD, so a
+        # mid-DELIVER `cd` into a monorepo subdirectory makes the same relative
+        # string miss the canonical log. Name the log(s) that DO exist in this
+        # worktree so the agent re-points --project-dir instead of re-running
+        # des-init-log and forking the audit trail.
+        print(f"Error: execution-log.json not found at {log_path.absolute()}")
+        siblings = find_sibling_logs(project_dir)
+        if siblings:
+            print("       An execution log exists elsewhere in this git worktree:")
+            for path in siblings:
+                print(f"         - {path}")
+            print(
+                "       The --project-dir was resolved against the current "
+                f"working directory ({Path.cwd()}). Re-point --project-dir at "
+                "the existing log's directory rather than initializing a "
+                "second log."
+            )
         return 1
 
     # Generate real UTC timestamp

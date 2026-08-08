@@ -29,6 +29,8 @@ import json
 import sys
 from pathlib import Path
 
+from des.cli._log_discovery import find_sibling_logs
+
 
 ATDD_PURE_MODE = "atdd_pure"
 
@@ -124,6 +126,16 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Feature identifier (kebab-case, e.g., my-feature)",
     )
+    parser.add_argument(
+        "--allow-duplicate-log",
+        action="store_true",
+        help=(
+            "Create the log even when another execution-log.json for the same "
+            "feature id already exists elsewhere under the git worktree root. "
+            "Use only when a second, deliberately separate log is intended "
+            "(issue #79)."
+        ),
+    )
     return parser
 
 
@@ -166,6 +178,28 @@ def main(argv: list[str] | None = None) -> int:
     if log_path.exists():
         print(f"Error: execution-log.json already exists at {log_path}")
         return 1
+
+    # Issue #79: a relative --project-dir resolves against the process CWD. An
+    # agent that cd'd into a monorepo subdirectory mid-DELIVER would otherwise
+    # start a SECOND, divergent log for a feature that already has a canonical
+    # one elsewhere in this worktree. Fail loudly naming both paths; the
+    # deliberate-second-log case has an explicit opt-out.
+    if not args.allow_duplicate_log:
+        siblings = find_sibling_logs(project_dir, feature_id=args.feature_id)
+        if siblings:
+            listed = "\n".join(f"         - {path}" for path in siblings)
+            print(
+                f"Error: an execution log for feature '{args.feature_id}' already "
+                f"exists elsewhere in this git worktree.\n"
+                f"       would create: {log_path.absolute()}\n"
+                f"       existing log(s):\n{listed}\n"
+                "       Creating a second log splits the DELIVER audit trail "
+                "(issue #79). Point --project-dir at the existing log's "
+                "directory, or pass --allow-duplicate-log when a separate log "
+                "is intended.",
+                file=sys.stderr,
+            )
+            return 1
 
     # Create execution log with the ADR-025 v5.0 (3-phase canon) schema, so new
     # DELIVER logs default to RED/GREEN/COMMIT (issue #65). Legacy v4 logs stay
