@@ -1,4 +1,4 @@
-"""Fast-gate CLI --help contract tests for all 5 DES CLI modules.
+"""Fast-gate CLI --help contract tests for all 6 DES CLI modules.
 
 Asserts that every DES CLI entry point accepts --help (and -h) and signals
 success (exit code 0). Two compliant implementation patterns exist:
@@ -24,6 +24,7 @@ _DES_CLI_MODULES = [
     "des.cli.verify_deliver_integrity",
     "des.cli.roadmap",
     "des.cli.health_check",
+    "des.cli.commit",
 ]
 
 
@@ -69,3 +70,32 @@ def test_cli_main_accepts_short_help_with_zero_exit(module_name: str) -> None:
     assert exit_code == 0, (
         f"{module_name}.main(argv=['-h']) signalled exit code {exit_code!r}, expected 0"
     )
+
+
+@pytest.mark.fast_gate
+def test_des_commit_help_documents_required_task_id(capsys) -> None:
+    """des-commit --help SHALL advertise the required --task-id option (issue #78).
+
+    WHEN a crafter reads des-commit's help, the system SHALL name --task-id as
+    required, so the Task-Id trailer the SubagentStop verifier greps cannot be
+    silently omitted.
+    """
+    module = importlib.import_module("des.cli.commit")
+    with pytest.raises(SystemExit):
+        module.main(argv=["--help"])
+    help_text = capsys.readouterr().out
+
+    # The usage line is where argparse signals requiredness: optional options
+    # are bracketed ("[--repo-dir REPO_DIR]"), required ones are not. argparse
+    # wraps that line, so compare on a whitespace-collapsed copy.
+    usage_line = help_text.split("\n\n", 1)[0]
+    usage = " ".join(usage_line.split())
+    assert "--task-id TASK_ID" in usage, (
+        f"--task-id is absent from the usage line: {usage!r}"
+    )
+    assert "[--task-id" not in usage, (
+        f"--task-id is presented as optional in the usage line: {usage!r}"
+    )
+    # And it is documented, naming the trailer key it produces.
+    assert "--task-id" in help_text
+    assert "Task-Id" in help_text

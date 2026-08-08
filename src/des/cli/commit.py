@@ -26,6 +26,7 @@ Usage:
       --repo-dir . \\
       --owned-paths src/foo.py tests/test_foo.py \\
       --step-id 02-03 \\
+      --task-id auth-upgrade \\
       --message "feat: add foo"
 
 Exit codes:
@@ -38,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -78,9 +80,23 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Step identifier (e.g., 02-03); recorded as a Step-Id trailer",
     )
     parser.add_argument(
+        "--task-id",
+        required=True,
+        help=(
+            "Feature identifier, exactly as recorded as project_id in "
+            "execution-log.json (e.g. auth-upgrade); recorded as a Task-Id "
+            "trailer. Required: the SubagentStop commit verifier greps for "
+            "'Task-Id: {project_id}' AND 'Step-Id: {step_id}' on the same "
+            "commit, so a commit without it is rejected as COMMIT_NOT_VERIFIED"
+        ),
+    )
+    parser.add_argument(
         "--message",
         required=True,
-        help="Commit message subject/body (Step-Id trailer appended if absent)",
+        help=(
+            "Commit message subject/body (Step-Id and Task-Id trailers appended "
+            "if absent)"
+        ),
     )
     return parser
 
@@ -98,11 +114,82 @@ def _git(
     )
 
 
-def _with_step_id_trailer(message: str, step_id: str) -> str:
-    """Append a ``Step-Id:`` trailer unless the message already carries one."""
-    if "Step-Id:" in message:
-        return message
-    return f"{message}\n\nStep-Id: {step_id}"
+_TRAILER_LINE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*:\s|^\s+\S")
+
+#: A trailer line with its key and value captured. Kept separate from
+#: ``_TRAILER_LINE`` because that pattern also accepts folded continuation
+#: lines (``^\s+\S``), which have no key of their own.
+_TRAILER_KEY_VALUE = re.compile(r"^(?P<key>[A-Za-z][A-Za-z0-9-]*):\s*(?P<value>.*)$")
+
+
+def _ends_with_trailer_block(message: str) -> bool:
+    """True when the message's final paragraph is already a git trailer block."""
+    paragraphs = message.rstrip("\n").split("\n\n")
+    if len(paragraphs) < 2:
+        # Only the subject paragraph exists; a subject is never a trailer block,
+        # even when it looks like one ("feat: change").
+        return False
+    lines = [line for line in paragraphs[-1].splitlines() if line.strip()]
+    return bool(lines) and all(_TRAILER_LINE.match(line) for line in lines)
+
+
+def _trailer_value(message: str, key: str) -> str | None:
+    """Return the value of *key* in the message's final trailer block, if any.
+
+    Only the final trailer block counts, because that is the only place
+    ``git interpret-trailers`` and ``%(trailers)`` look. A mention of the key
+    anywhere else — in the subject, in prose, in a code sample — is text, not a
+    trailer, and must not be mistaken for one.
+    """
+    if not _ends_with_trailer_block(message):
+        return None
+    final_paragraph = message.rstrip("\n").split("\n\n")[-1]
+    for line in final_paragraph.splitlines():
+        match = _TRAILER_KEY_VALUE.match(line)
+        if match and match.group("key") == key:
+            return match.group("value").strip()
+    return None
+
+
+def _with_id_trailers(
+    message: str, step_id: str, task_id: str
+) -> tuple[str | None, str]:
+    """Return ``(message_with_trailers, error)``.
+
+    WHEN the message already ends in a trailer block, the system SHALL join the
+    new trailers to that block rather than opening a second paragraph, so
+    ``git interpret-trailers`` / ``%(trailers)`` see every key.
+
+    **IF** the final trailer block already carries the key with a DIFFERENT
+    value, the system SHALL refuse rather than silently keeping one of the two.
+    Discarding the caller's explicit ``--step-id`` / ``--task-id`` is how a
+    commit ends up failing the SubagentStop verifier with no indication why —
+    the exact failure issue #78 exists to remove, so it must not be
+    reintroduced here. A key already present with the SAME value is left alone.
+    """
+    body = message.rstrip("\n")
+    additions = []
+
+    for key, wanted, flag in (
+        ("Step-Id", step_id, "--step-id"),
+        ("Task-Id", task_id, "--task-id"),
+    ):
+        existing = _trailer_value(body, key)
+        if existing is None:
+            additions.append(f"{key}: {wanted}")
+        elif existing != wanted:
+            return None, (
+                f"--message already carries a {key} trailer with value "
+                f"'{existing}', but {flag} is '{wanted}'. Remove the trailer "
+                f"from --message or pass the matching value; refusing to guess "
+                f"which one the verifier should see."
+            )
+
+    if not additions:
+        return body, ""
+
+    separator = "\n" if _ends_with_trailer_block(body) else "\n\n"
+    return body + separator + "\n".join(additions), ""
 
 
 def _commit_owned_locked(
@@ -163,7 +250,21 @@ def _commit_via_scoped_index(
 
     # Resync the shared index for owned paths to the new HEAD so they show clean;
     # any foreign staged work in the shared index is left untouched.
-    _git(repo, "reset", "-q", "--", *owned_paths)
+    # The commit already exists at this point, so a failed resync is NOT a
+    # commit failure — reporting exit 1 would tell the caller to retry a commit
+    # that succeeded. But it must not be silent either: the shared index is left
+    # holding the owned paths staged against the new HEAD, and the next caller
+    # in this working tree inherits that state.
+    resync = _git(repo, "reset", "-q", "--", *owned_paths)
+    if resync.returncode != 0:
+        detail = (resync.stderr or resync.stdout).strip() or "no output"
+        print(
+            f"Warning: commit succeeded but resyncing the shared index failed: "
+            f"{detail}\n"
+            f"  Owned paths may remain staged. Run: git reset -- "
+            f"{' '.join(owned_paths)}",
+            file=sys.stderr,
+        )
     return 0, ""
 
 
@@ -184,12 +285,33 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: not a git repository: {repo}")
         return 1
 
+    for flag, value in (("--step-id", args.step_id), ("--task-id", args.task_id)):
+        if not value.strip():
+            print(f"Error: {flag} must not be empty", file=sys.stderr)
+            return 2
+        if value != value.strip():
+            print(
+                f"Error: {flag} value '{value}' has leading or trailing "
+                "whitespace; the verifier greps for the exact literal",
+                file=sys.stderr,
+            )
+            return 2
+
     owned_paths: list[str] = list(args.owned_paths)
-    message = _with_step_id_trailer(args.message, args.step_id)
+    message, trailer_error = _with_id_trailers(
+        args.message, args.step_id, args.task_id
+    )
+    if message is None:
+        print(f"Error: {trailer_error}", file=sys.stderr)
+        return 2
 
     exit_code, error = _commit_owned_locked(repo, owned_paths, message)
     if exit_code != 0:
-        print(f"Error: {error}")
+        print(
+            f"Error committing step {args.step_id}: {error}\n"
+            f"  Owned paths: {', '.join(owned_paths)}",
+            file=sys.stderr,
+        )
         return exit_code
 
     print(f"Committed owned file(s) for step {args.step_id}")
