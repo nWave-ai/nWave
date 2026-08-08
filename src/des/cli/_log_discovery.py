@@ -19,35 +19,11 @@ containment boundary DELIVER runs in.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from pathlib import Path
 
 
 LOG_FILENAME = "execution-log.json"
-
-#: Directories never worth walking for a DELIVER log; pruning keeps the scan
-#: bounded on large monorepos.
-PRUNED_DIRECTORY_NAMES = frozenset(
-    {
-        ".git",
-        ".hg",
-        ".svn",
-        ".venv",
-        "venv",
-        "node_modules",
-        "__pycache__",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        ".tox",
-        ".next",
-        "dist",
-        "build",
-        "target",
-        "vendor",
-    }
-)
 
 #: Upper bound on reported siblings — the diagnostic needs a name, not a census.
 MAX_REPORTED_LOGS = 10
@@ -127,16 +103,9 @@ def find_sibling_logs(
     excluded = target_dir.absolute().resolve()
     found: list[Path] = []
 
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(
-            name for name in dirnames if name not in PRUNED_DIRECTORY_NAMES
-        )
-        if LOG_FILENAME not in filenames:
+    for log_path in _git_listed_logs(root):
+        if log_path.parent == excluded:
             continue
-        current = Path(dirpath).resolve()
-        if current == excluded:
-            continue
-        log_path = current / LOG_FILENAME
         if feature_id is not None and _feature_id_of(log_path) != feature_id:
             continue
         found.append(log_path)
@@ -144,3 +113,53 @@ def find_sibling_logs(
             break
 
     return sorted(found)
+
+
+def _git_listed_logs(root: Path) -> list[Path]:
+    """Return every ``execution-log.json`` git accounts for under *root*.
+
+    Enumeration is delegated to ``git ls-files`` rather than walking the tree
+    against a hand-maintained set of directory names to skip. That list would
+    be a second, worse copy of the repository's own ``.gitignore``: it would
+    miss whatever a given project ignores (``.direnv``, ``.turbo``, a vendored
+    SDK) and would need editing every time a new build tool appeared. Git
+    already knows precisely which paths belong to the project, so it is asked.
+
+    ``--cached --others --exclude-standard`` covers tracked files plus
+    untracked ones git would not ignore, which is exactly the set a DELIVER log
+    can legitimately live in. A log inside an ignored directory is deliberately
+    not reported: it is not part of the audit trail this diagnostic exists to
+    protect.
+
+    Fail-open: if git cannot answer, the caller degrades to naming no siblings
+    rather than blocking on a diagnostic.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "-z",
+                "--",
+                f"*{LOG_FILENAME}",
+                LOG_FILENAME,
+            ],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+
+    if result.returncode != 0:
+        return []
+
+    return [
+        (root / relative).resolve()
+        for relative in result.stdout.split("\0")
+        if relative
+    ]
