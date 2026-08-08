@@ -14,7 +14,7 @@ argument-hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrad
 
 Finalize a completed feature: verify all steps done|create evolution document|migrate lasting artifacts to permanent directories|preserve the feature workspace|clean session artifacts. Agent gathers project data|analyzes execution history|writes summaries|migrates|preserves the source history.
 
-`docs/feature/{feature-id}/` is the **feature workspace** — it is populated during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value are **copied** to permanent directories. WHEN finalize completes, the system SHALL retain `docs/feature/{feature-id}/`: the wave-status matrix derives feature status from this directory, so removing it would make finalized features disappear from the matrix. Only session markers and resume state are deleted.
+`docs/feature/{feature-id}/` is the **feature workspace** — it is populated during active nWave waves (DISCUSS through DELIVER). At finalize, artifacts with lasting value are **copied** to permanent directories. WHEN finalize completes, the system SHALL retain `docs/feature/{feature-id}/`. Only session markers and resume state are deleted. See Phase C step 3 for why retention is required.
 
 ## Usage
 

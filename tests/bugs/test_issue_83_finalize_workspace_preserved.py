@@ -92,7 +92,10 @@ def test_finalize_asset_never_asserts_workspace_removal(asset: Path) -> None:
 
 @pytest.mark.parametrize("asset", FINALIZE_ASSETS, ids=lambda p: str(p))
 def test_finalize_asset_states_workspace_is_preserved(asset: Path) -> None:
-    text = (REPO_ROOT / asset).read_text(encoding="utf-8")
+    path = REPO_ROOT / asset
+    assert path.is_file(), f"missing finalize asset: {asset}"
+
+    text = path.read_text(encoding="utf-8")
     assert "wave matrix derives status" in text.lower() or (
         "wave-status matrix" in text.lower()
     ), f"{asset} does not state why the workspace is preserved"
