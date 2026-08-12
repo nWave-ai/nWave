@@ -140,12 +140,17 @@ Issues = "https://github.com/nWave-ai/nWave/issues"
 
 [project.scripts]
 nwave-ai = "nwave_ai.cli:main"
-des-log-phase = "des.cli.log_phase:main"
-des-commit = "des.cli.commit:main"
-des-init-log = "des.cli.init_log:main"
-des-verify-integrity = "des.cli.verify_deliver_integrity:main"
-des-roadmap = "des.cli.roadmap:main"
-des-health-check = "des.cli.health_check:main"
+# The DES runtime ships as payload at nWave/lib/python/des (top-level `des`
+# imports), not as an importable site-packages package. Direct des.cli.*
+# entry points therefore crash with ModuleNotFoundError in an installed
+# wheel — route through nwave_ai.des_entry, which puts the payload on
+# sys.path first.
+des-log-phase = "nwave_ai.des_entry:log_phase"
+des-commit = "nwave_ai.des_entry:commit"
+des-init-log = "nwave_ai.des_entry:init_log"
+des-verify-integrity = "nwave_ai.des_entry:verify_integrity"
+des-roadmap = "nwave_ai.des_entry:roadmap"
+des-health-check = "nwave_ai.des_entry:health_check"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
