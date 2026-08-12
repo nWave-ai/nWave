@@ -263,7 +263,7 @@ nwave-ai outcomes check-delta docs/feature/my-feature/feature-delta.md
 
 ## Registry schema
 
-The registry file is YAML matching the JSON Schema at `docs/product/outcomes/schema.json` (draft-07). Each entry is one element of the top-level `outcomes:` list.
+The registry file is YAML matching the JSON Schema packaged at `nwave_ai/outcomes/schema.json` (draft-07). Each entry is one element of the top-level `outcomes:` list.
 
 ### Top-level structure
 
@@ -346,5 +346,5 @@ Threshold: ≥ 0.4 → Tier-2 fires.
 - **[Your First Outcome](../guides/outcomes-first-outcome/README.md)** — tutorial for new authors.
 - **[How to resolve a collision](../guides/howto-resolve-outcomes-collision.md)** — triage flagged candidates.
 - **[Why an outcomes registry?](../product/outcomes/README.md)** — design rationale and locked decisions.
-- **JSON Schema** — `docs/product/outcomes/schema.json`.
+- **JSON Schema** — `nwave_ai/outcomes/schema.json` (shipped as package data).
 - **Seeded registry** — `docs/product/outcomes/registry.yaml`.

@@ -2,8 +2,8 @@
 and JSON Schema validation.
 
 Driving port: register / load. Drives the RegistryReader and
-RegistryWriter driven ports. Validates every outcome against
-docs/product/outcomes/schema.json before persistence (fail-fast on
+RegistryWriter driven ports. Validates every outcome against the
+packaged nwave_ai/outcomes/schema.json before persistence (fail-fast on
 malformed entries — protects the registry contract).
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
-from pathlib import Path
+from importlib.resources import files
 
 from jsonschema import Draft7Validator
 from jsonschema import ValidationError as JsonSchemaValidationError
@@ -24,13 +24,7 @@ from nwave_ai.outcomes.ports.registry_io import (  # noqa: TC001  # runtime DI
 )
 
 
-_SCHEMA_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "docs"
-    / "product"
-    / "outcomes"
-    / "schema.json"
-)
+_SCHEMA_RESOURCE = files("nwave_ai.outcomes").joinpath("schema.json")
 
 
 class DuplicateOutcomeIdError(Exception):
@@ -51,7 +45,7 @@ class UnknownOutcomeIdError(Exception):
 
 @lru_cache(maxsize=1)
 def _load_validator() -> Draft7Validator:
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = json.loads(_SCHEMA_RESOURCE.read_text(encoding="utf-8"))
     return Draft7Validator(schema)
 
 
