@@ -1,0 +1,6 @@
+target/
+.mvn/
+*.iml
+.idea/
+.vscode/
+.jqwik-database

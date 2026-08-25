@@ -26,12 +26,19 @@ from nwave_ai.outcomes.application.registry_service import (
     DuplicateOutcomeIdError,
     InvalidOutcomeError,
     RegistryService,
+    SchemaUnavailableError,
     UnknownOutcomeIdError,
 )
 from nwave_ai.outcomes.domain.outcome import InputShape, Outcome, OutputShape
 
 
 _OUT_ID_PATTERN = re.compile(r"\bOUT-[A-Z0-9-]+\b")
+
+_EXIT_SCHEMA_UNAVAILABLE = 3
+_REINSTALL_HINT = (
+    "HOW: reinstall nwave-ai (for example, `uv tool install --force nwave-ai`); "
+    "the schema ships inside the package."
+)
 
 
 _DEFAULT_REGISTRY = Path("docs") / "product" / "outcomes" / "registry.yaml"
@@ -102,6 +109,14 @@ def _run_register(args: argparse.Namespace, registry_path: Path) -> int:
     outcome = _build_outcome_from_args(args)
     try:
         service.register(outcome)
+    except SchemaUnavailableError as err:
+        print(
+            f"REFUSED: cannot validate {outcome.id}; the outcome was NOT registered.",
+            file=sys.stderr,
+        )
+        print(f"WHY: {err}", file=sys.stderr)
+        print(_REINSTALL_HINT, file=sys.stderr)
+        return _EXIT_SCHEMA_UNAVAILABLE
     except (DuplicateOutcomeIdError, InvalidOutcomeError) as err:
         print(f"ERROR: {err}", file=sys.stderr)
         return 2

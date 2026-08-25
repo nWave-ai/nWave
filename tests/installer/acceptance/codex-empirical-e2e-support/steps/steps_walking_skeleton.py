@@ -18,7 +18,6 @@ was wrong and is superseded by DDD-5.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -108,40 +107,6 @@ def spike_artifact_exists() -> None:
     )
     assert spike.is_file(), (
         f"SPIKE artifact must exist at {spike} (DDD-8 canonical source)"
-    )
-
-
-@given(
-    "the legacy test tests/e2e/test_codex_full_install.py is marked broken_schema_v0"
-)
-def legacy_test_marked_broken_schema_v0() -> None:
-    legacy_test = (
-        Path(__file__).resolve().parents[5]
-        / "tests"
-        / "e2e"
-        / "test_codex_full_install.py"
-    )
-    assert legacy_test.is_file(), f"legacy test must exist at {legacy_test}"
-    content = legacy_test.read_text(encoding="utf-8")
-    # The broken_schema_v0 marker must annotate the schema-asserting test.
-    # We check the marker appears in the file AND immediately above the
-    # function that hardcodes the legacy top-level-array assertion.
-    pattern = re.compile(
-        r"@pytest\.mark\.broken_schema_v0[^\n]*\n\s*def test_codex_des_hook_installed"
-    )
-    assert pattern.search(content), (
-        "@pytest.mark.broken_schema_v0 must annotate "
-        "test_codex_des_hook_installed in the legacy file (DDD-7 quarantine)"
-    )
-
-
-@given("the marker broken_schema_v0 is registered in pyproject.toml")
-def marker_registered() -> None:
-    pyproject = Path(__file__).resolve().parents[5] / "pyproject.toml"
-    content = pyproject.read_text(encoding="utf-8")
-    assert "broken_schema_v0" in content, (
-        "marker 'broken_schema_v0' must be registered in "
-        "[tool.pytest.ini_options].markers (DDD-7)"
     )
 
 

@@ -54,17 +54,25 @@ Feature: Hook Installation Idempotency
     Then settings.local.json should contain exactly 3 PreToolUse hook
     And settings.local.json should contain exactly 2 SubagentStop hook
 
-  @bug-1 @failing @priority-high
-  Scenario: Hook detection works for both old and new command formats
-    # The _is_des_hook() method must detect both formats:
-    # - Old: python3 src/des/.../claude_code_hook_adapter.py
-    # - New: python3 -m des.adapters.drivers.hooks.claude_code_hook_adapter
-    # Bug: Detection may miss one format, causing duplicates
-
-    Given settings.local.json contains a DES hook with old format command
-    When I check if DES hooks are already installed
-    Then the hook detection should return True
-    And installing hooks again should not add duplicates
+  # NOTE (WTBD-165): the former "Hook detection works for both old and new
+  # command formats" scenario was retired. Its `installing hooks again should
+  # not add duplicates` step asserted strict count-equality (after == before)
+  # off a 1-hook old-format fixture — encoding a non-existent "re-install is a
+  # no-op" expectation. That stale count-equality step was correctly dropped:
+  # canonical install MIGRATES the single old entry to the 3 PreToolUse +
+  # 2 SubagentStop new-format hooks (no duplicate). The real
+  # migration-without-duplication behaviour is covered by the passing
+  # "Mixed format hooks should not cause duplicates" (old format -> 3 new) and
+  # "Multiple installs should not duplicate hooks" (re-install -> exactly 3 + 2)
+  # scenarios.
+  #
+  # However, the retired scenario also carried a VALID step — "the hook
+  # detection should return True" for an old-format hook — which was the only
+  # test of DESPlugin._hooks_already_installed (des_plugin.py:1071, the
+  # old-format detection path). That assertion is now covered directly at the
+  # unit level by
+  # tests/installer/unit/plugins/test_des_plugin_hooks_detection.py
+  # (old-format + new-format -> True; non-DES + no-hooks -> False).
 
   @bug-1 @priority-high
   Scenario: Mixed format hooks should not cause duplicates

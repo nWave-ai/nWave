@@ -92,3 +92,55 @@ def test_unknown_rigor_profile_raises_value_error() -> None:
     config = {"rigor": {"profile": "ludicrous"}}
     with pytest.raises(ValueError, match="ludicrous"):
         resolve_density(config)
+
+
+def test_explicit_expansion_prompt_overrides_profile_without_density_override() -> None:
+    """The two documentation controls are independent explicit overrides."""
+    result = resolve_density(
+        {
+            "rigor": {"profile": "thorough"},
+            "documentation": {"expansion_prompt": "ask-intelligent"},
+        }
+    )
+
+    assert result == Density(
+        mode="full",
+        expansion_prompt="ask-intelligent",
+        provenance="rigor.profile=thorough",
+    )
+
+
+def test_every_documented_expansion_prompt_mode_is_accepted() -> None:
+    """The public mode carrier is exactly the five documented values."""
+    modes = (
+        "ask",
+        "ask-intelligent",
+        "always-skip",
+        "always-expand",
+        "smart",
+    )
+
+    for mode in modes:
+        result = resolve_density(
+            {"documentation": {"density": "lean", "expansion_prompt": mode}}
+        )
+        assert result.expansion_prompt == mode
+
+
+def test_unknown_expansion_prompt_is_rejected_with_complete_vocabulary() -> None:
+    """A typo must fail loudly instead of becoming an expensive silent no-op."""
+    config = {"documentation": {"density": "lean", "expansion_prompt": "ask-clever"}}
+
+    with pytest.raises(ValueError) as error:
+        resolve_density(config)
+
+    message = str(error.value)
+    assert "ask-clever" in message
+    for mode in (
+        "ask",
+        "ask-intelligent",
+        "always-skip",
+        "always-expand",
+        "smart",
+    ):
+        assert mode in message

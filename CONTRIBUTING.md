@@ -93,6 +93,16 @@ uv run poe format
 git commit -m "feat(agents): add new capability"
 ```
 
+### Generated marketplace payload
+
+`nWave/` and `src/des/` are the canonical sources for the marketplace plugin.
+`scripts/build_plugin.py` assembles them into a staging plugin directory, which
+the release pipeline publishes as the tracked public payload at `plugins/nw/`.
+Do not edit `plugins/nw/` directly in a pull request: make the change in the
+canonical source instead. To preview the generated payload locally, run
+`python3 scripts/build_plugin.py --output-dir plugin/`; release regeneration
+copies that staging output into `plugins/nw/`.
+
 ## Architecture Principles
 
 1. Each agent has one responsibility

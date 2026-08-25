@@ -8,6 +8,7 @@ and mock get_tdd_schema.
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -217,6 +218,42 @@ class TestLogPhaseMissingLogFile:
         )
 
         assert result == 1
+
+
+class TestLogPhaseWorktreeRootResolution:
+    """Regression for #79: relative project dirs are worktree-rooted."""
+
+    def test_relative_project_dir_is_stable_after_cwd_changes(
+        self, tmp_path, mock_schema, monkeypatch
+    ):
+        from des.cli.log_phase import main
+
+        subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+        log_dir = tmp_path / "docs" / "feature" / "example" / "deliver"
+        log_dir.mkdir(parents=True)
+        canonical_log = _create_execution_log(log_dir)
+        nested_cwd = tmp_path / "apps" / "website"
+        nested_cwd.mkdir(parents=True)
+        monkeypatch.chdir(nested_cwd)
+
+        result = main(
+            [
+                "--project-dir",
+                "docs/feature/example/deliver",
+                "--step-id",
+                "01-01",
+                "--phase",
+                "GREEN",
+                "--status",
+                "EXECUTED",
+                "--data",
+                "PASS",
+            ]
+        )
+
+        assert result == 0
+        assert len(json.loads(canonical_log.read_text())["events"]) == 1
+        assert not (nested_cwd / "docs" / "feature" / "example" / "deliver").exists()
 
 
 class TestLogPhaseYamlStructurePreserved:

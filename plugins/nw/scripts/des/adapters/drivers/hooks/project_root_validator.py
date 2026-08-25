@@ -33,7 +33,7 @@ def _git_common_dir(path: Path) -> str | None:
             text=True,
             timeout=5,
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return None
     if result.returncode != 0:
         return None

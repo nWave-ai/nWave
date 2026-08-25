@@ -230,18 +230,16 @@ class TestCodexFullInstall:
 
     # --- 4. Codex DES hook (~/.codex/hooks.json + manifest) -------------
 
-    @pytest.mark.broken_schema_v0
-    def test_codex_des_hook_installed(self, codex_container) -> None:
-        """hooks.json must exist and contain the nWave PreToolUse entry.
+    def test_codex_des_hook_uses_event_keyed_schema(self, codex_container) -> None:
+        """hooks.json is an event-keyed object with a narrow, Task-free matcher.
 
-        QUARANTINED (DDD-7 / FM-4): this test asserts the pre-FM-1 internal
-        schema (top-level array root), which is incompatible with the Codex-
-        documented event-keyed object root.  Superseded by
-        ``tests/e2e/test_codex_real_boot.py`` which proves the install fires
-        the DES adapter end-to-end on the correct schema.
-
-        Excluded from default CI selection via ``-m "not broken_schema_v0"``.
-        Kept on disk so the audit trail of the FM-4 closure remains visible.
+        Positive container-grade guard (WTBD-79): replaces the two retired
+        quarantine negatives that asserted the pre-FM-1 top-level array root
+        and the pre-FM-3 ``^Task$|^Bash$`` matcher. Asserts the
+        production shape directly — event-keyed root (``{"hooks": {"PreToolUse":
+        [...]}}``) with exactly one nWave entry whose matcher includes
+        ``apply_patch`` and excludes ``Task``. End-to-end DES firing on this
+        schema is proven by ``tests/e2e/test_codex_real_boot.py``.
         """
         code, out = exec_in_container(
             codex_container,
@@ -249,41 +247,41 @@ class TestCodexFullInstall:
         )
         assert code == 0, "Codex hooks.json missing."
         try:
-            hooks = json.loads(out)
+            doc = json.loads(out)
         except json.JSONDecodeError as exc:
             pytest.fail(f"hooks.json is not valid JSON: {exc}\n{out[:300]}")
-        assert isinstance(hooks, list) and len(hooks) > 0, (
-            f"hooks.json must be a non-empty list, got: {hooks!r}"
+
+        assert isinstance(doc, dict), (
+            f"hooks.json must be an event-keyed object, got {type(doc).__name__}: {doc!r}"
+        )
+        hooks_section = doc.get("hooks")
+        assert isinstance(hooks_section, dict), (
+            f"hooks.json must carry a 'hooks' object, got: {doc!r}"
+        )
+        pre_tool_use = hooks_section.get("PreToolUse")
+        assert isinstance(pre_tool_use, list) and len(pre_tool_use) > 0, (
+            f"hooks.PreToolUse must be a non-empty list, got: {pre_tool_use!r}"
         )
 
-    @pytest.mark.broken_schema_v0
-    def test_codex_des_hook_uses_narrow_matcher(self, codex_container) -> None:
-        """Matcher must be ^Task$|^Bash$ (NOT .* — wildcard was the WS default).
-
-        QUARANTINED (FM-3 closure 2026-05-13 c13d7397e): assertion is the
-        pre-FM-3 matcher; production now uses ^Bash$|^apply_patch$ (documented
-        Codex tools). Superseded by tests/e2e/test_codex_real_boot.py.
-        """
-        _code, out = exec_in_container(
-            codex_container,
-            ["cat", "/home/tester/.codex/hooks.json"],
-        )
-        hooks = json.loads(out)
         nwave_entries = [
             entry
-            for entry in hooks
+            for entry in pre_tool_use
             if any(
                 "claude_code_hook_adapter" in h.get("command", "")
                 for h in entry.get("hooks", [])
             )
         ]
         assert len(nwave_entries) == 1, (
-            f"Expected exactly one nWave hook entry, found {len(nwave_entries)}."
+            f"Expected exactly one nWave PreToolUse entry, found {len(nwave_entries)}."
         )
         matcher = nwave_entries[0].get("matcher", "")
-        assert matcher == "^Task$|^Bash$", (
-            f"DES hook matcher is {matcher!r}, expected '^Task$|^Bash$' "
-            f"(narrow production matcher; .* was a walking-skeleton default)."
+        assert "apply_patch" in matcher, (
+            f"DES hook matcher {matcher!r} must include 'apply_patch' (documented "
+            "Codex write surface; FM-3 closure)."
+        )
+        assert "Task" not in matcher, (
+            f"DES hook matcher {matcher!r} must NOT include 'Task' (legacy pre-FM-3 "
+            "tool name; production narrowed to ^Bash$|^apply_patch$)."
         )
 
     def test_codex_des_manifest_present(self, codex_container) -> None:

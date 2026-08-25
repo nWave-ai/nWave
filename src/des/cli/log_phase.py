@@ -27,9 +27,14 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 
+from des.cli.project_dir import resolve_project_dir
 from des.domain.tdd_schema import TDDSchemaLoader
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 try:
@@ -85,7 +90,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--project-dir",
         required=True,
-        help="Path to the project directory containing execution-log.json",
+        help=(
+            "Path to the project directory containing execution-log.json; "
+            "relative paths resolve from the git worktree root"
+        ),
     )
     parser.add_argument(
         "--step-id",
@@ -159,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     # Check execution-log.json exists
-    project_dir = Path(args.project_dir)
+    project_dir = resolve_project_dir(args.project_dir)
     log_path = project_dir / "execution-log.json"
     if not log_path.exists():
         print(f"Error: execution-log.json not found at {log_path}")

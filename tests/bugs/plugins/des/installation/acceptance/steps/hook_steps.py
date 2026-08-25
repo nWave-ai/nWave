@@ -199,18 +199,6 @@ def uninstall_des_hooks(install_context, des_plugin, test_context: dict):
     test_context["uninstall_result"] = result
 
 
-@when("I check if DES hooks are already installed")
-def check_hooks_already_installed(des_plugin, test_context: dict):
-    """
-    Check if DES hook detection works.
-    """
-    settings_file = test_context.get("settings_file")
-    with open(settings_file) as f:
-        config = json.load(f)
-
-    test_context["hooks_detected"] = des_plugin._hooks_already_installed(config)
-
-
 @when("I install DES hooks using new format")
 def install_hooks_new_format(install_context, des_plugin, test_context: dict):
     """
@@ -398,35 +386,6 @@ def verify_custom_hook_exists(test_context: dict):
 def verify_contains_custom_hook(test_context: dict):
     """Verify settings contains the custom hook."""
     verify_custom_hook_exists(test_context)
-
-
-@then("the hook detection should return True")
-def verify_hook_detection_true(test_context: dict):
-    """Verify that hook detection correctly identifies DES hooks."""
-    assert test_context.get("hooks_detected") is True, (
-        "BUG: Hook detection failed to recognize existing DES hooks. "
-        "This can cause duplicate hooks on reinstall."
-    )
-
-
-@then("installing hooks again should not add duplicates")
-def verify_no_new_duplicates(install_context, des_plugin, test_context: dict):
-    """Verify that a second install doesn't add duplicates."""
-    settings_file = test_context.get("settings_file")
-
-    # Count hooks before
-    before_count = count_des_hooks(settings_file, "PreToolUse")
-
-    # Install again
-    des_plugin._install_des_hooks(install_context)
-
-    # Count hooks after
-    after_count = count_des_hooks(settings_file, "PreToolUse")
-
-    assert after_count == before_count, (
-        f"BUG DETECTED: Installing hooks again added duplicates. "
-        f"Before: {before_count}, After: {after_count}"
-    )
 
 
 @then("the hook should use the new command format")

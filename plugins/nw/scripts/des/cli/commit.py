@@ -26,6 +26,7 @@ Usage:
       --repo-dir . \\
       --owned-paths src/foo.py tests/test_foo.py \\
       --step-id 02-03 \\
+      --task-id 44 \\
       --message "feat: add foo"
 
 Exit codes:
@@ -78,15 +79,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Step identifier (e.g., 02-03); recorded as a Step-Id trailer",
     )
     parser.add_argument(
+        "--task-id",
+        required=True,
+        help=(
+            "Bare project/feature identifier (e.g., 44, without '#'); "
+            "recorded as a Task-Id trailer"
+        ),
+    )
+    parser.add_argument(
         "--message",
         required=True,
-        help="Commit message subject/body (Step-Id trailer appended if absent)",
+        help="Commit message subject/body (Step-Id and Task-Id trailers appended)",
     )
     return parser
 
 
 def _git(
-    repo: Path, *args: str, env: dict[str, str] | None = None
+    repo: Path,
+    *args: str,
+    env: dict[str, str] | None = None,
+    input_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run a git command in *repo*, capturing output (never raises on failure)."""
     return subprocess.run(
@@ -95,14 +107,29 @@ def _git(
         text=True,
         check=False,
         env=env,
+        input=input_text,
     )
 
 
-def _with_step_id_trailer(message: str, step_id: str) -> str:
-    """Append a ``Step-Id:`` trailer unless the message already carries one."""
-    if "Step-Id:" in message:
-        return message
-    return f"{message}\n\nStep-Id: {step_id}"
+def _with_delivery_trailers(
+    repo: Path, message: str, step_id: str, task_id: str
+) -> tuple[int, str]:
+    """Compose exact delivery identifiers into one canonical git trailer block."""
+    interpreted = _git(
+        repo,
+        "interpret-trailers",
+        "--if-exists=replace",
+        "--if-missing=add",
+        "--trailer",
+        f"Step-Id: {step_id}",
+        "--trailer",
+        f"Task-Id: {task_id}",
+        input_text=message,
+    )
+    if interpreted.returncode != 0:
+        detail = (interpreted.stderr or interpreted.stdout).strip()
+        return 1, f"git interpret-trailers failed: {detail}"
+    return 0, interpreted.stdout.rstrip("\n")
 
 
 def _commit_owned_locked(
@@ -185,7 +212,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     owned_paths: list[str] = list(args.owned_paths)
-    message = _with_step_id_trailer(args.message, args.step_id)
+    trailer_exit, message = _with_delivery_trailers(
+        repo, args.message, args.step_id, args.task_id
+    )
+    if trailer_exit != 0:
+        print(f"Error: {message}")
+        return trailer_exit
 
     exit_code, error = _commit_owned_locked(repo, owned_paths, message)
     if exit_code != 0:

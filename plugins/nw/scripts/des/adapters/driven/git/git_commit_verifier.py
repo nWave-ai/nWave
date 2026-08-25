@@ -97,8 +97,23 @@ class GitCommitVerifier(CommitVerifier):
                 commit_subject=parts[2] if len(parts) > 2 else None,
             )
 
+        except FileNotFoundError:
+            return CommitVerificationResult(
+                verified=False,
+                error_reason="git executable not found on PATH",
+            )
+        except subprocess.TimeoutExpired as e:
+            return CommitVerificationResult(
+                verified=False,
+                error_reason=f"git log timed out after {e.timeout}s",
+            )
+        except OSError as e:
+            return CommitVerificationResult(
+                verified=False,
+                error_reason=f"could not run git: {e}",
+            )
         except Exception as e:
             return CommitVerificationResult(
                 verified=False,
-                error_reason=f"Git verification error: {e}",
+                error_reason=f"Unexpected git verification error: {e}",
             )

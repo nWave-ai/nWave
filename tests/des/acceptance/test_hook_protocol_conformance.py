@@ -69,6 +69,92 @@ def _invoke_hook(command: str, stdin_json: str) -> subprocess.CompletedProcess:
     )
 
 
+def test_subagent_stop_unicode_marker_decode_falls_back_then_blocks(
+    tmp_path: Path, tdd_phases, monkeypatch
+) -> None:
+    """Malformed marker-probe bytes fall back before the verifier blocks."""
+    project_id = "issue-92-unicode-git"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    nwave_dir = repo / ".nwave"
+    nwave_dir.mkdir()
+    (nwave_dir / "local-config.json").write_text(json.dumps({"enabled_for_repo": True}))
+    log_file = repo / "docs" / "feature" / project_id / "deliver" / "execution-log.json"
+    log_file.parent.mkdir(parents=True)
+    log_file.write_text(
+        json.dumps(
+            {
+                "project_id": project_id,
+                "created_at": "2026-08-25T10:00:00+00:00",
+                "total_steps": 1,
+                "events": [
+                    f"01-01|{phase}|EXECUTED|PASS|2026-08-25T10:00:00+00:00"
+                    for phase in tdd_phases
+                ],
+            }
+        )
+    )
+    transcript = repo / "agent.jsonl"
+    transcript.write_text(
+        json.dumps(
+            {
+                "type": "user",
+                "message": {
+                    "role": "user",
+                    "content": "\n".join(
+                        (
+                            "<!-- DES-VALIDATION : required -->",
+                            f"<!-- DES-PROJECT-ID : {project_id} -->",
+                            "<!-- DES-STEP-ID : 01-01 -->",
+                            f"<!-- DES-PROJECT-ROOT : {repo} -->",
+                            "Execute step",
+                        )
+                    ),
+                },
+            }
+        )
+        + "\n"
+    )
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    fake_git = fake_bin / "git"
+    fake_git.write_bytes(b"#!/bin/sh\nprintf '\\377'\n")
+    fake_git.chmod(0o755)
+    monkeypatch.setenv("DES_AUDIT_LOGGING_ENABLED", "0")
+    monkeypatch.setenv("PATH", str(fake_bin))
+
+    completed = _invoke_hook(
+        "subagent-stop",
+        json.dumps(
+            {
+                "session_id": "issue-92",
+                "hook_event_name": "SubagentStop",
+                "agent_id": "issue-92",
+                "agent_type": "software-crafter",
+                "agent_transcript_path": str(transcript),
+                "stop_hook_active": False,
+                "cwd": str(repo),
+            }
+        ),
+    )
+
+    assert completed.returncode == 0, (
+        "the public hook must return its blocking JSON instead of escaping: "
+        f"stdout={completed.stdout!r}, stderr={completed.stderr!r}"
+    )
+    response = json.loads(completed.stdout)
+    assert response["decision"] == "block"
+    error_lines = [
+        line.removeprefix("Error: ")
+        for line in response["reason"].splitlines()
+        if line.startswith("Error: ")
+    ]
+    assert len(error_lines) == 1
+    assert error_lines[0].startswith(
+        "COMMIT_NOT_VERIFIED: Unexpected git verification error:"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Shared context fixture
 # ---------------------------------------------------------------------------

@@ -54,20 +54,32 @@ Feature: Correct Import Paths in Installed DES
     Then the hook should execute without ImportError
     And the hook should return a valid response
 
-  @bug-3 @failing @priority-critical
+  @bug-3 @priority-critical
   Scenario: All DES submodules should be importable
-    # Comprehensive import test for all DES components
+    # Comprehensive import test spanning every layer of the installed package
+    # (domain / application / ports.driver / ports.driven / adapters.driven /
+    # adapters.drivers). WTBD-165: the prior list hardcoded three modules that
+    # were deleted in b9662eda2 / c8dca89e2 (audit_logger, real_hook, and
+    # ports.driver_ports.hook_port — the port moved to ports.driven_ports), so
+    # the scenario was permanently @failing for a stale reason. The list below
+    # is real current modules (a kept-deliberately-static representative span;
+    # full-tree derivation is avoided to keep this regression smoke free of the
+    # heavy/optional-dep adapter imports and because the comprehensive
+    # "no files contain from src.des" scan scenarios already prove tree-wide
+    # import-path correctness). @failing is removed: it now actively passes.
 
     Given PYTHONPATH contains only "~/.claude/lib/python"
     When I import the following DES modules:
-      | module_path                                      |
-      | des.application.orchestrator                     |
-      | des.application.validator                        |
-      | des.adapters.driven.logging.audit_logger         |
-      | des.adapters.driven.time.system_time             |
-      | des.adapters.drivers.hooks.real_hook             |
+      | module_path                                         |
+      | des.domain.error_codes                              |
+      | des.application.orchestrator                        |
+      | des.application.validator                           |
+      | des.application.pre_tool_use_service                |
+      | des.application.subagent_stop_service               |
+      | des.ports.driver_ports.pre_tool_use_port            |
+      | des.ports.driven_ports.hook_port                    |
+      | des.adapters.driven.time.system_time                |
       | des.adapters.drivers.hooks.claude_code_hook_adapter |
-      | des.ports.driver_ports.hook_port                 |
     Then all imports should succeed without ImportError
 
   @bug-3 @priority-high

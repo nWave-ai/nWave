@@ -40,7 +40,7 @@ Valid values:
 nwave-ai doctor
 ```
 
-You should see: `Documentation density: lean (explicit override)`
+You should see: `Documentation density: lean (explicit override); expansion prompt: ask-intelligent`
 
 ---
 
@@ -101,26 +101,26 @@ Or explicitly:
 
 ---
 
-### Use case 3: I want context-aware (smart)
+### Use case 3: I want trigger-scoped suggestions
 
-**Situation**: You want nWave to decide per feature. Simple bugfixes get lean output. Complex architectural changes get full output. Token-efficient but complete where it matters.
+**Situation**: You want lean output, with suggestions only when a wave-specific signal indicates that an expansion may help.
 
 **Solution**:
 
 ```json
 {
   "documentation": {
-    "expansion_prompt": "smart"
+    "expansion_prompt": "ask-intelligent"
   }
 }
 ```
 
-**Note**: This is experimental in v3.14. Feedback welcome.
-
 **Result**:
-- Wave agents analyze the feature complexity and choose density automatically.
-- Small fixes lean toward `[REF]` only.
-- Large features lean toward `[REF]` + recommended `[WHY]` sections.
+- Each wave evaluates its documented expansion triggers.
+- If no trigger fires, no menu is shown.
+- If triggers fire, the menu contains only their suggested expansions.
+
+The older `smart` value remains accepted for compatibility and currently behaves like the broad `ask` menu. Existing configurations are not rewritten automatically.
 
 ---
 
@@ -193,18 +193,18 @@ Your `rigor` profile affects the default density if you don't explicitly set `do
 
 ### Profile cascade table
 
-| Profile | If `density` unset | If `density` unset |
+| Profile | If `density` unset | If `expansion_prompt` unset |
 |---------|---|---|
 | `lean` | → density: `"lean"` | → expansion_prompt: `"always-skip"` |
-| `standard` | → density: `"lean"` | → expansion_prompt: `"ask"` |
+| `standard` | → density: `"lean"` | → expansion_prompt: `"ask-intelligent"` |
 | `thorough` | → density: `"full"` | → expansion_prompt: `"always-expand"` |
 | `exhaustive` | → density: `"full"` | → expansion_prompt: `"always-expand"` |
-| `custom` | → density: `"lean"` (fallback) | → expansion_prompt: `"ask"` (fallback) |
+| `custom` | → density: `"lean"` (fallback) | → expansion_prompt: `"ask-intelligent"` (fallback) |
 
 **What this means**:
 
 - Start with `rigor: "lean"` for solo iteration. Lean density + auto-skip expansions by default.
-- Move to `rigor: "standard"` for team work. Lean density + interactive expansion menu.
+- Move to `rigor: "standard"` for team work. Lean density + trigger-scoped expansion suggestions.
 - Use `rigor: "thorough"` for regulated environments. Full density + all expansions inline.
 
 **Override**: Explicit `documentation.density` **always** wins, even if `rigor` suggests otherwise:
@@ -233,25 +233,27 @@ nwave-ai doctor
 Look for the line:
 
 ```
-Documentation density: lean (explicit override)
+Documentation density: lean (explicit override); expansion prompt: ask-intelligent
 ```
 
 or
 
 ```
-Documentation density: lean (inherited from rigor profile: standard)
+Documentation density: lean (inherited from rigor.profile=standard); expansion prompt: ask-intelligent
 ```
 
 or
 
 ```
-Documentation density: full (default)
+Documentation density: lean (default (no config)); expansion prompt: ask-intelligent
 ```
 
 The suffix tells you where the setting came from:
 - `(explicit override)` — you set `documentation.density` directly
 - `(inherited from rigor profile: ...)` — derived from your `rigor.profile`
 - `(default)` — no override, using fallback
+
+`doctor` also rejects an unknown `documentation.expansion_prompt` and lists the five accepted values, turning typos into actionable failures.
 
 ---
 
@@ -264,8 +266,8 @@ The suffix tells you where the setting came from:
 1. **Is `expansion_prompt: "always-expand"`?** If so, all expansions are auto-included even in lean mode.
 
    ```bash
-   # Fix: Change to ask or always-skip
-   nwave-ai doctor | grep expansion_prompt
+   # Fix: Change to ask-intelligent or always-skip
+   nwave-ai doctor | grep "expansion prompt"
    ```
 
 2. **Are you running with `--expand <ids>`?** The flag overrides density for that run.

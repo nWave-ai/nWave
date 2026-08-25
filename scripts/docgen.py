@@ -461,8 +461,11 @@ def skill_slug(skill: Skill) -> str:
 def _skill_source_url(skill: Skill) -> str:
     """Browsable GitHub blob URL (at main) for a skill's source file."""
     parts = Path(skill["source_path"]).parts
-    if "nWave" in parts:
-        rel = "/".join(parts[parts.index("nWave") :])
+    if "skills" in parts:
+        # Anchor on the source kind, not the checkout directory name. A linked
+        # worktree may itself live below a directory named ``nWave``.
+        skills_index = len(parts) - 1 - parts[::-1].index("skills")
+        rel = "/".join(("nWave", *parts[skills_index:]))
     else:
         rel = f"nWave/skills/{skill['agent_dir']}/{Path(skill['source_path']).name}"
     return f"{GITHUB_REPO}/blob/main/{rel}"

@@ -1,6 +1,6 @@
 ---
 name: nw-execute
-description: "Dispatches one unit of DELIVER work to a specialized agent for TDD execution. Runs a single roadmap.json step through the TDD cycle."
+description: "Use when a DELIVER roadmap already exists and you need to dispatch exactly one identified step through its TDD cycle. Use nw-roadmap to create the plan, nw-deliver for the whole wave, and nw-continue to resume at the next inferred step."
 user-invocable: true
 argument-hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter "auth-upgrade" "01-01"'
 ---
@@ -101,14 +101,18 @@ Load on-demand per phase as specified in your Skill Loading Strategy table.
    des-commit \
      --owned-paths <all files this step created/modified> \
      --step-id {step-id} \
+     --task-id {project_id} \
      --message "feat(feature-id): implement feature X"
    ```
-   The `Step-Id: {step-id}` trailer (required for DES verification) is appended
-   automatically. Resulting commit:
+   Pass the bare `project_id` value (for example `44`, not `#44` and not the
+   step id). The `Step-Id: {step-id}` and `Task-Id: {project_id}` trailers
+   required for DES verification are appended automatically in one git trailer
+   block. Resulting commit for project 44:
    ```
    feat(feature-id): implement feature X
 
    Step-Id: 02-01
+   Task-Id: 44
    ```
 
 LEGACY 5-PHASE CONTRACT (ADR-024 era, pre-2026-05-07): PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT. Preserved for audit-log replay only — new work uses the 3-phase canon above. Audit-log entries referencing RED_ACCEPTANCE/RED_UNIT/PREPARE represent merged sub-steps now folded into RED.

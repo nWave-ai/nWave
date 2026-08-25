@@ -9,7 +9,8 @@ without cross-staging each other's work. The contract:
 2. Another agent's staged work is left staged (not reset) after the call.
 3. Concurrent callers serialize on a file lock, so none hit git's index.lock
    contention and none sweep up a neighbour's files.
-4. The commit carries the ``Step-Id:`` trailer DES integrity gates rely on.
+4. The commit carries parseable ``Step-Id:`` and ``Task-Id:`` trailers DES
+   integrity gates rely on.
 
 These use a real git repo (subprocess), matching
 ``tests/des/acceptance/test_git_commit_verification.py``.
@@ -88,6 +89,8 @@ class TestDesCommitScoping:
                 "a.py",
                 "--step-id",
                 "01-01",
+                "--task-id",
+                "44",
                 "--message",
                 "feat: add a",
             ]
@@ -104,7 +107,7 @@ class TestDesCommitScoping:
         }
         assert "b.py" in staged
 
-    def test_commit_carries_step_id_trailer(self, tmp_path):
+    def test_commit_carries_step_and_task_in_one_git_trailer_block(self, tmp_path):
         from des.cli.commit import main
 
         _init_git_repo(tmp_path)
@@ -118,14 +121,34 @@ class TestDesCommitScoping:
                 "a.py",
                 "--step-id",
                 "02-03",
+                "--task-id",
+                "44",
                 "--message",
-                "feat: add a",
+                (
+                    "feat: add a\n\n"
+                    "Reviewed-by: Fixture Reviewer <reviewer@fixture.invalid>\n"
+                    "Task-Id: #44"
+                ),
             ]
         )
 
         assert rc == 0
-        body = _git(tmp_path, "log", "-1", "--format=%B")
-        assert "Step-Id: 02-03" in body
+        trailers = _git(tmp_path, "log", "-1", "--format=%(trailers:unfold)")
+        assert trailers.strip().splitlines() == [
+            "Reviewed-by: Fixture Reviewer <reviewer@fixture.invalid>",
+            "Step-Id: 02-03",
+            "Task-Id: 44",
+        ]
+        verified = _git(
+            tmp_path,
+            "log",
+            "-1",
+            "--format=%H",
+            "--grep=Step-Id: 02-03",
+            "--all-match",
+            "--grep=Task-Id: 44",
+        ).strip()
+        assert verified == _git(tmp_path, "rev-parse", "HEAD").strip()
 
 
 class TestDesCommitConcurrentNoCrossStaging:
@@ -154,6 +177,8 @@ class TestDesCommitConcurrentNoCrossStaging:
                     files[idx],
                     "--step-id",
                     f"{idx:02d}-01",
+                    "--task-id",
+                    "44",
                     "--message",
                     f"feat: add {files[idx]}",
                 ]
@@ -187,12 +212,12 @@ class TestDesCommitConcurrentNoCrossStaging:
         assert all_committed == set(files)
 
 
-def _run(tmp_path, owned, step_id="01-01", message="feat: change"):
+def _run(tmp_path, owned, step_id="01-01", task_id="44", message="feat: change"):
     from des.cli.commit import main
 
     argv = ["--repo-dir", str(tmp_path)]
     argv += ["--owned-paths", *owned]
-    argv += ["--step-id", step_id, "--message", message]
+    argv += ["--step-id", step_id, "--task-id", task_id, "--message", message]
     return main(argv)
 
 

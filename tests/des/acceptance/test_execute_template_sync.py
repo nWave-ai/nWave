@@ -53,3 +53,15 @@ class TestExecuteTemplateSync:
         assert "TDDPhaseValidator.MANDATORY_PHASES" in section, (
             "execute.md must reference TDDPhaseValidator.MANDATORY_PHASES"
         )
+
+    def test_shipped_commit_example_supplies_bare_project_id(self):
+        """The mandatory producer and verifier must share the Task-Id contract."""
+        sources = (
+            "nWave/tasks/nw/execute.md",
+            "nWave/skills/nw-execute/SKILL.md",
+        )
+        for source in sources:
+            content = open(source).read()
+            assert "--task-id {project_id}" in content
+            assert "bare `project_id`" in content
+            assert "Task-Id: 44" in content

@@ -77,7 +77,10 @@ def _format_provenance_label(density: Density) -> str:
 def _format_density_message(density: Density) -> str:
     """Render the message line asserted verbatim by the acceptance scenarios."""
     label = _format_provenance_label(density)
-    return f"Documentation density: {density.mode} ({label})"
+    return (
+        f"Documentation density: {density.mode} ({label}); "
+        f"expansion prompt: {density.expansion_prompt}"
+    )
 
 
 class DensityCheck:
@@ -112,7 +115,9 @@ class DensityCheck:
                 remediation=(
                     "Set `rigor.profile` to one of: lean, standard, thorough, "
                     "exhaustive, custom — or set `documentation.density` "
-                    "explicitly to 'lean' or 'full'."
+                    "explicitly to 'lean' or 'full'. Set "
+                    "`documentation.expansion_prompt` to one of: ask, "
+                    "ask-intelligent, always-skip, always-expand, smart."
                 ),
             )
         return CheckResult(

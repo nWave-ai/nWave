@@ -2,8 +2,8 @@
 and JSON Schema validation.
 
 Driving port: register / load. Drives the RegistryReader and
-RegistryWriter driven ports. Validates every outcome against
-docs/product/outcomes/schema.json before persistence (fail-fast on
+RegistryWriter driven ports. Validates every outcome against the packaged
+``nwave_ai/outcomes/schema.json`` resource before persistence (fail-fast on
 malformed entries — protects the registry contract).
 """
 
@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
-from pathlib import Path
+from importlib.resources import files
+from typing import TYPE_CHECKING, Any
 
-from jsonschema import Draft7Validator
+from jsonschema import Draft7Validator, SchemaError
 from jsonschema import ValidationError as JsonSchemaValidationError
 
 from nwave_ai.outcomes.domain.outcome import Outcome  # noqa: TC001  # used at runtime
@@ -24,13 +25,13 @@ from nwave_ai.outcomes.ports.registry_io import (  # noqa: TC001  # runtime DI
 )
 
 
-_SCHEMA_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "docs"
-    / "product"
-    / "outcomes"
-    / "schema.json"
-)
+if TYPE_CHECKING:
+    from nwave_ai.outcomes.application.collision_detector import CollisionReport
+
+
+_SCHEMA_PACKAGE = "nwave_ai.outcomes"
+_SCHEMA_RESOURCE = "schema.json"
+_SCHEMA_LABEL = "nwave_ai/outcomes/schema.json"
 
 
 class DuplicateOutcomeIdError(Exception):
@@ -45,14 +46,34 @@ class InvalidOutcomeError(Exception):
     """Raised when an outcome fails JSON Schema validation."""
 
 
+class SchemaUnavailableError(Exception):
+    """Raised when the packaged schema cannot validate an outcome."""
+
+
 class UnknownOutcomeIdError(Exception):
     """Raised when a collision check is requested for an id not in registry."""
 
 
+def load_schema() -> dict[str, Any]:
+    """Load and validate the schema from the installed package."""
+    try:
+        raw = (files(_SCHEMA_PACKAGE) / _SCHEMA_RESOURCE).read_text(encoding="utf-8")
+        schema = json.loads(raw)
+        Draft7Validator.check_schema(schema)
+    except (OSError, ModuleNotFoundError, json.JSONDecodeError, SchemaError) as err:
+        raise SchemaUnavailableError(
+            f"the outcomes schema resource ({_SCHEMA_LABEL}) could not be read: {err}"
+        ) from err
+    if not isinstance(schema, dict):
+        raise SchemaUnavailableError(
+            f"the outcomes schema resource ({_SCHEMA_LABEL}) is not a JSON object"
+        )
+    return schema
+
+
 @lru_cache(maxsize=1)
 def _load_validator() -> Draft7Validator:
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
-    return Draft7Validator(schema)
+    return Draft7Validator(load_schema())
 
 
 class RegistryService:

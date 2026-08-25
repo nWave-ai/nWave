@@ -27,6 +27,8 @@ from nwave_ai.doctor.runner import run_doctor
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
+
 
 # ---------------------------------------------------------------------------
 # Staging helper
@@ -115,29 +117,63 @@ def stage_healthy_install(base: Path) -> Path:
 
 
 def test_doctor_reports_healthy_install(tmp_path: Path) -> None:
-    """Healthy staged install: runner returns 9 results, all passed=True.
+    """Healthy staged install: runner returns 10 results, all passed=True.
 
     Given a complete fake ~/.claude with shims, settings.json, DES module,
     and framework directories,
     When doctor runs,
-    Then all 9 checks pass and there are no failures.
+    Then all 10 checks pass and there are no failures.
 
     Step 02-02 added DensityCheck (D6 + D12), bumping the count from 7 to 8.
     The claude-code-attribution-migration feature added AttributionCheck (R7),
     a read-only diagnostic that always passes, bumping the count from 8 to 9.
-    A fresh tmp_path home has no `~/.nwave/global-config.json`, so density
-    resolves to the lean default branch and the check passes.
+    The install-version-drift feature added VersionSyncCheck, bumping the count
+    from 9 to 10. A fresh tmp_path home has no `~/.nwave/global-config.json`, so
+    both density and version-sync resolve to their undeterminable-pass branch.
     """
     stage_healthy_install(tmp_path)
     context = DoctorContext(home_dir=tmp_path)
 
     results = run_doctor(context)
 
-    assert len(results) == 9, f"Expected 9 results, got {len(results)}"
+    assert len(results) == 10, f"Expected 10 results, got {len(results)}"
     failed = [r for r in results if not r.passed]
     assert not failed, "Expected all checks to pass, but these failed: " + ", ".join(
         f"{r.check_name}: {r.message}" for r in failed
     )
+
+
+def test_drift_on_otherwise_healthy_install_is_flagged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Package upgraded without reinstall: an otherwise-healthy install fails ONLY version_sync.
+
+    Proves the full startup-diagnostic path: a real (staged) healthy install
+    whose recorded install version drifts from the live package version is
+    surfaced by run_doctor — the same results substrate_probe counts to print
+    the SessionStart health advisory.
+    """
+    from nwave_ai.doctor.checks import version_sync
+
+    stage_healthy_install(tmp_path)
+    # Record install provenance (what `nwave-ai install` wrote), then simulate a
+    # later `pipx upgrade` advancing the live package ahead of it.
+    global_config = tmp_path / ".nwave" / "global-config.json"
+    global_config.parent.mkdir(parents=True, exist_ok=True)
+    global_config.write_text(
+        json.dumps({"install": {"installed_version": "1.1.0"}}), encoding="utf-8"
+    )
+    monkeypatch.setattr(version_sync, "_detect_running_version", lambda: "1.2.0")
+
+    results = run_doctor(DoctorContext(home_dir=tmp_path))
+
+    failed = {r.check_name for r in results if not r.passed}
+    assert failed == {"version_sync"}, (
+        f"Expected only version_sync to fail, got {failed}"
+    )
+    drift = next(r for r in results if r.check_name == "version_sync")
+    assert "1.1.0" in drift.message and "1.2.0" in drift.message
+    assert drift.remediation is not None and "nwave-ai install" in drift.remediation
 
 
 # ---------------------------------------------------------------------------

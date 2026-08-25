@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.30.1"]
+requires = ["hatchling>=1.32.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -60,15 +60,15 @@ classifiers = [
 
 dependencies = [
     "rich>=13.7.0",
-    "typer>=0.26.7",
+    "typer>=0.27.1",
     "pydantic>=2.5.0",
-    "pydantic-settings>=2.14.2",
+    "pydantic-settings>=2.15.0",
     "httpx>=0.27.0",
-    "platformdirs>=4.2.0",
+    "platformdirs>=4.11.3",
     "pyyaml>=6.0",
-    "packaging>=21.0",
+    "packaging>=26.3",
     "tomli>=2.0.0; python_version < '3.11'",
-    "typing_extensions>=4.0",
+    "typing_extensions>=4.16.0",
     "jsonschema>=4.0.0"
 ]
 
@@ -101,35 +101,34 @@ dev = [
     "pytest-watch>=4.2.0",
     "allure-pytest>=2.13.0",
     "respx>=0.20.0",
-    "hypothesis>=6.155.7",
+    "hypothesis>=6.165.10",
     # Mutation testing
-    "cosmic-ray>=8.4.0",
-    "mutmut>=3.6.0",
+    "cosmic-ray>=8.7.0",
+    "mutmut>=3.7.0",
     # Linting & formatting
-    "mypy>=1.8.0",
-    "ruff==0.15.20",
+    "mypy>=2.3.1",
+    "ruff==0.15.22",
     "bandit[toml]>=1.9.4",
     "detect-secrets>=1.4.0",
     # Git & release
-    "pre-commit>=3.6.0",
-    "commitizen>=4.16.4",
-    "gitlint>=0.19.0",
+    "pre-commit>=4.6.2",
+    "commitizen>=4.17.0",
     # Task runner (replaces Pipfile [scripts]; run via `uv run poe <task>`)
-    "poethepoet>=0.24",
+    "poethepoet>=0.48.0",
     # Utilities
-    "fpdf2>=2.7.0",
+    "fpdf2>=2.8.8",
     "click>=8.0.0",
     "colorama>=0.4.0",
-    "tqdm>=4.68.3",
+    "tqdm>=4.70.0",
     # Token measurement (advisory, dev-only) — DDD-1
     "tiktoken>=0.7.0",
     # E2E container testing
-    "testcontainers>=4.0.0",
-    "docker>=7.0.0",
+    "testcontainers>=4.15.0",
+    "docker>=7.2.0",
     # JSON Schema validation (used by tests/outcomes + tests/feature_delta)
     "jsonschema>=4.0.0",
     # Packaging (python -m build / scripts/build_dist.py)
-    "build>=1.2.0"
+    "build>=1.5.1"
 ]
 
 [project.urls]
@@ -163,7 +162,6 @@ addopts = [
 ]
 markers = [
     "acceptance: Acceptance tests (BDD scenarios, may be slow)",
-    "broken_schema_v0: Quarantined tests asserting internal pre-FM-1 (top-level array) hooks.json schema; superseded by tests/e2e/test_codex_real_boot.py per DDD-7 (codex-empirical-e2e-support / FM-4). Excluded by default CI selector via -m 'not broken_schema_v0'.",
     "canary: Canary skill injection detection tests (ADR-006)",
     "e2e_smoke: Critical-path e2e subset run in pre-push on master (privacy contract, behavioral smoke, packaging shape, cross-platform contract). Full e2e remains gated by CI on PR.",
     "e2e: End-to-end acceptance tests",
@@ -240,6 +238,13 @@ disallow_untyped_defs = false
 target-version = "py310"
 line-length = 88
 src = ["src", "tests"]
+# Sealed immutable-oracle files retain byte identity; do not format them.
+extend-exclude = [
+    "tests/bugs/test_issue_81_design_platform_route.py",
+    "tests/build/test_public_sync_preserves_repo_dotfiles.py",
+    "tests/des/unit/domain/test_deliver_progress_tracker.py",
+    "tests/test_docgen.py",
+]
 [tool.ruff.lint]
 select = [
     "E",      # pycodestyle errors

@@ -74,12 +74,13 @@ def _stage_healthy_claude(base: Path) -> Path:
     return claude_dir
 
 
-def test_runner_executes_all_9_checks(tmp_path: Path) -> None:
-    """run_doctor() returns exactly 9 results — one per check.
+def test_runner_executes_all_10_checks(tmp_path: Path) -> None:
+    """run_doctor() returns exactly 10 results — one per check.
 
     Step 02-02 added DensityCheck (D6 + D12), bumping the total from 7 to 8.
     The claude-code-attribution-migration feature added AttributionCheck (R7),
-    bumping the total from 8 to 9.
+    bumping the total from 8 to 9. The install-version-drift feature added
+    VersionSyncCheck, bumping the total from 9 to 10.
     """
     from nwave_ai.doctor.context import DoctorContext
 
@@ -88,7 +89,7 @@ def test_runner_executes_all_9_checks(tmp_path: Path) -> None:
 
     results = run_doctor(context)
 
-    assert len(results) == 9
+    assert len(results) == 10
 
 
 def test_runner_preserves_check_order(tmp_path: Path) -> None:
@@ -109,3 +110,4 @@ def test_runner_preserves_check_order(tmp_path: Path) -> None:
     assert results[6].check_name == "framework_files"
     assert results[7].check_name == "documentation_density"
     assert results[8].check_name == "attribution"
+    assert results[9].check_name == "version_sync"

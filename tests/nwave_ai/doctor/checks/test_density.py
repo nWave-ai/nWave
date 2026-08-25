@@ -77,6 +77,7 @@ def test_passes_with_lean_explicit_override(context: DoctorContext) -> None:
     result = check.run(context)
     assert result.passed is True
     assert "Documentation density: lean (explicit override)" in result.message
+    assert "expansion prompt: always-skip" in result.message
 
 
 def test_passes_with_full_explicit_override(context: DoctorContext) -> None:
@@ -102,6 +103,27 @@ def test_fails_with_remediation_on_unknown_rigor_profile(
     assert result.error_code is not None
     assert result.remediation is not None
     assert "rigor" in result.message.lower() or "profile" in result.message.lower()
+
+
+def test_fails_loudly_on_unknown_expansion_prompt(context: DoctorContext) -> None:
+    """Doctor makes an invalid expansion mode observable and actionable."""
+    _write_global_config(
+        context.home_dir,
+        {
+            "documentation": {
+                "density": "lean",
+                "expansion_prompt": "ask-clever",
+            }
+        },
+    )
+
+    result = DensityCheck().run(context)
+
+    assert result.passed is False
+    assert result.error_code == "DENSITY_RESOLUTION_FAILED"
+    assert "expansion_prompt" in result.message
+    assert result.remediation is not None
+    assert "ask-intelligent" in result.remediation
 
 
 def test_passes_when_config_exists_but_is_empty_json(context: DoctorContext) -> None:

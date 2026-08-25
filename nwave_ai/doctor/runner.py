@@ -17,6 +17,7 @@ from nwave_ai.doctor.checks.hooks_registered import HooksRegisteredCheck
 from nwave_ai.doctor.checks.path_env import PathEnvCheck
 from nwave_ai.doctor.checks.python_version import PythonVersionCheck
 from nwave_ai.doctor.checks.shims_deployed import ShimsDeployedCheck
+from nwave_ai.doctor.checks.version_sync import VersionSyncCheck
 
 
 if TYPE_CHECKING:
@@ -42,6 +43,7 @@ _CHECKS: list[_DiagnosticCheck] = [
     FrameworkFilesCheck(),
     DensityCheck(),
     AttributionCheck(),
+    VersionSyncCheck(),
 ]
 
 

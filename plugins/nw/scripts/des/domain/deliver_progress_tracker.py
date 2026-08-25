@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from des.domain._roadmap_helpers import extract_step_ids as _extract_step_ids
+from des.domain.phase_event import PhaseEventParser
 
 
 @dataclass(frozen=True)
@@ -40,19 +41,18 @@ class DeliverProgressState:
 
 
 def _find_committed_step_ids(execution_log: dict) -> set[str]:
-    """Find step IDs that have at least one COMMIT phase entry."""
-    committed: set[str] = set()
-    for event in execution_log.get("events", []):
-        if isinstance(event, str):
-            parts = event.split("|")
-            if len(parts) >= 2 and parts[1] == "COMMIT":
-                committed.add(parts[0])
-        elif isinstance(event, dict):
-            if event.get("p") == "COMMIT":
-                sid = event.get("sid", "")
-                if sid:
-                    committed.add(sid)
-    return committed
+    """Find step IDs whose COMMIT phase was executed.
+
+    Parse through the canonical event parser so both supported formats retain
+    the same status semantics.  A recorded but skipped COMMIT is not evidence
+    that the step was committed.
+    """
+    events = PhaseEventParser().parse_all(execution_log.get("events", []))
+    return {
+        event.step_id
+        for event in events
+        if event.phase_name == "COMMIT" and event.status == "EXECUTED"
+    }
 
 
 def track_progress(

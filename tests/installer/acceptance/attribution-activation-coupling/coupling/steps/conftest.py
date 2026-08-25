@@ -20,20 +20,25 @@ from .composition import AttributionCouplingComposition
 
 
 def pytest_bdd_apply_tag(tag: str, function):
-    """Translate Gherkin tags without tripping ``--strict-markers``.
+    """Own only ``@skip``; defer every other tag to the root terminal handler.
 
-    ``@skip`` marks a scenario pending (one-at-a-time unskip in DELIVER). Every
-    other tag (`@ab-N`, `@driving_port`, `@error`, `@real-io`,
-    `@contract-shape:*`, `@walking_skeleton`, feature-level descriptors) is
-    documentation/classification only — absorbed here so pytest-bdd does not
-    register it as an unknown strict marker. Returning True signals "handled".
+    ``@skip`` marks a scenario pending (one-at-a-time unskip in DELIVER) and the
+    root hook cannot do this (``skip`` is a builtin, not a registered ini
+    marker), so this track owns it. Every other tag (`@ab-N`, `@driving_port`,
+    `@error`, `@real-io`, `@contract-shape:*`, `@walking_skeleton`,
+    feature-level descriptors) is returned as ``None`` so the chain falls
+    through to the root ``tests/conftest.py`` (``pytest_bdd_apply_tag`` is
+    ``firstresult``; per-dir conftests fire first via LIFO). The root applies
+    registered markers and absorbs descriptive gherkin metadata under
+    ``--strict-markers``. Blanket-absorbing foreign tags here (returning
+    ``True`` for everything — the WTBD-165 defect) swallowed the bugs-track
+    ``@failing`` tag before root could route it to xfail.
     """
     if tag == "skip":
         marker = pytest.mark.skip(reason="DISTILL scaffold — unskip in DELIVER")
         marker(function)
         return True
-    # All other tags are descriptive: absorb them (no strict-marker registration).
-    return True
+    return None
 
 
 @pytest.fixture

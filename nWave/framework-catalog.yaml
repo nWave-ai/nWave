@@ -1,5 +1,5 @@
 name: nWave
-version: 3.20.1
+version: 3.21.0
 description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192SPIKE\u2192DESIGN\u2192\
   DEVOPS\u2192DISTILL\u2192DELIVER methodology with visual architecture lifecycle\
   \ management"
@@ -427,8 +427,10 @@ commands:
     - review_report
     agents: []
   execute:
-    description: Dispatches one unit of DELIVER work to a specialized agent for TDD
-      execution. Runs a single roadmap.json step through the TDD cycle.
+    description: Use when a DELIVER roadmap already exists and you need to dispatch
+      exactly one identified step through its TDD cycle. Use nw-roadmap to create
+      the plan, nw-deliver for the whole wave, and nw-continue to resume at the next
+      inferred step.
     argument_hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter
       "auth-upgrade" "01-01"'
     outputs:

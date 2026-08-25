@@ -75,7 +75,7 @@ Selects a preset rigor level. Valid values: `lean`, `standard`, `thorough`, `exh
 | Profile | Wave ceremony | Output detail | Doc density | Expansion prompt | Use case |
 |---------|---|---|---|---|---|
 | `lean` | Minimal | Minimal | `lean` | `always-skip` | Solo dev, fast iteration, low token budget |
-| `standard` | Moderate | Moderate | `lean` | `ask` | Small teams, balanced approach (default) |
+| `standard` | Moderate | Moderate | `lean` | `ask-intelligent` | Small teams, balanced approach (default) |
 | `thorough` | High | High | `full` | `always-expand` | Regulated environments, audit trails |
 | `exhaustive` | Maximum | Maximum | `full` | `always-expand` | Mission-critical, government, DoD |
 | `custom` | (explicit per key) | (explicit per key) | (see `documentation.density` override) | (see `documentation.expansion_prompt` override) | Advanced; requires explicit config |
@@ -124,35 +124,39 @@ Specifies the default detail level for wave output. Valid values: `lean`, `full`
 
 #### `documentation.expansion_prompt` (string, optional)
 
-Controls when wave end prompts offer optional expansions (JTBD narrative, alternatives, migration playbooks, etc.). Valid values: `ask`, `always-skip`, `always-expand`, `smart`.
+Controls when wave-end prompts offer optional expansions (JTBD narrative, alternatives, migration playbooks, etc.). Valid values: `ask`, `ask-intelligent`, `always-skip`, `always-expand`, `smart`.
 
-- **`ask`**: (Default) At the end of each wave, prompt the user with a menu of available expansions. User can select one-shot additions without re-running the wave.
+- **`ask`**: At the end of each wave, show the broad menu of available expansions. This remains valid for existing configurations.
+
+- **`ask-intelligent`** (default): Show only expansions whose wave-specific trigger fired. If no trigger fires, show no menu. Fresh installs write this value.
 
 - **`always-skip`**: Never prompt; skip all expansions. Equivalent to always pressing "skip all" at the menu. Useful for fully automated / CI flows where user input is not expected.
 
 - **`always-expand`**: Automatically include all available expansions. Equivalent to always pressing "expand all" at the menu. Useful when density is `full` or you want comprehensive documentation upfront.
 
-- **`smart`** (v3.15+): Agent decides per feature type. Complex features get more expansions; simple fixes get fewer. Experimental; feedback welcome.
+- **`smart`**: Compatibility mode for the earlier experimental name. It currently has the same broad-menu behavior as `ask`; use `ask-intelligent` for trigger-scoped suggestions.
 
 **Default behavior** (if key absent):
 - If `rigor.profile` is `lean`, inherit `always-skip`.
-- If `rigor.profile` is `standard` or `custom`, inherit `ask`.
+- If `rigor.profile` is `standard` or `custom`, inherit `ask-intelligent`.
 - If `rigor.profile` is `thorough` or `exhaustive`, inherit `always-expand`.
 
-**Note on interactivity**: When `expansion_prompt: "ask"`, the wave reaches an interactive prompt at the end. This requires a terminal (TTY). Non-interactive runs (e.g., CI pipelines) default to `always-skip` behavior.
+**Validation and compatibility**: All five values above remain accepted; upgrades do not rewrite one known mode into another. Any other value is rejected by density resolution and reported by `nwave-ai doctor` instead of silently falling back.
+
+**Note on interactivity**: `ask` and a triggered `ask-intelligent` suggestion require user interaction. For unattended work, set `always-skip` or choose expansions explicitly.
 
 **Example**:
 ```json
 {
   "documentation": {
-    "expansion_prompt": "ask"
+    "expansion_prompt": "ask-intelligent"
   }
 }
 ```
 
 #### `documentation.default_expansions` (array of strings, optional)
 
-Pre-selects specific expansions to include when `expansion_prompt: "ask"` and the user hits "expand recommended". Valid IDs per wave are listed in each wave's `feature-delta.md` Expansion catalog.
+Reserved for pre-selecting expansion IDs. The current resolver and wave skills do not consume this key, so setting it has no effect. Request expansions explicitly until a consumer is shipped.
 
 **Example**:
 ```json
@@ -277,10 +281,10 @@ This table shows which `documentation.density` and `expansion_prompt` defaults a
 | Profile | Inherited density | Inherited prompt | Wave detail | Typical use |
 |---------|---|---|---|---|
 | `lean` | `lean` | `always-skip` | Minimal refs only | Solo iteration |
-| `standard` | `lean` | `ask` | Refs + on-demand WHY/HOW | Balanced teams |
+| `standard` | `lean` | `ask-intelligent` | Refs + trigger-scoped WHY/HOW | Balanced teams |
 | `thorough` | `full` | `always-expand` | All sections inline | Regulated, audit-required |
 | `exhaustive` | `full` | `always-expand` | All sections + all expansions | Mission-critical, DoD |
-| `custom` | `lean` (if absent) | `ask` (if absent) | Explicit per key | Advanced |
+| `custom` | `lean` (if absent) | `ask-intelligent` (if absent) | Explicit per key | Advanced |
 
 ---
 
@@ -313,7 +317,7 @@ This **disables all backups**. nWave will not retain any backup copies of previo
   },
   "documentation": {
     "density": "lean",
-    "expansion_prompt": "ask"
+    "expansion_prompt": "ask-intelligent"
   },
   "audit_logging_enabled": true,
   "update_check": {

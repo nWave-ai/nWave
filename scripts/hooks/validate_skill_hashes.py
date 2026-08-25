@@ -60,7 +60,7 @@ def extract_bulk_hashes() -> dict[str, str]:
         return {}
 
     hashes = {}
-    for line_match in re.finditer(r'"(nw-[^"]+)":\s*"([a-f0-9]{32})"', match.group(1)):
+    for line_match in re.finditer(r'"(nw-[^"]+)":\s*"([a-f0-9]{64})"', match.group(1)):
         hashes[line_match.group(1)] = line_match.group(2)
 
     return hashes
@@ -94,7 +94,7 @@ def main() -> int:
         if not skill_file.exists():
             continue
 
-        actual = hashlib.md5(skill_file.read_bytes()).hexdigest()
+        actual = hashlib.sha256(skill_file.read_bytes()).hexdigest()
         expected = bulk_hashes[skill_name]
 
         if actual != expected:

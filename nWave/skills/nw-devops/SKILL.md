@@ -35,7 +35,7 @@ Under `## Wave: DEVOPS / [REF] <Section>` headings:
 
 ### Tier-2 EXPANSION CATALOG — lazy, on-demand (per D10)
 
-Rendered under `## Wave: DEVOPS / [WHY|HOW] <Section>` only when requested via `--expand <id>` (DDD-2), the wave-end menu (`expansion_prompt = "ask"`), `mode = "full"` auto-expansion, or an ad-hoc user request mid-session.
+Rendered under `## Wave: DEVOPS / [WHY|HOW] <Section>` only when requested via `--expand <id>` (DDD-2), the broad wave-end menu (`expansion_prompt = "ask"`), a declared trigger under `expansion_prompt = "ask-intelligent"`, `mode = "full"` auto-expansion, or an ad-hoc user request mid-session.
 
 | Expansion ID | Tier label | One-line description |
 |---|---|---|
@@ -50,7 +50,7 @@ Rendered under `## Wave: DEVOPS / [WHY|HOW] <Section>` only when requested via `
 
 ## Density resolution (per D12)
 
-Call `resolve_density(global_config)` from `scripts/shared/density_config.py` after reading `~/.nwave/global-config.json` (missing/malformed = empty dict). Returns `mode` (`"lean"` | `"full"`) + `expansion_prompt` (`"ask"` | `"always-skip"` | `"always-expand"` | `"smart"`) per the D12 cascade (resolver-internal, DDD-5 — do NOT replicate locally). Branch on `density.mode` for what to emit; branch on `density.expansion_prompt` at wave end for menu behaviour. Full cascade detail, branch semantics, ad-hoc override workflow: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
+Call `resolve_density(global_config)` from `scripts/shared/density_config.py` after reading `~/.nwave/global-config.json` (missing/malformed = empty dict). Returns `mode` (`"lean"` | `"full"`) + `expansion_prompt` (`"ask"` | `"ask-intelligent"` | `"always-skip"` | `"always-expand"` | `"smart"`) per the D12 cascade (resolver-internal, DDD-5 — do NOT replicate locally). Branch on `density.mode` for what to emit; branch on `density.expansion_prompt` at wave end for menu behaviour. DEVOPS declares no `ask-intelligent` triggers: emit no menu and the shared-contract no-trigger skip event; do not invent triggers. Full cascade detail, branch semantics, ad-hoc override workflow: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
 
 ## Telemetry (per D4 + DDD-6)
 

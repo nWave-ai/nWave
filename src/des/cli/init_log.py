@@ -27,7 +27,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+from des.cli.project_dir import resolve_project_dir
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 ATDD_PURE_MODE = "atdd_pure"
@@ -117,7 +123,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--project-dir",
         required=True,
-        help="Path to the project directory where execution-log.json will be created",
+        help=(
+            "Path to the project directory where execution-log.json will be created; "
+            "relative paths resolve from the git worktree root"
+        ),
     )
     parser.add_argument(
         "--feature-id",
@@ -139,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    project_dir = Path(args.project_dir)
+    project_dir = resolve_project_dir(args.project_dir)
 
     # Validate project directory exists
     if not project_dir.is_dir():

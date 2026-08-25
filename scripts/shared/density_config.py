@@ -22,13 +22,21 @@ re-running the cascade.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 
 DensityMode = Literal["lean", "full"]
 ExpansionPromptMode = Literal[
     "ask", "always-skip", "always-expand", "smart", "ask-intelligent"
 ]
+
+EXPANSION_PROMPT_MODES: tuple[ExpansionPromptMode, ...] = (
+    "ask",
+    "ask-intelligent",
+    "always-skip",
+    "always-expand",
+    "smart",
+)
 
 
 @dataclass(frozen=True)
@@ -91,6 +99,17 @@ def _from_rigor_profile(profile: str) -> Density:
     )
 
 
+def _validate_expansion_prompt(value: Any) -> ExpansionPromptMode:
+    """Return a configured prompt mode or reject it without a silent fallback."""
+    if value not in EXPANSION_PROMPT_MODES:
+        expected = ", ".join(repr(mode) for mode in EXPANSION_PROMPT_MODES)
+        raise ValueError(
+            f"Unknown documentation.expansion_prompt {value!r}; "
+            f"expected one of: {expected}."
+        )
+    return cast("ExpansionPromptMode", value)
+
+
 def resolve_density(global_config: dict[str, Any]) -> Density:
     """Return the active documentation density via the D12 cascade.
 
@@ -98,11 +117,12 @@ def resolve_density(global_config: dict[str, Any]) -> Density:
     responsible for parsing `~/.nwave/global-config.json` and passing the
     resulting dict in.
 
-    Cascade order (per DDD-5 + D12 + Decision 4):
-        1. Explicit `documentation.density` override wins.
-        2. Else `rigor.profile` D12 mapping.
-        3. Else fallback to ("lean", "ask-intelligent") — fresh-install
-           hard default per Decision 4.
+    Cascade order (per DDD-5 + D12 + Decision 4), independently per key:
+        1. Resolve the `rigor.profile` D12 mapping, or the fresh-install
+           fallback ("lean", "ask-intelligent") when no profile exists.
+        2. Apply an explicit `documentation.density` override when present.
+        3. Apply and validate an explicit `documentation.expansion_prompt`
+           override when present.
 
     Args:
         global_config: Parsed contents of `~/.nwave/global-config.json`.
@@ -113,28 +133,29 @@ def resolve_density(global_config: dict[str, Any]) -> Density:
         and provenance.
 
     Raises:
-        ValueError: rigor.profile is set to an unknown value.
+        ValueError: rigor.profile or documentation.expansion_prompt is unknown.
     """
-    # Step 1: explicit override wins — both density and expansion_prompt.
+    # Resolve the inherited pair first. Explicit documentation keys then
+    # override their own dimension independently.
     documentation = global_config.get("documentation", {})
-    explicit_mode = documentation.get("density")
-    if explicit_mode is not None:
-        return Density(
-            mode=explicit_mode,
-            expansion_prompt=documentation.get("expansion_prompt", "ask-intelligent"),
-            provenance="explicit_override",
-        )
-
-    # Step 2: rigor.profile inheritance per D12.
     rigor_profile = global_config.get("rigor", {}).get("profile")
     if rigor_profile is not None:
-        return _from_rigor_profile(rigor_profile)
+        inherited = _from_rigor_profile(rigor_profile)
+    else:
+        inherited = Density(
+            mode="lean", expansion_prompt="ask-intelligent", provenance="default"
+        )
 
-    # Step 3: hard default — fresh install, no documentation, no rigor.
-    # Per Decision 4 (2026-04-28), the fresh-install default is
-    # ("lean", "ask-intelligent"): emit minimal Tier-1 baseline, then
-    # show a scoped expansion menu only when triggers fire (the wave
-    # skill prose owns trigger detection).
+    explicit_mode = documentation.get("density")
+    explicit_prompt = documentation.get("expansion_prompt")
     return Density(
-        mode="lean", expansion_prompt="ask-intelligent", provenance="default"
+        mode=explicit_mode if explicit_mode is not None else inherited.mode,
+        expansion_prompt=(
+            _validate_expansion_prompt(explicit_prompt)
+            if explicit_prompt is not None
+            else inherited.expansion_prompt
+        ),
+        provenance=(
+            "explicit_override" if explicit_mode is not None else inherited.provenance
+        ),
     )

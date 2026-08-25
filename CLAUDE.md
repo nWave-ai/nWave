@@ -258,7 +258,7 @@ Rationale: `.nwave/des-config.json` has `mutation_enabled=false` for per-feature
 
 ### Code Style
 - Python >= 3.10, type hints everywhere (mypy strict)
-- Ruff v0.15.0: line length 88, double quotes
+- Ruff v0.15.20: line length 88, double quotes
 - Naming: snake_case (functions/vars), PascalCase (classes), UPPER_SNAKE (constants)
 - Docs: kebab-case filenames
 - Zero shell scripts policy — all hooks in Python
@@ -333,5 +333,5 @@ DISCOVER → DISCUSS → DESIGN → DEVOPS → DISTILL → DELIVER
 - **Plugin install rewrites imports**: `from src.des` becomes `from des` for standalone operation
 - **No shell scripts**: Cross-platform policy enforced by pre-commit hook
 - **Coverage threshold**: 60% minimum (will fail CI if below)
-- **Ruff version pinned**: v0.15.0 — do not upgrade without updating CI and pre-commit
+- **Ruff version pinned**: v0.15.20 in `pyproject.toml` `[dependency-groups]` (the single source of truth). CI sources the version from there (`.github/workflows/ci.yml` code-quality job) and the pre-push `autofix-python` hook uses the venv ruff — so a bump to the pyproject pin propagates everywhere automatically; do not hardcode a ruff version elsewhere
 - **Script distribution is whitelist-only**: Only scripts listed in `UTILITY_SCRIPTS` in `build_dist.py` are shipped to users. Everything else in `scripts/` stays in the repo. Check the whitelist before assuming a script will or won't be distributed.

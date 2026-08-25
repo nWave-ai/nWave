@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 import textwrap
 from pathlib import Path
 
 import pytest
+from hypothesis import given, strategies as st
 from nwave_ai.state_delta import assert_state_delta, set_to, unchanged
 
 from scripts.docgen import (
@@ -104,6 +107,121 @@ def nwave_tree(tmp_path: Path) -> Path:
 
     return tmp_path
 
+
+class TestSourceURLPrefixInvariance:
+    @given(
+        prefix_segments=st.lists(
+            st.text(
+                alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-",
+                min_size=1,
+                max_size=12,
+            ),
+            min_size=0,
+            max_size=4,
+        )
+    )
+    def test_same_source_url_for_any_checkout_prefix(
+        self,
+        prefix_segments: list[str],
+    ) -> None:
+        """Source identity is repository-relative, never checkout-prefix-relative."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            example_root = Path(temp_dir)
+            seed_root = example_root / "SeedCheckout" / "nWave"
+
+            agents = seed_root / "agents"
+            agents.mkdir(parents=True)
+            (agents / "nw-crafter.md").write_text(
+                textwrap.dedent("""\
+                    ---
+                    name: nw-crafter
+                    description: A test crafter agent
+                    model: sonnet
+                    tools: Read, Write, Edit
+                    maxTurns: 30
+                    skills:
+                      - tdd
+                      - refactoring
+                    ---
+                    # Body content
+                """),
+                encoding="utf-8",
+            )
+
+            commands = seed_root / "tasks" / "nw"
+            commands.mkdir(parents=True)
+            (commands / "deliver.md").write_text(
+                textwrap.dedent("""\
+                    ---
+                    description: "Execute the DELIVER wave"
+                    argument-hint: '[feature]'
+                    ---
+                    # Body
+                    Use nw-crafter to implement.
+                """),
+                encoding="utf-8",
+            )
+
+            skills = seed_root / "skills" / "crafter"
+            skills.mkdir(parents=True)
+            for name in ("tdd", "refactoring"):
+                (skills / f"{name}.md").write_text(
+                    f"---\nname: {name}\ndescription: {name} methodology\n---\n# {name}\n",
+                    encoding="utf-8",
+                )
+
+            templates = seed_root / "templates"
+            templates.mkdir()
+            (templates / "deliver-tdd.yaml").write_text(
+                "---\ntemplate_type: deliver-tdd\n"
+                "description: TDD template\nversion: 1.0.0\n---\n",
+                encoding="utf-8",
+            )
+
+            case_root = example_root.joinpath(*prefix_segments)
+            plain_root = case_root / "PlainCheckout"
+            recipe_root = case_root / "nWave" / "fix-docgen"
+            for checkout_root in (plain_root, recipe_root):
+                shutil.copytree(seed_root, checkout_root / "nWave")
+
+            plain_pages = run_pipeline(plain_root, plain_root / "generated")
+            recipe_pages = run_pipeline(recipe_root, recipe_root / "generated")
+
+            page_name = "skills/crafter-tdd.md"
+            canonical_url = (
+                "https://github.com/nWave-ai/nWave/blob/main/"
+                "nWave/skills/crafter/tdd.md"
+            )
+
+            def source_line(page: str) -> str:
+                return next(
+                    line
+                    for line in page.splitlines()
+                    if line.startswith("**Source:**")
+                )
+
+            plain_source = source_line(plain_pages[page_name])
+            recipe_source = source_line(recipe_pages[page_name])
+
+            assert plain_source == recipe_source
+            assert canonical_url in recipe_source
+            assert "nWave/fix-docgen/nWave/" not in recipe_source
+            assert plain_pages.keys() == recipe_pages.keys()
+            assert {
+                name: "\n".join(
+                    line
+                    for line in page.splitlines()
+                    if not line.startswith("**Source:**")
+                )
+                for name, page in plain_pages.items()
+            } == {
+                name: "\n".join(
+                    line
+                    for line in page.splitlines()
+                    if not line.startswith("**Source:**")
+                )
+                for name, page in recipe_pages.items()
+            }
 
 # ---------------------------------------------------------------------------
 # parse_front_matter
@@ -328,6 +446,34 @@ class TestSkillLinks:
         # The per-skill pages exist and (no catalog → all released) link source.
         assert "skills/crafter-tdd.md" in pages
         assert "github.com/nWave-ai/nWave/blob/main" in pages["skills/crafter-tdd.md"]
+
+    def test_source_url_is_independent_of_worktree_path(self, nwave_tree: Path):
+        """A checkout path containing ``nWave`` must not leak into source URLs."""
+        paths = {
+            "agents": list((nwave_tree / "nWave" / "agents").glob("*.md")),
+            "commands": list((nwave_tree / "nWave" / "tasks" / "nw").glob("*.md")),
+            "skills": list((nwave_tree / "nWave" / "skills").rglob("*.md")),
+            "templates": list((nwave_tree / "nWave" / "templates").glob("*.yaml")),
+        }
+        data = enrich(extract_all(paths))
+        tdd = next(skill for skill in data["skills"] if skill["name"] == "tdd")
+        tdd["source_path"] = str(
+            nwave_tree
+            / "nWave"
+            / "fix-83-nw-finalize-workspace-contradiction"
+            / "nWave"
+            / "skills"
+            / "crafter"
+            / "tdd.md"
+        )
+
+        page = render(data)["skills/crafter-tdd.md"]
+
+        assert (
+            "https://github.com/nWave-ai/nWave/blob/main/"
+            "nWave/skills/crafter/tdd.md"
+        ) in page
+        assert "fix-83-nw-finalize-workspace-contradiction" not in page
 
     def test_no_generated_md_link_escapes_doc_root(self, nwave_tree: Path):
         """Invariant: no generated relative .md link escapes docs/reference/.

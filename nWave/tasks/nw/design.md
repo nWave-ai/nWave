@@ -5,7 +5,7 @@ argument-hint: "[component-name] - Optional: --residuality --paradigm=[auto|oop|
 
 # NW-DESIGN: Architecture Design
 
-**Wave**: DESIGN (wave 3 of 6) | **Agents**: Morgan (nw-solution-architect), nw-system-designer, nw-ddd-architect | **Command**: `*design-architecture`
+**Wave**: DESIGN (wave 3 of 6) | **Agents**: Morgan (nw-solution-architect), nw-system-designer, nw-ddd-architect, nw-platform-architect | **Command**: `*design-architecture`
 
 ## Overview
 
@@ -24,6 +24,7 @@ You MUST ask this question before invoking any architect. Do NOT default to appl
 2. **Domain / bounded contexts** — DDD, aggregates, Event Modeling, event sourcing, context mapping → invokes @nw-ddd-architect
 3. **Application / components** — component boundaries, hexagonal architecture, tech stack, ADRs → invokes @nw-solution-architect
 4. **Full stack** — all three in sequence: system -> domain -> application → invokes all three agents sequentially
+5. **Platform / delivery infrastructure** — deployment architecture, CI/CD, infrastructure as code, observability, production readiness → invokes @nw-platform-architect
 
 ### Decision 1: Interaction Mode
 
@@ -129,6 +130,7 @@ Before dispatching the architect agent, read rigor config from `.nwave/des-confi
 | Domain / bounded contexts | @nw-ddd-architect | DDD, aggregates, Event Modeling, event sourcing, context mapping |
 | Application / components | @nw-solution-architect | Component boundaries, hexagonal architecture, tech stack, ADRs |
 | Full stack | @nw-system-designer then @nw-ddd-architect then @nw-solution-architect | All three in sequence |
+| Platform / delivery infrastructure | @nw-platform-architect | Deployment architecture, CI/CD, infrastructure as code, observability, production readiness |
 
 Pass Decision 1 (guide/propose) to the invoked agent via `interaction_mode` parameter in the Task tool config. If the agent is invoked in a direct session (not via Task), it asks the user for the mode.
 
@@ -152,6 +154,7 @@ Based on Decision 0 answer, invoke the corresponding agent:
 **Domain scope** → @nw-ddd-architect
 **Application scope** → @nw-solution-architect
 **Full stack** → @nw-system-designer then @nw-ddd-architect then @nw-solution-architect (sequential, see Full Stack Invocation above)
+**Platform / delivery infrastructure scope** → @nw-platform-architect
 
 Execute \*design-architecture for {feature-id}.
 

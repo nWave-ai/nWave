@@ -11,8 +11,6 @@ Feature: Codex+DES end-to-end empirical proof
 
   Background:
     Given the Codex hooks schema spike artifact exists at docs/feature/codex-empirical-e2e-support/spike-codex-hooks-schema.md
-    And the legacy test tests/e2e/test_codex_full_install.py is marked broken_schema_v0
-    And the marker broken_schema_v0 is registered in pyproject.toml
 
   @walking_skeleton @driving_port @real-io @us-4 @slice-01
   Scenario: Developer installs nWave for Codex and a Bash invocation fires DES

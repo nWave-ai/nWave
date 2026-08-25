@@ -39,6 +39,8 @@ from pathlib import Path
 
 import pytest
 
+from scripts.shared.density_config import EXPANSION_PROMPT_MODES
+
 
 # ---------------------------------------------------------------------------
 # Skill discovery — walk up from this file to the repo root, then read each
@@ -114,6 +116,18 @@ def _load_skill_text(skill: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _load_density_contract() -> str:
+    """Return the shared density-resolution contract text."""
+    path = (
+        _repo_root()
+        / "nWave"
+        / "skills"
+        / "nw-density-resolution-contract"
+        / "SKILL.md"
+    )
+    return path.read_text(encoding="utf-8")
+
+
 def _missing_phrases(text: str, phrases: tuple[str, ...]) -> list[str]:
     """Return the subset of phrases NOT found in text (case-sensitive)."""
     return [p for p in phrases if p not in text]
@@ -172,6 +186,12 @@ def test_skill_encodes_density_aware_contract(
         failures.append(
             f"Density resolution (D12) missing mode branches: {missing_modes}"
         )
+    missing_prompt_modes = _missing_phrases(text, EXPANSION_PROMPT_MODES)
+    if missing_prompt_modes:
+        failures.append(
+            "Density resolution (D12) diverges from runtime expansion-prompt "
+            f"carrier; missing: {missing_prompt_modes}"
+        )
 
     # --- Section 3: Telemetry (D4 + DDD-6) ---
     missing = _missing_phrases(text, TELEMETRY_PHRASES)
@@ -209,3 +229,14 @@ def test_d6_cited_only_in_discuss_pilot(skill_texts: dict[str, str]) -> None:
     assert "D6" in discuss, (
         "nw-discuss must cite D6 (install-time prompt decision per pilot reasoning trail)"
     )
+
+
+def test_shared_contract_projects_runtime_carrier_and_locates_trigger_catalog() -> None:
+    """The shared prose cannot drift from runtime modes or orphan issue #95 triggers."""
+    contract = _load_density_contract()
+
+    missing_modes = _missing_phrases(contract, EXPANSION_PROMPT_MODES)
+    assert not missing_modes, f"shared contract misses runtime modes: {missing_modes}"
+    assert "nWave/skills/nw-discuss/SKILL.md" in contract
+    assert "only current trigger catalog" in contract
+    assert "no declared triggers" in contract

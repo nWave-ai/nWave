@@ -56,7 +56,7 @@ Under `## Wave: DISTILL / [REF] <Section>` headings:
 
 ### Tier-2 EXPANSION CATALOG — lazy, on-demand (per D10)
 
-Rendered under `## Wave: DISTILL / [WHY|HOW] <Section>` only when requested via `--expand <id>` (DDD-2), the wave-end menu (`expansion_prompt = "ask"`), `mode = "full"` auto-expansion, or an ad-hoc user request mid-session.
+Rendered under `## Wave: DISTILL / [WHY|HOW] <Section>` only when requested via `--expand <id>` (DDD-2), the broad wave-end menu (`expansion_prompt = "ask"`), a declared trigger under `expansion_prompt = "ask-intelligent"`, `mode = "full"` auto-expansion, or an ad-hoc user request mid-session.
 
 | Expansion ID | Tier label | One-line description |
 |---|---|---|
@@ -74,7 +74,7 @@ Rendered under `## Wave: DISTILL / [WHY|HOW] <Section>` only when requested via 
 
 ## Density resolution (per D12)
 
-Call `resolve_density(global_config)` from `scripts/shared/density_config.py` after reading `~/.nwave/global-config.json` (missing/malformed = empty dict). Returns `mode` (`"lean"` | `"full"`) + `expansion_prompt` (`"ask"` | `"always-skip"` | `"always-expand"` | `"smart"`) per the D12 cascade (resolver-internal, DDD-5 — do NOT replicate locally). Branch on `density.mode` for what to emit; branch on `density.expansion_prompt` at wave end for menu behaviour. Full cascade detail, branch semantics, ad-hoc override workflow: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
+Call `resolve_density(global_config)` from `scripts/shared/density_config.py` after reading `~/.nwave/global-config.json` (missing/malformed = empty dict). Returns `mode` (`"lean"` | `"full"`) + `expansion_prompt` (`"ask"` | `"ask-intelligent"` | `"always-skip"` | `"always-expand"` | `"smart"`) per the D12 cascade (resolver-internal, DDD-5 — do NOT replicate locally). Branch on `density.mode` for what to emit; branch on `density.expansion_prompt` at wave end for menu behaviour. DISTILL declares no `ask-intelligent` triggers: emit no menu and the shared-contract no-trigger skip event; do not invent triggers. Full cascade detail, branch semantics, ad-hoc override workflow: `nWave/skills/nw-density-resolution-contract/SKILL.md`.
 
 ## Telemetry (per D4 + DDD-6)
 
@@ -742,12 +742,23 @@ When DEVOPS provides environment inventory, create at least one walking skeleton
 
 ## Mandate 7: RED-Ready Scaffolding
 
-**Every acceptance test MUST be RED, not BROKEN, when first created.**
+**Every acceptance test, when run, MUST be classified RED — not BROKEN.** This is a rule about error *classification*, not about committing failing tests: at hand-off the suite is green (see _Commit state at hand-off_ below).
 
 When DISTILL writes acceptance tests that import production modules not yet implemented, it MUST also create minimal stub files so that:
 1. All imports succeed (no ImportError -- no BROKEN classification)
 2. Method calls raise AssertionError (-- RED classification)
 3. The Red Gate Snapshot classifies the test as RED, enabling the DELIVER TDD cycle
+
+### Commit state at hand-off (merge-model safety)
+
+Mandate 7 governs **error classification** (RED vs BROKEN), **not** the commit state. The DISTILL hand-off commit is **green by construction** and therefore safe under every merge model — squash, rebase, or fast-forward-only:
+
+- The single `@walking_skeleton` scenario is GREEN before hand-off (see _Walking Skeleton First_ and _One-at-a-Time Strategy_): its end-to-end path runs on implemented code (or non-scaffolded test doubles), so it does **not** depend on the AssertionError scaffolds below — those back only the non-skeleton scenarios.
+- Every non-skeleton scenario is tagged `@skip`/`@pending`, so it does not run and the suite exits green.
+- The AssertionError-raising scaffolds below exist so that **when DELIVER unskips a scenario**, the runner classifies it RED (not BROKEN). They are **not a directive to commit failing tests**.
+- DELIVER commits only on GREEN (3-phase canon, ADR-025). No RED state is ever committed by either wave.
+
+So a literal failing-test commit is never required, and the "RED, not BROKEN" classification above is checked at the moment a scenario is unskipped in DELIVER — not at the hand-off commit. Projects on rebase + **fast-forward-only** (or any non-squash model) with a pre-commit test gate need no special handling: nothing RED reaches the branch, so the hook never blocks the hand-off. This assumes the gate honours skip/pending markers (`pytest.mark.skip`, `it.skip()`, `@Disabled`, …) and does not execute or report marked scenarios as failures; a gate that runs every test regardless of markers must be configured to respect them. (Resolves nWave-ai/nWave issue #56, which arose from reading Mandate 7 as "commit the RED scaffolds".)
 
 ### What to scaffold
 
