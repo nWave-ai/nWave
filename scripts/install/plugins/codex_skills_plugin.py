@@ -21,7 +21,7 @@ from scripts.install.plugins.base import (
     InstallContext,
     PluginResult,
 )
-from scripts.shared.agent_catalog import load_public_agents
+from scripts.shared.agent_catalog import detect_command_skills, load_public_agents
 from scripts.shared.platform_contracts import CODEX_SKILL_FORBIDDEN_FIELDS
 from scripts.shared.skill_distribution import (
     enumerate_skills,
@@ -231,8 +231,11 @@ class CodexSkillsPlugin(InstallationPlugin):
                 build_ownership_map(agents_dir) if agents_dir.exists() else {}
             )
 
+            command_skills = detect_command_skills(skills_source)
             entries = enumerate_skills(skills_source)
-            entries = filter_public_skills(entries, public_agents, ownership_map)
+            entries = filter_public_skills(
+                entries, public_agents, ownership_map, command_skills
+            )
 
             installed_names: list[str] = []
             installed_files: list[Path] = []

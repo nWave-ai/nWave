@@ -99,7 +99,7 @@ def _make_context(
         logger=MagicMock(),
         project_root=project_root,
         framework_source=framework_source,
-        dev_mode=True,  # bypass public-agent filtering
+        dev_mode=public_agents_yaml is None,  # bypass filtering only without catalog
     )
     return context, project_root, framework_source
 
@@ -320,6 +320,51 @@ class TestInstallCopiesSkills:
             (codex_skills_dir / ".nwave-manifest.json").read_text(encoding="utf-8")
         )
         assert manifest["installed_skills"] == ["nw-alpha", "nw-beta"]
+
+    def test_install_includes_command_skill_without_agent_owner(
+        self, tmp_path, monkeypatch
+    ):
+        """
+        GIVEN: Public-agent filtering is enabled
+            AND a command-skill has user-invocable frontmatter but no owning agent
+        WHEN: install() runs
+        THEN: The command-skill is installed while non-command orphan skills are excluded
+        """
+        skills = {
+            "nw-refactor": (
+                "---\n"
+                "name: nw-refactor\n"
+                "description: Refactor command\n"
+                "user-invocable: true\n"
+                "---\n"
+                "# Refactor\n"
+            ),
+            "nw-orphan-internal": (
+                "---\n"
+                "name: nw-orphan-internal\n"
+                "description: Internal\n"
+                "user-invocable: false\n"
+                "disable-model-invocation: true\n"
+                "---\n"
+                "# Internal\n"
+            ),
+        }
+        context, _, _ = _make_context(
+            tmp_path,
+            skills=skills,
+            public_agents_yaml="agents:\n  product-owner:\n    public: true\n",
+        )
+        codex_skills_dir = tmp_path / "home" / ".agents" / "skills"
+        codex_config_dir = tmp_path / "home" / ".codex"
+        codex_config_dir.mkdir(parents=True)
+        _patch_codex_dirs(monkeypatch, codex_skills_dir, codex_config_dir)
+
+        plugin = CodexSkillsPlugin()
+        result = plugin.install(context)
+
+        assert result.success is True
+        assert (codex_skills_dir / "nw-refactor" / "SKILL.md").is_file()
+        assert not (codex_skills_dir / "nw-orphan-internal").exists()
 
 
 class TestVerify:

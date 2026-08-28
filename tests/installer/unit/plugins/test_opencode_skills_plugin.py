@@ -243,6 +243,54 @@ class TestInstallTransformsSkillToOpenCodeFormat:
             },
         )
 
+    def test_install_includes_command_skill_without_agent_owner(
+        self, tmp_path, monkeypatch
+    ):
+        """
+        GIVEN: Public-agent filtering is enabled
+            AND a flat command-skill has user-invocable frontmatter but no owning agent
+        WHEN: install() runs
+        THEN: The command-skill is installed while non-command orphan skills are excluded
+        """
+        context, skills_source, target = _make_context(tmp_path)
+        monkeypatch.setattr(
+            "scripts.install.plugins.opencode_skills_plugin._opencode_skills_dir",
+            lambda: target,
+        )
+        (context.project_root / "nWave" / "framework-catalog.yaml").write_text(
+            "agents:\n  product-owner:\n    public: true\n"
+        )
+
+        command_dir = skills_source / "nw-refactor"
+        command_dir.mkdir()
+        (command_dir / "SKILL.md").write_text(
+            "---\n"
+            "name: nw-refactor\n"
+            "description: Refactor command\n"
+            "user-invocable: true\n"
+            "---\n"
+            "# Refactor\n"
+        )
+
+        internal_dir = skills_source / "nw-orphan-internal"
+        internal_dir.mkdir()
+        (internal_dir / "SKILL.md").write_text(
+            "---\n"
+            "name: nw-orphan-internal\n"
+            "description: Internal\n"
+            "user-invocable: false\n"
+            "disable-model-invocation: true\n"
+            "---\n"
+            "# Internal\n"
+        )
+
+        plugin = OpenCodeSkillsPlugin()
+        result = plugin.install(context)
+
+        assert result.success is True
+        assert (target / "nw-refactor" / "SKILL.md").is_file()
+        assert not (target / "nw-orphan-internal").exists()
+
 
 class TestInstallPrefixesDuplicateSkillNames:
     """Test that install() prefixes colliding skill names with agent group."""
