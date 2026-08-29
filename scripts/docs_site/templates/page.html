@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}} — {{SITE_NAME}}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;500;700&family=Quattrocento:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <meta name="docs-version" content="{{VERSION}}">
+  <meta name="docs-url" content="{{CURRENT_URL}}">
+{{HEAD_EXTRA}}
+</head>
+<body>
+  <header class="nw-navbar-header">
+    <div class="nw-navbar-logo">
+      <a href="/{{VERSION}}/">
+        <img class="nw-navbar-logo__img" src="/static/logo.svg" alt="nWave" width="94" height="22">
+        <span class="nw-navbar-logo__sub">docs</span>
+      </a>
+    </div>
+    <nav class="nw-navbar-links" aria-label="Documentation categories">
+{{CATEGORY_NAV}}
+    </nav>
+    <div class="nw-navbar-actions">
+      <button type="button" class="search-trigger" id="search-trigger" aria-label="Search docs">
+        <span class="search-trigger__icon" aria-hidden="true">⌕</span>
+        <span class="search-trigger__label">Search</span>
+        <span class="search-trigger__key" aria-hidden="true">/</span>
+      </button>
+      <div class="version-picker" id="version-picker">
+        <button type="button" class="version-picker__button" id="version-picker-button"
+          aria-haspopup="listbox" aria-expanded="false">
+          <span class="version-picker__current">{{VERSION}}</span>
+          <span class="version-picker__caret" aria-hidden="true">▾</span>
+        </button>
+      </div>
+      <a class="nw-navbar-link nw-navbar-link--ext" href="https://github.com/nWave-ai/nWave" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </header>
+  <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
+  <div class="search-overlay" id="search-overlay" hidden>
+    <div class="search-overlay__panel" role="dialog" aria-modal="true" aria-label="Search documentation">
+      <div id="search-box"></div>
+    </div>
+  </div>
+  <div class="site-layout">
+    <aside class="doc-sidebar" id="doc-sidebar" aria-label="Documentation navigation">
+      <nav id="site-nav"></nav>
+    </aside>
+    <main class="doc-main">
+      {{BODY}}
+    </main>
+    <aside class="page-toc" aria-label="On this page">
+      <nav id="page-toc"></nav>
+    </aside>
+  </div>
+  <footer class="nw-footer">
+    <p class="nw-footer-copyright">
+      nWave · version <code>{{VERSION}}</code>
+      · <a href="https://nwave.ai">nwave.ai</a>
+    </p>
+  </footer>
+  <script src="/static/site.js" defer></script>
+</body>
+</html>

@@ -1,1 +1,0 @@
-"""Installer bug tests."""

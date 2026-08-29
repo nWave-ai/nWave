@@ -12,7 +12,7 @@ Successfully execute a DELIVER wave where each roadmap step implements exactly o
 
 You will need:
 - A completed acceptance test file with scenarios (from DISTILL wave)
-- The nWave framework installed via `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"`
+- The nWave framework installed via `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"`
 - A project with user story identification (e.g., `us001`, `us002`)
 
 ## Step 1: Count Your Acceptance Test Scenarios

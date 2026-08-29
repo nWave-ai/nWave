@@ -1,9 +1,0 @@
-# nwave-ai feature-delta enforcement target.
-# Usage: make check-feature-delta
-#        make check-feature-delta FEATURE_DELTA=docs/feature/my-feature/feature-delta.md
-
-FEATURE_DELTA ?= feature-delta.md
-
-.PHONY: check-feature-delta
-check-feature-delta:
-	nwave-ai validate-feature-delta $(FEATURE_DELTA)

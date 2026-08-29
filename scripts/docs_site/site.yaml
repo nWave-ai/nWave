@@ -1,0 +1,105 @@
+# nWave documentation-site configuration.
+#
+# This is the ONE curated file. The generator (build_site.py) renders every
+# markdown file under the doc roots regardless of what is listed here; this
+# config only controls *navigation grouping* (Divio quadrants) and the landing
+# page. A doc that matches no section prefix is not dropped — it is bucketed
+# under "More" and logged at build time, so drift is visible, never silent.
+#
+# Matching is first-match-wins, top to bottom. A `paths` entry matches a doc
+# whose repo-relative path equals it (a single file) or starts with it
+# followed by `/` (a directory or name family, e.g. `docs/guides/tutorial-`).
+
+site_name: "nWave Docs"
+
+landing:
+  kicker: "DOCUMENTATION"
+  headline: "Build software in disciplined waves."
+  subhead: >-
+    nWave orchestrates specialised Claude agents through a structured,
+    test-driven workflow — from discovery to delivery. Start with a tutorial,
+    look up a command, or learn why the methodology works.
+  # Reserved for the future explainer video. Set to an embeddable URL
+  # (e.g. https://www.youtube.com/embed/XXXX) to show a video on the landing
+  # page; leave empty and no video block renders. The getting-started prose
+  # itself lives in scripts/docs_site/landing.md.
+  video_embed: ""
+
+# Divio quadrant cards on the landing page. `landing` is the slug each card
+# links to (must resolve at the version being viewed).
+quadrants:
+  - title: "Tutorials"
+    section: tutorials
+    kicker: "LEARNING"
+    description: "Hands-on lessons that take you from zero to a shipped feature. Start here."
+    cta: "Start learning"
+    landing: "guides/TUTORIALS/"
+  - title: "How-To Guides"
+    section: how-to
+    kicker: "TASKS"
+    description: "Goal-oriented recipes for getting a specific job done — install, migrate, troubleshoot."
+    cta: "Get it done"
+    landing: "guides/HOW-TO/"
+  - title: "Reference"
+    section: reference
+    kicker: "LOOK IT UP"
+    description: "Precise specs for every agent, command, skill, template, and config surface."
+    cta: "Look it up"
+    landing: "reference/"
+  - title: "Explanation"
+    section: explanation
+    kicker: "UNDERSTAND"
+    description: "The why behind nWave — the wave model, the SSOT document model, and design decisions."
+    cta: "Understand it"
+    landing: "guides/EXPLANATION/"
+
+# Sidebar sections (also the Divio quadrants). Order = sidebar order.
+sections:
+  - id: tutorials
+    title: "Tutorials"
+    paths:
+      - docs/guides/TUTORIALS.md
+      - docs/guides/tutorial-
+      - docs/guides/diverge-wave-guide
+
+  - id: how-to
+    title: "How-To Guides"
+    paths:
+      - docs/guides/HOW-TO.md
+      - docs/guides/installation-guide
+      - docs/guides/offline-install.md
+      - docs/guides/installing-codex.md
+      - docs/guides/plugin-migration-guide
+      - docs/guides/plugin-use-cases
+      - docs/guides/nwave-tool-plugins.md
+      - docs/guides/migrating-to-ssot-model
+      - docs/guides/troubleshooting-guide
+      - docs/guides/invoke-reviewer-agents
+      - docs/guides/how-to-deliver-wave-step-scenario-mapping
+      - docs/guides/howto-resolve-outcomes-collision.md
+      - docs/guides/outcomes-first-outcome
+      - docs/guides/team-rollout.md
+      - docs/guides/enforcement-recipes.md
+      - docs/guides/configuring-doc-density.md
+      - docs/guides/activating-nwave-per-project.md
+
+  - id: reference
+    title: "Reference"
+    paths:
+      - docs/reference
+      - docs/guides/feature-delta-l7-format.md
+      - docs/guides/des-audit-trail-guide
+
+  - id: explanation
+    title: "Explanation"
+    paths:
+      - docs/guides/EXPLANATION.md
+      - docs/guides/REFERENCE.md
+      - docs/guides/README.md
+      - docs/guides/understanding-ssot-model
+      - docs/guides/wave-routing-and-entry-points
+      - docs/guides/wave-directory-structure
+      - docs/guides/jobs-to-be-done-guide
+      - docs/guides/whats-new-v319
+      - docs/guides/whats-new-v314
+      - docs/guides/whats-new-v35

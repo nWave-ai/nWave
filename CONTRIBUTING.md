@@ -4,8 +4,8 @@
 
 ```bash
 # Clone and install (uv installs the project + dev group from uv.lock)
-git clone https://github.com/nWave-ai/nwave-dev.git
-cd nwave-dev
+git clone https://github.com/nWave-ai/nWave.git
+cd nWave
 uv sync
 
 # Install pre-commit hooks (all types: pre-commit, pre-push, commit-msg, ...)

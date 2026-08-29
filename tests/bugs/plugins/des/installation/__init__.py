@@ -1,1 +1,0 @@
-"""DES installation bug tests."""

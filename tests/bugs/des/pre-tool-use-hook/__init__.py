@@ -1,1 +1,0 @@
-"""PreToolUse hook bug tests."""

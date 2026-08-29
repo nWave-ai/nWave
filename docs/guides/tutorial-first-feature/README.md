@@ -6,7 +6,7 @@ Learn nWave by building a complete feature end-to-end.
 
 **Prerequisites**:
 - **Platform**: Linux, macOS, or Windows (WSL2 required)
-- nWave installed: `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"` — in terminal, not Claude Code
+- nWave installed: `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"` — in terminal, not Claude Code
 - Claude Code reopened after install
 - A Python project with pytest
 - Basic TDD familiarity

@@ -4,5 +4,6 @@
   "author": {
     "name": "nWave AI",
     "email": "hello@nwave.ai"
-  }
+  },
+  "version": "3.22.0"
 }

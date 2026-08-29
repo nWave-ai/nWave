@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # FP in F# -- Functional Software Crafter Skill
 
-Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [pbt-dotnet](../nw-pbt-dotnet/SKILL.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [property-based-testing](../nw-property-based-testing/SKILL.md)
 
 ## When to Choose F#
 
@@ -148,7 +148,7 @@ Dependencies first, primary input last. Partially apply at composition root.
 
 ## [INTERMEDIATE] Testing
 
-**Frameworks**: FsCheck (QuickCheck port) | fsharp-hedgehog (integrated shrinking) | Expecto (F#-native) | Unquote (assertions). See [pbt-dotnet](../nw-pbt-dotnet/SKILL.md) for detailed PBT patterns.
+**Frameworks**: FsCheck (QuickCheck port) | fsharp-hedgehog (integrated shrinking) | Expecto (F#-native) | Unquote (assertions). See [property-based-testing](../nw-property-based-testing/SKILL.md) for detailed PBT patterns.
 
 ### Property Test Example (FsCheck + xUnit)
 

@@ -11,12 +11,12 @@ nWave runs inside [Claude Code](https://claude.com/product/claude-code). It brea
 **Requirements**: Python 3.10+ and Claude Code.
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"
 ```
 
 This installs the `nwave-ai` CLI and wires nWave into Claude Code in one step. It uses [uv](https://docs.astral.sh/uv/) when available (recommended); [pipx](https://pipx.pypa.io/) is supported but not recommended. Restart Claude Code when it finishes.
 
-Need CLI flags, environment variables, CI/non-interactive use, or manual and offline steps? See the **[Installation Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md)**.
+Need CLI flags, environment variables, CI/non-interactive use, or manual and offline steps? See the **[Installation Guide](docs/guides/installation-guide/README.md)**.
 
 ## Your First Command
 
@@ -31,46 +31,46 @@ The buddy reads your project and tells you which wave to start, where your artif
 **Before nWave**: "Where do I start? Requirements doc or code first? Which agent?"
 **After nWave**: The buddy reads your project and gives you a concrete next step.
 
-Using pipx, OpenCode, or Codex instead? See the [Installation Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md).
+Using pipx, OpenCode, or Codex instead? See the [Installation Guide](docs/guides/installation-guide/README.md).
 
 ## Learn More
 
 | Resource | What it covers |
 |----------|---------------|
-| **[Your First Feature](https://github.com/nWave-ai/nWave/tree/main/docs/guides/tutorial-first-feature/)** | End-to-end walkthrough, zero to working code |
-| **[Team Rollout Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/team-rollout.md)** | Onboard a second developer onto an nWave project |
-| **[Offline / Air-Gapped Install](https://github.com/nWave-ai/nWave/tree/main/docs/guides/offline-install.md)** | Install nWave on a machine without PyPI access |
-| **[Jobs To Be Done](https://github.com/nWave-ai/nWave/tree/main/docs/guides/jobs-to-be-done-guide/)** | Which wave fits your task |
-| **[Wave Directory Structure](https://github.com/nWave-ai/nWave/tree/main/docs/guides/wave-directory-structure/)** | How artifacts are organized per feature |
-| **[Feature Delta Format (L7)](https://github.com/nWave-ai/nWave/tree/main/docs/guides/feature-delta-l7-format.md)** | Author features in the lean single-file model |
-| **[Outcomes Registry](https://github.com/nWave-ai/nWave/tree/main/docs/product/outcomes/README.md)** | Catch duplicate rules and operations at design time |
-| **[Configuring Doc Density](https://github.com/nWave-ai/nWave/tree/main/docs/guides/configuring-doc-density.md)** | Control lean vs full wave output |
-| **[Agents and Commands Reference](https://github.com/nWave-ai/nWave/tree/main/docs/reference/index.md)** | All agents and commands |
-| **[Troubleshooting](https://github.com/nWave-ai/nWave/tree/main/docs/guides/troubleshooting-guide/)** | Common issues and fixes |
+| **[Your First Feature](docs/guides/tutorial-first-feature/)** | End-to-end walkthrough, zero to working code |
+| **[Team Rollout Guide](docs/guides/team-rollout.md)** | Onboard a second developer onto an nWave project |
+| **[Offline / Air-Gapped Install](docs/guides/offline-install.md)** | Install nWave on a machine without PyPI access |
+| **[Jobs To Be Done](docs/guides/jobs-to-be-done-guide/)** | Which wave fits your task |
+| **[Wave Directory Structure](docs/guides/wave-directory-structure/)** | How artifacts are organized per feature |
+| **[Feature Delta Format (L7)](docs/guides/feature-delta-l7-format.md)** | Author features in the lean single-file model |
+| **[Outcomes Registry](docs/product/outcomes/README.md)** | Catch duplicate rules and operations at design time |
+| **[Configuring Doc Density](docs/guides/configuring-doc-density.md)** | Control lean vs full wave output |
+| **[Agents and Commands Reference](docs/reference/index.md)** | All agents and commands |
+| **[Troubleshooting](docs/guides/troubleshooting-guide/)** | Common issues and fixes |
 
 ---
 
 ## What's New in v3.19
 
-- **Per-project activation (opt-in gate)** — nWave's globally-installed DES hooks are now **opt-in per repository**. Unmarked repos stay silent (hooks exit 0); a tracked `.nwave/local-config.json` marker plus a global `activation.mode` (`opt-in` default, or `all`) decide where nWave runs. Manage it with `nwave-ai project enable|disable`, `nwave-ai mode`, and `nwave-ai status`. Existing projects auto-adopt on first `/nw-` use, so nothing breaks. See **[Activating nWave in a Project](https://github.com/nWave-ai/nWave/tree/main/docs/guides/activating-nwave-per-project.md)**.
-- **`nwave-ai` CLI reference** — the user-facing command surface (`install`, `uninstall`, `doctor`, `status`, `project`, `mode`, `attribution`, `completion`, `version`) is documented in one place, including the `install` flag pass-through to the underlying installer. See **[CLI Reference](https://github.com/nWave-ai/nWave/tree/main/docs/reference/cli.md)**.
+- **Per-project activation (opt-in gate)** — nWave's globally-installed DES hooks are now **opt-in per repository**. Unmarked repos stay silent (hooks exit 0); a tracked `.nwave/local-config.json` marker plus a global `activation.mode` (`opt-in` default, or `all`) decide where nWave runs. Manage it with `nwave-ai project enable|disable`, `nwave-ai mode`, and `nwave-ai status`. Existing projects auto-adopt on first `/nw-` use, so nothing breaks. See **[Activating nWave in a Project](docs/guides/activating-nwave-per-project.md)**.
+- **`nwave-ai` CLI reference** — the user-facing command surface (`install`, `uninstall`, `doctor`, `status`, `project`, `mode`, `attribution`, `completion`, `version`) is documented in one place, including the `install` flag pass-through to the underlying installer. See **[CLI Reference](docs/reference/cli.md)**.
 
-See the full **[What's New in v3.19](https://github.com/nWave-ai/nWave/tree/main/docs/guides/whats-new-v319/)** for details.
+See the full **[What's New in v3.19](docs/guides/whats-new-v319/)** for details.
 
 ## Previous Releases
 
 ### v3.15
 
 - **3-Phase TDD Canon (Default)** — New canonical TDD methodology (RED → GREEN → COMMIT) replaces the legacy 5-phase contract (PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT). Documented in ADR-025. Dual-canon backward compatibility: existing audit logs and pre-2026-05-07 executions replay correctly under v4 5-phase contract; new work uses 3-phase by default. Configured per rigor profile (lean mode uses RED → GREEN).
-- **Codex CLI support** — Full nWave DES enforcement now works with [OpenAI Codex CLI](https://platform.openai.com/docs/guides/codex). Pre-tool-use hooks wire automatically; every Bash and file action validates against your TDD phase gates. See **[Installing for Codex CLI](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installing-codex.md)**.
+- **Codex CLI support** — Full nWave DES enforcement now works with [OpenAI Codex CLI](https://platform.openai.com/docs/guides/codex). Pre-tool-use hooks wire automatically; every Bash and file action validates against your TDD phase gates. See **[Installing for Codex CLI](docs/guides/installing-codex.md)**.
 
 ### v3.14
 
-- **Lean wave docs (L7 single-file)** — Each feature lives in one `feature-delta.md` with schema-typed section headings (`## Wave: <WAVE> / [REF|WHY|HOW] <name>`). Tier-1 `[REF]` is auto-produced; Tier-2 `[WHY]` and `[HOW]` are opt-in via `--expand`. Downstream agents grep section headings instead of reading whole subdirectories. See **[Feature Delta Format (L7)](https://github.com/nWave-ai/nWave/tree/main/docs/guides/feature-delta-l7-format.md)**.
-- **Feature-delta validator** — `nwave-ai validate-feature-delta <path>` checks structural rules (E1–E5) and emits JSON for CI integration. Vendor-neutral: no hooks auto-installed; pick a recipe from **[Enforcement Recipes](https://github.com/nWave-ai/nWave/tree/main/docs/guides/enforcement-recipes.md)** (12 platforms covered).
-- **Outcomes registry** — Design-time deduplication. `nwave-ai outcomes register|check|check-delta` flags spec-level collisions before code is written, via type-shape + keyword Jaccard. See **[Why an outcomes registry?](https://github.com/nWave-ai/nWave/tree/main/docs/product/outcomes/README.md)** and **[Your first outcome](https://github.com/nWave-ai/nWave/tree/main/docs/guides/outcomes-first-outcome/README.md)**.
-- **Doc density config** — Per-project `lean` vs `full` density controls how much each wave emits. Tune token cost per wave. See **[Configuring Doc Density](https://github.com/nWave-ai/nWave/tree/main/docs/guides/configuring-doc-density.md)**.
-- **Uninstall correctness fix (v3.14.0-rc1)** — `nwave-ai uninstall --force` now removes all installed artifacts (`skills/nw-*`, `lib/python/des/`, all 5 DES hook event types in `settings.json`) while preserving user-created skills. Previous versions left ~197 skill dirs and 3 hook entries behind. See **[Troubleshooting → Uninstall left files behind](https://github.com/nWave-ai/nWave/tree/main/docs/guides/troubleshooting-guide/#uninstall-left-files-behind-fixed-in-v314)**.
+- **Lean wave docs (L7 single-file)** — Each feature lives in one `feature-delta.md` with schema-typed section headings (`## Wave: <WAVE> / [REF|WHY|HOW] <name>`). Tier-1 `[REF]` is auto-produced; Tier-2 `[WHY]` and `[HOW]` are opt-in via `--expand`. Downstream agents grep section headings instead of reading whole subdirectories. See **[Feature Delta Format (L7)](docs/guides/feature-delta-l7-format.md)**.
+- **Feature-delta validator** — `nwave-ai validate-feature-delta <path>` checks structural rules (E1–E5) and emits JSON for CI integration. Vendor-neutral: no hooks auto-installed; pick a recipe from **[Enforcement Recipes](docs/guides/enforcement-recipes.md)** (12 platforms covered).
+- **Outcomes registry** — Design-time deduplication. `nwave-ai outcomes register|check|check-delta` flags spec-level collisions before code is written, via type-shape + keyword Jaccard. See **[Why an outcomes registry?](docs/product/outcomes/README.md)** and **[Your first outcome](docs/guides/outcomes-first-outcome/README.md)**.
+- **Doc density config** — Per-project `lean` vs `full` density controls how much each wave emits. Tune token cost per wave. See **[Configuring Doc Density](docs/guides/configuring-doc-density.md)**.
+- **Uninstall correctness fix (v3.14.0-rc1)** — `nwave-ai uninstall --force` now removes all installed artifacts (`skills/nw-*`, `lib/python/des/`, all 5 DES hook event types in `settings.json`) while preserving user-created skills. Previous versions left ~197 skill dirs and 3 hook entries behind. See **[Troubleshooting → Uninstall left files behind](docs/guides/troubleshooting-guide/#uninstall-left-files-behind-fixed-in-v314)**.
 
 For upgrading from v3.3 or earlier, see [Breaking Changes](#breaking-changes) below.
 
@@ -104,9 +104,9 @@ The workflow has seven waves. Entry point depends on your context:
 - **Bug fix**: Jump straight to DISTILL (write failing test) then DELIVER
 - **Refactoring**: Jump to DELIVER (green already, refactor inside existing tests)
 
-DISTILL then DELIVER is always the terminal pair. See the [Wave Routing Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/wave-routing-and-entry-points/) for the full decision matrix.
+DISTILL then DELIVER is always the terminal pair. See the [Wave Routing Guide](docs/guides/wave-routing-and-entry-points/) for the full decision matrix.
 
-40 agents total: 10 wave agents (including 3 DESIGN specialists), 1 concierge, 8 cross-wave specialists, 14 peer reviewers, 7 business agents. Full list: **[Commands Reference](https://github.com/nWave-ai/nWave/tree/main/docs/reference/commands/index.md)**
+40 agents total: 10 wave agents (including 3 DESIGN specialists), 1 concierge, 8 cross-wave specialists, 14 peer reviewers, 7 business agents. Full list: **[Commands Reference](docs/reference/commands/index.md)**
 
 ## Quick Start
 
@@ -125,7 +125,7 @@ Full setup details: **[Installation Guide](https://github.com/nWave-ai/nWave/blo
 
 ### Other install methods
 
-Looking for step-by-step instructions or a different setup? The **[Installation Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md)** covers every path — the single-script bootstrap, manual **uv** / **pipx** / **pip** steps, **Codex CLI**, **OpenCode**, and offline / air-gapped install.
+Looking for step-by-step instructions or a different setup? The **[Installation Guide](docs/guides/installation-guide/README.md)** covers every path — the single-script bootstrap, manual **uv** / **pipx** / **pip** steps, **Codex CLI**, **OpenCode**, and offline / air-gapped install.
 
 ### Plugin marketplace (not recommended)
 
@@ -133,7 +133,7 @@ Looking for step-by-step instructions or a different setup? The **[Installation 
 >
 > **Use the CLI installer above.** The plugin marketplace ships agents, commands, and skills only; consider it a degraded preview, not a supported install method.
 
-> **OpenCode and Codex CLI** are supported too. Their step-by-step setup lives in the [Installation Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md).
+> **OpenCode and Codex CLI** are supported too. Their step-by-step setup lives in the [Installation Guide](docs/guides/installation-guide/README.md).
 
 ### Which method?
 
@@ -165,7 +165,7 @@ The buddy reads your project and gives contextual answers. Use it anytime you're
 
 Each wave produces artifacts you review. The machine never runs unsupervised end-to-end.
 
-Full walkthrough: **[Your First Feature](https://github.com/nWave-ai/nWave/tree/main/docs/guides/tutorial-first-feature/)**
+Full walkthrough: **[Your First Feature](docs/guides/tutorial-first-feature/)**
 
 ## Keeping nWave Updated
 
@@ -241,16 +241,16 @@ These messages protect code quality but never prevent your work. They guide you 
 ### Getting Started
 
 - **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide/README.md)** — Setup instructions
-- **[Your First Feature](https://github.com/nWave-ai/nWave/tree/main/docs/guides/tutorial-first-feature/)** — Build a feature end-to-end (tutorial)
-- **[Team Rollout Guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/team-rollout.md)** — Onboard a second developer onto an nWave project
-- **[Jobs To Be Done](https://github.com/nWave-ai/nWave/tree/main/docs/guides/jobs-to-be-done-guide/)** — Which workflow fits your task
+- **[Your First Feature](docs/guides/tutorial-first-feature/)** — Build a feature end-to-end (tutorial)
+- **[Team Rollout Guide](docs/guides/team-rollout.md)** — Onboard a second developer onto an nWave project
+- **[Jobs To Be Done](docs/guides/jobs-to-be-done-guide/)** — Which workflow fits your task
 
 ### Guides and Reference
 
-- **[Agents and Commands Reference](https://github.com/nWave-ai/nWave/tree/main/docs/reference/index.md)** — All agents, commands, skills, templates
-- **[Wave Directory Structure](https://github.com/nWave-ai/nWave/tree/main/docs/guides/wave-directory-structure/)** — How wave outputs are organized per feature
-- **[Invoke Reviewers](https://github.com/nWave-ai/nWave/tree/main/docs/guides/invoke-reviewer-agents/)** — Peer review workflow
-- **[Troubleshooting](https://github.com/nWave-ai/nWave/tree/main/docs/guides/troubleshooting-guide/)** — Common issues and fixes
+- **[Agents and Commands Reference](docs/reference/index.md)** — All agents, commands, skills, templates
+- **[Wave Directory Structure](docs/guides/wave-directory-structure/)** — How wave outputs are organized per feature
+- **[Invoke Reviewers](docs/guides/invoke-reviewer-agents/)** — Peer review workflow
+- **[Troubleshooting](docs/guides/troubleshooting-guide/)** — Common issues and fixes
 
 ## Community
 

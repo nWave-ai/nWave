@@ -1,5 +1,0 @@
-{"type":"user","message":{"role":"user","content":"Help me investigate this codebase."},"uuid":"u-1","timestamp":"2026-04-27T10:00:00.000Z"}
-{"type":"assistant","message":{"id":"msg_a1","model":"claude-opus-4-7-20251101","usage":{"input_tokens":12,"cache_creation_input_tokens":8421,"cache_read_input_tokens":0,"output_tokens":187}},"uuid":"a-1","timestamp":"2026-04-27T10:00:01.000Z"}
-{"type":"assistant","message":{"id":"msg_a2","model":"claude-opus-4-7-20251101","usage":{"input_tokens":7,"cache_creation_input_tokens":0,"cache_read_input_tokens":24109,"output_tokens":312}},"uuid":"a-2","timestamp":"2026-04-27T10:00:02.000Z"}
-{"type":"assistant","message":{"id":"msg_a3","model":"claude-opus-4-7-20251101"},"uuid":"a-3","timestamp":"2026-04-27T10:00:03.000Z"}
-{"type":"assistant","message":{"id":"msg_a4","model":"claude-opus-4-7-20251101","usage":{"input_tokens":3,"cache_creation_input_tokens":0,"cache_read_input_tokens":32530,"output_tokens":98}},"uuid":"a-4","timestamp":"2026-04-27T10:00:04.000Z"}

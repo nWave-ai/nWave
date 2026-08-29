@@ -1,0 +1,27 @@
+# Ignore config for scripts/check_docs_links.py (auto-loaded from repo root).
+# Excluded from releases (see release-prod.yml rsync excludes).
+# Parsed by a minimal stdlib reader (no pyyaml): only top-level `key:` lines and
+# `- item` block lists are understood — keep it to the two keys below.
+
+# Substrings matched (case-insensitive) against absolute links; a match
+# SILENCES that link's findings. Use a full URL prefix or an "owner/repo" slug
+# for nWave-ai repos that are legitimately private / not-yet-published.
+ignore_urls:
+  # Generated skill reference pages link to canonical public source on GitHub
+  # by design (docgen.py, released skills only) — silence the "prefer relative"
+  # nudge for those.
+  - nWave-ai/nWave/blob/main/nWave/skills
+  # - nWave-ai/nwave-dev        # example: this private repo
+  # - nWave-ai/nWave-beta       # example: pre-release channel
+
+# Repo-relative directories/files skipped during scanning.
+ignore_paths:
+  # Dev-only meta-docs that show link syntax as examples:
+  - docs/internal
+  # Historical / archived docs that intentionally reference since-moved content
+  # (these were the old check_markdown_links.py EXCLUDED_DIRS):
+  - docs/reports/analysis/divio-audit
+  - docs/research
+  - docs/archive
+  - docs/feature
+  - docs/evolution
