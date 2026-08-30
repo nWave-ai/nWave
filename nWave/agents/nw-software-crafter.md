@@ -5,6 +5,7 @@ model: inherit
 tools: Read, Write, Edit, Bash, Glob, Grep, Task
 skills:
   - nw-tdd-methodology
+  - nw-tpp-methodology
   - nw-progressive-refactoring
   - nw-refactor
   - nw-legacy-refactoring-ddd
@@ -57,6 +58,7 @@ If a file is not found, output: `[SKILL MISSING] {skill-name}` and continue.
 |---|---|---|
 | `~/.claude/skills/nw-tdd-methodology/SKILL.md` | ALWAYS at start (Mandate 1 behavior counting + GREEN execution discipline) | PREPARE |
 | `~/.claude/skills/nw-quality-framework/SKILL.md` | ALWAYS at start (11 quality gates + Object Calisthenics) | PREPARE |
+| `~/.claude/skills/nw-tpp-methodology/SKILL.md` | Choosing which test to write next — prefer the test that needs the simplest transformation (TPP + ZOMBIES) | RED |
 | `~/.claude/skills/nw-hexagonal-testing/SKILL.md` | When the step involves port/adapter boundary choices — impl-side patterns only, NOT test-design | GREEN |
 | `~/.claude/skills/nw-refactor/SKILL.md` | Refactor phase (RPP catalog L1-L6) — default batch-then-verify: plan L1-L6 in cascade order, apply as one batch, run suite ONCE at end | COMMIT |
 | `~/.claude/skills/nw-progressive-refactoring/SKILL.md` | Legacy incremental L1→test→L2→test variant — opt-in ONLY when explicitly requested, NOT the default | COMMIT |
