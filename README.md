@@ -43,32 +43,57 @@ Using pipx, OpenCode, or Codex instead? See the [Installation Guide](docs/guides
 | **[Jobs To Be Done](docs/guides/jobs-to-be-done-guide/)** | Which wave fits your task |
 | **[Wave Directory Structure](docs/guides/wave-directory-structure/)** | How artifacts are organized per feature |
 | **[Feature Delta Format (L7)](docs/guides/feature-delta-l7-format.md)** | Author features in the lean single-file model |
-| **[Outcomes Registry](docs/product/outcomes/README.md)** | Catch duplicate rules and operations at design time |
+| **[Outcomes Registry](docs/reference/outcomes-cli.md)** | Catch duplicate rules and operations at design time |
 | **[Configuring Doc Density](docs/guides/configuring-doc-density.md)** | Control lean vs full wave output |
 | **[Agents and Commands Reference](docs/reference/index.md)** | All agents and commands |
 | **[Troubleshooting](docs/guides/troubleshooting-guide/)** | Common issues and fixes |
 
 ---
 
-## What's New in v3.19
+## Latest Maintenance Release: v3.22.0
+
+[nWave v3.22.0](https://github.com/nWave-ai/nWave/releases/tag/v3.22.0) is a maintenance release for the v3 line. It resolves community reports across installation, configuration, finalization, diagnostics, repository hygiene, command discovery, and contributor guidance:
+
+Thank you to everyone in the community who reported these problems and helped make nWave better.
+
+- delivery guidance keeps the hand-off green for squash, rebase, and fast-forward-only workflows ([#56](https://github.com/nWave-ai/nWave/issues/56));
+- the installed outcomes registry now includes the schema it needs ([#63](https://github.com/nWave-ai/nWave/issues/63));
+- relative DES log paths are anchored to the worktree root ([#79](https://github.com/nWave-ai/nWave/issues/79));
+- platform and delivery architecture work is routed to the appropriate specialist ([#81](https://github.com/nWave-ai/nWave/issues/81));
+- finalization preserves feature workspace history while removing transient session state ([#83](https://github.com/nWave-ai/nWave/issues/83));
+- supported documentation-density prompt modes are documented and validated ([#84](https://github.com/nWave-ai/nWave/issues/84));
+- public repository dotfiles and local-only state receive the intended protection ([#90](https://github.com/nWave-ai/nWave/issues/90));
+- generated documentation links no longer depend on which worktree produced them ([#91](https://github.com/nWave-ai/nWave/issues/91));
+- Git verification failures now provide more actionable explanations ([#92](https://github.com/nWave-ai/nWave/issues/92));
+- `/nw-execute` is easier to discover for a known single step ([#96](https://github.com/nWave-ai/nWave/issues/96));
+- contributor guidance identifies the generated plugin payload and its canonical sources ([#97](https://github.com/nWave-ai/nWave/issues/97)); and
+- a skipped commit no longer counts as completed work ([#99](https://github.com/nWave-ai/nWave/issues/99)).
+
+Security hardening replaces legacy content fingerprints with SHA-256 and removes the vulnerable gitlint toolchain.
+
+**Release scope:** Graphify ran only inside the release workflow's isolated verification environment; it is not included in the release artifacts or installed for users. No polyglot toolchain was added, and the installed polyglot templates are unchanged from v3.21. This remains a v3 release and does not include the experimental v4 line.
+
+**Known limitation:** The commit-metadata correction reported in [#78](https://github.com/nWave-ai/nWave/issues/78) is not complete: some generated metadata may not be recognized as Git trailers. Please continue to track #78 rather than relying on that correction in v3.22.0.
+
+## Previous Releases
+
+### v3.19
 
 - **Per-project activation (opt-in gate)** — nWave's globally-installed DES hooks are now **opt-in per repository**. Unmarked repos stay silent (hooks exit 0); a tracked `.nwave/local-config.json` marker plus a global `activation.mode` (`opt-in` default, or `all`) decide where nWave runs. Manage it with `nwave-ai project enable|disable`, `nwave-ai mode`, and `nwave-ai status`. Existing projects auto-adopt on first `/nw-` use, so nothing breaks. See **[Activating nWave in a Project](docs/guides/activating-nwave-per-project.md)**.
 - **`nwave-ai` CLI reference** — the user-facing command surface (`install`, `uninstall`, `doctor`, `status`, `project`, `mode`, `attribution`, `completion`, `version`) is documented in one place, including the `install` flag pass-through to the underlying installer. See **[CLI Reference](docs/reference/cli.md)**.
 
 See the full **[What's New in v3.19](docs/guides/whats-new-v319/)** for details.
 
-## Previous Releases
-
 ### v3.15
 
-- **3-Phase TDD Canon (Default)** — New canonical TDD methodology (RED → GREEN → COMMIT) replaces the legacy 5-phase contract (PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT). Documented in ADR-025. Dual-canon backward compatibility: existing audit logs and pre-2026-05-07 executions replay correctly under v4 5-phase contract; new work uses 3-phase by default. Configured per rigor profile (lean mode uses RED → GREEN).
+- **3-Phase TDD Canon (Default)** — New canonical TDD methodology (RED → GREEN → COMMIT) replaces the legacy 5-phase contract (PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT). Documented in ADR-025. Dual-canon backward compatibility: existing audit logs and pre-2026-05-07 executions replay correctly under the legacy five-phase execution-log schema; new work uses 3-phase by default. Configured per rigor profile (lean mode uses RED → GREEN).
 - **Codex CLI support** — Full nWave DES enforcement now works with [OpenAI Codex CLI](https://platform.openai.com/docs/guides/codex). Pre-tool-use hooks wire automatically; every Bash and file action validates against your TDD phase gates. See **[Installing for Codex CLI](docs/guides/installing-codex.md)**.
 
 ### v3.14
 
 - **Lean wave docs (L7 single-file)** — Each feature lives in one `feature-delta.md` with schema-typed section headings (`## Wave: <WAVE> / [REF|WHY|HOW] <name>`). Tier-1 `[REF]` is auto-produced; Tier-2 `[WHY]` and `[HOW]` are opt-in via `--expand`. Downstream agents grep section headings instead of reading whole subdirectories. See **[Feature Delta Format (L7)](docs/guides/feature-delta-l7-format.md)**.
 - **Feature-delta validator** — `nwave-ai validate-feature-delta <path>` checks structural rules (E1–E5) and emits JSON for CI integration. Vendor-neutral: no hooks auto-installed; pick a recipe from **[Enforcement Recipes](docs/guides/enforcement-recipes.md)** (12 platforms covered).
-- **Outcomes registry** — Design-time deduplication. `nwave-ai outcomes register|check|check-delta` flags spec-level collisions before code is written, via type-shape + keyword Jaccard. See **[Why an outcomes registry?](docs/product/outcomes/README.md)** and **[Your first outcome](docs/guides/outcomes-first-outcome/README.md)**.
+- **Outcomes registry** — Design-time deduplication. `nwave-ai outcomes register|check|check-delta` flags spec-level collisions before code is written, via type-shape + keyword Jaccard. See the **[Outcomes CLI reference](docs/reference/outcomes-cli.md)** and **[Your first outcome](docs/guides/outcomes-first-outcome/README.md)**.
 - **Doc density config** — Per-project `lean` vs `full` density controls how much each wave emits. Tune token cost per wave. See **[Configuring Doc Density](docs/guides/configuring-doc-density.md)**.
 - **Uninstall correctness fix (v3.14.0-rc1)** — `nwave-ai uninstall --force` now removes all installed artifacts (`skills/nw-*`, `lib/python/des/`, all 5 DES hook event types in `settings.json`) while preserving user-created skills. Previous versions left ~197 skill dirs and 3 hook entries behind. See **[Troubleshooting → Uninstall left files behind](docs/guides/troubleshooting-guide/#uninstall-left-files-behind-fixed-in-v314)**.
 
