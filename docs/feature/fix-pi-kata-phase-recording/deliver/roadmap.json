@@ -1,0 +1,57 @@
+{
+  "roadmap": {
+    "project_id": "fix-pi-kata-phase-recording",
+    "created_at": "2026-06-24T00:00:00Z",
+    "total_steps": 2,
+    "goal": "Fix the pi-kata live phase-recording gap: deliver the crafter skill via the missing resources_discover handler so the model receives the des-log-phase recording contract, wire advance_step_id for deterministic per-step ids, and add model-free regression tests covering the previously-uncovered live wiring (skill discoverability + extension-driven recording + incomplete-cycle-blocks-at-commit). Zero src/des change."
+  },
+  "phases": [
+    {
+      "id": "01",
+      "name": "Fix pi-kata live phase-recording wiring",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "Deliver crafter skill via resources_discover handler",
+          "agent": "nw-software-crafter",
+          "deps": [],
+          "test_file": "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_03_full_kata.py",
+          "scenario_name": "Bug regression: the rendered pi extension surfaces the crafter skill via resources_discover",
+          "files_to_modify": [
+            "nWave/templates/pi-des-extension.ts.template",
+            "scripts/install/plugins/pi_des_plugin.py"
+          ],
+          "criteria": [
+            "Add a regression test (RED) asserting the rendered extension registers a resources_discover handler returning skillPaths that includes the installed software-crafter skill dir",
+            "Implement resources_discover in the template returning the placed skill dir in skillPaths (confirm shape vs pi 0.79.9 types.d.ts ResourcesDiscoverResult)",
+            "PiDESPlugin.verify asserts the extension exposes resources_discover AND the skill dir is discoverable (not just file-exists)",
+            "Extension stays a pure relay (thin-translator AST/string test still green); zero src/des change"
+          ],
+          "implementation_notes": "Root Cause A: the skill (des-log-phase recording contract) is never surfaced to pi because the extension has no resources_discover handler. Reuse the rendered software-crafter skill dir the plugin already places."
+        },
+        {
+          "id": "01-02",
+          "name": "Extension-driven recording regression + deterministic step-id advance",
+          "agent": "nw-software-crafter",
+          "deps": [
+            "01-01"
+          ],
+          "test_file": "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_03_full_kata.py",
+          "scenario_name": "Bug regression: a kata cycle recorded via the skill-prescribed path populates the execution log and an incomplete cycle blocks at commit",
+          "files_to_modify": [
+            "scripts/install/pi_kata/bootstrap.py",
+            "tests/des/acceptance/pi_kata_tdd_flow/steps/kata_support.py",
+            "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_03_full_kata.py"
+          ],
+          "criteria": [
+            "Add a model-free regression test (RED) that drives RED-GREEN-COMMIT recording via the skill-prescribed des-log-phase invocation path (install-resolved spawn) rather than a direct Python record_phase shortcut, asserting events land in execution-log.json",
+            "Assert an incomplete cycle BLOCKS at the live commit boundary; if it fail-opens (the dogfood symptom) and that is engine behavior, STOP and escalate (K2 zero-engine-change boundary)",
+            "Wire advance_step_id deterministically (extension/skill calls it for a fresh NN-NN per RED) instead of dead code; or document removal if prose-increment is retained",
+            "Zero src/des change; pi_kata + pi_harness suites stay green"
+          ],
+          "implementation_notes": "Root Cause B + the confirmed second defect (commit allowed despite missing phases WITH /kata run). Replace kata_support.record_phase direct shortcut for >=1 scenario with extension-path-driven recording so the live wiring is covered. advance_step_id is currently dead code."
+        }
+      ]
+    }
+  ]
+}

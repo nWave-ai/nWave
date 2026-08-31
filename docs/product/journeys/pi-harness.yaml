@@ -1,0 +1,38 @@
+# Journey SSOT. Bootstrapped by /nw-discuss for feature pi-harness (2026-06-22).
+id: pi-harness-crafter-kata
+name: "Enforced-TDD kata in bare pi"
+persona: pi-crafter-user
+jobs:
+  - pi-tdd-enforced-crafter
+emotional_arc: skepticism -> reassurance -> growing-confidence -> trust
+steps:
+  - id: install
+    action: "Install nWave-for-pi via the nWave installer (pi target)."
+    output: "pi extension + software-crafter skill installed, manifest-tracked."
+    emotion: skepticism
+  - id: launch
+    action: "Run `$ pi` with no options."
+    output: "Bare interactive pi with the DES extension active."
+    emotion: skepticism
+  - id: invoke
+    action: "Type `/skill:software-crafter` and give it a kata."
+    output: "Crafter loads, states the RED->GREEN->REFACTOR contract it enforces."
+    emotion: reassurance
+  - id: red-block
+    action: "Crafter (or I) attempt implementation before a failing test."
+    output: "pi blocks the tool_call with reason 'write the test first'."
+    emotion: reassurance
+  - id: cycle
+    action: "Crafter writes one failing test, minimal impl, green, refactor, repeat."
+    output: "Each transition allowed/blocked per the rules; recorded in audit log."
+    emotion: growing-confidence
+  - id: verify
+    action: "Inspect the DES JSONL audit log and `Step-Id` git commit history."
+    output: "Ordered RED->GREEN->REFACTOR trail proving strict TDD provenance."
+    emotion: trust
+shared_artifacts:
+  - name: des_audit_log
+    source: "existing DES JsonlAuditLogWriter (reused, unmodified)"
+  - name: step_id_trailer
+    source: "git commit Step-Id: trailer (existing convention)"
+source: docs/feature/pi-harness/feature-delta.md
