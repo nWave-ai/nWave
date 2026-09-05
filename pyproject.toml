@@ -23,7 +23,7 @@ packages = ["nwave_ai"]
 
 [project]
 name = "nwave-ai"
-version = "3.22.0"
+version = "3.22.1"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -139,12 +139,6 @@ Issues = "https://github.com/nWave-ai/nWave/issues"
 
 [project.scripts]
 nwave-ai = "nwave_ai.cli:main"
-des-log-phase = "des.cli.log_phase:main"
-des-commit = "des.cli.commit:main"
-des-init-log = "des.cli.init_log:main"
-des-verify-integrity = "des.cli.verify_deliver_integrity:main"
-des-roadmap = "des.cli.roadmap:main"
-des-health-check = "des.cli.health_check:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -333,7 +327,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "3.22.0"
+version = "3.22.1"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",

@@ -50,9 +50,9 @@ Using pipx, OpenCode, or Codex instead? See the [Installation Guide](docs/guides
 
 ---
 
-## Latest Maintenance Release: v3.22.0
+## Latest Maintenance Release: v3.22.1
 
-[nWave v3.22.0](https://github.com/nWave-ai/nWave/releases/tag/v3.22.0) is a maintenance release for the v3 line. It resolves community reports across installation, configuration, finalization, diagnostics, repository hygiene, command discovery, and contributor guidance:
+[nWave v3.22.1](https://github.com/nWave-ai/nWave/releases/tag/v3.22.1) is the current corrective maintenance release for the v3 line. It carries forward the twelve community fixes that are already present in published 3.22.0, across installation, configuration, finalization, diagnostics, repository hygiene, command discovery, and contributor guidance:
 
 Thank you to everyone in the community who reported these problems and helped make nWave better.
 
@@ -69,13 +69,17 @@ Thank you to everyone in the community who reported these problems and helped ma
 - contributor guidance identifies the generated plugin payload and its canonical sources ([#97](https://github.com/nWave-ai/nWave/issues/97)); and
 - a skipped commit no longer counts as completed work ([#99](https://github.com/nWave-ai/nWave/issues/99)).
 
-Security hardening replaces legacy content fingerprints with SHA-256 and removes the vulnerable gitlint toolchain.
+Security hardening carried forward from 3.22.0 replaces legacy content fingerprints with SHA-256 and removes the vulnerable gitlint toolchain.
 
 **Release scope:** Graphify ran only inside the release workflow's isolated verification environment; it is not included in the release artifacts or installed for users. No polyglot toolchain was added, and the installed polyglot templates are unchanged from v3.21. This remains a v3 release and does not include the experimental v4 line.
 
-**Known limitation:** The commit-metadata correction reported in [#78](https://github.com/nWave-ai/nWave/issues/78) is not complete: some generated metadata may not be recognized as Git trailers. Please continue to track #78 rather than relying on that correction in v3.22.0.
+**Known limitation:** The commit-metadata correction reported in [#78](https://github.com/nWave-ai/nWave/issues/78) is not complete: some generated metadata may not be recognized as Git trailers. Please continue to track #78 rather than relying on that correction in v3.22.1.
 
 ## Previous Releases
+
+### v3.22.0
+
+The twelve fixes above shipped in [nWave v3.22.0](https://github.com/nWave-ai/nWave/releases/tag/v3.22.0).
 
 ### v3.19
 

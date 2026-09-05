@@ -584,6 +584,7 @@ The following subcommands are supported but are not part of the everyday user su
 The following console scripts are available for DES (Deterministic Execution System) internals and are not part of the everyday user surface:
 
 - **des-log-phase** — Inspect DES task-prompt phase logs.
+- **des-commit** — Create a Git commit containing only a delivery step's declared owned paths and append its `Step-Id` and `Task-Id` trailers.
 - **des-init-log** — Initialize a fresh DES audit log.
 - **des-verify-integrity** — Verify DES audit-log integrity.
 - **des-roadmap** — Display DES phase roadmap.
