@@ -7,7 +7,7 @@ Build a working, tested feature from scratch using nWave. Three commands, five m
 
 **Prerequisites**:
 - **Platform**: Linux, macOS, or Windows (WSL2 required)
-- nWave installed — `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"` — in your terminal, not Claude Code
+- nWave installed — `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"` — in your terminal, not Claude Code
 - Claude Code open in an empty Python project with `pytest` available
 - Use a permanent directory (not `/tmp`) — later tutorials build on this project
 

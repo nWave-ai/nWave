@@ -11,7 +11,7 @@ nWave runs inside [Claude Code](https://claude.com/product/claude-code). It brea
 **Requirements**: Python 3.10+ and Claude Code.
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
 ```
 
 This installs the `nwave-ai` CLI and wires nWave into Claude Code in one step. It uses [uv](https://docs.astral.sh/uv/) when available (recommended); [pipx](https://pipx.pypa.io/) is supported but not recommended. Restart Claude Code when it finishes.

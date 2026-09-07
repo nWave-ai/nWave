@@ -28,7 +28,7 @@ If you are the first developer on the project:
 
 ```bash
 # 1. Install nWave (installs the CLI, deploys agents, runs doctor)
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
 
 # 2. Run your first wave on a real feature
 # (inside Claude Code)
@@ -59,7 +59,7 @@ git clone <repo-url>
 cd <repo>
 
 # 2. Install nWave on your machine
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
 
 # 3. Verify your install is healthy
 nwave-ai doctor
@@ -189,7 +189,7 @@ Use this format when introducing nWave to a team that has not used it before.
 
 | Time | Activity |
 |------|----------|
-| 0-15 min | Everyone installs: `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"` |
+| 0-15 min | Everyone installs: `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"` |
 | 15-25 min | Facilitator runs `/nw-discuss` on the chosen feature, narrates decisions aloud |
 | 25-35 min | Team reviews the `docs/feature/` artifact together, edits if needed, commits |
 | 35-50 min | Facilitator runs `/nw-distill`, team reviews acceptance tests |
