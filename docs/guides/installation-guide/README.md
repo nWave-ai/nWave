@@ -46,7 +46,7 @@ pipx ensurepath
 ### One-line install
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
 ```
 
 This bootstrap script picks a Python application installer, installs the
@@ -102,17 +102,17 @@ With the `sh -c "$(curl ...)"` form, put script options after a `--` separator:
 
 ```bash
 # Force pipx even if uv is present (explicit consent — no prompt)
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)" -- --tool pipx
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)" -- --tool pipx
 
 # Accept the pipx fallback without prompting (CI / non-interactive)
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)" -- --yes
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)" -- --yes
 ```
 
 The environment-variable form works too and needs no separator:
 
 ```bash
 NWAVE_INSTALLER_TOOL=pipx NWAVE_ASSUME_YES=1 \
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main}/scripts/install/install.sh)"
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
 ```
 
 ### Exit codes

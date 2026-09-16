@@ -10,7 +10,7 @@ Behaviour:
 2. If ``npx`` is absent on PATH: log ``[polyglot-smoke] toolchain absent —
    skipped`` and exit 0 with WARNING. (Fail-open robustness — CI without
    Node should not break unrelated test suites.)
-3. ``npm install`` (only if ``node_modules`` absent).
+3. ``npm ci`` from the committed lockfile (only if ``node_modules`` absent).
 4. ``npx vitest run``.
 5. Exit 0 on success; non-zero on failure with the captured stderr.
 
@@ -69,21 +69,21 @@ def main() -> int:
 
     node_modules = PILOT_DIR / "node_modules"
     if not node_modules.is_dir():
-        _log("installing npm dependencies (one-time per checkout)")
+        _log("installing npm dependencies from lockfile (one-time per checkout)")
         install_env = os.environ.copy()
         # Keep npm output terse but visible.
         install_env.setdefault("npm_config_fund", "false")
         install_env.setdefault("npm_config_audit", "false")
         install_env.setdefault("npm_config_progress", "false")
         result = subprocess.run(
-            ["npm", "install", "--no-fund", "--no-audit"],
+            ["npm", "ci", "--no-fund", "--no-audit"],
             cwd=str(PILOT_DIR),
             check=False,
             text=True,
             env=install_env,
         )
         if result.returncode != 0:
-            _log(f"npm install failed (exit {result.returncode})")
+            _log(f"npm ci failed (exit {result.returncode})")
             return EXIT_TOOLCHAIN_BROKEN
 
     _log("running vitest")
