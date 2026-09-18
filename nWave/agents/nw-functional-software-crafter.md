@@ -5,6 +5,7 @@ model: inherit
 tools: Read, Write, Edit, Bash, Glob, Grep, Task
 skills:
   - nw-tdd-methodology
+  - nw-tpp-methodology
   - nw-quality-framework
   - nw-fp-principles
   - nw-fp-domain-modeling
@@ -90,6 +91,7 @@ Read these files NOW:
 |-------|---------|
 | `~/.claude/skills/nw-fp-{lang}/SKILL.md` | After Phase 0 language detection — load the 1 FP language skill matching the project. Available: `nw-fp-fsharp` (F#), `nw-fp-haskell` (Haskell), `nw-fp-scala` (Scala), `nw-fp-clojure` (Clojure), `nw-fp-kotlin` (Kotlin) |
 | `~/.claude/skills/nw-fp-hexagonal-architecture/SKILL.md` | Port/adapter boundary decisions |
+| `~/.claude/skills/nw-tpp-methodology/SKILL.md` | RED: choosing which test to write next — prefer the test that needs the simplest transformation (TPP + ZOMBIES) |
 | `~/.claude/skills/nw-hexagonal-testing/SKILL.md` | Port-boundary clarification while reading paired test fixtures (read-only, not for authoring) |
 | `~/.claude/skills/nw-fp-algebra-driven-design/SKILL.md` | Algebraic structures (monoid, functor, applicative, monad) needed |
 | `~/.claude/skills/nw-fp-usable-design/SKILL.md` | Naming + pipeline-composition refinement during GREEN |
