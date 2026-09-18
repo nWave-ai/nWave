@@ -1,0 +1,83 @@
+{
+  "schema_version": "3.0",
+  "feature_id": "pi-kata-tdd-flow",
+  "events": [
+    {
+      "sid": "01-01",
+      "p": "RED",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:03:44Z"
+    },
+    {
+      "sid": "01-01",
+      "p": "GREEN",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:06:06Z"
+    },
+    {
+      "sid": "01-01",
+      "p": "COMMIT",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:06:25Z"
+    },
+    {
+      "sid": "01-02",
+      "p": "RED",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:11:44Z"
+    },
+    {
+      "sid": "01-02",
+      "p": "GREEN",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:16:28Z"
+    },
+    {
+      "sid": "01-02",
+      "p": "COMMIT",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:16:50Z"
+    },
+    {
+      "sid": "01-03",
+      "p": "RED",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:22:24Z"
+    },
+    {
+      "sid": "01-03",
+      "p": "GREEN",
+      "s": "SKIPPED",
+      "d": "DEFERRED: blocked on DISTILL-authored AT scaffold defect \u2014 kata_support.commit_with_trailers cannot commit a skipped step (nothing to commit); escalated to nw-acceptance-designer (AT_ASSERTION_BUG). No production fix possible; template/plugin off-path.",
+      "t": "2026-06-24T12:23:34Z"
+    },
+    {
+      "sid": "01-03",
+      "p": "COMMIT",
+      "s": "SKIPPED",
+      "d": "DEFERRED: no commit \u2014 step not commit-ready; failing scenario cannot reach GREEN without editing DISTILL-authored test scaffold (Test Integrity / Critical Rule 7). Awaiting acceptance-designer scaffold fix for kata_support skipped-step commit.",
+      "t": "2026-06-24T12:23:40Z"
+    },
+    {
+      "sid": "01-03",
+      "p": "GREEN",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:35:03Z"
+    },
+    {
+      "sid": "01-03",
+      "p": "COMMIT",
+      "s": "EXECUTED",
+      "d": "PASS",
+      "t": "2026-06-24T12:35:52Z"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+# Persona SSOT. Bootstrapped by /nw-discuss for feature pi-harness (2026-06-22).
+id: pi-crafter-user
+name: "Devon — the polyglot agent user"
+summary: >-
+  A developer who runs more than one coding-agent harness and wants identical,
+  verifiable TDD discipline across all of them. Prefers pi for its minimalism
+  but will not trade away the test-first provenance guarantees nWave gives in
+  Claude Code.
+goals:
+  - Use the harness they like (pi) without losing nWave's enforced TDD.
+  - Get auditable proof (log + commits) that code was built test-first.
+  - Start with zero ceremony — bare `$ pi`, one command to the crafter.
+frustrations:
+  - Minimal harnesses have no TDD enforcement; agents skip steps silently.
+  - Cannot trust AI-generated tests were written before implementation.
+  - Re-policing every agent step by hand defeats the point of automation.
+mental_model:
+  - "A 'skill' is how I summon a capability in pi (/skill:name)."
+  - "If a step is wrong, the tool call should just be refused, with a reason."
+  - "Provenance lives in the git history and the execution log."
+vocabulary:
+  - skill, extension, tool_call, hook, RED/GREEN/REFACTOR, Step-Id trailer
+related_jobs:
+  - pi-tdd-enforced-crafter
+source: docs/feature/pi-harness/feature-delta.md

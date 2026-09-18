@@ -1,0 +1,81 @@
+{
+  "roadmap": {
+    "project_id": "pi-kata-tdd-flow",
+    "created_at": "2026-06-24",
+    "total_steps": 3,
+    "goal": "Add the self-driven nWave DELIVER TDD-cycle driving layer for a kata in pi: a deterministic kata bootstrap helper plus a synthesized-transcript commit-context assembler that activate the shipped-but-inert pi commit gate, then wire both into the pi extension template and installer plugin. Closes the original pi-harness DoD (crafter solves a kata by strict canonical TDD, verified by execution log + commit history). Reuses the Python DES engine UNCHANGED (zero src/des change, K2)."
+  },
+  "phases": [
+    {
+      "id": "01",
+      "name": "Self-driven kata TDD driving layer over the reused DES engine",
+      "description": "Implement the kata bootstrap + transcript-context helpers and wire them into the pi extension template + installer plugin per ADR-PKT-001 (KD1-KD4), turning the 10 active RED scenarios GREEN while keeping the live-model scenario skipped and the pi-harness suite + walking skeleton green. Python DES engine reused unchanged (K2).",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "Implement deterministic kata-session bootstrap and manifest writer",
+          "agent": "nw-software-crafter",
+          "deps": [],
+          "test_file": "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_01_bootstrap.py",
+          "scenario_name": "Bootstrapping a kata establishes a recorded, gate-ready session",
+          "files_to_modify": [
+            "scripts/install/pi_kata/bootstrap.py"
+          ],
+          "criteria": [
+            "bootstrap_kata_session, read_kata_manifest, advance_step_id implemented; __SCAFFOLD__ removed",
+            "Activated project: runs reused des-init-log, writes kata-manifest.json (project_id, step_id 01-01, cwd) plus session marker",
+            "Unactivated project returns status refused, creates no session, leaves filesystem unchanged",
+            "Re-bootstrap of an existing session preserves manifest and creates no duplicate (idempotent)",
+            "Manifest writes are atomic temp-then-move and re-read-asserted (ADR-PKT-001 H3)"
+          ],
+          "implementation_notes": "Closes Slice-01 (KD1/KD2): scenarios 'Bootstrapping a kata establishes a recorded, gate-ready session' (US-1 bounded-change), 'Bootstrapping outside an activated project leaves the project untouched' (US-1 error), 'Re-bootstrapping an existing session preserves the recorded history' (US-1). Implement scripts/install/pi_kata/bootstrap.py: bootstrap_kata_session runs the REUSED des.cli.init_log over docs/feature/{kata_id}/deliver (idempotent -- never clobber an existing log), writes kata-manifest.json carrying (project_id=kata_id, step_id='01-01', cwd=project_root) plus a deliver-session marker, returns {'status':'bootstrapped','manifest':{...}} or an observable {'status':'refused','reason':...} (never raises) when the project lacks .nwave activation. read_kata_manifest re-reads and returns the persisted manifest. advance_step_id increments the second NN field (01-01->01-02), atomic write + re-read-assert, returns new step-id (SPIKE constraint 3: never reuse a step-id). Activation detection mirrors kata_support.make_activated_project (.nwave/local-config.json enabled_for_repo + git repo). Reach des-init-log via the install-resolved interpreter form python -m des.cli.init_log (KD3), NOT the dev PYTHONPATH=src .venv form and NOT a bare console script. ZERO src/des change (K2). TEST PARADIGM: state-mutating Then steps already assert via assert_state_delta over the filesystem-snapshot universe (the suite supplies it). EXEMPT FROM PARADIGM: these are layer-3 @real-io @adapter-integration example-only scenarios (DISTILL Mandate 9/11 -- no PBT at this layer); compensate with the assert_state_delta universe guard already present in test_slice_01_bootstrap.py (no kata session is created / filesystem otherwise unchanged)."
+        },
+        {
+          "id": "01-02",
+          "name": "Implement synthesized-transcript commit-context assembler",
+          "agent": "nw-software-crafter",
+          "deps": [
+            "01-01"
+          ],
+          "test_file": "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_02_self_driven_cycle.py",
+          "scenario_name": "A completed increment with a trailered commit is accepted at the boundary",
+          "files_to_modify": [
+            "scripts/install/pi_kata/transcript_context.py"
+          ],
+          "criteria": [
+            "build_transcript_content, write_synthesized_transcript, build_subagent_stop_payload implemented; __SCAFFOLD__ removed",
+            "Transcript content carries the four exact DES markers (VALIDATION/PROJECT-ID/STEP-ID/PROJECT-ROOT)",
+            "Complete trailered step accepted: subagent-stop returns exit 0 with empty stdout (ALLOW)",
+            "Incomplete (RED-only) step blocked: stdout decision=block with a reason at exit 0 (SPIKE constraint 1)",
+            "Malformed markers (empty project-id) degrade to non-DES passthrough decision=allow"
+          ],
+          "implementation_notes": "Closes Slice-02 (KD4): scenarios 'Recording a completed increment leaves an ordered phase trail' (US-2 bounded-change, via reused des-log-phase already wired in kata_support), 'A completed increment with a trailered commit is accepted at the boundary' (US-2), 'An incomplete increment is blocked at the commit boundary with a reason' (US-2 error), 'A malformed commit-context transcript is treated as no DES context' (US-2 error). Implement scripts/install/pi_kata/transcript_context.py: build_transcript_content emits the four VERBATIM markers per src/des/domain/des_marker_parser '<!-- DES-VALIDATION : required -->', '<!-- DES-PROJECT-ID : {kata_id} -->', '<!-- DES-STEP-ID : {step_id} -->', '<!-- DES-PROJECT-ROOT : {project_root} -->' (SPIKE constraint 2: a malformed marker / empty project-id silently degrades to non-DES passthrough = allow -- this IS the malformed-transcript scenario, do not special-case it, let marker fidelity drive it). write_synthesized_transcript writes one-line JSONL {'message':{'content': <four markers>}} to transcript_path (shape per subagent_stop_handler.extract_des_context_from_transcript). build_subagent_stop_payload returns {'agent_transcript_path':..., 'cwd': project_root} so the engine sets effective_cwd=cwd and runs GitCommitVerifier. Block is delivered via stdout JSON decision=block at EXIT 0 (Stop-class hook -- SPIKE constraint 1); do NOT expect exit 2. The recording leg uses the REUSED des.cli.log_phase already driven by kata_support.record_complete_cycle (no new recording code). ZERO src/des change (K2). Action item A-PKT-1: where cheap, the slice-02 observable assertions ('only that step's phase trail changed') already ride a before/after phase-trail delta -- preserve that. TEST PARADIGM: real tmp git repo + real reused CLIs + real unchanged subagent-stop adapter round-trip. EXEMPT FROM PARADIGM: layer-3 @real-io @adapter-integration example-only marker-fidelity + adapter-decision scenarios (DISTILL Mandate 9/11 -- no PBT at this layer); compensate with the explicit malformed-marker sad-path scenario asserting decision=allow."
+        },
+        {
+          "id": "01-03",
+          "name": "Wire bootstrap command and commit-context into extension and plugin",
+          "agent": "nw-software-crafter",
+          "deps": [
+            "01-02"
+          ],
+          "test_file": "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_03_full_kata.py",
+          "scenario_name": "A multi-step kata records each step's cycle in plan order",
+          "files_to_modify": [
+            "nWave/templates/pi-des-extension.ts.template",
+            "scripts/install/plugins/pi_des_plugin.py"
+          ],
+          "criteria": [
+            "Multi-step kata records each step's RED-GREEN-COMMIT in plan order with matching Step-Id commit history",
+            "A skipped step is blocked at the commit boundary while the completed earlier step stays accepted",
+            "A reverted manifest step-id surfaces as a blocked commit (decision=block with reason)",
+            "Extension template gains a pi.registerCommand kata-bootstrap handler plus a commit-context assembler branch, staying a pure relay",
+            "Plugin renders/registers the command with install-resolved python plus PYTHONPATH and places the crafter-skill cycle section"
+          ],
+          "implementation_notes": "Closes Slice-03 (KD1/KD2/KD4 + DoD): scenarios 'A multi-step kata records each step's cycle in plan order' (US-3 bounded-change), 'Skipping a step in a multi-step kata is blocked at the commit boundary' (US-3 error), 'A reverted step-id in the manifest surfaces as a blocked commit' (US-3 error, the H3 observation test). KEEP SKIPPED: 'A live pi model solves a real kata end-to-end with a verified trail' (@requires_external -- the model-backend Given fires pytest.skip; add NO step that needs a live model). EXTEND (do NOT rewrite) nWave/templates/pi-des-extension.ts.template: ADD a pi.registerCommand kata-bootstrap handler that delegates to scripts/install/pi_kata/bootstrap.py via the install-resolved python -m form (KD3), and a commit-context assembler branch on the existing git-commit subagent-stop route that emits the synthesized transcript (KD4) -- both stay PURE relays inventing no allow/block of their own (enforced by the existing thin-translator AST/string test; keep the pi-harness suite + @walking_skeleton green). EXTEND scripts/install/plugins/pi_des_plugin.py to render/register the command (reuse scripts.shared.install_paths.resolve_python_command_for_spawn + resolve_des_lib_path_for_spawn, mirror existing render path) and place the crafter-skill pi-runnable cycle+recording section. The slice-03 deterministic analogs are driven model-free through kata_support (reused des-log-phase + the 01-02 transcript assembler + unchanged subagent-stop); the reverted-manifest block rides the engine's existing COMMIT_NOT_VERIFIED fail-closed mode (ADR-PKT-001 H3 -- never a silent allow). Action item A-PKT-1: keep the slice-03 phase-order assertions delta-shaped where cheap. ZERO src/des change (K2). TEST PARADIGM: real tmp git repo + real reused CLIs + real unchanged adapter round-trip; rendered-template behavior asserted indirectly via the Python helpers' contract. EXEMPT FROM PARADIGM: layer-3 @real-io @adapter-integration example-only multi-step + skip/revert scenarios over a fixed plan (DISTILL Mandate 9/11 -- no PBT at this layer); compensate with the skip-block + reverted-manifest sad-path scenarios already enumerated."
+        }
+      ]
+    }
+  ]
+}

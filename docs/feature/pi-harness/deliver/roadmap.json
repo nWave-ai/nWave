@@ -1,0 +1,81 @@
+{
+  "roadmap": {
+    "project_id": "pi-harness",
+    "created_at": "2026-06-23",
+    "total_steps": 3,
+    "goal": "Bring nWave software-crafter TDD enforcement to the bare pi coding agent: turn the RED installer-plugin scaffold and skeleton extension into a full installer lifecycle + pure-translator gate set, reusing the unchanged Python DES engine (zero fork)."
+  },
+  "phases": [
+    {
+      "id": "01",
+      "name": "pi DES harness installer plus full translator gate set",
+      "description": "Implement the pi installer plugin lifecycle and extend the pi DES extension to a full RED-GREEN-commit gate set per ADR-pi-001, closing all 12 RED acceptance scenarios while keeping the 8 GREEN scenarios and @walking_skeleton green. Python DES engine reused unchanged.",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "Implement pi installer plugin and register it",
+          "agent": "nw-software-crafter",
+          "deps": [],
+          "test_file": "tests/des/acceptance/pi_harness/steps/test_installer_plugin_lifecycle.py",
+          "scenario_name": "Installing into a present pi config dir places the extension and manifest",
+          "files_to_modify": [
+            "scripts/install/plugins/pi_des_plugin.py",
+            "scripts/install/install_nwave.py"
+          ],
+          "criteria": [
+            "validate_prerequisites, install, verify, uninstall implemented; __SCAFFOLD__ marker removed",
+            "Install renders extension plus manifest into PI_CONFIG_DIR, embedding resolved python and DES lib path",
+            "PiDESPlugin registered in install_nwave.py with deps des when pi detected",
+            "Missing pi dir skips with success; missing DES lib refused with guidance",
+            "Reinstall refreshes extension and uninstall removes artifacts, both leaving operator files untouched"
+          ],
+          "implementation_notes": "Closes the 8 RED installer-plugin-lifecycle scenarios (install+manifest, pi-not-present skip, DES-lib-missing refusal, verify-after-install, verify-before-install, reinstall-preserves-operator-file, uninstall-removes-artifacts, uninstall-when-nothing-installed). Mirror opencode_des_plugin.py exactly: same PluginResult shape, _find_template fallback, hashlib manifest. Use scripts.shared.install_paths.resolve_python_command_for_spawn + resolve_des_lib_path_for_spawn to render the committed template nWave/templates/pi-des-extension.ts.template; honor PI_CONFIG_DIR override (default ~/.pi/agent), emit a non-fatal warning when pi dir absent (R1). Register PiDESPlugin in PluginRegistry.create() guarded by 'pi' in target_platforms, set_dependencies(['des']). Fold A3 here: confirm-and-document the pi skill directory + resources_discover skillPaths return shape against pi 0.79.9 (types at /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/extensions/types.d.ts); the crafter skill placement reuses the same rendered-into-config-dir mechanism (ADR-pi-003). Python DES engine (src/des/**) is REUSED UNCHANGED. TEST PARADIGM: state-mutating lifecycle ops assert via assert_state_delta over the declared universe (extension.present, extension.content, manifest.present, operator_file.present, operator_file.content); operator-file-untouched rides implicit-unchanged. EXEMPT FROM PARADIGM: these are layer-3 single-shot installer-lifecycle scenarios over a finite enumerable op set (4 ops, present/absent config dir) per DISTILL Mandate-9 layer-3 example-only and Mandate-10 config-shaped skip; compensate with the state-delta universe assertion at this acceptance layer."
+        },
+        {
+          "id": "01-02",
+          "name": "Extend extension translation contract for commit and test-run",
+          "agent": "nw-software-crafter",
+          "deps": [
+            "01-01"
+          ],
+          "test_file": "tests/des/acceptance/pi_harness/steps/test_extension_translation_contract.py",
+          "scenario_name": "A commit tool call is translated to the step-completion validation",
+          "files_to_modify": [
+            "nWave/templates/pi-des-extension.ts.template"
+          ],
+          "criteria": [
+            "Git-commit bash tool_call detected via input.command and mapped to the subagent-stop validation action",
+            "Test-run bash tool_result mapped to the suite-state recording action via the DES phase surface",
+            "Extension stays a pure translator: relays engine exit-2 plus reason, invents no verdict of its own",
+            "Existing write/edit pre-write gate, session_start health line, read-passthrough and fail-open paths unchanged",
+            "DES_AUDIT_LOG_DIR pinned to project .nwave/des/logs on every spawn"
+          ],
+          "implementation_notes": "Closes the 2 RED extension-translation-contract scenarios (commit-tool-call -> step-completion validation; test-run result -> suite-state recording). EXTEND the committed nWave/templates/pi-des-extension.ts.template (do NOT rewrite): keep the existing write/edit->pre-write gate, session_start probe and HEALTH_LINE, the read-only passthrough, and the fail-open catch. ADD per ADR-pi-001: (a) a bash tool_call whose input.command matches a git commit -> subagent-stop action -> relay {block,reason}; (b) a bash test-run tool_result -> suite-state recording via the post-tool-use / phase CLI surface; pin DES_AUDIT_LOG_DIR to project .nwave/des/logs in the spawn env (JsonlAuditLogWriter defaults to cwd). The extension MUST delegate ALL allow/block decisions to the Python engine. A1 (translator-purity) is ALREADY covered GREEN by 'The extension contains no allow or block decision of its own' -- do not regress it; no new purity work needed, but ensure the added branches contain zero decision logic so it stays green. Must keep GREEN: the two translation scenarios already passing, the read-passthrough, fail-open, and the @walking_skeleton. Python DES engine REUSED UNCHANGED. TEST PARADIGM: layer-3 rendered-template mapping inspection + real DES adapter round-trip; example-based assertions on exit code + stdout JSON. EXEMPT FROM PARADIGM: thin-translator contract over a fixed tool-name set is finite/enumerable (DISTILL Mandate-9 layer-3 example-only); compensate with the explicit sad-path fail-open scenario already green at this layer."
+        },
+        {
+          "id": "01-03",
+          "name": "Wire commit-boundary step-completion enforcement gate",
+          "agent": "nw-software-crafter",
+          "deps": [
+            "01-02"
+          ],
+          "test_file": "tests/des/acceptance/pi_harness/steps/test_tdd_enforcement_gates.py",
+          "scenario_name": "Committing a step that did not complete its phases is blocked at the commit boundary",
+          "files_to_modify": [
+            "nWave/templates/pi-des-extension.ts.template"
+          ],
+          "criteria": [
+            "Production write with no failing test is blocked at the pi tool-call boundary with a reason",
+            "Commit of a step lacking a completed cycle is rejected at the commit boundary with a reason",
+            "Commit of a step with a completed cycle and Step-Id trailered commit is accepted",
+            "Test-first write is allowed at the tool-call boundary",
+            "Out-of-harness Step-Id commit is still caught post-hoc by the existing GitCommitVerifier"
+          ],
+          "implementation_notes": "Closes the 2 RED tdd-enforcement-gates scenarios (commit blocked when phases incomplete; commit allowed when cycle completed with a Step-Id trailered commit) and keeps the 2 GREEN gate scenarios (write-impl-before-test blocked, test-first-write allowed). The block/allow verdict at the git-commit bash tool_call comes verbatim from the unchanged subagent-stop action (SubagentStopService.validate over execution_log_path/project_id/step_id/cwd + GitCommitVerifier); the extension only relays it (no decision logic). A2 (out-of-harness commit): add a new scenario+step body to test_tdd_enforcement_gates.py asserting a Step-Id commit made outside pi is still caught post-hoc by GitCommitVerifier/StepCompletionValidator -- REUSE both verifiers unchanged, no new production code beyond the test. The @requires_external live-model scenario stays SKIPPED -- do NOT implement a step requiring a live model; its deterministic engine-decision analog is the commit-boundary block asserted here. Python DES engine (src/des/**) REUSED UNCHANGED; only the TS template gains the relay wiring. TEST PARADIGM: layer-3 real DES adapter subprocess round-trip at each tool-call boundary; example-based, sad paths enumerated (incomplete-cycle commit, regression-on-commit). EXEMPT FROM PARADIGM: live-model gate is @requires_external/skipped and the deterministic analog is a single-shot adapter round-trip per DISTILL Mandate-9 layer-3 example-only; compensate with the A2 post-hoc verifier scenario covering the out-of-harness slot."
+        }
+      ]
+    }
+  ]
+}

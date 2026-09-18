@@ -1,0 +1,61 @@
+{
+  "roadmap": {
+    "project_id": "fix-pi-kata-commit-gate-timing",
+    "created_at": "2026-06-24T00:00:00Z",
+    "total_steps": 2,
+    "goal": "Fix the pi-kata commit-gate timing defect (RCA: GitCommitVerifier cannot pass at a pre-commit tool_call; COMMIT phase recorded post-commit). Settled design: LIVE gate = phase-completeness at the pre-commit tool_call (suppress cwd + drop PROJECT-ROOT marker so the engine skips GitCommitVerifier; record COMMIT before git commit); commit-trailer PROVENANCE moves to a mandatory post-hoc check reusing GitCommitVerifier unchanged. Zero src/des change."
+  },
+  "phases": [
+    {
+      "id": "01",
+      "name": "Commit-gate timing fix + post-hoc provenance",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "Phase-completeness-only live gate (pre-commit) + COMMIT-before-commit ordering",
+          "agent": "nw-software-crafter",
+          "deps": [],
+          "test_file": "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_03_full_kata.py",
+          "scenario_name": "Bug regression: pre-commit gate allows a complete cycle without a COMMIT_NOT_VERIFIED no-commits-yet failure and blocks an incomplete one",
+          "files_to_modify": [
+            "scripts/install/pi_kata/transcript_context.py",
+            "nWave/templates/pi-des-extension.ts.template",
+            "scripts/install/plugins/pi_des_plugin.py",
+            "tests/des/acceptance/pi_kata_tdd_flow/steps/kata_support.py",
+            "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_03_full_kata.py",
+            "tests/des/acceptance/pi_kata_tdd_flow/slice-03-full-kata.feature"
+          ],
+          "criteria": [
+            "RED live-faithful regression: validate at PRE-commit order (NO commit yet); a complete RED+GREEN+COMMIT cycle ALLOWs with NO COMMIT_NOT_VERIFIED / 'no commits yet'; an incomplete cycle BLOCKs on missing phases",
+            "transcript_context gains a phase-completeness-only mode: omit DES-PROJECT-ROOT marker (KEEP VALIDATION+PROJECT-ID+STEP-ID) and omit cwd from the subagent-stop payload so the engine skips GitCommitVerifier (R1: must still be a genuine DES validation, not non-DES passthrough)",
+            "extension commit-context branch (pi-des-extension.ts.template) uses the phase-completeness-only payload at the pre-commit tool_call; comment updated",
+            "crafter skill (_CRAFTER_SKILL_SECTION) reordered to record the COMMIT phase BEFORE git commit; provenance prose rewritten (live=phase-completeness, trailer=post-hoc)",
+            "ZERO src/des change; pi_kata + pi_harness suites stay green"
+          ],
+          "implementation_notes": "RCA branches A+B+C. Confirm phase-only validation still emits SUBAGENT_STOP_PASSED/FAILED (not passthrough). The relative execution-log resolution must still find the log via process-cwd=project-root (R2)."
+        },
+        {
+          "id": "01-02",
+          "name": "Post-hoc commit-trailer provenance check (reuse GitCommitVerifier)",
+          "agent": "nw-software-crafter",
+          "deps": [
+            "01-01"
+          ],
+          "test_file": "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_03_full_kata.py",
+          "scenario_name": "Bug regression: post-hoc provenance verifies every recorded-COMMIT step has a matching Step-Id+Task-Id commit and flags a recorded-but-not-committed step",
+          "files_to_modify": [
+            "scripts/install/pi_kata/provenance.py",
+            "tests/des/acceptance/pi_kata_tdd_flow/steps/test_slice_03_full_kata.py",
+            "docs/product/architecture/adr-pkt-001-kata-driving-and-commit-context.md"
+          ],
+          "criteria": [
+            "RED: a post-hoc provenance check (new scripts/install/pi_kata/provenance.py reusing the UNCHANGED GitCommitVerifier) PASSes when every recorded-COMMIT step has a matching Step-Id+Task-Id commit, and FAILs (flags) a step that recorded COMMIT but never committed / wrong trailers (closes R3)",
+            "ADR-pkt-001 D-PKT-4 amended: live=phase-completeness at pre-commit tool_call; commit-trailer provenance=post-hoc (supersede note)",
+            "ZERO src/des change; suites green"
+          ],
+          "implementation_notes": "R3 mitigation is mandatory: the live gate no longer verifies the commit happened, so the post-hoc check is the provenance backstop. Reuse GitCommitVerifier unchanged."
+        }
+      ]
+    }
+  ]
+}
