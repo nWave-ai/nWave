@@ -1,0 +1,45 @@
+// {Feature}Scenarios.cs — domain-language acceptance scenarios (partial class).
+//
+// Gojko Adzic Pillars 1+2:
+//   - Pillar 1: scenarios written in the domain language, no infrastructure noise
+//   - Pillar 2: chained narrative — each scenario's Given may be the
+//               composition of the previous scenario's Given + When
+//
+// Step methods (`Given_*`, `When_*`, `Then_*`) are defined in the sibling
+// partial-class file `{Feature}Specifications.cs`. This file contains NO
+// direct asserts and NO test doubles wiring — those live in the specifications
+// partial.
+//
+// C# partial-class pattern: scenarios + specifications share a class identity
+// (`{Feature}Tests`) but live in two files so domain language stays clean and
+// the production-composition wiring stays separate.
+
+#nullable enable
+
+using System.Threading.Tasks;
+using Xunit;
+
+namespace NWave.Polyglot.{Feature}.Tests;
+
+public partial class {Feature}Tests
+{
+    [Fact]
+    public async Task UserSignsUpWithValidEmailAndIsAddedToRegistry()
+    {
+        await Given_AFreshSignupRegistry();
+        await When_UserSignsUpWithEmail("alice@example.com");
+        await Then_UserIsAddedToRegistryAndAuditedOnce("alice@example.com");
+    }
+
+    [Fact]
+    public async Task DuplicateSignupIsRejectedAndLeavesRegistryAuditUnchanged()
+    {
+        // Pillar 2: this Given is the composition of the previous scenario's
+        // Given + When — start with a registry already containing alice.
+        await Given_AFreshSignupRegistry();
+        await When_UserSignsUpWithEmail("alice@example.com");
+
+        await When_UserAttemptsDuplicateSignup("alice@example.com");
+        await Then_SecondSignupIsRejectedAndStateIsUnchanged();
+    }
+}

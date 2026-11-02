@@ -11,16 +11,29 @@ disable-model-invocation: true
 
 ```yaml
 review_id: "platform_rev_{timestamp}"
-reviewer: "nw-platform-architect-reviewer (Atlas)"
+reviewer: "nw-platform-architect-reviewer (Forge)"
 artifact_reviewed: "{path to platform design documents}"
 review_date: "{ISO 8601 timestamp}"
+authorized_scope: "{selected operational/design promise and authority locator}"
 
 external_validity_check:
-  deployment_path_complete: "{PASS/FAIL}"
-  observability_enabled: "{PASS/FAIL}"
-  rollback_capability: "{PASS/FAIL}"
-  security_gates_present: "{PASS/FAIL}"
-  overall_status: "{PASS/FAIL/BLOCKER}"
+  deployment_path_complete:
+    status: "{PASS/FAIL/UNKNOWN/NOT_APPLICABLE}"
+    reason: "{applicable obligation or authorized exclusion; not mere absence}"
+    evidence: "{authority/observation locator and designed versus observed limit}"
+  observability_enabled:
+    status: "{PASS/FAIL/UNKNOWN/NOT_APPLICABLE}"
+    reason: "{applicable obligation or authorized exclusion; not mere absence}"
+    evidence: "{authority/observation locator and designed versus observed limit}"
+  rollback_capability:
+    status: "{PASS/FAIL/UNKNOWN/NOT_APPLICABLE}"
+    reason: "{applicable obligation or authorized exclusion; not mere absence}"
+    evidence: "{authority/observation locator and designed versus observed limit}"
+  security_gates_present:
+    status: "{PASS/FAIL/UNKNOWN/NOT_APPLICABLE}"
+    reason: "{applicable obligation or authorized exclusion; not mere absence}"
+    evidence: "{authority/observation locator and designed versus observed limit}"
+  overall_status: "{PASS/FAIL/BLOCKER/INDETERMINATE}"
   blocking_issues:
     - "{issue description if any}"
 
@@ -66,6 +79,15 @@ conditions_for_approval:
 ```
 
 ## Approval Criteria
+Apply approval only to the stated authorized scope. `NOT_APPLICABLE` requires
+authority and a concrete reason; no-rollout alone does not waive an applicable
+deployment/recovery design promise. A missing required rollout check is `FAIL`
+when its violation is observed, or `UNKNOWN` when evidence is unresolved, never
+`NOT_APPLICABLE`. An unresolved load-bearing check leaves overall validity
+`INDETERMINATE` and approval `rejected_pending_revisions` with the evidence gap
+named; it is not proof of a defect. `PASS` for a design plan is not observed
+production readiness. Scope these same distinctions in DORA/priority notes.
+
 
 **Approved**: No blocker or critical issues. High issues acknowledged with timeline.
 

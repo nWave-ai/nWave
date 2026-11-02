@@ -54,21 +54,21 @@ Opportunity Score = Importance + max(0, Importance - Satisfaction)
 ```
 
 Where:
-- **Importance** = % of respondents rating outcome 4 or 5 on 1-5 scale
-- **Satisfaction** = % of respondents rating current satisfaction 4 or 5 on 1-5 scale
+- **Importance** = percentage of respondents rating outcome 4 or 5 on a 1-5 scale, divided by 10
+- **Satisfaction** = percentage of respondents rating current satisfaction 4 or 5 on a 1-5 scale, divided by 10
 - **Score range**: 0-20 (higher = greater opportunity)
 
 ### How It Works
 
-Rewards outcomes both important and unsatisfied. If satisfaction >= importance, second term is zero (appropriately served). If satisfaction < importance, gap amplifies score (underserved).
+Rewards outcomes both important and unsatisfied. If satisfaction >= importance, the second term is zero. If satisfaction < importance, the gap amplifies the score. Classify the resulting score using the bands below; a gap alone does not establish an underserved outcome.
 
 ### Score Interpretation
 
 | Score Range | Category | Action |
 |-------------|----------|--------|
-| 15-20 | Extremely underserved | High-priority; invest heavily |
-| 12-15 | Underserved | Strong opportunity; plan for next iteration |
-| 10-12 | Appropriately served | Maintain; incremental improvement |
+| 15 <= score <= 20 | Extremely underserved | High-priority; invest heavily |
+| 12 < score < 15 | Underserved | Strong opportunity; plan for next iteration |
+| 10 <= score <= 12 | Appropriately served | Maintain; incremental improvement |
 | < 10 | Overserved | Simplification candidate; may be over-engineered |
 
 ## Applying to Feature Prioritization
@@ -96,20 +96,20 @@ Scores below 10 are simplification candidates. Resources on overserved outcomes 
 ```markdown
 ## Opportunity Scoring: [Product/Feature Area]
 
-| # | Outcome Statement | Imp. (%) | Sat. (%) | Score | Priority |
+| # | Outcome Statement | Imp. (%) | Sat. (%) | Score (0-20) | Priority |
 |---|-------------------|----------|----------|-------|----------|
 | 1 | Minimize the time to [outcome A] | | | | |
 | 2 | Minimize the likelihood of [outcome B] | | | | |
 | 3 | Maximize the [quality] when [context C] | | | | |
 
 ### Scoring Method
-- Importance: % of respondents rating 4+ on 5-point scale
-- Satisfaction: % of respondents rating 4+ on 5-point scale
-- Score: Importance + max(0, Importance - Satisfaction)
-- Priority: Extremely Underserved (15+), Underserved (12-15),
-  Appropriately Served (10-12), Overserved (<10)
+- Importance: percentage of respondents rating 4+ on a 5-point scale, divided by 10
+- Satisfaction: percentage of respondents rating 4+ on a 5-point scale, divided by 10
+- Score: Importance + max(0, Importance - Satisfaction); e.g., 90% and 60% become 9 and 6, giving 12
+- Priority: Extremely Underserved (15-20), Underserved (>12 and <15),
+  Appropriately Served (10-12 inclusive), Overserved (<10)
 
-### Top Opportunities (Score >= 12)
+### Top Opportunities (Score > 12)
 1. [Outcome] -- Score: [X] -- Story: [link or title]
 2. [Outcome] -- Score: [X] -- Story: [link or title]
 
@@ -128,7 +128,7 @@ Context: CLI tool for deploying applications. 8 users surveyed.
 
 | # | Outcome Statement | Imp. | Sat. | Score | Priority |
 |---|-------------------|------|------|-------|----------|
-| 1 | Minimize time to identify root cause of failed deployment | 92% | 35% | 14.9 | Extremely Underserved |
+| 1 | Minimize time to identify root cause of failed deployment | 92% | 35% | 14.9 | Underserved |
 | 2 | Minimize likelihood of deploying untested code | 88% | 72% | 10.4 | Appropriately Served |
 | 3 | Minimize time to roll back a bad deployment | 85% | 30% | 14.0 | Underserved |
 | 4 | Minimize time to onboard a new team member to deploy | 65% | 40% | 9.0 | Overserved |

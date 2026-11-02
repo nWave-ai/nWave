@@ -5,7 +5,7 @@ Creates the mutation-demo starter project — a small calculator with
 intentionally weak tests that all pass but miss real bugs. The user
 runs mutation testing to expose the gaps.
 
-Run from outside the nwave-dev repo (e.g. ``cd $(mktemp -d)`` first).
+Run from outside the nWave repo (e.g. ``cd $(mktemp -d)`` first).
 See manual-setup.md for the same steps written as prose.
 """
 

@@ -49,7 +49,7 @@ Keep 2-3 canonical examples max. Each demonstrates distinct pattern (correct usa
 
 ## Phase 3: Restructure
 
-Apply declarative command template (load `command-design-patterns` skill):
+Apply the declarative command template from the already-supplied `nw-command-design-patterns` knowledge:
 1. Header: wave, agent, overview
 2. Context files required
 3. Agent invocation with configuration

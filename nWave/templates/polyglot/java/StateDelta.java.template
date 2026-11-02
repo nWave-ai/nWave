@@ -58,7 +58,7 @@ public final class StateDelta {
         PredicateResult test(Object oldValue, Object newValue);
 
         /**
-         * Optional human-readable identifier (e.g. "prepended_with(/des/bin)").
+         * Optional human-readable identifier (e.g. "prepended_with(/app/bin)").
          * Default mirrors {@code toString()}; factories override.
          */
         default String predicateName() {

@@ -1,0 +1,162 @@
+version: 1
+global_on_demand:
+  nw-typesafe-system-one: "every supported task-level semantic question: MUST invoke when authorized and available, or reuse within the same owner and independence boundary; confidence, simplicity and predicted savings are not exemptions; honor the skill's explicit capability and source-blind EXAMINE limits"
+  nw-cross-cutting-invariants: "same-Request peer contact rule flow:findings-go-to-the-owner-directly; apply within existing role boundaries"
+roles:
+  nw-product-owner:
+    on_demand:
+      nw-doc-as-artifact: sharing or revising the product brief for human understanding
+      nw-spike: the human selects a bounded visual prototype or another uncertainty probe
+      nw-po-scenario-exploration: assessing Quint relevance for each DISCUSS value or integrating model-generated scenarios
+      nw-user-story-mapping: exploring feature journeys, release boundaries or gaps across user activities
+      nw-jtbd-analysis: substantive JTBD discovery or refinement beyond formatting or reconciliation
+      nw-jtbd-opportunity-scoring: prioritizing competing outcomes with actual opportunity evidence
+      nw-outcome-kpi-framework: defining success measures and their observable evidence
+  nw-product-owner-reviewer:
+    reviewer_of:
+      - nw-product-owner
+  nw-software-crafter:
+    catalog_only:
+      - nw-mutation-test
+      - nw-algebraic-design-protocol
+    on_demand:
+      nw-code-design-oo: the bound DESIGN paradigm is object_oriented; procedural work preserves its imperative script without it
+      nw-ddd-tactical: changing domain identity, lifecycle, aggregate consistency, a repository or a domain event
+      nw-refactor: changing existing responsibilities or removing a demonstrated code smell while preserving behavior
+      nw-code-analysis-port: resolving repository symbols, dependencies, reuse or callers before changing existing code
+      nw-certainty-by-construction: any rule the code enforces about data -- a range, a duration, a required pairing, a state that excludes another; decide construction vs validation BEFORE writing the check
+      nw-type-level-design: API design or implementation needs a valid-state model, opaque smart constructor, evidence-preserving result, or a finite state/capability transition
+      nw-cross-cutting-invariants: an applied design rule or authority cites a cross-cutting invariant clause id the change must honor
+  nw-functional-software-crafter:
+    catalog_only:
+      - nw-mutation-test
+    on_demand:
+      nw-refactor: changing existing responsibilities or removing a demonstrated code smell while preserving behavior
+      nw-code-analysis-port: resolving repository symbols, dependencies, reuse or callers before changing existing code
+      nw-fp-algebra-driven-design: implementing algebraic operations or preserving a declared law
+      nw-fp-domain-modeling: implementing domain state, validated construction or error and effect boundaries
+      nw-algebraic-design-protocol: a law or observation is contested or must be found before choosing constructors
+      nw-certainty-by-construction: any rule the code enforces about data -- a range, a duration, a required pairing, a state that excludes another; decide construction vs validation BEFORE writing the check
+      nw-type-level-design: API needs a valid-state model, opaque smart constructor, evidence-preserving result, or a finite state/capability transition; use advanced Haskell material only for a GHC target
+  nw-software-crafter-reviewer:
+    reviewer_of:
+      - nw-software-crafter
+      - nw-functional-software-crafter
+    phase:
+      nw-at-completeness-check: judging whether the immutable oracle covers the original Request and whether candidate-bound verification evidence is sufficient
+    on_demand:
+      nw-fp-algebra-driven-design: judging whether an implementation preserves its declared algebraic operations and laws
+  nw-solution-architect:
+    catalog_only:
+      - nw-cross-cutting-context-residency
+      - nw-cross-cutting-evidence-instrumentation
+      - nw-cross-cutting-input-data-contracts
+    phase:
+      nw-solution-architect-formal-verification: separately selected formal proof obligation for local totality/inhabitation/canonicalization/preservation, state-machine safety/refinement/reachability/liveness/concurrency/recovery, or modelable non-functional deadlines/resources/isolation/availability
+      nw-architecture-patterns: selecting an application architecture pattern
+      nw-architectural-styles-tradeoffs: comparing application architecture styles
+      nw-security-by-design: security boundary or threat claim
+      nw-domain-driven-design: domain boundary or aggregate responsibility claim
+      nw-formal-verification-tlaplus: TLA+/TLC state-machine modeling
+      nw-sa-critique-dimensions: self-reviewing an architecture authority
+      nw-test-design-mandates: selecting the native DESIGN test substrate, language convention frame, runner, layout, or generated-law observation treatment
+      nw-review: applying the design-review question set as architecture self-check only; this trigger does not dispatch an independent review
+    on_demand:
+      nw-po-scenario-exploration: presenting model-generated behavioral or non-functional scenarios for human architectural review
+      nw-algebraic-design-protocol: every DESIGN authority before deciding public constructors, observations, or laws
+      nw-certainty-by-construction: invalid-state or preservation claim
+      nw-type-level-design: design proposes or reviews a valid-state model, opaque construction boundary, evidence-preserving result, or finite state/capability API; use advanced Haskell material only for a GHC target
+      nw-stress-analysis: external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
+    paradigm:
+      object_oriented: nw-code-design-oo
+      functional: nw-code-design-fp
+  nw-solution-architect-reviewer:
+    reviewer_of:
+      - nw-solution-architect
+    on_demand:
+      nw-design: judging whether feature scope, shared decisions or slice scope are adequate
+  nw-ddd-architect:
+    on_demand:
+      nw-algebraic-design-protocol: contested design or law
+      nw-certainty-by-construction: invalid-state or preservation claim
+      nw-stress-analysis: external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
+    paradigm:
+      object_oriented: nw-code-design-oo
+      functional: nw-code-design-fp
+  nw-ddd-architect-reviewer:
+    reviewer_of:
+      - nw-ddd-architect
+  nw-platform-architect:
+    phase:
+      nw-devops: preparing operational DEVOPS authority about deployment, recovery, environments, observability or CI constraints
+    on_demand:
+      nw-algebraic-design-protocol: contested design or law
+      nw-certainty-by-construction: invalid-state or preservation claim
+      nw-stress-analysis: external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
+  nw-system-designer:
+    on_demand:
+      nw-algebraic-design-protocol: contested infrastructure or recovery law
+      nw-certainty-by-construction: invalid recovery or failure-policy state
+      nw-stress-analysis: external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
+  nw-system-designer-reviewer:
+    reviewer_of:
+      - nw-system-designer
+  nw-platform-architect-reviewer:
+    reviewer_of:
+      - nw-platform-architect
+  nw-acceptance-designer:
+    catalog_only:
+      - nw-ad-critique-dimensions
+      - nw-distill
+    on_demand:
+      nw-bdd-methodology: expressing user scenarios in business language or Given/When/Then
+      nw-test-design-mandates-scenario-design: shaping the public scenario boundary, stimulus, expected observation or fixture
+      nw-test-design-mandates-layered-mechanics: choosing assertion mechanics for a layer or testing real adapter behavior
+      nw-test-design-mandates-composition-contract: composing the public driving surface across components or checking its contract shape
+      nw-test-organization-conventions: choosing the target test file, directory or discovery conventions
+      nw-tdd-methodology: authoring a unit, contract or acceptance test with its RED observation
+      nw-tdd-methodology-paradigm: authoring a new unit or acceptance oracle
+      nw-tdd-methodology-walking-skeleton: authoring an explicitly selected walking skeleton
+      nw-distill-port-treatment-policy: selecting real IO, a fake, or a mock at a declared port
+      nw-distill-red-scaffolding: the public oracle requires missing test scaffolding before its RED observation
+      nw-at-completeness-check: checking that candidate observations cover the supplied value and obligations
+      nw-test-optimization-paradigm-match: choosing property, example or state-delta observation for an oracle
+      nw-test-optimization-consolidation: consolidating overlapping existing tests without losing observations
+      nw-test-refactoring-catalog: refactoring existing test structure while preserving observations
+      nw-cross-cutting-invariants: an oracle models a refusal or depends on declared external input
+      nw-property-based-testing: any observation that should hold over a RANGE of inputs rather than one example -- arithmetic, parsing, round-trips, ordering, state traces
+      nw-design: resolving whether an oracle's scope is a slice delta or the feature, including inherited obligations
+  nw-acceptance-designer-reviewer:
+    reviewer_of:
+      - nw-acceptance-designer
+    on_demand:
+      nw-tdd-methodology-walking-skeleton: the candidate contains a walking-skeleton scenario, or you judge whether a driven adapter has real-I/O coverage
+      nw-bdd-methodology: judging whether the candidate's scenarios cover each declared obligation, including its error paths
+  nw-user-examiner:
+    reviewer_of: []
+  nw-agent-builder:
+    on_demand:
+      nw-ab-create-agent: the selected builder route creates a new agent
+      nw-ab-migrate-monolith: the selected builder route migrates an existing agent monolith
+      nw-ab-validate-spec: the selected builder route validates an agent specification, either standalone or composed by create, migrate, or merge
+      nw-ab-merge-agents: the selected builder route consolidates two agents into one
+      nw-ab-optimize-command: the selected builder route optimizes an existing command definition
+      nw-command-design-patterns: the selected builder route optimizes an existing command definition
+      nw-command-optimization-workflow: the selected builder route optimizes an existing command definition
+      nw-agent-evals: the selected builder route evaluates agent or skill behavior, or an existing projection is needed to validate a create, migrate, or merge result
+      nw-ab-optimize-skill: an existing skill is requested for optimization directly or selected for optimization during agent migration; the procedure measures eligibility
+  nw-agent-builder-reviewer:
+    reviewer_of:
+      - nw-agent-builder
+  nw-skill-reviewer:
+    on_demand:
+      nw-ab-optimize-skill: reviewing a claimed optimized existing skill
+  nw-nwave-buddy:
+    on_demand:
+      nw-rigor: provider, model, competence, or global/project model configuration
+  nw-ux-designer:
+    on_demand:
+      nw-css-implementation-recipes: building a web prototype using the existing frontend conventions
+      nw-interaction-choreography: an interaction needs purposeful motion or transition behavior
+      nw-sci-fi-design-patterns: the human explicitly chooses a futuristic or sci-fi visual direction
+      nw-futuristic-color-typography: the human explicitly chooses futuristic styling and needs its palette or typography

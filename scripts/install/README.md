@@ -48,12 +48,64 @@ python scripts/install/install_nwave.py
 # Dry run (show what would be installed)
 python scripts/install/install_nwave.py --dry-run
 
+# Target one platform explicitly (auto-detect is the default)
+python scripts/install/install_nwave.py --platform claude-code
+python scripts/install/install_nwave.py --platform codex
+python scripts/install/install_nwave.py --platform omp
+
 # Create backup only
 python scripts/install/install_nwave.py --backup-only
 
 # Restore from latest backup
 python scripts/install/install_nwave.py --restore
 ```
+
+### Target Platforms
+
+`--platform` accepts `auto` (default), `claude-code`, `opencode`, `codex`,
+`copilot`, `omp`, or `all`.
+
+OMP (oh-my-pi) installs public task agents, skills and `/nw-*` commands into
+its native discovery tree: `<config-root>/agent/agents/*.md`,
+`<config-root>/agent/skills/<name>/SKILL.md` and
+`<config-root>/agent/commands/nw-*.md`. The config root is `$HOME/.omp`
+(renamed by `PI_CONFIG_DIR`); `PI_CODING_AGENT_DIR` relocates skills, commands
+and extensions. Use `--dev` only to include private artifacts.
+The command source is `nWave/tasks/nw/*.md` (or the distribution's
+`tasks/nw/`), filtered using the catalog's public-agent command policy.
+Underscore agent references are compared using hyphenated catalog keys;
+unresolved references remain non-public.
+Command-skills are not the command roster. Task `deliver.md` becomes flat
+`commands/nw-deliver.md`, so its slash name is `/nw-deliver`; `--dev`
+includes every task file. A public reinstall removes obsolete manifest-owned
+command-skill projections as well as private task commands.
+Roles are projected to the
+OMP agent schema: Claude model aliases are omitted so roles inherit the
+user's configured model, tools map to OMP's canonical lowercase names, and
+role preload skills become `autoloadSkills` naming only public installed
+skills (each skill delivered once). The examiner and product owner have
+Bash and record their values through their kind's `nwdes` CLI verbs and close;
+their installed roles have no structured reply schema. Other roles that
+declare `StructuredOutput` retain their canonical `output` projection. Scoped
+tool grants have no OMP form and are omitted with an explicit report, never
+widened. The Python runtime is installed at `~/.nwave/runtime`,
+independently of Claude installation order. Missing Python 3.10+ refuses
+installation with remediation; `--dry-run` prints the public populations
+and runtime plan. Tool-call enforcement is not part of the delivery builder.
+A named profile (`OMP_PROFILE`/`PI_PROFILE`) is refused: only the default
+profile is served. Uninstall uses the recorded manifest ownership and keeps
+foreign commands and extensions.
+
+Delivery roles record values through their kind's `nwdes` CLI verbs from the
+checkout's top level; roots default to cwd and the repository root, and lane
+verbs resolve the main worktree. The first add, set or remove creates the draft.
+Use `open --from-current` to revise current authority; close with no draft
+validates empty values. The CLI constructs records and identifiers,
+then publishes them at `close`; the host does not copy a JSON role reply into
+an apply command. The examiner and product owner use the same CLI channel as
+other delivery roles, with Bash available on Claude and OMP and shell enabled
+on Codex. The native host invokes the installed role; nwdes constructs its
+brief and does not launch models.
 
 ### Uninstallation
 
@@ -146,8 +198,7 @@ python scripts/install/install_nwave.py --restore
 ├── scripts/            # Utility scripts for target projects
 │   ├── install_nwave_target_hooks.py
 │   └── validate_step_file.py
-├── templates/          # Canonical schemas
-│   └── step-tdd-cycle-schema.json
+├── templates/          # Canonical templates
 ├── backups/            # Installation backups
 │   ├── pre_nwave_<timestamp>/
 │   ├── nwave-install-<timestamp>/
@@ -155,6 +206,10 @@ python scripts/install/install_nwave.py --restore
 │   ├── nwave-update-<timestamp>/
 │   └── restore_scripts/
 └── nwave-manifest.txt  # Installation manifest
+
+~/.omp/agent/           # OMP target (config root renamed by PI_CONFIG_DIR)
+├── agents/             # nWave task agents (native *.md + .nwave-agents-manifest.json)
+└── skills/             # nWave skills (native <name>/SKILL.md + .nwave-manifest.json)
 ```
 
 ## Logs

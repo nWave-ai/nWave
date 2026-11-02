@@ -2,7 +2,7 @@
 
 **Time**: ~20 minutes (8 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorial 1](../tutorial-first-delivery/) completed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 1](../tutorial-first-delivery/) completed
 **What this is**: An interactive walkthrough of `/nw-refactor` and `/nw-mikado` -- nWave's safe refactoring commands. You will take a working but messy Python project and incrementally clean it up without breaking anything.
 
 ---

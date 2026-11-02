@@ -1,328 +1,166 @@
 ---
 name: nw-test-design-mandates
-description: Design mandates for acceptance tests - hexagonal boundary, business language abstraction, user journey completeness, pure function extraction, 3 Pillars (domain language / chained narrative / production composition), and the layered ATD discipline (Universe-bound assertion, layer-dependent PBT mode, two-tier acceptance, example-based sad paths)
+description: Design mandates for acceptance tests - hexagonal boundary, business language abstraction, user journey completeness, pure function extraction, 3 Pillars (domain language / chained narrative / production composition), and the layered ATD discipline (Universe-bound assertion, layer-dependent PBT mode, two-tier acceptance, example-based sad paths). Lean recomposing core - routes to three narrow mandate modules.
 user-invocable: false
-disable-model-invocation: true
 ---
 
-# Acceptance Test Design Mandates
-
-Four mandates enforced during peer review. All must pass before handoff to software-crafter.
-
-## LANGUAGE CONVENTION FRAME (read FIRST — overrides all examples below)
-
-**Code examples in this skill use Python syntax for illustration only.** They are NOT prescriptive about target language. nWave is language-agnostic per the "genericity and agnosticism" mandate (2026-05-24).
-
-**Before applying mandates**, detect the target project's language from manifest files: `package.json` → TypeScript/JS; `Cargo.toml` → Rust; `go.mod` → Go; `pyproject.toml`/`setup.py`/`Pipfile` → Python; `pom.xml`/`build.gradle` → Java/Kotlin; `*.csproj`/`*.fsproj` → C#/F#; `Gemfile` → Ruby; `Package.swift` → Swift.
-
-**When the target language is NOT Python**: adapt EVERY code example — replace Python imports (`from pytest_bdd import ...`, `from hypothesis import ...`), type hints, class/function syntax, test-framework idioms, directory conventions (`tests/` vs `test/` vs `__tests__/`) with target equivalents. Project conventions ALWAYS WIN over skill examples — if the user's repo has 50 TS files and zero Python files, mandates apply via TypeScript test framework, never Python pytest.
-
-**Empirical anchor**: 5 of 5 Python code blocks in this skill, zero TS/Go/Rust — root-cause for language-leak per F-SKILL-EXAMPLES-LANGUAGE-LEAK. Connects [[feedback_language_adapter_plugin_architecture_2026_05_24]] (genericity mandate).
-
-## Mandate 1: Hexagonal Boundary Enforcement
-
-Tests invoke through driving ports (entry points), never internal components.
-
-### Driving Ports (Test Through These)
-Application services/orchestrators | API controllers/CLI handlers | Message consumers/event handlers | Public API facade classes
-
-### Not Entry Points (Never Test Directly)
-Internal validators, parsers, formatters | Domain entities/value objects | Repository implementations | Internal service components
-
-### Correct Pattern
-
-```python
-# Invoke through system entry point (driving port)
-from myapp.orchestrator import AppOrchestrator
-
-def when_user_performs_action(self):
-    orchestrator = AppOrchestrator()
-    self.result = orchestrator.perform_action(
-        context=self.context
-    )
-```
-
-### Violation Pattern
-
-```python
-# Invoking internal component directly
-from myapp.validator import InputValidator  # INTERNAL
-
-def when_user_validates_input(self):
-    validator = InputValidator()  # WRONG BOUNDARY
-    self.result = validator.validate(self.input)
-```
-
-Testing internal components creates Testing Theater: tests pass but users cannot access feature through actual entry point. Integration wiring bugs remain hidden.
-
-## Mandate 2: Business Language Abstraction
-
-Step methods speak business language, abstract all technical details.
-
-### Three Abstraction Layers
-
-**Layer 1 - Gherkin**: Pure business language, all stakeholders. Domain terms from ubiquitous language | Zero technical jargon | Describe WHAT user does, not HOW system does it
-
-```gherkin
-Scenario: Customer places order for available product
-  Given customer has items in shopping cart
-  When customer submits order
-  Then order is confirmed
-  And customer receives confirmation email
-```
-
-**Layer 2 - Step Methods**: Business service delegation. Method names use domain terms | Delegate to business service layer (OrderService, not HTTP client) | Assert business outcomes (order.is_confirmed()), not technical state (status_code == 201)
-
-```python
-def when_customer_submits_order(self):
-    self.result = self.order_service.place_order(
-        customer=self.customer, items=self.cart_items
-    )
-
-def then_order_is_confirmed(self):
-    assert self.result.is_confirmed()
-    assert self.result.has_order_number()
-```
-
-**Layer 3 - Business Services**: Production services handle technical implementation. HTTP calls, DB transactions, SMTP hidden inside service layer.
-
-### Test Smell Indicators
-`requests.post()` in step method | `db.execute()` in step method | `assert response.status_code` | Technical terms in Gherkin
-
-## Mandate 3: User Journey Completeness
-
-Tests validate complete user journeys with business value, not isolated technical operations.
-
-### Complete Journey Structure
-Every scenario includes: **User trigger** (Given/When) | **Business logic** (When - system processes rules) | **Observable outcome** (Then - user sees result) | **Business value** (Then - value delivered)
-
-### Correct Example
-
-```gherkin
-Scenario: Customer successfully completes purchase
-  Given customer has selected products worth $150
-  And customer has valid payment method
-  When customer submits order
-  Then order is confirmed with order number
-  And customer receives email confirmation
-  And order appears in customer's order history
-```
-
-### Violation Example
-
-```gherkin
-Scenario: Order validator accepts valid order data
-  Given valid order JSON exists
-  When validator.validate() is called
-  Then validation passes
-# Tests isolated validation, not user journey
-```
-
-### Scenario Name Test
-Does name express user value or technical operation? "Customer completes purchase" = correct. "Validator accepts JSON" = violation.
-
-## Walking Skeleton Strategy
-
-Balance user-centric E2E integration tests with focused boundary tests.
-
-### Walking Skeletons (2-5 per feature)
-Trace thin vertical slice delivering observable user value E2E | Each answers: "Can a user accomplish this goal and see the result?" | Express simplest complete user journey | Validate system delivers demo-able stakeholder value | Touch all layers as consequence of journey, not as design goal
-
-### Walking Skeleton Litmus Test
-1. Title describes user goal ("Customer purchases a product") not technical flow ("Order passes through all layers")
-2. Given/When describe user actions/context, not system state setup
-3. Then describe user observations (confirmation, email, receipt), not internal side effects (DB row, message queued)
-4. Non-technical stakeholder can confirm "yes, that is what users need"
-
-### Focused Scenarios (15-20 per feature, majority)
-Test specific business rules at driving port boundary | Test doubles for external dependencies (faster, isolated) | Cover business rule variations and edge cases | Invoke through entry point (OrderService, Orchestrator)
-
-### Recommended Ratio
-For typical feature with 20 scenarios: 2-3 walking skeletons (user value E2E) | 17-18 focused scenarios (boundary tests with test doubles). Walking skeletons prove users achieve goals. Focused scenarios run fast, cover breadth. Both use business language and invoke through entry points.
-
-## Mandate 4: Pure Function Extraction Before Fixtures
-
-BEFORE parametrizing any test fixture with environment variants:
-
-1. Identify ALL business logic in the code under test
-2. Extract every piece of business logic into a pure function:
-   - Pure function: takes inputs, returns outputs, no side effects
-   - Impure code: subprocess calls, file I/O, network, environment variables
-3. Test pure functions directly — no fixtures, no mocks, no environment setup needed
-4. Test impure code (subprocess, file I/O) through adapter interfaces:
-   - Define a port (interface) for each impure operation
-   - Create a test adapter (in-memory, fake) for each port
-   - Acceptance tests use real adapters; unit tests use fakes
-5. Parametrize fixtures ONLY for the thin adapter layer that connects to real environments
-
-**Rationale**: Parametrizing fixtures across environments is expensive. Pure functions need zero environment setup. Extract first, parametrize the minimum.
-
-### Violation Pattern
-
-```python
-# WRONG: parametrizing entire test across environments
-@pytest.fixture(params=["clean", "with-pre-commit", "with-stale-config"])
-def environment(request):
-    return setup_environment(request.param)
-
-def test_install_detects_conflicts(environment):
-    result = full_install_pipeline(environment)  # Impure: touches filesystem
-    assert result.conflicts == []
-```
-
-### Correct Pattern
-
-```python
-# Step 1: Extract pure logic
-def detect_conflicts(config: Config, existing: list[str]) -> list[Conflict]:
-    """Pure function — no I/O, no environment dependency."""
-    return [Conflict(k) for k in existing if k in config.keys]
-
-# Step 2: Test pure function directly (no fixture needed)
-def test_detect_conflicts_with_overlapping_keys():
-    conflicts = detect_conflicts(Config(keys=["a", "b"]), existing=["b", "c"])
-    assert conflicts == [Conflict("b")]
-
-# Step 3: Parametrize ONLY the adapter layer
-@pytest.fixture(params=["clean", "with-pre-commit"])
-def fs_adapter(request):
-    return create_real_fs_adapter(request.param)
-
-def test_adapter_reads_config_from_environment(fs_adapter):
-    config = fs_adapter.read_config()  # Only I/O is parametrized
-    assert config is not None
-```
-
-### Mandate Compliance (CM-D)
-
-- **CM-D**: Business logic extracted to pure functions. Impure code isolated behind adapters. Fixture parametrization applies only to adapter layer.
-
-## The 3 Pillars (style backbone for acceptance tests)
-
-These three pillars are the lens used during writing and review. They sit above Mandates 1-4: every scenario MUST embody all three before mandate compliance is even considered.
-
-### Pillar 1 — Domain language with specific actions
-
-Scenarios speak the domain, not the code. A domain expert reads them without seeing a single line of implementation. Step names are semantic (`User_signs_up`, NOT `Call_signup_endpoint`). Technical jargon (HTTP, JSON, schema, endpoint, database) is forbidden in scenario titles, Gherkin steps, and step-method names. Technical detail lives inside step bodies only.
-
-### Pillar 2 — Chained narrative
-
-Within a story line, scenarios read as a sequence of state transitions: **the `Given` of scenario N equals the `Given + When` of scenario N-1**. Read in order, the tests tell the feature. The `Given` of scenario N never duplicates the setup of N-1: it reuses already-defined step methods (step composition, not copy-pasted fixtures).
-
-### Pillar 3 — App as in production
-
-The SUT is built via the production composition root (style `WebApplicationFactory` or equivalent). Only **external / non-deterministic ports** (clock, email, SMS, push, payment, LLM, third-party APIs) are substituted by fakes/stubs. The app is never rebuilt by hand replicating the wiring. Tier B (state-machine PBT, Mandate 10) uses an `InMemoryComposition` root that honors the same interfaces — same vocabulary, different composition root.
-
-## Mandate 8 — Universe-bound assertion at layers 1-3
-
-Every test at layers 1-3 (unit, in-memory acceptance, subprocess/FS acceptance) that mutates observable state MUST assert via `assert_state_delta(before, after, universe={...}, expected={...})` (Python reference: `nwave_ai/state_delta/__init__.py`; other-language equivalents are added as the matrix grows).
-
-- `universe` declares the SET of port-exposed observable names the test promises to track. Names are always port-exposed (event types, public read-model fields, exit codes, captured outputs) — never internal struct fields.
-- `expected` declares which universe entries change and how (predicate per entry: `set_to`, `unchanged`, `appended_with`, `prepended_with`, `containing`, ...).
-- Anything in `universe` that changes UNEXPECTEDLY (mutates with no `expected` entry) → violation. Fail-closed.
-- Layers 4+ (integration, walking-skeleton, E2E) MAY use traditional assertions — at that layer the test cost is dominated by subprocess / network / real I/O and the universe-guard payoff is smaller.
-
-Bad universe entries couple the test to private mutation details (`BoardProjection._rows_cells_dict`) — a refactor rename reds the test for no functional reason. Good universe entries are port names (`events.PhaseEntered.emitted_count`, `board.rows[task_id].cells[wave].status`).
-
-## Mandate 9 — PBT input mode is layer-dependent
-
-Property-based test machinery (Hypothesis `@given`, `RuleBasedStateMachine`, equivalent in other languages) is constrained by layer:
-
-- **Layers 1-2** (unit, in-memory acceptance with in-memory doubles): PBT full. Hypothesis explores the generative input space (100+ examples per property by default). Pinned `@example(...)` preserves a domain-readable canonical case for reviewers.
-- **Layers 3-6** (subprocess/FS acceptance, integration, walking-skeleton, E2E): example-only. Sad paths are enumerated explicitly, never PBT-generated. PBT runtime cost is incompatible with real-I/O tests where each example is 100ms–seconds.
-
-Rationale: layer 3+ tests serve wiring proof and contract verification; coverage exploration happens at layers 1-2 where iteration is cheap.
-
-## Mandate 10 — Two-tier acceptance for rich journeys
-
-Acceptance tests come in two tiers. Tier A is mandatory. Tier B is optional and applied only to rich journeys.
-
-- **Tier A — Gojko-style**: production composition root, real DI, example-only, 1-2 scenarios per journey. Lives in `.feature` files (Gherkin) + `steps_*.py` (or host-language equivalent) invoking the production composition root. Purpose: prove wiring end-to-end, demonstrate the feature works for the canonical example.
-- **Tier B — state-machine PBT** (optional): in-memory doubles composition root, generative inputs, `RuleBasedStateMachine` with `@rule` / `@precondition` / `@invariant`. Lives in `test_<feature>_state_machine.py` (or host-language equivalent), separate file from the `.feature`. Purpose: explore the journey state space and surface contract gaps that example tests miss.
-
-**Vocabulary shared**: the same step-methods (`Given_/When_/Then_` named in the domain language) are invoked from both tiers. Step-methods are the contract; the two tiers are two composition roots over the same vocabulary.
-
-**Composition root contract**:
-- Tier A uses real DI (e.g. `WebApplicationFactory` in C#, real installer entry-point in Python, real router in Go).
-- Tier B uses an `InMemoryComposition` class that wires the same interfaces with in-memory doubles. The `InMemoryComposition` exposes a `capture_universe()` method returning the universe snapshot used by `assert_state_delta`.
-
-**When to add Tier B**:
-- Journey has ≥3 chained scenarios (Pillar 2 active), AND
-- Input space is domain-rich (emails, dates, payloads, free-text, IDs from a large set).
-
-**When Tier B is NOT worth it**:
-- Config-shaped features (single-shot installer config, schema validation, one-off CLI).
-- Journeys with 1-2 scenarios (Tier A example covers the space).
-- Features where the only observable is "did it crash" (no state mutation to model).
-
-## Mandate 11 — Integration sad paths stay example-based
-
-Sad-path coverage at layers 3+ (subprocess / real adapter / integration / WS / E2E) uses traditional example-based tests, one example per failure mode.
-
-- No PBT explosion on slow tests. The wall-clock cost of generating sad inputs against a real adapter dwarfs the gain.
-- `assert_state_delta` is OPTIONAL at layer 3+ (universe-guard is a Mandate 8 layer 1-3 requirement; layers 4+ may use traditional assertions per Mandate 8).
-- Each sad path is named explicitly: `Bug_<symptom>` or `Sad_<scenario>` test, with explicit input that triggers the failure.
-- Coverage requirement: every failure mode enumerated in DEVOPS environment matrix and every `failure_modes` entry from `docs/product/journeys/<name>.yaml` gets at least one named sad-path test.
-
-## Layered Test Discipline
-
-The four mandates above (Universe, PBT mode, two-tier acceptance, sad-path treatment) compose into this layered discipline. The table below is the single source of truth for "what does this layer look like."
-
-| Layer | Speed | Real adapter? | Input mode | Assertion mode |
-|---|---|---|---|---|
-| Unit | <1ms | no | PBT full (`@given` 100+ examples) | state-delta + Universe |
-| In-memory acceptance | ~10ms | no (in-memory doubles) | PBT example-pinned if AC tagged `@property`; example-only otherwise | state-delta + Universe |
-| Subprocess / FS acceptance | ~100ms | yes (real adapter) | example-only — sad paths enumerated | state-delta + Universe |
-| Integration | ~100ms | yes | example-only, sad-path coverage | traditional OK; state-delta optional |
-| WS `@wiring_e2e` | 1-3s | yes (real stack) | example-only (1-2 representative) | traditional |
-| E2E | seconds | full real | example-only | traditional |
-
-**Polyglot note**: the Universe / state-delta contract is language-agnostic — the prose is the contract, the Python imports (`nwave_ai.state_delta`) are illustrative. Other host languages add their own matrix row + template lazily (Python is the current pilot).
-
-## Polyglot Adapter Matrix
-
-Contract layer (3 Pillars + Mandates 8-11) is language-agnostic. Implementation
-bindings per language are documented in the matrix below. Python ships ready;
-other languages are bootstrap-on-demand templates (Epic 3+).
-
-| Lang | PBT lib | xunit equiv | Skip marker | Step composition idiom |
-|---|---|---|---|---|
-| Python | hypothesis | pytest | `pytest.mark.skip(reason="pending")` | pytest-bdd `.feature` + `steps_*.py` |
-| TypeScript | fast-check | Vitest/Jest | `it.skip(...)` | `*.scenarios.ts` + `*.specifications.ts` |
-| C# | FsCheck | xUnit | `[Fact(Skip="pending")]` | partial class `*Scenarios.cs` + `*Specifications.cs` |
-| Java | jqwik | JUnit | `@Disabled("pending")` | companion test class |
-| Kotlin | kotest-property | Kotest | `@Disabled` | extension functions split |
-| Rust | proptest | std `#[test]` | `#[ignore]` | `<feature>_scenarios.rs` + `<feature>_specifications.rs` (same module) |
-| Go | rapid o gopter | testing | `t.Skip("pending")` | `*_scenarios_test.go` + `*_specifications_test.go` |
-
-**State-delta port** per language lives at the project-local path
-`tests/common/state_delta.<ext>` (apply-if-absent on first DISTILL in the
-project). Python port is canonical at `nwave_ai/state_delta/`. Other-language
-ports are templated bootstraps from the per-lang Tier-2 expansion catalogs.
-
-**Universe assertion contract** is identical across languages: every
-state-mutating test at layers 1-3 calls `assert_state_delta(before, after,
-universe, expected)` (Python signature; idiomatic translations preserve the
-same four parameters). Universe declares observable port-exposed names;
-expected maps each declared key to a predicate. Anything in universe not in
-expected MUST remain unchanged — fail-closed.
-
-**Per-lang predicate library** mirrors the Python set: `set_to`, `unchanged`,
-`appended_with`, `containing`, `normalized_to`, `idempotent_after`,
-`legacy_healed`, `prepended_with`. Each language port implements all eight
-with the same semantic contract.
+# Acceptance Test Design Mandates (recomposing core)
+
+This skill is the Single Source of Truth (SSOT) for every acceptance-test-design mandate. All mandates are enforced during peer review and must pass before handoff to software-crafter.
+
+This core holds the cross-cutting concerns (numbering, registry, language-convention frame, compliance-verification handoff) and COMPOSES three narrow mandate modules. The canonical mandate definitions live in the modules — this core does not re-inline them.
+
+Load `nw-cross-cutting-invariants` and apply `flow:findings-go-to-the-owner-directly` when exchanging findings or questions between roles.
+
+## Assertion failure messages state WHAT / WHY / HOW (STANDING)
+
+Every AT assertion's failure message MUST state **WHAT** observable failed (the specific
+expected-vs-actual), **WHY** it matters (the contract it breaks), and **HOW** to fix (what
+the implementation must make true / the concrete remediation). A bare `assert x == y` with
+no message — or a message that only restates the code — is itself a defect: a RED must TEACH
+the crafter exactly what to make true, not force them to reverse-engineer the intent. Same
+what/why/how rule the product's own error surfaces obey.
+
+Then/Assert steps own these business-named assertions and carry WHAT/WHY/HOW internally;
+scenario bodies call clean domain steps, not wordy assertion-message builders.
+
+## Test time (STANDING)
+
+Test time is a critical responsibility of the acceptance designer and its
+reviewer (`test:feedback-loop-budget` in `nw-cross-cutting-invariants`). Keep every
+test within the design's per-test and property budgets, and the default CI suite
+within its ceiling (300 s unless a repository ADR sets another). Give each formal
+law a fast executable projection on the pure core in the default suite. Put real
+adapter fault injection (storage down, interrupted or double write, crash,
+concurrent writers) only in the infrastructure suite of a feature whose derogation
+the human granted. Measure per-test time over at least nine sequential runs and report n, median,
+maximum and load; a test meets its budget on the median with at most one run over it. Never write a test above the
+budgets: propose the feature's derogation request, with one risk/value record per
+test, and ask for the human's decision instead.
+
+Three cost laws complete this budget (Ale 2026-10-30): (1) RED default — a test
+covering a declared-not-yet-deployed obligation is RED by default in its natural
+committed state; pass/xfail bridging is not a substitute and synthetic RED by
+removing markers is not an observed FAIL. (2) Mutation is nightly — text-flip and
+similar belong to the nightly delta on implemented code, never to review gating.
+(3) End-to-end installer cycles are an integration concern — rare, and always
+reusing an existing prepared setup, never reinstalling per case; an oracle case
+never executes a full lifecycle subprocess.
+
+## Durable outcome naming (STANDING)
+
+Every acceptance-test identifier must name the durable observable value it
+protects. Delivery bookkeeping is not value: never put `slice_NN` or
+`slice-NN` in a test file/function name. Do not create a ledger, delivery
+narrative or execution plan to preserve that bookkeeping; Git owns change
+provenance. Before RED, derive
+the identifier from the charter's value statement; a reader must understand
+what is protected without opening delivery bookkeeping. Scenario titles and
+parametrization IDs follow the same naming rule. The acceptance designer and
+reviewer validate the observable meaning at authoring time; no language-specific
+post-hoc naming gate is part of the delivery spine.
+
+## Closure obligations — COUNT / PARTITION / SILENCE (STANDING)
+
+Three generative obligations. They fire at AUTHORING time, on the shape of what an AT (or the
+artifact it certifies) asserts — not as a gate that fires after the error. They are
+domain-agnostic: a validator checks the obligation is DISCHARGED without understanding the
+subject. Whenever a scenario, a charter oracle, or a design artifact emits one of these
+shapes, the matching cell is filled inline while writing:
+
+- **Emit a COUNT → name the POPULATION.** A number ("3 consumers wired", "0 findings", "5
+  slices") is meaningless without its denominator: 3 of WHAT total, 0 out of a set that was
+  actually enumerated. An AT asserting a count MUST also pin the population it was drawn from,
+  and assert the count against that population — never a bare integer.
+- **Emit a PARTITION → assert CONSERVATION.** When a whole is split into parts (buckets,
+  statuses, refused/accepted halves, per-category verdicts), the parts MUST sum back to the
+  whole. Assert the conservation law, not just the individual buckets — a partition whose
+  pieces silently drop members is the exact defect this catches.
+- **Declare SILENCE/ABSENCE → name the DISCRIMINATOR.** A "clean / nothing found / no-op /
+  not-applicable" result MUST carry what distinguishes **looked-and-genuinely-absent** from
+  **never-actually-looked** (no capable tier, unparseable input, swallowed error). The AT
+  proves the discriminator by constructing the empty case AND a broken/incapable case and
+  asserting their outputs DIFFER — the negative test no positive test can replace (Vera's
+  absence ≠ incapacity, `nw-user-examiner` §8). A silence indistinguishable from a swallowed
+  error is a false negative wearing a degraded alibi, never a PASS.
+
+Why here, why inline: the obligation is SEEDED mechanically from what the design already
+states — a Reuse Analysis `EXTEND` row that names a field ("binding_name plus template_parts")
+already implies the population; the charter's negative oracle already implies the
+discriminator. Filling the cell while authoring costs the system, not a gate firing after a
+wrong path is taken (GDP-2 inline-at-authoring + GDP-5 cost-on-system). The denominator is not
+documentation — it is the falsifier made mechanical.
+
+## Composition (load by trigger)
+
+| Module | Kind | Trigger — load when... | Covers |
+|---|---|---|---|
+| `nw-test-design-mandates-scenario-design` | KNOWLEDGE | shaping/judging a scenario's SHAPE — boundary, language, journey, fixtures, style | Mandates 1-4, the 3 Pillars, Walking Skeleton Strategy |
+| `nw-test-design-mandates-layered-mechanics` | KNOWLEDGE | choosing test MECHANICS for a layer + adapter-realness — assertion style, PBT mode, tier, sad-path treatment | Mandates 8-11, Layered Test Discipline table, Polyglot Adapter Matrix |
+| `nw-test-design-mandates-composition-contract` | KNOWLEDGE | composing the AT's DRIVING SURFACE + code contract — SSOT-via-types, driving-port-only, contract-shape tag, dormant-seam | Mandates 12-15 |
+
+Load path: `~/.claude/skills/nw-test-design-mandates-{module}/SKILL.md`. Load the module whose trigger matches your current moment; load more than one when a task spans moments. The three triggers partition the mandate-space — every mandate lives in exactly one module.
+
+## Numbering Convention (read before citing any mandate)
+
+Mandate numbers are an **SSOT-internal index**, defined in exactly one place — this registry. They may be re-indexed at will when the registry is reorganized.
+
+- **Inside the modules**: each mandate carries a number for ordering and cross-reference.
+- **Everywhere else** (agents, other skills, tasks, docstrings, ADRs, tests): refer to a mandate by its **stable descriptive name** plus a pointer to this SSOT — e.g. "the Driving-Port-Only Boundary mandate (SSOT: `nw-test-design-mandates`)". Do NOT hard-code the number in external references; the number is not a contract and external code must not lock onto it.
+- Existing numeric labels in test docstrings (`Mandate-12`, `Mandate-13`, ...) are legacy shorthand for the named rules; treat them as references to this SSOT, not as independent definitions.
+
+## Mandate Registry (canonical names → module)
+
+| # | Name | Module |
+|---|------|---|
+| 1 | Hexagonal Boundary Enforcement | scenario-design |
+| 2 | Business Language Abstraction | scenario-design |
+| 3 | User Journey Completeness | scenario-design |
+| 4 | Pure Function Extraction Before Fixtures | scenario-design |
+| — | The 3 Pillars (style backbone) | scenario-design |
+| — | Walking Skeleton Strategy | scenario-design |
+| 8 | Universe-bound assertion at layers 1-3 | layered-mechanics |
+| 9 | PBT input mode is layer-dependent (+ v2 mock-status driver) | layered-mechanics |
+| 10 | Two-tier acceptance for rich journeys | layered-mechanics |
+| 11 | Integration sad paths stay example-based | layered-mechanics |
+| — | Layered Test Discipline table + Polyglot Adapter Matrix | layered-mechanics |
+| 12 | SSOT + Zero Duplication via Types + Services + DSL | composition-contract |
+| 13 | Driving-Port-Only Boundary | composition-contract |
+| 14 | Contract Shape Classification | composition-contract |
+| 15 | Dormant-Seam Reconciliation | composition-contract |
+| 16 | Algebraic Analysis Before the Scenario | scenario-design |
+
+## LANGUAGE CONVENTION FRAME (read FIRST — overrides all examples in the modules)
+
+**Code examples in the modules use Python syntax for illustration only.** They are NOT prescriptive about target language. nWave is language-agnostic per the "genericity and agnosticism" mandate (2026-05-24).
+
+Discover the project's native test/build contract from actual manifests, lockfiles,
+build files, test stanzas/targets and incumbent source/test conventions. This is
+an open evidence set, not a language allowlist: include `dune-project`, `dune`
+library/executable/test stanzas and `.opam` when present, as well as whatever
+the repository actually uses. Follow native interfaces, export/discovery metadata,
+build aliases, runner argv, cwd and declared dependencies.
+
+Project conventions win over every illustrative import, suffix and directory.
+Use native generators, shrinking/replay and assertions when a broad law needs
+PBT; native examples suffice for closed finite or singular observations. A
+matching `nw-pbt-*` skill is optional on need, not a required adapter enrollment.
+For an unlisted stack, investigate its incumbent/native tool rather than reject
+it or introduce Python, pytest, Hypothesis, Gherkin or `tests/common`.
+Missing toolchain or needed native capability is an explicit evidence gap,
+never permission to switch the project's stack.
 
 ## Mandate Compliance Verification
 
-Handoff to software-crafter includes proof all mandates pass:
+Handoff to software-crafter includes proof all mandates pass (definitions per the cited module):
 
-- **CM-A** (Mandate 1): All test files import entry points (driving ports), zero internal component imports
-- **CM-B** (Mandate 2): Gherkin uses business terms only, step methods delegate to services
-- **CM-C** (Mandate 3): Scenarios validate complete user journeys with business value
-- **CM-D** (Mandate 4): Business logic extracted to pure functions. Impure code isolated behind adapters. Fixture parametrization applies only to adapter layer.
-- **CM-E** (Mandate 8): Every step-method at layers 1-3 uses `assert_state_delta(before, after, universe, expected)` with port-exposed universe entries
-- **CM-F** (Mandate 9): PBT decorators (`@given`, `RuleBasedStateMachine`) appear only on layer 1-2 tests; layer 3+ tests are example-only
-- **CM-G** (Mandate 10): If journey is ≥3 chained scenarios with rich input space → Tier B `test_<feature>_state_machine.py` exists alongside Tier A `.feature`
-- **CM-H** (Mandate 11): Layer 3+ sad paths are named example-based tests; no PBT machinery imported
+- **CM-A** (Mandate 1 — scenario-design): All test files import entry points (driving ports), zero internal component imports
+- **CM-B** (Business Language Abstraction — scenario-design): Scenario bodies visibly compose typed business-language Given/When/Then steps for journeys or Arrange/Act/Assert steps for focused contract/property tests, with exactly one When/Act. Gherkin files are optional; the native test framework is valid. Technical protocol details live behind reusable domain steps in project-native helpers.
+- **CM-C** (Mandate 3 — scenario-design): Journey scenarios validate complete user journeys with business value; focused contract/property scenarios validate a named observable contract at its declared boundary.
+- **CM-D** (Mandate 4 — scenario-design): Business logic extracted to pure functions. Impure code isolated behind adapters. Fixture parametrization applies only to adapter layer.
+- **CM-E** (Universe-bound assertion — layered-mechanics): State-mutating observations declare changed and preserved public state using native assertions or sufficient incumbent helpers; no compulsory matcher API.
+- **CM-F** (Mandate 9 — layered-mechanics): the representative layer 3+ wiring/sad-path test is example-only; for every declared broad-input/state/failure law (e.g. `BROAD_INPUT_DOMAIN`), the smallest sufficient set of separate, budgeted semantic-PBT tests exists instead — normally one property per distinct law, combined only when one generated observation honestly falsifies all combined laws — each sited at a deterministic, replayable, law-bearing surface (real I/O not required, but the generated observation carries an explicit preservation map to the promised real-port observation), proving the SAME promised observation as the representative example — never a proxy, never a replacement for it. When no such surface exists, the result is `EVIDENCE_GAP` back to DESIGN before authoring — DESIGN names the surface and preservation map or corrects the law; the obligation is never silently downgraded to example-only
+- **CM-G** (Two-tier acceptance — layered-mechanics): An identifiable feature journey through production composition exists in native layout; broad state/sequence laws have sufficient native replayable properties with a preservation map. No suffix, Gherkin file or scenario-count threshold is required.
+- **CM-H** (Mandate 11 — layered-mechanics): Layer 3+ sad paths are named example-based tests; no PBT machinery imported into that sad-path set — the CM-F carve-out's semantic-PBT test(s) live in their own file(s), never merged into these examples
 
-Evidence: import listings, grep for technical terms, walking skeleton identification, focused scenario count, pure function extraction inventory, universe-entry audit (grep for `_` prefix in universe names → flag internal-field leakage), tier-B file presence check.
+Evidence is the obligation → business stimulus → public response/state → falsifier relation and actual native execution. Names, import scans, decorator counts, file presence and technical-word greps are not substitutes for semantic review or observed properties.

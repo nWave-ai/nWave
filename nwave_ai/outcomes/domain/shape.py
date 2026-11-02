@@ -12,29 +12,42 @@ Rules (this step — keep minimal, expand in 02-01):
 from __future__ import annotations
 
 import re
+from itertools import accumulate, pairwise
 
 
-_PARAM_TUPLE = re.compile(r"\([^)]*\)")
 _WHITESPACE = re.compile(r"\s+")
 
 
 def normalize_shape(raw: str) -> str:
     """Return the canonical form of a type-shape string."""
     no_ws = _WHITESPACE.sub("", raw)
-    return _PARAM_TUPLE.sub(_strip_param_names, no_ws)
+    if not (no_ws.startswith("(") and no_ws.endswith(")")):
+        return no_ws
+    inner = no_ws[1:-1]
+    return (
+        "("
+        + ",".join(
+            normalize_shape(_take_type(part)) for part in _split_top_level(inner, ",")
+        )
+        + ")"
+    )
 
 
-def _strip_param_names(match: re.Match[str]) -> str:
-    """Replace parenthesised parameter list `(name:T, name:T)` with `(T,T)`."""
-    inner = match.group()[1:-1]
-    if not inner:
-        return "()"
-    types = tuple(_take_type(part) for part in inner.split(","))
-    return "(" + ",".join(types) + ")"
+def _split_top_level(text: str, separator: str) -> tuple[str, ...]:
+    depths = tuple(accumulate(int(char in "([") - int(char in ")]") for char in text))
+    boundaries = (
+        -1,
+        *(
+            index
+            for index, (char, depth) in enumerate(zip(text, depths, strict=True))
+            if char == separator and depth == 0
+        ),
+        len(text),
+    )
+    return tuple(text[start + 1 : end] for start, end in pairwise(boundaries))
 
 
 def _take_type(part: str) -> str:
     """For `name:T` return `T`; otherwise return the part unchanged."""
-    if ":" in part:
-        return part.split(":", 1)[1]
-    return part
+    parts = _split_top_level(part, ":")
+    return ":".join(parts[1:]) if len(parts) > 1 else part

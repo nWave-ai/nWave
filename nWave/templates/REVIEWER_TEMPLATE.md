@@ -25,7 +25,7 @@ name: nw-{agent-name}-reviewer            # REQUIRED. Matches specialist + "-rev
 description: {review scope description}    # REQUIRED. Include "Runs on Haiku for cost efficiency"
 model: haiku                               # REQUIRED. Always haiku for reviewers
 tools: Read, Glob, Grep, Task             # REQUIRED. Read-only + Task for skill loading
-maxTurns: 30                               # REQUIRED. 15-30 range
+maxTurns: 40                               # REQUIRED. Minimum 40
 skills:                                    # OPTIONAL. Reviewer-specific + cross-referenced
   - {reviewer-specific-skill}              #   From: nWave/skills/{agent-name}-reviewer/
   - {shared-skill}                         #   Cross-ref from: nWave/skills/{agent-name}/
@@ -49,7 +49,7 @@ name: nw-{agent-name}-reviewer
 description: Use for review and critique tasks - {Domain} review specialist. Runs on Haiku for cost efficiency.
 model: haiku
 tools: Read, Glob, Grep, Task
-maxTurns: 30
+maxTurns: 40
 skills:
   - {critique-dimensions-or-review-criteria}
 ---
@@ -242,4 +242,4 @@ Score <= 3: rejected
 | Skills | 1 | 2 | 3 |
 | Workflow phases | 3 | 4 | 5 |
 | Examples | 3 | 4 | 7 |
-| maxTurns | 15 | 30 | 30 |
+| maxTurns | 40 | 40 | 40 |

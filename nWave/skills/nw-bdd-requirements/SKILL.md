@@ -11,6 +11,58 @@ disable-model-invocation: true
 
 BDD discovers "what we don't know we don't know" through collaborative exploration with concrete examples, not tools or formats.
 
+## Facilitate product understanding
+
+The PO owns DISCUSS, not merely story decomposition. Start from one actor,
+concrete situation and intended benefit. Ask one consequential question or a
+small related group; reflect the answer in the actor's language and invite
+correction. Use existing answers instead of repeating discovery. Make alternatives
+and their consequences clear without leading the human toward your preferred
+formal property. Offer an example when abstraction prevents understanding.
+
+Separate confirmed decisions, proposals, assumptions and open questions. Silence
+is not agreement; a repeated answer supports those examples, not general model
+fidelity. Honor interactive, final-review or explicitly delegated work. A delegated
+PO relays questions through its host; it does not pretend to have interviewed a
+person. Stop exploring when remaining questions do not change the current scope,
+observable behavior or material trade-off; retain relevant unknowns visibly.
+
+### Natural questions that can reveal properties
+
+Use only questions relevant to the operation and current uncertainty. These are
+candidate distinctions, not a completeness theorem or a compulsory checklist.
+Do not name the algebra to the human unless it helps them.
+
+| Ask in the domain | Distinction for downstream design |
+|---|---|
+| If the person submits twice, what should happen? | Repetition / idempotence |
+| If these actions arrive in the opposite order, what changes? | Order dependence / commutativity |
+| Can they undo it, and until when? | Reversibility / terminal state |
+| When this amount is moved or split, what total must stay the same? | Conservation |
+| Can both of these be true at once? | Mutual exclusion |
+| If it stops halfway, what does the person see and what can they do? | Failure / recovery / compensation |
+| Could doing this leave them with no safe next action? | Progress / non-trapping |
+
+Accept answers such as “order matters” or “we have not decided”. Select operation
+pairs that share a resource or rule; do not enumerate every mathematical pairing.
+Record the answer and conditions before deriving a law. Examples remain product
+choices; the architect determines the appropriate types, laws and proof bounds.
+
+### Visual exploration and human view
+
+For a changed human interface, offer a proportionate sketch, wireframe or navigable
+prototype. Explain the uncertainty it resolves; reuse existing components and
+honor a declined offer. The host can select `nw-ux-designer` and a bounded
+`nw-spike`; distinguish simulated behavior from real integration. Discuss relevant
+loading, empty, error, permission and recovery states, without inventing a quota
+of scenarios. Record what feedback changed, not just that a prototype exists.
+
+Use the brief's nwdes HTML view as the shared reading surface.
+Put intent, journey, examples, decisions and open questions before formal detail.
+Ask the human to explain or challenge a concrete consequence when understanding
+is uncertain; do not turn comprehension checks into an examination or approval
+ceremony. The renderer cannot repair unclear semantic input.
+
 ## The Three Amigos
 
 Three perspectives revealing each other's blindspots:
@@ -145,8 +197,9 @@ Scenario: Successful transfer with sufficient balance
   And I receive a confirmation message
 ```
 
-### For Each Rule, Create 2-3 Examples
-1. Typical/happy path | 2. Boundary condition | 3. Error/alternative path
+### Choose examples that distinguish the rule
+Use a typical case and add boundary or failure cases when they expose relevant
+uncertainty. There is no fixed count per rule.
 
 ## Business Outcome Focus: Five Whys
 
@@ -184,15 +237,15 @@ Reverse: empty form | garbage data | 50,000 characters | 100 submissions in 10 s
 ### Technique 2: Evil User Persona
 "Malicious Mike" tries SQL injection, URL manipulation, unauthorized access. "Careless Cathy" never reads instructions, clicks back mid-process, refreshes constantly.
 
-### Technique 3: Force Example Diversity
-For each rule, require examples from three categories:
-1. Happy path (typical success) | 2. Edge case (boundary, unusual but valid) | 3. Error case (invalid, failure condition)
-
-Forcing diversity prevents echo chamber thinking.
+### Technique 3: Challenge the example
+Consider a boundary, unusual valid case or failure when it can change the rule.
+Choose the smallest contrasting example; do not require every category per rule.
 
 ## Red Card Management
 
-Red cards are blockers. Never proceed to development with unresolved questions.
+Red cards are unresolved questions. Identify which prevent the current value
+from being understood and which can be deferred explicitly. Never silently turn
+an open question into a requirement; do not block unrelated understood work.
 
 Resolution process:
 1. Capture during session | 2. Assign owner (usually BA/PO) | 3. Set deadline (before dev starts) | 4. Follow-up session if answer reveals new complexity
@@ -284,7 +337,8 @@ Story mapping complements Example Mapping: use story mapping to identify WHICH s
 
 ## Requirements Completeness Check
 
-During Phase 1 (GATHER), verify all three requirement types. Stories covering only functional requirements produce incomplete handoffs.
+Consider functional behavior, quality attributes and business rules when
+relevant to the current outcome. No fixed category quota or phase is required.
 
 ### Functional Requirements
 - Business capabilities and features | User interactions and system responses
@@ -301,7 +355,8 @@ During Phase 1 (GATHER), verify all three requirement types. Stories covering on
 - Workflow and process constraints | Compliance and regulatory requirements
 - Validation: clear rule specification with examples | exception handling defined | rule precedence documented
 
-For each story, ask: "Have we captured functional behavior, quality attributes (NFRs), and business constraints?" Missing any category is a completeness gap flagged during review (see `review-dimensions` skill, Dimension 2).
+Flag a missing category only when an identified product risk requires it.
+Do not invent NFR thresholds or policies to fill a template.
 
 ## Domain Language Discovery
 

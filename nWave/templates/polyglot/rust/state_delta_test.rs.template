@@ -45,9 +45,9 @@ fn expected_of(pairs: Vec<(&str, polyglot_pilot::common::state_delta::Predicate)
 #[test]
 fn returns_ok_on_clean_prepend_transition() {
     let before = snap(&[("PATH", json!("/usr/bin"))]);
-    let after = snap(&[("PATH", json!("/des/bin:/usr/bin"))]);
+    let after = snap(&[("PATH", json!("/app/bin:/usr/bin"))]);
     let universe = universe_of(&["PATH"]);
-    let expected = expected_of(vec![("PATH", prepended_with("/des/bin"))]);
+    let expected = expected_of(vec![("PATH", prepended_with("/app/bin"))]);
 
     assert_state_delta(&before, &after, &universe, &expected, false)
         .expect("state-delta must pass");
@@ -58,7 +58,7 @@ fn predicate_failure_returns_violation_with_full_context() {
     let before = snap(&[("PATH", json!("/usr/bin"))]);
     let after = snap(&[("PATH", json!("/wrong"))]);
     let universe = universe_of(&["PATH"]);
-    let expected = expected_of(vec![("PATH", prepended_with("/des/bin"))]);
+    let expected = expected_of(vec![("PATH", prepended_with("/app/bin"))]);
 
     let err = assert_state_delta(&before, &after, &universe, &expected, false)
         .expect_err("must record a violation");
@@ -68,22 +68,22 @@ fn predicate_failure_returns_violation_with_full_context() {
     assert_eq!(v.key, "PATH");
     assert_eq!(v.old, json!("/usr/bin"));
     assert_eq!(v.new, json!("/wrong"));
-    assert_eq!(v.predicate_name.as_deref(), Some("prepended_with(/des/bin)"));
+    assert_eq!(v.predicate_name.as_deref(), Some("prepended_with(/app/bin)"));
 
     let msg = format_violations(&err);
     assert!(msg.contains("PATH"));
-    assert!(msg.contains("prepended_with(/des/bin)"));
+    assert!(msg.contains("prepended_with(/app/bin)"));
 }
 
 #[test]
 fn implicit_unchanged_catches_undeclared_change() {
     let before = snap(&[("PATH", json!("/u/bin")), ("HOME", json!("/home/u"))]);
     let after = snap(&[
-        ("PATH", json!("/des/bin:/u/bin")),
+        ("PATH", json!("/app/bin:/u/bin")),
         ("HOME", json!("/home/changed")),
     ]);
     let universe = universe_of(&["PATH", "HOME"]);
-    let expected = expected_of(vec![("PATH", prepended_with("/des/bin"))]);
+    let expected = expected_of(vec![("PATH", prepended_with("/app/bin"))]);
 
     let err = assert_state_delta(&before, &after, &universe, &expected, false)
         .expect_err("must record HOME drift");
@@ -98,7 +98,7 @@ fn collects_multiple_violations_a7() {
     let after = snap(&[("PATH", json!("/wrong")), ("HOME", json!("/h2")), ("X", json!("1"))]);
     let universe = universe_of(&["PATH", "HOME", "X"]);
     let expected = expected_of(vec![
-        ("PATH", prepended_with("/des")),
+        ("PATH", prepended_with("/app")),
         ("HOME", unchanged()),
     ]);
 
@@ -113,9 +113,9 @@ fn collects_multiple_violations_a7() {
 #[test]
 fn strict_mode_flags_keys_not_in_universe() {
     let before = snap(&[("PATH", json!("/u")), ("EXTRA", json!("x"))]);
-    let after = snap(&[("PATH", json!("/des:/u")), ("EXTRA", json!("x2"))]);
+    let after = snap(&[("PATH", json!("/app:/u")), ("EXTRA", json!("x2"))]);
     let universe = universe_of(&["PATH"]);
-    let expected = expected_of(vec![("PATH", prepended_with("/des"))]);
+    let expected = expected_of(vec![("PATH", prepended_with("/app"))]);
 
     let err = assert_state_delta(&before, &after, &universe, &expected, true)
         .expect_err("must flag EXTRA as strict mismatch");
@@ -139,8 +139,8 @@ fn unchanged_passes_iff_deep_equal() {
 
 #[test]
 fn prepended_with_passes_when_prefix_plus_sep_plus_old() {
-    let p = prepended_with("/des/bin");
-    assert!(p.call(&json!("/usr/bin"), &json!("/des/bin:/usr/bin")).ok);
+    let p = prepended_with("/app/bin");
+    assert!(p.call(&json!("/usr/bin"), &json!("/app/bin:/usr/bin")).ok);
     assert!(!p.call(&json!("/usr/bin"), &json!("/wrong")).ok);
 }
 
@@ -162,8 +162,8 @@ fn set_to_ignores_old_and_matches_new() {
 
 #[test]
 fn containing_checks_substring_or_array_element() {
-    assert!(containing(json!("/usr/bin")).call(&json!(""), &json!("/des/bin:/usr/bin")).ok);
-    assert!(!containing(json!("/usr/bin")).call(&json!(""), &json!("/des/bin:/opt/bin")).ok);
+    assert!(containing(json!("/usr/bin")).call(&json!(""), &json!("/app/bin:/usr/bin")).ok);
+    assert!(!containing(json!("/usr/bin")).call(&json!(""), &json!("/app/bin:/opt/bin")).ok);
     assert!(containing(json!({"id": 1})).call(&Value::Null, &json!([{"id": 1}, {"id": 2}])).ok);
     assert!(!containing(json!({"id": 9})).call(&Value::Null, &json!([{"id": 1}, {"id": 2}])).ok);
 }
@@ -180,21 +180,21 @@ fn normalized_to_compares_under_normaliser() {
 
 #[test]
 fn idempotent_after_checks_first_segment() {
-    let p = idempotent_after("DES_BIN");
-    assert!(p.call(&json!("anything"), &json!("DES_BIN:/usr/bin")).ok);
+    let p = idempotent_after("APP_BIN");
+    assert!(p.call(&json!("anything"), &json!("APP_BIN:/usr/bin")).ok);
     assert!(!p.call(&json!("anything"), &json!("/usr/bin:/opt/bin")).ok);
 }
 
 #[test]
 fn legacy_healed_implements_paper_trace() {
-    const LEGACY: &str = "DES_BIN:SYSTEM_PATH_FALLBACK";
+    const LEGACY: &str = "APP_BIN:SYSTEM_PATH_FALLBACK";
     let p = legacy_healed(
         |v| matches!(v, Value::String(s) if s == LEGACY),
-        |v| matches!(v, Value::String(s) if s != LEGACY && s.starts_with("DES_BIN:")),
+        |v| matches!(v, Value::String(s) if s != LEGACY && s.starts_with("APP_BIN:")),
     );
-    assert!(p.call(&json!(LEGACY), &json!("DES_BIN:/usr/bin")).ok);
+    assert!(p.call(&json!(LEGACY), &json!("APP_BIN:/usr/bin")).ok);
     assert!(!p.call(&json!(LEGACY), &json!(LEGACY)).ok);
-    assert!(!p.call(&json!("/usr/bin"), &json!("DES_BIN:/usr/bin")).ok);
+    assert!(!p.call(&json!("/usr/bin"), &json!("APP_BIN:/usr/bin")).ok);
 }
 
 #[test]
@@ -241,9 +241,9 @@ proptest! {
     ) {
         prop_assume!(old_home != new_home);
         let before = snap(&[("PATH", json!("/u")), ("HOME", json!(old_home))]);
-        let after = snap(&[("PATH", json!("/des:/u")), ("HOME", json!(new_home))]);
+        let after = snap(&[("PATH", json!("/app:/u")), ("HOME", json!(new_home))]);
         let universe = universe_of(&["PATH", "HOME"]);
-        let expected = expected_of(vec![("PATH", prepended_with("/des"))]);
+        let expected = expected_of(vec![("PATH", prepended_with("/app"))]);
         let result = assert_state_delta(&before, &after, &universe, &expected, false);
         prop_assert!(result.is_err());
     }
@@ -252,8 +252,8 @@ proptest! {
 #[test]
 fn permits_mutation_only_on_slots_with_matching_predicates() {
     let before = snap(&[("PATH", json!("/u")), ("HOME", json!("/h"))]);
-    let after = snap(&[("PATH", json!("/des:/u")), ("HOME", json!("/h"))]);
+    let after = snap(&[("PATH", json!("/app:/u")), ("HOME", json!("/h"))]);
     let universe = universe_of(&["PATH", "HOME"]);
-    let expected = expected_of(vec![("PATH", prepended_with("/des"))]);
+    let expected = expected_of(vec![("PATH", prepended_with("/app"))]);
     assert_state_delta(&before, &after, &universe, &expected, false).expect("must pass");
 }

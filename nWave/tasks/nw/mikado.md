@@ -3,6 +3,7 @@ description: "[EXPERIMENTAL] Complex refactoring roadmaps with visual tracking"
 argument-hint: "[refactoring-goal] - Optional: --complexity=[simple|moderate|complex] --visualization=[tree|graph]"
 ---
 
+
 # NW-MIKADO: Complex Refactoring with Mikado Method
 
 > **EXPERIMENTAL**: Under active development. Behavior and output format may change between versions.
@@ -35,9 +36,6 @@ Execute \*mikado for {refactoring-goal}.
 - complexity: complex # simple/moderate/complex
 - visualization: {tree|graph} # tree = indented markdown checklist, graph = Mermaid dependency diagram
 
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes. This gives the user real-time visibility into progress.
 
 ## Success Criteria
 

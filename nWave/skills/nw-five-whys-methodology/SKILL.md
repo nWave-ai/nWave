@@ -17,7 +17,7 @@ Core tenets: scientific evidence-based investigation | address fundamental cause
 
 Complex problems have multiple root causes. Investigate comprehensively:
 - **Parallel**: investigate all symptoms/conditions simultaneously
-- **Branch**: follow each cause through all five WHY levels
+- **Branch**: follow each cause toward its root cause, usually five WHY levels; stop earlier only at an actionable evidenced root cause or at an explicit `bounded stop at WHY n` when evidence cannot support another link
 - **Cross-cause**: ensure multiple causes don't contradict
 - **Comprehensive**: address all root causes, not just primary
 
@@ -47,7 +47,7 @@ Fundamental causes. Multiple root causes expected for complex issues. Ensure all
 ## Validation and Verification
 
 ### Evidence Requirements
-Each WHY level must have verifiable evidence for all causes. Root causes must explain all symptoms collectively. Solutions must address all root causes.
+Each stated WHY level must have verifiable evidence for all causes; an unevidenced link is a hypothesis, never a level. Root causes must explain all symptoms collectively. Solutions must address all root causes. A bounded stop names the missing evidence that would extend the branch and is never reported as a completed five-level chain.
 
 ### Backwards Chain Validation
 1. Trace each root cause forward to symptom | 2. "If this exists, would it produce this symptom?" = must be yes

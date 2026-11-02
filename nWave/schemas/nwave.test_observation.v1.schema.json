@@ -1,0 +1,10 @@
+{
+  "schema": "nwave.test_observation.v1",
+  "_description": "A test runner's explicit non-observation. This is not a test result and never represents a passing run.",
+  "fields": {
+    "schema": "nwave.test_observation.v1",
+    "runner": "string",
+    "observation": "unobserved",
+    "reason": "runner-absent"
+  }
+}

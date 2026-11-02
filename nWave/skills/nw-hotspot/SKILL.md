@@ -152,3 +152,4 @@ Run `/nw-hotspot --rank {report.md}` after any analysis to prioritize by churn.
 ## Expected Outputs
 
 No persistent files. Output is displayed inline. JSON mode outputs a JSON array for composition with other tools.
+

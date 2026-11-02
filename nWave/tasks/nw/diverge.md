@@ -13,6 +13,16 @@ Execute DIVERGE wave through Flux's 4-phase workflow: JTBD analysis|competitive 
 
 DIVERGE is optional. Brownfield features with a clear direction may skip it (see skip checklist in design spec). New products and pivot decisions benefit most from structured divergence.
 
+## Delivery route
+
+Use nwdes for delivery: read `nw-nwdes`. Divergent directions remain proposals
+until a product choice is made; no candidate direction creates a delivery plan.
+For DISCUSS, the host creates or selects the nwdes feature and builds the
+installed Product Owner's prompt with `nwdes prompt`. The PO uses Bash and
+`nwdes product decision add` to record the chosen direction and
+unresolved alternatives, then closes. Render its brief with `nwdes document`.
+The host orchestrates; a candidate-options report is not a second handoff.
+
 ## Interactive Decision Points
 
 ### Decision 1: Work Type
@@ -36,11 +46,9 @@ Before beginning DIVERGE work, read SSOT and prior wave artifacts:
 
 1. **SSOT** (if `docs/product/` exists):
    - `docs/product/jobs.yaml` -- validated jobs and opportunity scores
-   - `docs/product/vision.md` -- product vision and strategic context
+   - `docs/product/vision.md` -- product vision and strategic context, including any DISCOVER assumptions already promoted here
 2. **Project context**: `docs/project-brief.md` | `docs/stakeholders.yaml` (if available)
-3. **DISCOVER artifacts**: Read `docs/feature/{feature-id}/discover/` (if present)
-   - `wave-decisions.md` -- validated assumptions and key decisions
-   - `problem-validation.md` -- customer evidence grounding the problem
+3. **DISCOVER evidence** (if a DISCOVER pass ran for this problem): re-read the returned problem-validation evidence, or ask the user for it if not still in context -- customer evidence grounding the problem. Validated assumptions already live in the SSOT above.
 
 If `docs/product/` does not exist, this is the first wave using the SSOT model. DIVERGE will create it (bootstrap `docs/product/jobs.yaml` with the validated job).
 
@@ -57,7 +65,6 @@ Execute \*diverge for {feature-id}.
 **Configuration:**
 - work_type: {Decision 1}
 - research_depth: {Decision 2}
-- output_directory: docs/feature/{feature-id}/
 
 **SKILL_LOADING**: Before starting work, load your skill files using the Read tool from `~/.claude/skills/nw-{skill-name}/SKILL.md`. Skills encode your methodology -- without them you operate with generic knowledge only.
 
@@ -76,9 +83,6 @@ Flux loads `taste-evaluation` skill. Applies DVF filter, scores surviving option
 **Peer Review:**
 After Phase 4 gates pass, Flux invokes `nw-diverger-reviewer` (Prism) to validate all 5 dimensions. Max 2 revision iterations before handoff.
 
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes. This gives the user real-time visibility into progress.
 
 ## Success Criteria
 
@@ -95,34 +99,14 @@ The invoked agent MUST create a task list from its workflow phases at the start 
 ## Next Wave
 
 **Handoff To**: nw-product-owner (DISCUSS wave)
-**Deliverables**: `recommendation.md` with explicit decision statement + supporting DIVERGE artifacts
-
-## Wave Decisions Summary
-
-Before completing DIVERGE, produce (or append to) `docs/feature/{feature-id}/wave-decisions.md`:
-
-```markdown
-# DIVERGE Decisions -- {feature-id}
-
-## Key Decisions
-- [D1] {decision}: {rationale} (see: {source-file})
-
-## Job Summary
-- Validated job: {job statement at strategic/physical level}
-- ODI outcomes: {count} outcome statements
-
-## Options Evaluated
-- {count} options generated, {count} survived DVF filter
-- Recommended: {option name} -- {one-line rationale}
-- Dissent: {second-place option} -- {why it might be better under different assumptions}
-
-## SSOT Updates
-- jobs.yaml: {created|updated} with job JOB-{NNN}
-```
+**Deliverables**: The candidate directions are ephemeral working material; only
+the recommended direction and its explicit decision statement are returned
+directly to DISCUSS, backed by the updated `docs/product/jobs.yaml`.
 
 ## SSOT Update
 
-After producing feature-level artifacts, update the product-level SSOT:
+The durable product-level SSOT is the only normative handoff the next wave
+reads -- not a per-wave decision file. Update it directly:
 
 1. **Jobs SSOT**: Create or update `docs/product/jobs.yaml` with the validated job from Phase 1. Add changelog entry referencing this feature-id.
 2. If `docs/product/` does not exist, create the directory. This is the SSOT bootstrap.
@@ -130,21 +114,6 @@ After producing feature-level artifacts, update the product-level SSOT:
 SSOT files use `schema_version` and `changelog` fields. See canonical schema in the design spec.
 
 ## Expected Outputs
-
-### Feature delta (in `docs/feature/{feature-id}/`)
-```
-  recommendation.md             (top 3 options, dissenting case, decision for DISCUSS)
-  wave-decisions.md             (DIVERGE section appended)
-```
-
-### Internal artifacts (in `docs/feature/{feature-id}/diverge/`)
-```
-  job-analysis.md               (validated job + ODI outcome statements)
-  competitive-research.md       (prior art, competitor analysis, non-obvious alternatives)
-  options-raw.md                (all generated options, unfiltered, no evaluation)
-  taste-evaluation.md           (DVF filter, locked weights, scoring matrix)
-  review.yaml                   (peer review result from nw-diverger-reviewer)
-```
 
 ### SSOT updates (in `docs/product/`)
 ```
@@ -157,7 +126,7 @@ SSOT files use `schema_version` and `changelog` fields. See canonical schema in 
 ```
 /nw-diverger notification-system
 ```
-DISCOVER artifacts present with validated problem. Flux reads `problem-validation.md`, extracts job ("minimize likelihood of developers missing critical failure signals"), researches 5 notification tools including non-obvious alternatives (ambient light signals, IDE annotations), generates 6 structurally diverse options, scores with taste evaluation, recommends proactive push with Slack integration. Updates `jobs.yaml` with validated job.
+DISCOVER evidence present for a validated problem. Flux re-reads the returned problem-validation evidence, extracts job ("minimize likelihood of developers missing critical failure signals"), researches 5 notification tools including non-obvious alternatives (ambient light signals, IDE annotations), generates 6 structurally diverse options, scores with taste evaluation, recommends proactive push with Slack integration. Updates `jobs.yaml` with validated job.
 
 ### Example 2: Brownfield feature without DISCOVER
 ```

@@ -1,145 +1,107 @@
 ---
 name: nw-review
-description: "Dispatches an expert reviewer agent to critique workflow artifacts. Use when a roadmap, implementation, or step needs quality review before proceeding."
+description: Dispatches an independent reviewer for a durable authority, immutable oracle, candidate diff, charter set, or operational artifact.
 user-invocable: true
-argument-hint: '[agent] [artifact-type] [artifact-path] - Example: @software-crafter task "roadmap.json"'
+argument-hint: '[owner] [repository-relative artifact or diff identity]'
 ---
 
-# NW-REVIEW: Expert Critique and Quality Assurance
+# NW-REVIEW
 
-**Wave**: CROSS_WAVE
-**Agent**: Dynamic (nw-*-reviewer)
+Before diagnosing or assigning corrections, load `nw-cross-cutting-invariants`
+and apply `delivery:trustworthy-baseline-and-repair-scope`. A blocking observation
+requires attention; it does not alone authorize an independent repair.
 
-## Overview
+Load `nw-cross-cutting-invariants` and apply `flow:findings-go-to-the-owner-directly` when exchanging findings or questions between roles.
 
-Dispatches expert reviewer agent to critique workflow artifacts. Takes base agent name, appends `-reviewer`, invokes with artifact. Reviewer agent owns all review methodology|criteria|output format.
 
-## Review Philosophy: Radical Candor
+Select the reviewer that owns the artifact class. Give it the actual
+repository-relative artifact or actual diff, not copied prose.
 
-Every review MUST embody Radical Candor — kind AND clear, specific AND sincere:
+Use the exact installed reviewer/examiner with the permitted evidence.
+The examiner works from the user's point of view and supplied public contract
+and observations; implementation source is not needed for that judgment.
 
-- **Care personally**: Acknowledge what works. Understand author's intent before critiquing. Include at least one genuine `praise:` per review.
-- **Challenge directly**: Be specific about what is wrong and WHY. Ground feedback in evidence|consequences, not preference. Never soften security/data-loss issues.
-- **Avoid ruinous empathy**: Never "LGTM" when real issues exist. Hedging ("maybe consider possibly...") on blocking concerns is a review failure.
-- **Avoid obnoxious aggression**: Never "this is terrible" without constructive alternative. Focus on work, not author. Explain "why" behind every critique.
+Reviews leave the assessed artifact unchanged and remain adversarial. Every finding cites a file/line,
+terminal command or exhibited counterexample. `APPROVE` requires the artifact
+to survive every applicable check; missing or stale evidence is
+`INDETERMINATE`, not approval.
 
-## Feedback Format: Conventional Comments
+The final reviewer owns selection and sufficiency of the touched-file selected tests.
+It reuses a complete applicable native result (host, CI or the normal commit hook)
+whose source, test, argv and runtime inputs are unchanged, citing its original operator
+and run; it executes only missing or affected checks, once. Reuse never waives a check.
 
-All findings MUST use Conventional Comments labels:
+Review durable product/design authority at its owner, acceptance oracles with
+the acceptance-designer reviewer, implementation diffs with the crafter
+reviewer, charters with the PO reviewer, and platform artifacts with the
+platform reviewer. A reviewer may veto but never silently repair the artifact.
 
-| Label | Purpose | Blocking? |
-|---|---|---|
-| `praise:` | Highlight something done well (genuine, not filler) | No |
-| `issue (blocking):` | Must be resolved before proceeding | Yes |
-| `issue (blocking, security):` | Security vulnerability — maximum directness | Yes |
-| `suggestion:` | Propose improvement with reasoning | Mark `(blocking)` or `(non-blocking)` |
-| `nitpick (non-blocking):` | Trivial, preference-based | No |
-| `question (non-blocking):` | Seek clarification before assuming | No |
-| `thought (non-blocking):` | Idea sparked by the review | No |
+Supply each finding's location, obligation, observation, remediation and correction
+owner (oracle, design, implementation or product). Keep the assessed artifact/diff
+identity and capability limits explicit. Missing evidence remains INDETERMINATE;
+it never becomes an accepted review. Make the immutable evidence the review cites
+available with the artifact before assessment. Send each completed finding directly
+to its artifact owner through native messaging when available; relay through the host
+route only when direct messaging is genuinely absent.
 
-Findings MUST be priority-ordered: blocking issues first, then suggestions, then nitpicks/praise.
+## Convergence
 
-## Approval Criteria
+A review converges only against a CLOSED criterion set. Four rules, all binding.
 
-| Verdict | Criteria |
-|---|---|
-| **APPROVED** | No blocking issues. Non-blocking feedback is advisory. |
-| **NEEDS_REVISION** | Blocking issues exist. Author must address. Each blocking issue enumerated. |
-| **REJECTED** | Fundamental design problems requiring significant rework. Rare — explain thoroughly, offer alternatives. |
+- **Declared before, not chosen during.** The dispatcher states the original agreed
+  value and the closed criteria in the dispatch. The reviewer first checks that the
+  criteria preserve that value, then judges the declared set. Where an executable
+  reference model exists, the set is "the surface agrees with the model" plus the
+  named suites; anything outside it is not review material. A criterion the reviewer
+  invents mid-review is out of scope, however true it is.
+- **Classify against the request.** Judge agreed behavior, required quality and
+  delivery obligations, and regressions caused by the request's work. Apply the
+  shared repair-scope clause to safety-net failures and uncertain relevance.
+  Independent improvements are notes, not automatic same-slice corrections.
+- **Preserve the safety net.** A required failure cannot be waived. Its owner
+  diagnoses and restores the required verification within the existing authority;
+  independent redesign requires a scope decision, not an implicit repair chain.
+  For public behavior corrections, compare existing coverage with the counterexample;
+  invoke ATD only for uncovered behavior. After an owner's correction, the reviewer
+  reassesses only the affected delta; notes alone do not require a review round.
+- **Precise instruction repair is allowed.** Change the smallest instruction bytes
+  that remove a proven contradiction. State measurable claims in executable checks
+  where one exists; prose may state role boundaries, ownership, or remediation.
 
-## Syntax
+## Design-review question set
 
-```
-/nw-review @{agent-name} {artifact-type} "{artifact-path}" [step_id={id}] [--dimensions=rpp] [--from=1] [--to=3]
-```
+Structure (algebra) and time (protocol) questions that make a design review
+adversarial instead of confirmatory. Finds structural incoherence, never
+temporal holes -- a temporal gap needs the model checker (T5), not this list.
 
-**Parameters:**
-- `@{agent-name}` - Base agent (e.g., `@nw-software-crafter`). `-reviewer` suffix appended automatically.
-- `{artifact-type}` - One of: `baseline`, `roadmap`, `step`, `task`, `implementation`
-- `{artifact-path}` - Path to artifact file (resolved to absolute)
-- `step_id={id}` - Required for step and implementation reviews
-- `--dimensions=rpp` - Triggers RPP code smell scan alongside standard review (Dimension 4)
-- `--from=N` / `--to=N` - RPP level range (default: 1-6). Requires `--dimensions=rpp`
+**Structure (algebra):**
 
-## Rigor Profile Integration
+- **S1** [INSPECTIVE] -- for every finite sum type, list the cases and pair
+  each with its domain meaning; flag any case with no meaning and any
+  meaning split across cases.
+- **S2** [MECHANICAL] -- for every pair of invariants mentioning the same
+  field, construct a state satisfying the first and check the second,
+  delegated to a property test; "I couldn't find one" is not evidence.
+- **S3** [MECHANICAL] -- for every invariant proven under an added
+  hypothesis, remove the hypothesis and verify a counterexample still
+  exists; if none exists the hypothesis was decorative, and the
+  conditional theorem was the signal a type was needed.
+- **S4** [INSPECTIVE] -- every unreachable arm of a total function must be
+  made unreachable by the type, never by a comment.
 
-Before dispatching the reviewer agent, read rigor config from `.nwave/des-config.json` (key: `rigor`). If absent, use standard defaults.
+**Time (protocol):**
 
-- **`review_enabled`**: If `false`, skip the review entirely. Output: "Review skipped per rigor profile (review_enabled=false)."
-- **`reviewer_model`**: Pass as `model` parameter to Task tool. If `"skip"`, skip the review. Overrides the default Haiku model.
-- **`double_review`**: If `true` and called from deliver Phase 4, the caller is responsible for invoking review twice.
+- **T5** [MECHANICAL] -- declared progress/liveness: show do-nothing;
+  model-check liveness excludes it; safety-only: `NOT_APPLICABLE`.
+- **T6** [INSPECTIVE] -- name every fairness assumption's real guarantor,
+  monitor, and violation consequence.
+- **T7** [JUDGEMENT] -- list every model step and name the real code
+  mechanism guaranteeing its atomicity; the answer must be a code
+  reference, never prose. If it cannot be named, the review returns the
+  QUESTION to the human, not a verdict.
 
-## Agent Derivation
-
-| User provides | Reviewer invoked |
-|---|---|
-| `@nw-software-crafter` | `nw-software-crafter-reviewer` |
-| `@nw-solution-architect` | `nw-solution-architect-reviewer` |
-| `@nw-platform-architect` | `nw-platform-architect-reviewer` |
-
-Default model: Haiku (overridden by `rigor.reviewer_model` when set).
-
-## Agent Invocation
-
-1. **Parse parameters** — Strip `@` from agent name, resolve artifact path to absolute, extract optional step_id, dimensions, from/to range. Gate: all parameters parsed.
-2. **Read rigor config** — Read `.nwave/des-config.json` key `rigor`. If absent, use standard defaults. Gate: rigor profile loaded or defaults applied.
-3. **Validate inputs** — Run all four validation checks below. Gate: zero validation failures.
-4. **Apply rigor overrides** — Check `review_enabled` (skip if false), determine model from `reviewer_model` (default: haiku, skip if "skip"). Gate: execution decision made.
-5. **Invoke reviewer** — Call Task tool with `subagent_type="{agent-name}-reviewer"`, resolved model, and prompt `"Review {artifact-type}: {absolute-artifact-path} [step_id={id}]"`. Reviewer handles reading artifact, applying domain expertise, generating structured critique, updating original artifact with review metadata. Gate: Task tool invoked.
-
-## Validation (before invoking)
-
-1. **Agent exists** — Strip `@`, check agent name against agent registry. Gate: agent found or return "Unknown agent: {name}. Check available agents with /nw-agents."
-2. **Artifact type valid** — Confirm type is one of: baseline, roadmap, step, task, implementation. Gate: type valid or return "Invalid artifact type: {type}. Use: baseline, roadmap, step, task, implementation."
-3. **Artifact file exists** — Resolve to absolute path and confirm file exists. Gate: file found or return "Artifact not found: {path}."
-4. **step_id present when required** — Require step_id when artifact type is `step` or `implementation`. Gate: step_id provided or return "step_id required for {type} reviews."
-
-## Success Criteria
-
-- [ ] Reviewer agent invoked (not self-performed)
-- [ ] Original artifact file updated with review metadata
-- [ ] Review includes severity levels and approval status (APPROVED, NEEDS_REVISION, REJECTED)
-
-## Examples
-
-### Example 1: Step review
-```
-/nw-review @nw-software-crafter step "docs/feature/auth-upgrade/execution-log.json" step_id=02-01
-```
-Invokes `nw-software-crafter-reviewer` with step review of execution log, step 02-01.
-
-### Example 2: Roadmap review
-```
-/nw-review @nw-solution-architect roadmap "docs/feature/auth-upgrade/roadmap.json"
-```
-Invokes `nw-solution-architect-reviewer` with roadmap review.
-
-### Example 3: Implementation review
-```
-/nw-review @nw-platform-architect implementation "docs/feature/auth-upgrade/execution-log.json" step_id=01-01
-```
-Invokes `nw-platform-architect-reviewer` with implementation review of step 01-01.
-
-### Example 4: RPP code quality review
-```
-/nw-review @nw-software-crafter implementation "src/des/" --dimensions=rpp --from=1 --to=3
-```
-Invokes `nw-software-crafter-reviewer` with implementation review + RPP L1-L3 code smell detection using cascade rule.
-
-## Error Messages
-
-- Invalid agent: "Unknown agent: {name}. Check available agents with /nw-agents."
-- Invalid type: "Invalid artifact type: {type}. Use: baseline, roadmap, step, task, implementation."
-- Missing file: "Artifact not found: {path}."
-- Missing step_id: "step_id required for {type} reviews."
-
-## Next Wave
-
-**Handoff To**: Depends on review outcome (rework or proceed)
-**Deliverables**: Updated artifact file with embedded review metadata
-
-## Expected Outputs
-
-```
-Updated artifact file (roadmap.json, execution-log.json, etc.) with reviews section
-```
+**Marking rule (three values, load-bearing):** MECHANICAL = a tool answers,
+the outcome is a fact -- if the tool was not executed, the review is
+INCOMPLETE BY CONSTRUCTION, never approvable. INSPECTIVE = no tool, but the
+answer is a fact readable on the artifact. JUDGEMENT = the answer is a
+question returned to the human, never a verdict.

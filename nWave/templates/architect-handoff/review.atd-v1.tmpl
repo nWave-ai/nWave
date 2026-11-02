@@ -1,0 +1,73 @@
+Role: {{role}}
+## FROM NWDES
+feature: {{feature}}
+working directory: {{repo_root}}
+jev: {{jev}}
+known baseline failures:
+{{baseline_failures}}
+request:
+{{request}}
+{{value}}:
+{{observation}}
+Work:
+{{slice_work}}
+Authority:
+{{authority}}
+Oracle: {{oracle_path}}
+Supports: {{supports|csv}}
+Read-only: {{targets|csv}}
+paradigm: {{paradigm}}
+Commands:
+{{verification|bullets}}
+public oracle:
+{{public_oracle}}
+obligations:
+{{obligations|bullets}}
+properties:
+{{properties|bullets}}
+promises:
+{{promises|bullets}}
+journey:
+{{journey|bullets}}
+Depends: {{slice_deps|csv}}
+Arch tests:
+{{arch_tests}}
+Contract:
+{{contract_tests}}
+ADRs:
+{{adrs|bullets}}
+Acceptance:
+{{acceptance_index}}
+Expectations:
+{{expectations}}
+diff:
+{{diff}}
+Commit: {{commit}}
+Touched files:
+{{touched}}
+
+## Peer contact
+Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-invariants); apply within existing role boundaries.
+
+## TASK
+Read and write only under the working directory, never in another checkout; preserve candidate/oracle bytes. Review obligations, success/refusal, independent failures, laws and fixed expectations; observation gaps are not implementation defects.
+Default budgets: no statement/measurement; timing evidence only at half-budget/derogation: nine sequential runs, median/max.
+Read `nw-code-analysis-port`; Jev authorized/available: `nw-typesafe-system-one`, else `typesafe: unavailable`.
+Within this review, mechanically select oracle/support tests changed since slice base; nwdes selects/runs nothing. Do not require a duplicate root preparation run.
+Record actual argv/exit/stdout/stderr, including empty/incomplete selection and absent tooling. Reuse prior observations when relevant source, oracle, supports and runtime are unchanged; preserve original run identity/output and do not claim a rerun.
+Before craft, judge executable coverage, constructibility and the missing behavior's semantic RED. Tested names a test locator, not a passed run. Implementation GREEN and live delivery are completion obligations, not pre-code prerequisites.
+Retain every finding's owner, obligation and remediation. Only a concrete defect invalidating this phase blocks craft; unresolved promised outcomes still block completion.
+On rejected close, nwdes prints all owner roles/read commands; each owner reads only its own findings with nwdes review findings --feature {feature} --subject oracle --owner <owner>.
+Owners resolve findings directly through native messaging when the host provides it; the root relays only where messaging is genuinely absent.
+Owners edit only their own artifacts via own verbs; record only their delta with open --from-current only to revise already-published authority, never as the first call (first add/set/remove creates the draft).
+Re-review revised oracles with the independent oracle reviewer, limited to corrected findings and affected obligations; retain unaffected judgments and evidence.
+Root dispatches craft once the public oracle is approved and its semantic RED is recorded; do not add a readiness round or reopen settled design for advice.
+Root rebuilds only nwdes delta AFFECTED bundles; no full handoff pass.
+Refuted fixes/owner disagreements stay open; escalate to host.
+
+## RECORD
+Use nwdes review observation add to record each actual observation with --feature {feature} --subject oracle --slice S<n> --text <text>; retain the native command, outcome and provenance.
+Record observations/findings via --subject oracle --slice S<n>; close. Missing or dirty evidence remains a defect; the slice oracle and supports are judged by their bytes, so approved uncommitted oracle bytes are not dirty, and a changed byte refuses the approval. At a new commit, record the current comparison justifying reuse and cite the original run/revision; never restamp old output as a new execution. Changed or unestablished relevant inputs require affected checks again. Run evidence only, no continuation.
+
+## FROM THE ROOT (verbatim)
+{{root_input}}

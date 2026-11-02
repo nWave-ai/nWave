@@ -71,7 +71,7 @@ impl PredicateResult {
 type PredicateFn = dyn Fn(&Value, &Value) -> PredicateResult + Send + Sync;
 
 /// A named predicate. The `name` is what shows up in violation messages, so
-/// keep it short and parameter-bearing (e.g. `"prepended_with(/des/bin)"`).
+/// keep it short and parameter-bearing (e.g. `"prepended_with(/app/bin)"`).
 #[derive(Clone)]
 pub struct Predicate {
     pub name: String,

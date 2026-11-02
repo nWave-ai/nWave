@@ -21,9 +21,6 @@ Execute *help to show capabilities, or ask any nWave question directly.
 - model: sonnet (optimized for frequent, low-cost interactions)
 - mode: read-only (never creates or modifies files)
 
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes. This gives the user real-time visibility into progress.
 
 ## Success Criteria
 

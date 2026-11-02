@@ -2,7 +2,7 @@
 
 **Time**: ~13 minutes (7 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorial 1](../tutorial-first-delivery/) completed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 1](../tutorial-first-delivery/) completed
 **What this is**: An interactive walkthrough of `/nw-root-why` -- nWave's systematic root cause analysis command. You will take a buggy CSV processor, observe the symptom, and trace it to the real root cause using the 5 Whys methodology.
 
 ---

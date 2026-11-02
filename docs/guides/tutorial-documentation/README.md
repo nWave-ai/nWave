@@ -2,7 +2,7 @@
 
 **Time**: ~12 minutes (5 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed
 **What this is**: A walkthrough of `/nw-document` -- nWave's documentation generator. You will create a small Python module, then use `/nw-document` to generate DIVIO-compliant documentation for it. The result is a polished reference document that Quill (the documentarist agent) writes and reviews automatically.
 
 ---

@@ -30,7 +30,7 @@ cross-language duplicate-shape scanner.
 ## Why tool plugins exist
 
 The `nwave-ai` PyPI wheel is intentionally a thin installer (it ships only
-agents, commands, skills, and the DES runtime). Heavyweight tooling — AST
+agents, commands, skills, and the nwdes builder). Heavyweight tooling — AST
 parsing, security scanning, doc generators — would bloat the wheel and
 couple tool releases to methodology releases.
 
@@ -55,7 +55,7 @@ ecosystem.
 | Python module       | `nwave_<verb>` (snake-case for import compat)            |
 | CLI entry point     | `nwave-<verb>` (matches PyPI name)                       |
 | License             | MIT (matches `nwave-ai`)                                 |
-| Python target       | `>=3.10` (matches `nwave-ai` minimum)                    |
+| Python target       | `>=3.11` (matches `nwave-ai` minimum)                    |
 | Build backend       | `hatchling>=1.20` (recommended; consistent with `nwave-ai`) |
 | Pre-alpha versions  | `0.1.0.dev0` style — signal stability honestly           |
 
@@ -67,7 +67,7 @@ nwave-<verb>/
 ├── README.md               # what / why / install / usage / limitations
 ├── LICENSE                 # MIT
 ├── .github/workflows/
-│   └── ci.yml              # ruff + pytest matrix Py3.10/3.11/3.12
+│   └── ci.yml              # ruff + pytest matrix Py3.11/3.12
 ├── src/
 │   └── nwave_<verb>/
 │       ├── __init__.py     # __version__ = "..."
@@ -99,7 +99,7 @@ as a starting template. Key fields:
 [project]
 name = "nwave-myverb"
 version = "0.1.0.dev0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [project.scripts]
 nwave-myverb = "nwave_myverb.cli:main"

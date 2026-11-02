@@ -11,7 +11,7 @@ name: nw-{agent-name}                    # REQUIRED. kebab-case with nw- prefix
 description: {delegation criteria}        # REQUIRED. Starts with "Use for..." or wave name
 model: inherit                            # REQUIRED. inherit|haiku|sonnet|opus
 tools: Read, Glob, Grep                   # REQUIRED. Comma-separated, least privilege
-maxTurns: 30                              # REQUIRED. 15-50 range
+maxTurns: 40                              # REQUIRED. Minimum 40
 skills:                                   # OPTIONAL. List of skill file basenames
   - {skill-name}                          #   Path: nWave/skills/{agent-name}/{skill-name}.md
 ---
@@ -25,8 +25,8 @@ skills:                                   # OPTIONAL. List of skill file basenam
 | description | string | yes | Free text | Start with "Use for {domain}" or "{WAVE} wave" |
 | model | enum | yes | `inherit`, `haiku`, `sonnet`, `opus` | Reviewers use `haiku`; specialists use `inherit` |
 | tools | string | yes | See tool list below | Comma-separated, no brackets |
-| maxTurns | integer | yes | 10-65 | Specialists: 30-50; reviewers: 15-30 |
-| skills | list | no | Skill basenames | Frontmatter is declarative only -- agent must load via Read tool |
+| maxTurns | integer | yes | 40-65 | Minimum 40 for every agent |
+| skills | list | no | Skill basenames | Eagerly preloads full skill content into context -- omit for point-of-use loading via Skill invocation |
 
 ### Available Tools
 
@@ -62,7 +62,7 @@ name: nw-{agent-name}
 description: {Use for {domain}. {When to delegate -- one sentence.}}
 model: inherit
 tools: {tool-list}
-maxTurns: 30
+maxTurns: 40
 skills:
   - {skill-name}
 ---

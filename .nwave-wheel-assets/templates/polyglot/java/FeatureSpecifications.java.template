@@ -1,0 +1,95 @@
+/*
+ * {Feature}Specifications.java — step-method companion class backing the scenarios.
+ *
+ * Responsibilities:
+ *   - Construct the SUT through the PRODUCTION composition root
+ *     ({@link ProductionApp}). Swap only external / non-deterministic ports
+ *     with fakes (clock, RNG, paid APIs).
+ *   - Capture the universe via {@code app.captureUniverse(...)}.
+ *   - Assert via {@link common.StateDelta#assertDelta}.
+ *
+ * Java companion-class pattern: scenarios live in {Feature}Scenarios.java and
+ * import these step methods via {@code import static}. Per-scenario lifecycle
+ * is established by {@code given_*} (NOT a {@code @BeforeEach} hook) so the
+ * step-method module stays decoupled from the test-runner's collection
+ * mechanism — JUnit 5 only collects lifecycle hooks from test classes
+ * containing {@code @Test} methods.
+ *
+ * No domain language leaks into the production-app wiring; no production-app
+ * details leak into the scenarios.
+ */
+package pilot;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+
+import common.Predicates;
+import common.StateDelta;
+
+public final class {Feature}Specifications {
+
+    private {Feature}Specifications() {
+        // Static utility — no instances.
+    }
+
+    // ------------------------------------------------------------------------
+    // Test fixture — established by given_aFreshSignupRegistry().
+    // Module-scope is acceptable for a sequential pilot; for parallel
+    // execution wrap state in a ThreadLocal or per-scenario context object.
+    // ------------------------------------------------------------------------
+
+    private static ProductionApp app;
+    private static Map<String, Object> stateBefore;
+
+    // Universe for the signup feature — port-exposed observables only:
+    //   - registry.users : list of registered user records (driven-port state)
+    //   - audit.events   : append-only audit trail (driven-port state)
+    // Do NOT add internal fields here; refactoring would break the test.
+    private static final Set<String> SIGNUP_UNIVERSE =
+            Set.of("registry.users", "audit.events");
+
+    // ------------------------------------------------------------------------
+    // Step methods — given_ / when_ / then_
+    // ------------------------------------------------------------------------
+
+    public static void given_aFreshSignupRegistry() {
+        app = new ProductionApp();
+        stateBefore = app.captureUniverse(SIGNUP_UNIVERSE);
+    }
+
+    public static void when_userSignsUpWithEmail(String email) {
+        app.signup(email);
+    }
+
+    public static void then_userIsAddedToRegistryAndAuditedOnce(String email) {
+        String normalized = email.trim().toLowerCase();
+        Map<String, Object> stateAfter = app.captureUniverse(SIGNUP_UNIVERSE);
+
+        Map<String, StateDelta.Predicate> expected = new LinkedHashMap<>();
+        expected.put("registry.users", Predicates.listAppended(Map.of("email", normalized)));
+        expected.put("audit.events", Predicates.listAppended(
+                Map.of("type", "UserSignedUp", "email", normalized)));
+
+        StateDelta.assertDelta(stateBefore, stateAfter, SIGNUP_UNIVERSE, expected);
+    }
+
+    public static void when_userAttemptsDuplicateSignup(String email) {
+        // Re-baseline so the next then_ measures the duplicate's delta only.
+        stateBefore = app.captureUniverse(SIGNUP_UNIVERSE);
+        try {
+            app.signup(email);
+        } catch (RuntimeException expected) {
+            // Expected — duplicate rejection. then_ asserts the observable
+            // zero-delta (registry + audit unchanged).
+        }
+    }
+
+    public static void then_secondSignupIsRejectedAndStateIsUnchanged() {
+        Map<String, Object> stateAfter = app.captureUniverse(SIGNUP_UNIVERSE);
+        Map<String, StateDelta.Predicate> expected = new LinkedHashMap<>();
+        expected.put("registry.users", Predicates.unchanged());
+        expected.put("audit.events", Predicates.unchanged());
+        StateDelta.assertDelta(stateBefore, stateAfter, SIGNUP_UNIVERSE, expected);
+    }
+}

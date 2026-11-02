@@ -7,13 +7,23 @@ disable-model-invocation: true
 
 # Platform Design Critique Dimensions
 
+Applicability is governed by the current authorized platform/rollout contract,
+not a universal cloud/pipeline topology. Evaluate actual load-bearing gaps with
+the consequences below; missing optional Kubernetes, vault, SBOM, tracing,
+canary or DORA machinery is not itself a blocker. Existing project-native
+equivalents are valid. Project-specific thresholds require observations; the
+example durations/rates are not universal gates. Apply the platform dimensions
+and complete role-owned assessment in `nw-typesafe-system-one` and scope rules
+in `nw-par-review-criteria`; do not add another checklist or review phase.
+
 ## Dimension 1: CI/CD Pipeline Completeness
 
-Questions: All stages defined (commit, acceptance, capacity, production)? Quality gates explicit with pass/fail criteria? Parallelization used? Failure recovery/retry documented? Commit stage < 10 min, acceptance < 30 min?
-
-Blocker: Missing critical stage (no acceptance tests) | no quality gates | no security scanning.
-Critical: Pipeline > 30 min without parallelization | no failure notification | missing artifact versioning.
-High: No caching strategy | incomplete environment parity | missing matrix testing.
+Questions: Are applicable delivery stages and their genuine quality/security
+criteria explicit? Does failure recovery preserve the promised data/outcomes?
+Are caching/parallelism and environment parity appropriate to measured needs?
+Blocker: a missing required acceptance/security/safety obligation with evidence.
+Critical/high: concrete recovery, provenance or environment gaps whose consequence
+is grounded in the selected plan; elapsed time alone is not a finding.
 Medium: Inconsistent naming | missing documentation for manual steps.
 
 ## Dimension 2: Infrastructure as Code Quality
@@ -47,10 +57,10 @@ Medium: Unclear dashboard organization | missing error budget tracking.
 
 Questions: SAST in commit stage? DAST before production? SCA configured? Secrets management using external vault? SBOM generated and signed?
 
-Blocker: No security scanning | secrets in env vars or code | no container image scanning.
-Critical: Missing SAST in CI | no dependency vulnerability scanning | missing K8s network policies.
-High: No DAST before production | no SBOM generation | no image signing.
-Medium: Security scan results not blocking deployment | no license compliance.
+Blocker: leaked credentials or a required security control absent at its real boundary.
+Critical/high: evidenced permission, dependency, network or artifact risk without
+the promised mitigation. Environment variables are not automatically credential
+leaks; evaluate actual exposure. Do not demand all listed tools for every stack.
 
 ## Dimension 6: DORA Metrics Enablement
 

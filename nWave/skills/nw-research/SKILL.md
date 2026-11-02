@@ -82,7 +82,6 @@ Nova researches event sourcing from trusted sources, cross-references 3+ sources
 ```
 /nw-research "mutation testing methodologies" --skill-for=software-crafter
 ```
-Nova researches mutation testing, distills into practitioner-focused skill file at ~/.claude/nWave/skills/software-crafter/.
 
 ## Expected Outputs
 

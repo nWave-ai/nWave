@@ -13,27 +13,25 @@ Load when performing peer review of acceptance tests (during *handoff-develop).
 
 **Pattern**: Only successful scenarios, error paths missing.
 
-Detection: Count success vs error scenarios. Error should be at least 40%. Missing coverage examples: login success but no invalid password | Payment processed but no decline/timeout | Search results but no empty/error cases.
+Detection: compare promised distinguishable failure/recovery outcomes with actual falsifiers. No universal error-scenario percentage; missing a promised decline/timeout/refusal/preservation outcome is the defect.
 
 Severity: blocker (production error handling untested).
 
-## Dimension 2: GWT Format Compliance
+## Dimension 2: Business observation structure
 
-**Pattern**: Scenarios violate Given-When-Then structure.
-
-Violations: Missing Given context | Multiple When actions (split into separate scenarios) | Then with technical assertions instead of business outcomes. Each scenario: Given (context), When (single action), Then (observable outcome).
-
-Severity: high (tests not behavior-driven).
+Verify admitted context, business stimulus and observable outcome/falsifier.
+Given-When-Then is useful vocabulary, not mandatory Gherkin syntax or a required
+framework. Stateful journeys may involve multiple operations when the transition
+contract needs them. Severity follows a concrete ambiguous or absent observation.
 
 ## Dimension 3: Business Language Purity
 
-**Pattern**: Technical terms leak into acceptance tests.
-
-Flag: database, API, HTTP, REST, JSON, classes, methods, services, controllers, status codes (500, 404), infrastructure (Redis, Kafka, Lambda).
-
-Business alternatives: "Customer data is stored" not "Database persists record" | "Order is confirmed" not "API returns 200 OK" | "Payment fails" not "Gateway throws exception"
-
-Severity: high (tests coupled to implementation).
+**Pattern**: Incidental implementation choices replace business observations.
+Flag private classes, representations or plumbing asserted without a deliberate
+contract. Native business helpers hide technical drivers where helpful.
+HTTP/JSON/storage terms are valid when they are the user's actual public
+protocol or promised domain, not merely forbidden words. Severity: high for
+real coupling that prevents an equivalent implementation.
 
 ## Dimension 4: Coverage Completeness
 
@@ -96,19 +94,12 @@ Severity: high (tests coupled to implementation break on refactoring).
 
 **Pattern**: Scenarios exist without traceability to upstream wave artifacts.
 
-Two mandatory traceability checks:
-
-**Check A — Story-to-Scenario mapping**:
-1. Read `docs/feature/{feature-id}/discuss/user-stories.md`
-2. Extract ALL story IDs (e.g., US-01, US-02)
-3. For EACH story ID, verify at least one scenario references it (via tag or comment)
-4. Flag EVERY story ID with zero matching scenarios as BLOCKER
-
-**Check B — Environment-to-Scenario mapping**:
-1. Read `docs/feature/{feature-id}/devops/environments.yaml`
-2. If missing, use defaults: `clean`, `with-pre-commit`, `with-stale-config`
-3. For EACH environment, verify at least one walking skeleton includes a Given clause referencing that environment's preconditions
-4. Flag EVERY environment with zero matching Given clauses as HIGH
+Map the original agreed value and authorized scope amendments to selected
+criteria, native tests/properties and falsifiers per `nw-at-completeness-check`.
+Use actual configured authority destinations and bound headings, not hardcoded
+story/environment filenames, tags or guessed defaults. Environments matter
+only when selected authority promises a distinguishable observation there.
+Do not infer missing coverage from absent tags; inspect the actual behavior.
 
 **What this dimension does NOT cover**:
 - KPI measurability — that is PO-reviewer scope during DELIVER post-merge gate
@@ -116,71 +107,30 @@ Two mandatory traceability checks:
 
 Severity: blocker for Check A (untraceable requirements), high for Check B (untested environments).
 
-## Review Output Format
+## Review findings
 
-```yaml
-review_id: "accept_rev_{timestamp}"
-reviewer: "acceptance-designer (review mode)"
+For each finding supply:
 
-strengths:
-  - "{positive test design aspect with example}"
+| Fact | Content |
+|---|---|
+| Location | Supplied test identity, file:line or missing-obligation locator |
+| Obligation | Promised outcome, criterion, boundary or test-budget obligation |
+| Observation | Concrete evidence, critique dimension and severity; distinguish measured facts from uncertainty |
+| Remediation | Actionable correction preserving the agreed value |
+| Owner | Oracle, design, implementation or product, within the selected review scope |
 
-issues_identified:
-  happy_path_bias:
-    - issue: "Feature {name} only tests success"
-      severity: "blocker"
-      recommendation: "Add error scenarios: invalid input, timeout, service failure"
+For a timing finding, cite the supplied receipt and its n, median, maximum and
+load, plus the applicable cap/ADR. Missing measurements stay explicit; the review
+does not run native tests. Include each independently actionable coverage,
+boundary, scenario or infrastructure defect instead of hiding it behind another.
 
-  gwt_format:
-    - issue: "Scenario has multiple When actions"
-      severity: "high"
-      recommendation: "Split into separate scenarios"
-
-  business_language:
-    - issue: "Technical term '{term}' in scenario"
-      severity: "high"
-      recommendation: "Replace with: '{business alternative}'"
-
-  coverage_gaps:
-    - issue: "User story {US-ID} has no acceptance tests"
-      severity: "blocker"
-      recommendation: "Create scenarios for all AC of {US-ID}"
-
-  walking_skeleton_centricity:
-    - issue: "Walking skeleton '{name}' describes technical flow, not user goal"
-      severity: "high"
-      recommendation: "Reframe: title as user goal, Then steps as observable user outcomes"
-
-  observable_behavior:
-    - issue: "Scenario '{name}' Then step asserts internal state: {assertion}"
-      severity: "high"
-      recommendation: "Replace with observable outcome assertion: {alternative}"
-
-  traceability_coverage:
-    - issue: "Story {US-ID} has no matching scenario"
-      severity: "blocker"
-      recommendation: "Create at least one scenario tagged @{US-ID}"
-    - issue: "Environment '{env}' has no matching Given clause in walking skeletons"
-      severity: "high"
-      recommendation: "Add walking skeleton with Given clause: 'Given a {env} environment with {preconditions}'"
-
-  walking_skeleton_boundary:
-    - issue: "WS strategy not declared in wave-decisions.md"
-      severity: "blocker"
-      recommendation: "Auto-detect strategy and confirm with user"
-    - issue: "WS uses @in-memory under Strategy {C/B/D} for local resource adapter"
-      severity: "blocker"
-      recommendation: "Replace InMemory with real adapter (tmp_path, real subprocess)"
-    - issue: "Driven adapter '{name}' has no real I/O integration test"
-      severity: "blocker"
-      recommendation: "Add integration test with real I/O for this adapter"
-
-approval_status: "approved|rejected_pending_revisions|conditionally_approved"
-```
+Summarize the judgment, supporting observations and capability or evidence limits.
+Acceptance requires sufficient evidence; uncertainty is not a passing observation.
+Leave the assessed artifact unchanged and return plain findings.
 
 ## Reviewer Scope Boundaries
 
-The acceptance-designer-reviewer (Sentinel) owns Dimensions 1-9 during DISTILL.
+The acceptance-designer-reviewer (Sentinel) owns Dimensions 1-10 during DISTILL.
 
 Responsibilities that belong to OTHER reviewers (do NOT evaluate these):
 - **KPI measurability**: PO-reviewer validates during DELIVER post-merge gate
@@ -193,29 +143,29 @@ If a finding touches KPI measurement or infrastructure readiness, tag it `@escal
 
 For walking skeleton scenarios, validate that the WS actually proves adapter wiring with real I/O.
 
-### 9a: WS Strategy Declaration
+### 9a: Port-Class Treatment Match
 
-Is the WS strategy declared in wave-decisions.md?
-- NOT declared: BLOCKER (ask the user to confirm auto-detected strategy)
+Does the WS implementation match the port-class defaults from the Architecture of Reference (`nw-distill-port-treatment-policy`)?
+- Driven-internal/local-resource port uses @in-memory: BLOCKER
+- Driven-external/costly port has no @requires_external marker: HIGH
 
-### 9b: WS Strategy-Implementation Match
+### 9b: Adapter Integration Coverage
 
-Does the WS implementation match the declared strategy?
-- Strategy C declared but WS uses @in-memory for all adapters: BLOCKER
-- Strategy B declared but no @requires_external marker for costly deps: HIGH
+Require real I/O integration for the promised adapter boundary/law when a fake
+cannot distinguish it. Do not demand a separate test for every adapter merely
+by inventory count; reuse adequate real observations.
 
-### 9c: Adapter Integration Coverage
-
-Does every driven adapter have a real I/O integration test?
-- Missing adapter test: BLOCKER regardless of WS strategy
-
-### 9d: Walking Skeleton Fixture Tier
+### 9c: Walking Skeleton Fixture Tier
 
 Walking skeleton fixtures — what adapter tier do they use?
 - Litmus test: "If I deleted the real adapter, would this WS still pass?"
-- If YES for a local resource adapter: WS is testing InMemory, not wiring. REJECT.
+- If YES for a driven-internal/local-resource port: WS is testing InMemory, not wiring, and cannot observe the declared failure. REJECT.
 
-### 9e: Strategy Drift Detection
+### 9d: Fake-Cannot-Observe-Failure Detection
 
-Grep for @in-memory on walking skeleton scenarios under strategies B/C/D.
-- If found: HIGH — WS claims real adapters but uses InMemory
+Grep for @in-memory on walking skeleton scenarios that exercise a driven-internal/local-resource port.
+- If found: HIGH — WS claims real-I/O boundary proof but uses a fake that cannot observe the promised failure
+
+## Dimension 10: Test Time
+
+Measure every test in the reviewed oracle with native per-test timing over at least nine sequential runs and judge it on the median, two or more runs over the budget on the same test also being a finding (`test:feedback-loop-budget` in `nw-cross-cutting-invariants`). Reject any test above the default budgets in a feature without a granted derogation or above its feature's derogation, any infrastructure test in a feature without one, any pure sad path placed in the infrastructure suite, and any formal law without a fast executable projection in the default suite. Reviewers never grant a derogation.

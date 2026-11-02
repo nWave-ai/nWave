@@ -1,36 +1,17 @@
 # nw-functional-software-crafter
 
-DELIVER wave — SLIM functional crafter. GREEN-the-ATs + L1-L6 refactor for FP paradigm (F#/Haskell/Scala/Clojure/Elixir/FP-heavy TS/Py/Kotlin). Pure functions, pipeline composition, types-as-documentation. Test authoring (ATs + paired PBT) is owned by `nw-acceptance-designer`; this agent implements pure functions and refactors. Use when the project follows functional-first.
+Implements the functional change for one ready ordered batch.
 
-**Wave:** DELIVER
-**Model:** inherit
-**Max turns:** 0
-**Tools:** Read, Write, Edit, Bash, Glob, Grep, Task
+**Wave:** Other
+**Model:** claude-opus-5
+**Max turns:** 40
+**Tools:** Read, Write, Edit, Bash, SendMessage
 
-## Commands
+## Preloaded skills
 
-- [`/nw-bugfix`](../commands/index.md)
-- [`/nw-deliver`](../commands/index.md)
-- [`/nw-design`](../commands/index.md)
-
-## Skills
-
-- [nw-collaboration-and-handoffs](../skills/nw-collaboration-and-handoffs.md) — Cross-agent collaboration protocols, workflow handoff patterns, and commit message formats for TDD/Mikado/refactoring workflows
-- [nw-fp-algebra-driven-design](../skills/nw-fp-algebra-driven-design.md) — Algebra-driven API design with monoids, semigroups, and interpreters via algebraic equations
-- [nw-fp-clojure](../skills/nw-fp-clojure.md) — Clojure language-specific patterns, data-first modeling, REPL-driven development, and spec
-- [nw-fp-domain-modeling](../skills/nw-fp-domain-modeling.md) — Domain modeling with algebraic data types, smart constructors, and type-level error handling
-- [nw-fp-fsharp](../skills/nw-fp-fsharp.md) — F# language-specific patterns, Railway-Oriented Programming, and Computation Expressions
-- [nw-fp-haskell](../skills/nw-fp-haskell.md) — Haskell language-specific patterns, GADTs, type classes, and effect systems
-- [nw-fp-hexagonal-architecture](../skills/nw-fp-hexagonal-architecture.md) — Hexagonal architecture patterns with pure core and side-effect shell for functional codebases
-- [nw-fp-kotlin](../skills/nw-fp-kotlin.md) — Kotlin language-specific patterns with Arrow, Raise DSL, and coroutine-based effects
+- [nw-certainty-by-construction](../skills/nw-certainty-by-construction.md) — Turn a stable layer claim (domain, application, adapter, or infrastructure) into a construction boundary so the invalid state cannot be built, and state honestly what remains unguarded. Use when a requirement says an invalid state or transition must not occur, when values need a canonical form, or when a rewrite/cache/optimisation must preserve meaning. Complements nw-fp-domain-modeling, which shows the encodings; this decides whether to encode, how strong the claim really is, and what obligation is left over.
+- [nw-code-craftsmanship](../skills/nw-code-craftsmanship.md) — Universal OO/FP craftsmanship foundation — domain-language naming, small cohesive units, semantic DRY/SSOT, reuse-before-new, one owner per rule/config/fact, prefactoring before new behavior, ports/adapters for testability. Consult before writing or reviewing any unit of code, either paradigm.
+- [nw-code-design-fp](../skills/nw-code-design-fp.md) — FP code-design SSOT — the WHAT-to-design catalog (algebra-driven design, domain modelling with types, railway/error-track isolation) shared by the solution architect (design-time) and the functional crafter (execution-time).
 - [nw-fp-principles](../skills/nw-fp-principles.md) — Core functional programming thinking patterns and type system foundations, language-agnostic
-- [nw-fp-scala](../skills/nw-fp-scala.md) — Scala 3 language-specific patterns with ZIO, Cats Effect, and opaque types
-- [nw-fp-usable-design](../skills/nw-fp-usable-design.md) — Naming conventions, API ergonomics, and usability patterns for functional code
-- [nw-hexagonal-testing](../skills/nw-hexagonal-testing.md) — 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
-- [nw-legacy-refactoring-ddd](../skills/nw-legacy-refactoring-ddd.md) — DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
-- [nw-mutation-test](../skills/nw-mutation-test.md) — Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%).
-- [nw-quality-framework](../skills/nw-quality-framework.md) — Quality gates - 11 commit readiness gates, build/test protocol, validation checkpoints, and quality metrics
-- [nw-refactor](../skills/nw-refactor.md) — Applies the Refactoring Priority Premise (RPP) levels L1-L6 for systematic code refactoring. Use when improving code quality through structured refactoring passes.
-- [nw-sc-review-dimensions](../skills/nw-sc-review-dimensions.md) — Reviewer critique dimensions for peer review - implementation bias detection, test quality validation, completeness checks, and priority validation
-- [nw-tdd-methodology](../skills/nw-tdd-methodology.md) — Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
-- [nw-tlaplus-verification](../skills/nw-tlaplus-verification.md) — TLA+ formal verification for design correctness and PBT pipeline integration
+- [nw-type-level-design](../skills/nw-type-level-design.md) — Design or review evidence-preserving APIs that model invalid states, state transitions, capabilities, and trusted construction proportionately to the target language.
+- [nw-typesafe-system-one](../skills/nw-typesafe-system-one.md) — Use Jev System One for every supported, authorized semantic judgment when available: relevance selection, handoff preflight, evidence mapping, finding clustering, and confidence-gated escalation.

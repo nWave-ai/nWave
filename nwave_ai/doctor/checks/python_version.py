@@ -1,4 +1,4 @@
-"""PythonVersionCheck — verifies the interpreter is Python >= 3.10."""
+"""PythonVersionCheck — verifies the interpreter is Python >= 3.11."""
 
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ if TYPE_CHECKING:
 
 
 class PythonVersionCheck:
-    """Check that the active Python interpreter is >= 3.10."""
+    """Check that the active Python interpreter is >= 3.11."""
 
     name: str = "python_version"
-    description: str = "Python interpreter version is 3.10 or newer"
+    description: str = "Python interpreter version is 3.11 or newer"
 
     def run(self, context: DoctorContext) -> CheckResult:
-        """Return passed=True when sys.version_info >= (3, 10).
+        """Return passed=True when sys.version_info >= (3, 11).
 
         Args:
             context: Filesystem roots (unused — interpreter check is in-process).
@@ -29,7 +29,7 @@ class PythonVersionCheck:
         """
         major, minor = sys.version_info[:2]
         version_string = f"{major}.{minor}.{sys.version_info[2]}"
-        if (major, minor) >= (3, 10):
+        if (major, minor) >= (3, 11):
             return CheckResult(
                 passed=True,
                 error_code=None,
@@ -41,7 +41,7 @@ class PythonVersionCheck:
             error_code="PYTHON_VERSION_TOO_OLD",
             message=f"Python {version_string} is below the required minimum",
             remediation=(
-                "Upgrade to Python 3.10 or newer. "
+                "Upgrade to Python 3.11 or newer. "
                 "Visit https://www.python.org/downloads/ for installers."
             ),
         )

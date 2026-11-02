@@ -8,7 +8,11 @@ of an immutable value object — no I/O, no application orchestration.
 
 from __future__ import annotations
 
-from nwave_ai.outcomes.domain.outcome import Outcome
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from nwave_ai.outcomes.domain.outcome import Outcome
 
 
 def outcome_to_dict(outcome: Outcome) -> dict:

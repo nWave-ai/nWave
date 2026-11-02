@@ -32,7 +32,7 @@ Omits positive/negative consequences and trade-offs. Quality attribute impact no
 ## Dimension 3: Completeness Validation
 
 ### Missing Quality Attributes
-Architecture doesn't address required attributes. Verify: performance (latency, throughput) | scalability | security (auth, data protection) | maintainability (modularity, testability) | reliability (fault tolerance, recovery) | observability (logging, monitoring, alerting). Severity: CRITICAL.
+Architecture fails a quality attribute actually required by the affected observation or promised by current authority. Check performance (latency, throughput) | scalability | security (auth, data protection) | maintainability (modularity, testability) | reliability (fault tolerance, recovery) | observability (logging, monitoring, alerting) only where applicable; an attribute declared `not_applicable` with a concrete reason is not a finding. Do not apply a universal attribute checklist. Severity: CRITICAL.
 
 ### Missing Performance Architecture
 Performance requirements exist but no optimization strategy (caching, indexing, rate limiting, CDN). Severity: CRITICAL.
@@ -54,10 +54,13 @@ Validate roadmap addresses largest bottleneck.
 
 **Q1**: Largest bottleneck? (timing data must confirm primary problem)
 **Q2**: Simpler alternatives considered? (rejected alternatives required)
+**Simple-design dimension** — apply `design:simplest-design-that-delivers` in `nw-cross-cutting-invariants`.
 **Q3**: Constraint prioritization correct? (quantified by impact, constraint-free first)
 **Q4**: Data-justified? (key decision with quantitative data)
 
 Failure: Q1=NO (wrong problem) | Q2=MISSING (no alternatives) | Q3=INVERTED (>50% solution for <30% problem) | Q4=NO_DATA for performance
+
+When `nw-solution-architect` self-reviews with these dimensions, they are an internal self-check: it returns only its closed manifest, emits no review YAML and claims no approval. The format below belongs to the independent reviewer.
 
 ## Review Output Format
 

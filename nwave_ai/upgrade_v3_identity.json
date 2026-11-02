@@ -1,0 +1,841 @@
+{
+ "files": [
+  {
+   "path": "lib/python/des/__init__.py",
+   "sha256": "31fa378c2824be278ca7efcc3f9a29ee1ae4e3bdc976b994b218216b182d8fd2"
+  },
+  {
+   "path": "lib/python/des/_compat.py",
+   "sha256": "57ecf3ab1a9e96002cbe921486b7d74ccc16311b807cb11ec86f3345f92533d0"
+  },
+  {
+   "path": "lib/python/des/adapters/__init__.py",
+   "sha256": "fd130cfc4b274fd9b366b191838b8718ed7ec047280059c7bfafbf5056a17074"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/__init__.py",
+   "sha256": "174287afa81b669fdb870ebcdb12b34410384bb9cc6607457feae90dec2d7e4e"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/config/__init__.py",
+   "sha256": "15f9dbea628e02dfb59f79ba92df451ad837be8ed0a76c95aefd875ee85c2ac5"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/config/deliverable_type_detector.py",
+   "sha256": "4ce74be60413a91798378d6bd2bb7a00baef6807e5056abaffa567ce25322de5"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/config/des_config.py",
+   "sha256": "50b464c8c4b29c67a3053686ca001939f8b445f1a55317ff206765436a8b297d"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/config/environment_config_adapter.py",
+   "sha256": "f820d9fd673fccc0cfd7141efe714a3ae80b0df8e281d77b257e3bbf19d49965"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/config/in_memory_config_adapter.py",
+   "sha256": "9c14e3481f5871cd10fe8af9677a5f4412e812ca4c7b9e6d119f2c539e04f27a"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/filesystem/__init__.py",
+   "sha256": "43c07c489710eda925457a559573d9b1659bb857d12dc183f911cc041827bf3c"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/filesystem/in_memory_filesystem.py",
+   "sha256": "be7883af68ee036f2d60cd842094af395cc729379f43b96487b217b778cdc0f1"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/filesystem/real_filesystem.py",
+   "sha256": "0f41581bb237cd8a677781341513ffe8d775affac13f4e4c38d8655e7b19dc87"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/git/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/git/git_commit_verifier.py",
+   "sha256": "708edb475749ed5a26b683c2ed95c3390d59b1bf639af9988c1921152b75159b"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/git/git_track_probe.py",
+   "sha256": "2ee2729eec0502c078c3698d5fda2e51b53c5a8d9fef5fc00f581633d2845659"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/hooks/__init__.py",
+   "sha256": "0114cedad5c50d89392b4cff0b0a4528e835a3b79b8d8b8be251f0c5d7a328cb"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/hooks/json_execution_log_reader.py",
+   "sha256": "41e1af82e9843aca48fae247451996d4e082c2a7d7f9bd17fbef80192e474e67"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/hooks/noop_hook.py",
+   "sha256": "a7d56e8bb4223ba8eab18518fc6058d9a7e4da8b45855fe687d2649914ca55cb"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/hooks/yaml_execution_log_reader.py",
+   "sha256": "58dea5d9f9eadb5babb38c5e31a38ed1735b6d8647043f928bbb24e43ca7d316"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/__init__.py",
+   "sha256": "c0ed0f29273740ecd3ecf88cc0d924b2d977dd2f11b6fa5c680e9150f6d951f2"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/audit_events.py",
+   "sha256": "d31f797dd54ea06db5c53f1b679e27fa0a78c0c5ba2dee50145a163f785cd2a7"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/jsonl_audit_log_reader.py",
+   "sha256": "60552ededbf49be20866a5728c9cbd38b17c73260dc7fbe47fb319bbd16506d5"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/jsonl_audit_log_writer.py",
+   "sha256": "88c06be9c9fd854c794bf57f8dec7dbd93a9577f615d547821cfcaab757287f5"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/jsonl_nwave_log_writer.py",
+   "sha256": "345ee6560aabd9f380da43e1c92abf44da3bd0e08b5f384e6eac1cd178a52207"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/null_audit_log_writer.py",
+   "sha256": "63468ad25917dbb592ec5ae6ba8498c5a5e836d9f1214e9691b4f0724cb9e7df"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/null_nwave_log_writer.py",
+   "sha256": "95275fd4510601e91e393f8b86703b2f74d191bda5d3aa1023de0936bd83b6ae"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/silent_logger.py",
+   "sha256": "2d9d1310de0f22648fd4634003ef6936c926ad68987393cbb5bdf5d8ae481d98"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/logging/structured_logger.py",
+   "sha256": "ac49209981a68137db19cbe3d3a39f6c6cfce6ee2733625020fdee3415d5ba6e"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/package_managers/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/package_managers/fake_package_manager.py",
+   "sha256": "dc983227a9fef1ffd04061dc8eb9d57c80fff14ae33fa440f5c100d20d885745"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/package_managers/null_package_manager.py",
+   "sha256": "48138ab041a40859fb5d87ac6cff76fb66149cb0009da3a85cc5a986ca32d3a0"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/package_managers/package_manager_detector.py",
+   "sha256": "a5061ebaba203478ca536b28fd59ec1eb1cba58b0bc2ad77d9ac3dbe5585770f"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/package_managers/pipx_package_manager_adapter.py",
+   "sha256": "d13e887906595ec5c239905e00f376b886748e2733c28c7641b65444a0cb0297"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/package_managers/uv_package_manager_adapter.py",
+   "sha256": "49b6df2125cb8ef03e010dd1aa04ad81a7160ec0dbce5c39637675a143bf574d"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/task_invocation/__init__.py",
+   "sha256": "d57eafd7b48190a4907e98c2d68be961718980627f5a4749873dbee05ed4dcb1"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/task_invocation/claude_code_task_adapter.py",
+   "sha256": "89c150c9c0ed256b25e029bfd8a08c4702349008185363a185a57efe8eaa1220"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/task_invocation/mocked_task_adapter.py",
+   "sha256": "d3b2d3097395049b912d793207b299555e716a5c95162bccde4369f874f193d2"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/time/__init__.py",
+   "sha256": "0128ee604f7d07e433abe20b2d46a38996a1521abd71b1bff76f44c516303a47"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/time/mocked_time.py",
+   "sha256": "ae306baa908efd6fc4368e2ca94dfc98f86b83c79776b97f090f50a22a8e0d31"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/time/system_time.py",
+   "sha256": "d778de500002fb0a8061a0e8013096280e399a69fdf0054e94cf5a28c7b9f93f"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/tracking/__init__.py",
+   "sha256": "81cea7da60db473b934ad6b1f36d6e32a99e0b44edee57886ce8965207d0878f"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/tracking/jsonl_skill_tracker.py",
+   "sha256": "f6479f32e22af2fd23b2742709da49d40cd684a25991c3fb5bead8cac5055e19"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/tracking/null_skill_tracker.py",
+   "sha256": "347f2bf2b8c1f65f46ef4feadb7d658c5b2dccefc7ae6cb6c51cdb725e0413f7"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/validation/__init__.py",
+   "sha256": "8d8c6b91086eba3094c34c2ca5ba7414a6296ec4d5ae1eb695dc274ee2210f55"
+  },
+  {
+   "path": "lib/python/des/adapters/driven/validation/git_scope_checker.py",
+   "sha256": "55ac1ad307643241a07c55c4deb43b9b616cd7077b162837084047ba28404c9a"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/__init__.py",
+   "sha256": "7baefea6613b57bde3f65da60c90fa22d2e4acb0ef9d625c306e15a4e7205b0e"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/__init__.py",
+   "sha256": "07dfba7b405b772f76985ed5d0038b14e34118b9a7757bb6dfd5abc1764b5d43"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/activation_gate.py",
+   "sha256": "25567c40ad6eba2b670cfd282de230ec28d4590af9fce05879c2c06a52aa8d61"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/claude_code_hook_adapter.py",
+   "sha256": "1a3e9b6d0d3ec55341ae1ce44391fb38196b7450eeade8e1aae1361f8edde956"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/deliver_progress_handler.py",
+   "sha256": "6d930622bd61c945b954cadf4431bde3a11be4a46811d9ed97c313cfd1585537"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/des_task_signal.py",
+   "sha256": "4e1dbfe71001d0c8ced7d55859deb3dd097168fbe96fe335e32ac7a3d927f1be"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/execution_log_resolver.py",
+   "sha256": "832de5196e79bc0cabfeeb7f770b503c8d7ffedef72d90dc5343f76468db8110"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/hook_protocol.py",
+   "sha256": "40e2f1495fa73d615fdd4edc76b689394d7aa95ae2a50fbb2d087d9c80a3c675"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/hook_router.py",
+   "sha256": "41b11fc62e5e05f28b1db528903895bbcfdceb02e08592f5ded1638621eca70a"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/mocked_hook.py",
+   "sha256": "dad232fbfdee2101437596ce25e588e80a04277d0680bf630dfe8a7aa75110e8"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/post_tool_use_handler.py",
+   "sha256": "56852b55dcf47307464d2d6bfcb65bb434a7402d7618d3a3319a2b1e45cac976"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/pre_tool_use_handler.py",
+   "sha256": "2fa44e09ab2efe62329622b52799397bb75ba8e99a6e9a96b11713225dfdb6ec"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/pre_write_handler.py",
+   "sha256": "e8316211eaf27e9828520e2774c50b9a6b57ddf98e5994d5cb9594867262c9d5"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/project_root_validator.py",
+   "sha256": "5738ed35671c7ba8de2fee84ed0607d133d9820ec8f8432d20328fcc8dfc4794"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/service_factory.py",
+   "sha256": "38d121d63da6df028e525e5161a94a0054ccae7b7454f31a8b1a13213c3da19d"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/session_start_handler.py",
+   "sha256": "2980fe83685848345ad991635954414fecc8dfd53a49b226ba8476937f821688"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/skill_tracking_hooks.py",
+   "sha256": "939ee26b337f5d7f0b622abc40b60f00d407c8ceda7e5d81dccd616387c8bf09"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/subagent_start_handler.py",
+   "sha256": "9353080835f4cd1912e970a8673e2f2a3349ed1af6b0429d65052987ff72fc7b"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/subagent_stop_handler.py",
+   "sha256": "64683eb7afd09d4d17b50f10026104fad970bbb3aecd246f3cd23582dcb31169"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/substrate_probe.py",
+   "sha256": "022cceef67ebd591dd605b4d43d49858970c308e5224bdf84beb301ba00b9b6a"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/hooks/token_usage_extractor.py",
+   "sha256": "23581ae2f55537334498df53d90e2f6a757ce52203015aad139621c922f3a87c"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/validators/__init__.py",
+   "sha256": "de8ad4fa4dafd51a278fb2732f25b9aa22d6f4000a92273474fa996fdadbf24d"
+  },
+  {
+   "path": "lib/python/des/adapters/drivers/validators/mocked_validator.py",
+   "sha256": "edbbfc3a4eaa42360c5dc63ca25d9bc9912d0dfe6ad8e86e94a970370638f0e5"
+  },
+  {
+   "path": "lib/python/des/application/__init__.py",
+   "sha256": "333b5cbc625e227c646125b935369943e6658e09ff634bbbdb961f6b032012a7"
+  },
+  {
+   "path": "lib/python/des/application/audit_bridge.py",
+   "sha256": "7f7863fb478cecdc5ba431a6d9e7e94dcb53b76ed7377acfc7eaec99ecd1c8ad"
+  },
+  {
+   "path": "lib/python/des/application/auto_marking_service.py",
+   "sha256": "b0ce55c63f0aeb23e5f268299b3e811222feeefd31e99bd0c917785493e8dcf0"
+  },
+  {
+   "path": "lib/python/des/application/boundary_rules_generator.py",
+   "sha256": "8ee411d34099819002f4f5b12ff91e005611320847bb5826316374ef79240c23"
+  },
+  {
+   "path": "lib/python/des/application/boundary_rules_template.py",
+   "sha256": "52993ae7d6763f7162e141c679c9db357cd3f4452a8623013a82ab3aa93e32c1"
+  },
+  {
+   "path": "lib/python/des/application/commit_attribution_service.py",
+   "sha256": "db978fc890e7b5b465a4187c7de8968c47172d18f926b422266f1f2a326b0ea8"
+  },
+  {
+   "path": "lib/python/des/application/config_loader.py",
+   "sha256": "14159b809c63fc88ff303c1323ffc15736bb86e17fc89230171a0bdc08c8ec22"
+  },
+  {
+   "path": "lib/python/des/application/execution_results.py",
+   "sha256": "f18c036525d68c7c263ba8ccbd551d716a30013065c2b6a956aad0b1fc2279f8"
+  },
+  {
+   "path": "lib/python/des/application/housekeeping_service.py",
+   "sha256": "4541e5da3752778592ebe69089a6d4fc5c93010e5177a2ffa45d2bec05f4aec7"
+  },
+  {
+   "path": "lib/python/des/application/invocation_limits_validator.py",
+   "sha256": "91f3a33eaab33c25f582c15bb46db79d573dd7deeeff0b24c397cdb508e0a4c3"
+  },
+  {
+   "path": "lib/python/des/application/orchestrator.py",
+   "sha256": "c0ce5be5df9170ae7caaee1e5746d1d8d1d7b7c071d9142f871d3c0ca7d809b9"
+  },
+  {
+   "path": "lib/python/des/application/pending_update_service.py",
+   "sha256": "add7daaae13138cad8f9798697f40b1409bc57ef1061ff0165a349774b45bc4b"
+  },
+  {
+   "path": "lib/python/des/application/post_tool_use_service.py",
+   "sha256": "f57404da04f4778f65fbfa9ae36606b91e1f0279a220d051aca53f28f3ed81bb"
+  },
+  {
+   "path": "lib/python/des/application/pre_tool_use_service.py",
+   "sha256": "fadffebf52f6de1e0ff7e3ddd6e499a89336e93d094da69336fd1ed4869c2d5f"
+  },
+  {
+   "path": "lib/python/des/application/prompt_rendering_service.py",
+   "sha256": "c030921ebe60a15dc4e6f1c242f33c82f7932ce3cb37ee877f3d4d32d214c773"
+  },
+  {
+   "path": "lib/python/des/application/prompt_validator.py",
+   "sha256": "ebcb37aac0fcf23df5a4e5c423ac33f0e32d8e3f3b0242dea8edaf7b67dbebb8"
+  },
+  {
+   "path": "lib/python/des/application/recovery_guidance_handler.py",
+   "sha256": "381a3c24d846341daf4d3c13ea1abca0194e4f365982277d1cbf9086a6b7bc28"
+  },
+  {
+   "path": "lib/python/des/application/schema_rollback_handler.py",
+   "sha256": "d56a90682904f63751ca66026c68c3f93fd6fbb06ae755488bf142d5cb5397e6"
+  },
+  {
+   "path": "lib/python/des/application/skill_tracking_service.py",
+   "sha256": "a02418151adc2dd52469a68e5c71c4a25efff5603fb2f16b1bb1a6a15a866878"
+  },
+  {
+   "path": "lib/python/des/application/stale_execution_detector.py",
+   "sha256": "22359e786e75132325af8e5f63d26f525252a519db2e7ff53af26784d748bfbb"
+  },
+  {
+   "path": "lib/python/des/application/stale_resolver.py",
+   "sha256": "a72ebc71cbfb3e2f2d56b000694d79ddf1ffcc4ab09a99f4bd077667fcbb8217"
+  },
+  {
+   "path": "lib/python/des/application/step_execution_service.py",
+   "sha256": "8acbe08b172473725cd192d1ebcddb94472ef7ac72d09b4899bd20bac75e56a9"
+  },
+  {
+   "path": "lib/python/des/application/subagent_stop_service.py",
+   "sha256": "f25b8e9fc7e2a2069aeb409d2921ba5d201a4fcc47ae44b544616bade676d79f"
+  },
+  {
+   "path": "lib/python/des/application/tdd_template_loader.py",
+   "sha256": "a7c5085e37186742d16875d4caee91e46be4a906361647bd998b95c723a5ea41"
+  },
+  {
+   "path": "lib/python/des/application/update_check_service.py",
+   "sha256": "49345a2b10f447697a82783c0dd407d770d7be72a375bfa227343ba9b6b82ee0"
+  },
+  {
+   "path": "lib/python/des/application/validator.py",
+   "sha256": "17dbf6fa5e29087de1a01807c484d32bd9752f3e3c6f56cb474044a40412b887"
+  },
+  {
+   "path": "lib/python/des/cli/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "path": "lib/python/des/cli/commit.py",
+   "sha256": "2ae23e5adba513e8d7135b832f6a204d74a7c50069c1124243a6ce93402c31c3"
+  },
+  {
+   "path": "lib/python/des/cli/health_check.py",
+   "sha256": "e81f2fea6e36700d4da6a22aafcf48d568533bc14cd53fb95f2e7bfabccb1921"
+  },
+  {
+   "path": "lib/python/des/cli/init_log.py",
+   "sha256": "ad7d3fd64b420605baa48665a4f9924f005a0ad45cac172a43a8e69012bc9913"
+  },
+  {
+   "path": "lib/python/des/cli/log_phase.py",
+   "sha256": "69a2265e1b3884e63d842141fa8040adbd6e713eb4a5c40ad10b5925ec4c8337"
+  },
+  {
+   "path": "lib/python/des/cli/project_dir.py",
+   "sha256": "f6f7e146f795b75a6fccccb2533667959dac88dd7e6b8d8daac217ba5059ca60"
+  },
+  {
+   "path": "lib/python/des/cli/roadmap.py",
+   "sha256": "b622894257e460319a57bab3ef72991df57137e0fe9d11f23fc9c52672928869"
+  },
+  {
+   "path": "lib/python/des/cli/run_contract_gate.py",
+   "sha256": "7165fca7184d4b7e55ac6a8b13428f37d8ed9ec531d0f4be04c612895aa346ba"
+  },
+  {
+   "path": "lib/python/des/cli/verify_commit_trailers.py",
+   "sha256": "0f2d74f1739338230f9ab802df1f20fe001a1461d131a009cdfc0b2360d825a3"
+  },
+  {
+   "path": "lib/python/des/cli/verify_deliver_integrity.py",
+   "sha256": "9d9a6b41548fa2da743e6a3f334298ecf361a6574e914c7de450eb277a3d44b6"
+  },
+  {
+   "path": "lib/python/des/cli/verify_slice_commit_completeness.py",
+   "sha256": "61cac8cad11d2858785af28b262a57d5d83dcdd3ef5df8d5c58490ba2e10ca4e"
+  },
+  {
+   "path": "lib/python/des/config/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "path": "lib/python/des/config/des_defaults.yaml",
+   "sha256": "34421addbd6a3f3f64645b4809daba0a5115fd43338cf9caf31d874bf8de23e4"
+  },
+  {
+   "path": "lib/python/des/domain/__init__.py",
+   "sha256": "99b31a8073ae414fc47dff15c72ee50af76e603b4da2cced47a01749ae9720c4"
+  },
+  {
+   "path": "lib/python/des/domain/_roadmap_helpers.py",
+   "sha256": "f44d7892142311f7ee248e558ff9be79c9eb6be456641c5d40140b4e055919cc"
+  },
+  {
+   "path": "lib/python/des/domain/abandoned_phase_detector.py",
+   "sha256": "7de2d8d39736422dcb2059bbfc94f047af94068f845fa09b51c7e54a5bd3ae19"
+  },
+  {
+   "path": "lib/python/des/domain/activation_policy.py",
+   "sha256": "8e8dbeb6baaab368eee40a862a5b96303478297f9268d2fb6d1fd7c8839053e9"
+  },
+  {
+   "path": "lib/python/des/domain/atdd_pure_phases.py",
+   "sha256": "774c6e96859ef6393a8e8800b1f5f637cfe8bf48b2532c0b23cb832cf76ac421"
+  },
+  {
+   "path": "lib/python/des/domain/audit_log_path_resolver.py",
+   "sha256": "614b4eda7dc6d775a258b9f15a0406d758b36e4dd1518ca38b8e3c5962905965"
+  },
+  {
+   "path": "lib/python/des/domain/commit_attribution/__init__.py",
+   "sha256": "04130234806a2ec95d1aa3f169f35f9e5b2def3eab2570e93e8fc9a240915705"
+  },
+  {
+   "path": "lib/python/des/domain/commit_attribution/shell_segments.py",
+   "sha256": "2bbc5e72763fad3ab2daee8236a978452edb3af8ca478419ae78f38f89c066a9"
+  },
+  {
+   "path": "lib/python/des/domain/commit_attribution/trailer_rewriter.py",
+   "sha256": "3ec22557ff5fec5f1b8cb2b7c69948e4ed79f4f1be0551516f716e9a68394795"
+  },
+  {
+   "path": "lib/python/des/domain/deliver_integrity_verifier.py",
+   "sha256": "a5731661e63c2deadf550d467762e0b7007b7928f8cf24aeee258fef5a33c9e9"
+  },
+  {
+   "path": "lib/python/des/domain/deliver_progress_tracker.py",
+   "sha256": "010d363a13165709e1b7cb4472733bf547c812ba30525225123efe78cd9d423d"
+  },
+  {
+   "path": "lib/python/des/domain/des_enforcement_policy.py",
+   "sha256": "e6fd16aed6b6856aebf19388126c13847513784202c2c87108e6248ccc18a263"
+  },
+  {
+   "path": "lib/python/des/domain/des_marker_generator.py",
+   "sha256": "2aaab6e5ae2c51cbe3672c9ed90d1ef6564580ed40724f4f72677d2072c0cb75"
+  },
+  {
+   "path": "lib/python/des/domain/des_marker_parser.py",
+   "sha256": "59f36c929d680e9f6dfdd1e0612ea427d70a5426665ddbe77f91c158aa4d6d02"
+  },
+  {
+   "path": "lib/python/des/domain/error_codes.py",
+   "sha256": "1fa729f4ba0ec2da8d92755c7f42e0aac689d17667e85db56b0f3e8dd03334c2"
+  },
+  {
+   "path": "lib/python/des/domain/log_integrity_validator.py",
+   "sha256": "99cc500c5f68068a7064448ac5452ae7f22acb3d03bfed0e58071f017db03673"
+  },
+  {
+   "path": "lib/python/des/domain/marker_completeness_policy.py",
+   "sha256": "940bc6c424b4ab53c70c0f79aa243b5d821d1eab139bdb5f51e8825204a55ef6"
+  },
+  {
+   "path": "lib/python/des/domain/nwave_dir_gitignore.py",
+   "sha256": "920d8d02934b617427638367b92911f6b7ae75a15881ed97bab8cfabcfce4ad7"
+  },
+  {
+   "path": "lib/python/des/domain/pending_update_flag.py",
+   "sha256": "752c6046c2444bd123402aeb1c9690c98edadc2350987c2e5fd23ecaf9ce03c9"
+  },
+  {
+   "path": "lib/python/des/domain/phase_event.py",
+   "sha256": "c155872853ffe542593c26fcfdd41178e7c5c871e13c10fd64c4abed4c27947e"
+  },
+  {
+   "path": "lib/python/des/domain/phase_state_validator.py",
+   "sha256": "60e7070dc779f5402f71b13dc3924959b43cf05634967d3c543a7599a266301d"
+  },
+  {
+   "path": "lib/python/des/domain/prompt_metadata_extractor.py",
+   "sha256": "e96229d572bc9a125b4172e10b62ec6bec0665bdfc7808ec6fcfd61906939aca"
+  },
+  {
+   "path": "lib/python/des/domain/result.py",
+   "sha256": "aac88fd2f687ae872d24c4465e49261202da63997a12e7de92b4771274fc9f2d"
+  },
+  {
+   "path": "lib/python/des/domain/roadmap_schema.py",
+   "sha256": "655096d24e4ff2db981b29932b8034054e66dead1c54cbd37138d0f579f27bd1"
+  },
+  {
+   "path": "lib/python/des/domain/roadmap_validator.py",
+   "sha256": "3bc3fcca64312a1da9d202932d7ee935e4dc5e49dda12ccbe88059863b120d6d"
+  },
+  {
+   "path": "lib/python/des/domain/root_gitignore_fix.py",
+   "sha256": "006367dd27843eb764346ce605af7bfd50882e5c5a41d04a7c19ad534ad68866"
+  },
+  {
+   "path": "lib/python/des/domain/schema_version_detector.py",
+   "sha256": "706a7a7fecf972d8c4e8e4dd423b985c92f7017e2174d71c9a674267796f307f"
+  },
+  {
+   "path": "lib/python/des/domain/session_guard_policy.py",
+   "sha256": "c9b9ab16e535eca1c625fec2bd13cdc261b9dfb317efcec4a54c3ac68c252a9c"
+  },
+  {
+   "path": "lib/python/des/domain/silent_completion_detector.py",
+   "sha256": "d6fe7ecea67247513524f6e754807465382fbbf4776b2825102a59d36f55cfdb"
+  },
+  {
+   "path": "lib/python/des/domain/skill_load_event.py",
+   "sha256": "53840143a77b9428ac727286395e71be5d32b56ab6180d1f2ae8eebe637f44f3"
+  },
+  {
+   "path": "lib/python/des/domain/specifications.py",
+   "sha256": "727b657c1bafc84a84aa94129b64326fa02e5a9950029e61b16bb31540a134fc"
+  },
+  {
+   "path": "lib/python/des/domain/stale_detection_result.py",
+   "sha256": "934c7ebf28b7900578adde8afc8a710eeb98e65db5d224f5d1608040a07f4c92"
+  },
+  {
+   "path": "lib/python/des/domain/stale_execution.py",
+   "sha256": "743dcb178a967bbbf89c4bb16f92ce8d42fe42db1f6614be80530014610cf47d"
+  },
+  {
+   "path": "lib/python/des/domain/step_completion_validator.py",
+   "sha256": "35a08d42e1731c63b6d677d13574ff00e15ad44000afa9a247da3a9f0e323339"
+  },
+  {
+   "path": "lib/python/des/domain/step_file_repository.py",
+   "sha256": "28252545ddbff1416ee7a36698bf06f1e3b078f317180ec257a609b0fcdd6d00"
+  },
+  {
+   "path": "lib/python/des/domain/tdd_schema.py",
+   "sha256": "5fbb7d02685bb743d41c413f12cb2d84dcdc1a15e166a5085c76e77851e6cc0d"
+  },
+  {
+   "path": "lib/python/des/domain/telemetry/__init__.py",
+   "sha256": "5acc33c34f804a95c52ab8ae87353a03b46337263784bd7536e7e56567f0015d"
+  },
+  {
+   "path": "lib/python/des/domain/telemetry/documentation_density_event.py",
+   "sha256": "b53357483992258004a42dd5e9b7cd87790fa11503e7f8b6b07083ce1635ca71"
+  },
+  {
+   "path": "lib/python/des/domain/timeout_instruction_template.py",
+   "sha256": "4bec9aba6eb660b46b626ffc8d334f5c3e9b6cadce5de46bc0ad30518d5ad300"
+  },
+  {
+   "path": "lib/python/des/domain/timeout_monitor.py",
+   "sha256": "4c23aa5b092d8d643050ed3062c7f5557a9e78ca4c098f84cfb083ffa3b54979"
+  },
+  {
+   "path": "lib/python/des/domain/timeout_warning_builder.py",
+   "sha256": "f3be1d4476aa16416207f921b71196bdb78814e2d433a15d8ed4c654065e4df6"
+  },
+  {
+   "path": "lib/python/des/domain/turn_config.py",
+   "sha256": "802348e50b28355393c2cf058ac7b8249ad9bebe1835e8cc9a449f8855220587"
+  },
+  {
+   "path": "lib/python/des/domain/turn_counter.py",
+   "sha256": "c1c3abf298ec23bed1974f63f0e63187b0dd9a4a153518965dba2e190859fe74"
+  },
+  {
+   "path": "lib/python/des/domain/update_check_policy.py",
+   "sha256": "de42b0501bee13304010a9b4d61be798ef592698926b74ee7424d33c11f1a41c"
+  },
+  {
+   "path": "lib/python/des/domain/validation_error_detector.py",
+   "sha256": "bcc09ac2366bb8b48eff1260c4cf61f7fc5a41df8b74053055380f3eb4569799"
+  },
+  {
+   "path": "lib/python/des/domain/value_objects.py",
+   "sha256": "8d5da69037dfb13e23edce5110f2375e05590bea0c137706281c3f004941d18f"
+  },
+  {
+   "path": "lib/python/des/ports/__init__.py",
+   "sha256": "1697d627c4f1371ea6f21e84ff9dbd64dd356d5524924c5823b5bf13d1ba25c6"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/__init__.py",
+   "sha256": "1beb0c321480e590c8a08dfbbac637476a166821f0bb3c0f36f6ea9737f8cd55"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/audit_log_reader.py",
+   "sha256": "c8bf9251c208c5f29f8c27b0a1ffe33d67331869be851e6dbbec1d6c94d9f3f0"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/audit_log_writer.py",
+   "sha256": "d4c840d653a82b56d5bcac141724c5df644d7285dfb4f7c9fef9d433a0456b6d"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/commit_verifier.py",
+   "sha256": "2def82775ac62f44880d626e5c6bc9a5f17a37ba5da6567e9f34fbf21db53b3e"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/config_port.py",
+   "sha256": "a5cb043fc758b63a6bb340862cf4c5f1db41f2338d02e4be326de30f9e1fa58a"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/execution_log_reader.py",
+   "sha256": "2894bc632bea583ac5cd8f9a6980fec01cb0bcf442488da667b56b3da205d12b"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/filesystem_port.py",
+   "sha256": "0694555c552d6e54e128c1cf05e7d156af5c331060635edb93dcfa7f78aae538"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/hook_port.py",
+   "sha256": "d15baf9c92f7c4e89c398d5123a36fc163aef369f36a516f161045a3a63cad78"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/logging_port.py",
+   "sha256": "421fee1d29e942d079c43598acb83a518ec1990fb4845593ad08d2fa339655e5"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/nwave_log_writer.py",
+   "sha256": "1d1a290c9e80d5d47a62960a094074ab5702dd97c8a4587b2d6bbff91532b160"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/package_manager_port.py",
+   "sha256": "36b0094f312ba2215416ed9cc630cabd52a162b099845fec24a1bcec1aa56eb2"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/scope_checker.py",
+   "sha256": "83140ec4bdc76b50ba793c3c4c10991bea605f7e6f11b54680b80a556599a861"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/skill_tracking_port.py",
+   "sha256": "c2186430690f8b1eb6a5383bae5ea1e1fee69d1c78791cf8f9a41ac94397b438"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/task_invocation_port.py",
+   "sha256": "fd318ee52a3218f61daab328c8ca7db6e7628f726c2f63728620eebed89bf6d8"
+  },
+  {
+   "path": "lib/python/des/ports/driven_ports/time_provider_port.py",
+   "sha256": "53bcc52b55a202a2dca52dc0e88cfd361124ec759512af9743c59f0f4ba7ce4b"
+  },
+  {
+   "path": "lib/python/des/ports/driver_ports/__init__.py",
+   "sha256": "d7c7a278ab0f9f60835a2b6b8f1535844e2bd7398488a0b99e193af07733a36c"
+  },
+  {
+   "path": "lib/python/des/ports/driver_ports/pre_tool_use_port.py",
+   "sha256": "5179d2d241f7d4eb09597cedc8b8f5e342d23c2e5d488b7b7d858a88e1db932f"
+  },
+  {
+   "path": "lib/python/des/ports/driver_ports/subagent_stop_port.py",
+   "sha256": "5ad1b5f9deee9fcd32ed8fe77677623a58c1c063550c9d34067e88c6783ee74b"
+  },
+  {
+   "path": "lib/python/des/ports/driver_ports/validator_port.py",
+   "sha256": "e9457a821a6db25e48fc6be46d24e9431d5b4b451548fe22f1b396be7ab42706"
+  },
+  {
+   "path": "scripts/check_stale_phases.py",
+   "sha256": "625b7653cbb5d9cdb1fdfe05040432a38e66173b379d2853f4a1cccd3509fd80"
+  },
+  {
+   "path": "bin/des-commit",
+   "sha256": "92ac1f9e5659e69bf3c5285c7f20962bb11321bef31129c96828ae5f7f056c3d"
+  },
+  {
+   "path": "bin/des-health-check",
+   "sha256": "03011cca153dbd504f63685325c9e57b8489f90bdf87bf445288d8f2947a89f9"
+  },
+  {
+   "path": "bin/des-init-log",
+   "sha256": "22ef828ed8b07957c55f837d5eaf276c3c9c1edf58d0db6114af98eb8225f156"
+  },
+  {
+   "path": "bin/des-log-phase",
+   "sha256": "12bd6655527f4ecf4814aaf6b73d3e85176130bd7e6fbaa9d06b805f9b0cd937"
+  },
+  {
+   "path": "bin/des-roadmap",
+   "sha256": "f8a54e4e0536a6594a91c84c09eaca5c92dce96c8ccd5ac5ca5747a66dd39277"
+  },
+  {
+   "path": "bin/des-verify-integrity",
+   "sha256": "7daa545977d774ce4559c66ad0b2da4a87dc857d4ad9d2a4544b06f894f9bff9"
+  },
+  {
+   "path": "scripts/scope_boundary_check.py",
+   "sha256": "e61e0d038500733c19ef279e4c0e9ee7d5f5ee432abe730423eceed0e555ba22"
+  }
+ ],
+ "hook_templates": [
+  {
+   "command": "PYTHONPATH={lib} {python} -m {{adapter}} pre-task",
+   "event": "PreToolUse",
+   "matcher": "Agent"
+  },
+  {
+   "command": "INPUT=$(cat); echo \"$INPUT\" | grep -q 'execution-log\\.json' && { echo \"$INPUT\" | PYTHONPATH={lib} {python} -m {{adapter}} pre-write; exit $?; }; test -f .nwave/des/deliver-session.json || exit 0; echo \"$INPUT\" | PYTHONPATH={lib} {python} -m {{adapter}} pre-write",
+   "event": "PreToolUse",
+   "matcher": "Write"
+  },
+  {
+   "command": "INPUT=$(cat); echo \"$INPUT\" | grep -q 'execution-log\\.json' && { echo \"$INPUT\" | PYTHONPATH={lib} {python} -m {{adapter}} pre-edit; exit $?; }; test -f .nwave/des/deliver-session.json || exit 0; echo \"$INPUT\" | PYTHONPATH={lib} {python} -m {{adapter}} pre-edit",
+   "event": "PreToolUse",
+   "matcher": "Edit"
+  },
+  {
+   "command": "# des-hook:pre-bash\nINPUT=$(cat); CMD=$(echo \"$INPUT\" | python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))\"); echo \"$CMD\" | grep -q 'execution-log' || exit 0; echo \"$CMD\" | grep -qE 'des\\.cli\\.(log_phase|init_log|verify_deliver_integrity)' && exit 0; echo '{\"decision\":\"block\",\"reason\":\"Direct modification of execution-log.json via Bash is blocked.\\nTo read it, use the Read tool.\\nTo modify it, use des.cli.log_phase.\"}'; exit 2",
+   "event": "PreToolUse",
+   "matcher": "Bash"
+  },
+  {
+   "command": "# des-hook:pre-commit-attribution\nPYTHONPATH={lib} {python} -m {{adapter}} pre-tool-use",
+   "event": "PreToolUse",
+   "matcher": "Bash"
+  },
+  {
+   "command": "PYTHONPATH={lib} {python} -m {{adapter}} post-tool-use",
+   "event": "PostToolUse",
+   "matcher": "Agent"
+  },
+  {
+   "command": "PYTHONPATH={lib} {python} -m {{adapter}} subagent-stop",
+   "event": "SubagentStop",
+   "matcher": ""
+  },
+  {
+   "command": "PYTHONPATH={lib} {python} -m {{adapter}} deliver-progress",
+   "event": "SubagentStop",
+   "matcher": ""
+  },
+  {
+   "command": "PYTHONPATH={lib} {python} -m {{adapter}} session-start",
+   "event": "SessionStart",
+   "matcher": "startup"
+  },
+  {
+   "command": "PYTHONPATH={lib} {python} -m {{adapter}} subagent-start",
+   "event": "SubagentStart",
+   "matcher": ""
+  },
+  {
+   "command": "PYTHONPATH={lib} {python} -m {{adapter}} pre-tool-use",
+   "event": "PreToolUse",
+   "matcher": "^Bash$|^apply_patch$"
+  }
+ ],
+ "legacy": {
+  "codex_v1_launcher_name": "nwave_claude_code_hook_adapter_launcher.py",
+  "copilot_file": "hooks/nwave-des.json",
+  "extra_candidates": [
+   ".nwave/runtime/des",
+   ".nwave/bin",
+   ".nwave/active-runtime",
+   ".codex/nwave_claude_code_hook_adapter_launcher.py",
+   ".codex/nwave_orchestrator_affordance_launcher.py",
+   ".nwave/nWave/hooks/orchestrator_affordance_refresh.py"
+  ],
+  "hook_marker_parts": [
+   "des",
+   "adapters.drivers.hooks.claude_code_hook_adapter"
+  ],
+  "hook_markers": [
+   "des-hook:",
+   "nwave_claude_code_hook_adapter_launcher.py",
+   "nwave_orchestrator_affordance_launcher.py"
+  ],
+  "hosts": [
+   ".claude",
+   ".codex",
+   ".cursor",
+   ".copilot",
+   ".config/opencode",
+   ".omp/agent"
+  ],
+  "library": "lib/python/des",
+  "omp_plugin": "extensions/nwave-des.ts",
+  "opencode_plugin": "plugins/nwave-des.ts",
+  "receipt": ".nwave-des-manifest.json",
+  "runtime_manifest": "_install_manifest.json",
+  "scripts": [
+   "check_stale_phases.py",
+   "scope_boundary_check.py"
+  ],
+  "scripts_key": "installed_scripts",
+  "scripts_manifest": "scripts/.nwave-manifest.json",
+  "shims": [
+   "des-commit",
+   "des-health-check",
+   "des-init-log",
+   "des-log-phase",
+   "des-roadmap",
+   "des-verify-integrity"
+  ],
+  "settings_env_keys": [
+   "PATH",
+   "SLASH_COMMAND_TOOL_CHAR_BUDGET"
+  ]
+ },
+ "provenance": {
+  "wheel": "nwave_ai-3.22.2-py3-none-any.whl",
+  "wheel_sha256": "9b0c85eded47acb486f8dad527bd20e9f8f8bdf77d04cec44745a4c0418b68da"
+ }
+}

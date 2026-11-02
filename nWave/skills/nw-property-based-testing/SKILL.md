@@ -1,18 +1,24 @@
 ---
 name: nw-property-based-testing
-description: Property-based testing strategies, mutation testing, shrinking, and combined PBT+mutation workflow for test quality validation
+description: Property-based testing strategies (PBT — ACTIVE, authored by the acceptance-designer during DISTILL), shrinking, PBT+TDD integration.
 user-invocable: false
-disable-model-invocation: true
 ---
 
-# Property-Based Testing and Mutation Testing
+# Property-Based Testing (ACTIVE)
 
-> Deferred to Phase 2.25: Mutation testing runs ONCE per feature as final quality gate at orchestrator Phase 2.25 (after all steps complete). Do NOT run mutation testing during inner TDD loop.
+Property-based testing is a first-class technique for declared broad laws.
+The acceptance designer authors applicable native properties during DISTILL;
+decorator density, example counts and percentages are not quality mandates.
 
 ## Property-Based Testing (PBT)
 
 Instead of examples ("given X, expect Y"), write properties ("for all valid inputs, condition Z holds").
-Framework generates hundreds/thousands of inputs checking property. Dramatically expands test coverage.
+Framework samples generated inputs against a stated observation. It is
+counterexample search, not universal proof or a substitute for real-boundary
+integration evidence.
+
+Evidence is sampled and case-bounded; retain the generator, observation and
+falsifier boundary rather than claiming universal proof or causal effect.
 
 ## Property Patterns
 1. **Invariants**: "for all inputs, condition holds" (sorted list is ordered, balance >= 0)
@@ -20,107 +26,110 @@ Framework generates hundreds/thousands of inputs checking property. Dramatically
 3. **Oracle**: "compare against reference implementation" (optimized vs correct-but-slow)
 4. **Metamorphic**: "different operations, same result" (add(a,b)==add(b,a), filter can't increase size)
 
+## Non-vacuous generator construction
+
+Compile the declared law before choosing framework syntax:
+
+```text
+SemanticCase -> ConcreteInput -> SUT -> Observation
+SemanticCase --------------------------> IndependentOracle
+```
+
+The map is total: every generated component must influence `ConcreteInput`,
+the SUT invocation, or the independent oracle, directly or through a named
+derivation. An unused generated component invalidates the property; delete it
+or make its semantic effect observable. The oracle must not copy the
+production algorithm it judges.
+
+For a branching or biconditional law, model the alternatives as a closed sum
+(`CaseA | CaseB`), generate the case tag first, and derive concrete inputs that
+satisfy that case by construction. Hoping random inputs reach a rare branch,
+filtering/assuming away a branch, or raising the example count does not prove
+reachability. Classification, labels and coverage events are diagnostics only;
+they never substitute for constructive reachability.
+
+The observation must distinguish the promised law. Assertions such as
+"returns a collection", "has the expected type", or "never raises" are
+proxies unless that is the declared law itself. On `RED_TO_GREEN`, run a
+property claimed as the RED oracle for a newly promised law against base
+behavior: it must fail because the promised observation is missing or wrong.
+If it passes, it does not discharge `BROAD_INPUT_DOMAIN`; correct or remove it
+before `RedConfirmed`. Keep one property per distinct law, combining laws only
+when one generated observation honestly falsifies every combined law.
+
 ## Shrinking
 
-When property fails, framework auto-finds minimal failing input. Dramatically accelerates debugging.
-Algorithm: find failing input -> try simpler variants -> if still fails, use as new candidate -> repeat.
+Select the project's native generator with shrinking/replay capability. On a
+deliberate defect or retained failing case, observe a useful minimized reproduction,
+retain seed/case and verify validity under the same contract. If shrinking is
+unavailable, state the limitation rather than claim it ran. Record meaningful
+branch/transition distribution, including constructive rare cases; generation
+counts alone do not prove reachability. Do not change domain boundaries (for
+example integer range) just to suit a storage engine or generator.
 
-## PBT Tools by Language
+## Cross-layer properties (ADR-SSOT-002 §6a)
 
-| Language | Framework |
-|----------|-----------|
-| Python | Hypothesis |
-| JavaScript/TypeScript | fast-check |
-| Haskell | QuickCheck |
-| Rust | quickcheck |
-| Java | jqwik |
-| C# | FsCheck |
+PBT is one projection of the same per-layer observations/laws Section 6a
+names — pick the property PATTERN (above) that matches the layer the target's
+`boundary`/`contract-shape` says applies; do not author a property for a
+layer with no declared law:
 
-Adopted by Amazon, Volvo, Stripe, Jane Street (ICSE 2024 study).
+| Layer | Property pattern | What it checks |
+|---|---|---|
+| Domain | Invariant | a stable state/transition law holds for all generated inputs |
+| Application/ports | Roundtrip/Oracle | the outcome type is total — every declared success/failure alternative is reachable and handled |
+| Adapter/integration | Metamorphic | under a controlled, test-injected fault model, translation maps each simulated fault to its declared failure without losing causal identity |
+| Infrastructure/recovery | Invariant | retry/idempotency/timeout/compensation laws hold under repeated or reordered application, against the declared deterministic recovery model |
+
+A layer with no declared failure-mapping or recovery law has no corresponding
+property to author for that target — this is a derivation, not an invitation
+to invent coverage.
+
+Adapter/recovery properties use injected deterministic faults; they do not
+predict a live vendor or replace real-boundary integration evidence.
 
 ## When PBT Adds Value
-HIGH value: algorithms | data structures | serialization | business rules (validation, calculations) | protocols/state machines | **unbounded input domain** with universal invariant.
-LOW value: simple CRUD | UI logic | external API integrations | **closed-world finite domain** (use parametrize instead — see falsifier-gate below).
-PBT complements example-based testing, doesn't replace it.
+HIGH value: algorithms | data structures | serialization | business rules (validation, calculations) | protocols/state machines | **unbounded input domain** with universal invariant | deterministic adapter failure-translation and recovery-model properties under a controlled fault model (see Cross-layer properties above).
+LOW value: simple CRUD | UI logic | probing live external API/vendor behavior | **closed-world finite domain** (use the native finite-case/table facility instead — see falsifier-gate below).
+PBT complements example-based testing, doesn't replace it, and never substitutes for real-boundary integration tests against the actual external system.
 
-### Falsifier-gate: closed-world finite → parametrize, NOT PBT
+### Falsifier-gate: closed-world finite → native finite-case/table, NOT PBT
 
-If the input domain is **finite + enumerable** (N known files, M known event types, K known skill names, fixed Python versions), PBT is the wrong tool:
-
-- `Hypothesis` import (~457ms) + per-example bookkeeping > `@pytest.mark.parametrize` overhead
-- Shrinking is irrelevant — the failing input is already a known list member, no minimization needed
-- Coverage is bounded by the parameter list, not the example budget — fewer assertions, same coverage
-
-**Decision rule**: enumerate the domain. If listable (`[a, b, c, ...]`), use parametrize-collapse or dict-iteration (see `nw-test-optimization` §3.1, §3.2). Reserve PBT for "for all X in DOMAIN, P(X) holds" where DOMAIN is infinite (all strings, all integers, all valid JSON, all sorted lists).
-
-**Empirical anchor 2026-05-18**: 155-file closed-world skill registry PBT migration was correctly aborted at recon stage by the falsifier-gate. Solution: set-difference parametrize-collapse (commit `c2637f6c8`), 5.42s → 0.71s (8.9× faster). Mass-migrating closed-world tests to PBT would have made the suite **slower**, not faster.
-
-See `nw-test-optimization` §4-bis Paradigm-Match Decision Rule for the full shape-to-paradigm table.
+For a finite enumerable domain, use the native finite-case/table facility or map iteration: shrinking and
+example budgets add no coverage. Reserve PBT for a broad domain and a stated
+universal law; see `nw-test-optimization` for the paradigm match.
 
 ## PBT + TDD Integration
-1. Start with example-based TDD for specific cases (drives detailed design)
-2. Once basic implementation works, write properties to generalize
-3. If property fails: found bug or need refined implementation
-4. Refactor freely - properties verify behavior preservation
 
-Properties = higher-level spec that survives refactoring better than examples.
-
-## Mutation Testing
-
-Evaluates test suite quality by introducing artificial bugs (mutations) and checking if tests catch them.
-Mutation score = killed mutants / total mutants. Stronger metric than code coverage.
-
-## Mutation Score Targets
-
-| Score | Quality |
-|-------|---------|
-| < 60% | Weak suite, significant gaps |
-| 60-80% | Moderate, some gaps |
-| > 80% | Strong, few gaps |
-
-Target: 75-80% minimum. Not all survivors indicate bad tests (equivalent mutants exist).
-
-## Mutation Operators
-Change == to != | + to - | remove method call | change constant | modify loop boundary | alter comparison.
-
-## Mutation Testing Tools
-
-| Language | Tool |
-|----------|------|
-| Java | PIT |
-| JavaScript/TypeScript/C# | Stryker |
-| Python | mutmut, Cosmic Ray |
-
-Computationally expensive. Use incremental: on changed code in PRs, full codebase weekly.
-
-## Combined PBT + Mutation Workflow
-1. Write example-based tests (TDD) -> cover known scenarios
-2. Apply mutation testing -> identify assertion gaps -> write more tests
-3. Add PBT for complex logic -> cover input space systematically
-4. Mutation testing again -> verify properties are comprehensive
-
-Quality ratchet: each technique exposes gaps others miss. Prioritize critical paths and complex algorithms.
-
-## PBT Performance Guidance
-- Fast feedback: ~100 examples | CI/CD: ~1000 examples | Nightly builds: ~10000+ examples
-
-Modern frameworks allow configuring example count per context.
+Examples establish specific behaviour; properties generalize a selected law
+and preserve it through refactoring. A failure reopens generator, observation
+and implementation rather than assigning blame by default.
 
 ## State-Delta + Hypothesis Integration
 
-Combines the delta-first paradigm (see `nw-tdd-methodology::Delta-First Test Paradigm`) with Hypothesis shrinking to cover production code that branches on input shape.
+This section is a Python-project example, not a product-stack requirement.
+Use native discovery and incumbent helpers per `nw-test-design-mandates`;
+the optional helper below is not an adoption prerequisite.
+
+Combines the delta-first paradigm (see `nw-tdd-methodology::Delta-First Test
+Paradigm`) with Hypothesis shrinking for production code branching on input
+shape.
 
 ### `path_strategy()` — composite Hypothesis strategy
 
 Location: `nwave_ai/state_delta/strategies/path_strategy.py`
 
-Generates realistic PATH string shapes covering 4 production branches:
-1. Empty string (no PATH set)
-2. `$HOME/bin` literal (unexpanded shell variable)
-3. Legacy fallback path (`/usr/local/bin` only)
-4. Idempotent case (target already present in PATH)
+Generates four production branches:
 
-**Lazy-import boundary**: `hypothesis` is NOT imported at `import nwave_ai.state_delta.matcher` time. It is loaded only when `path_strategy()` is called. This is verified by a subprocess-isolated test at `tests/state_delta/unit/test_lazy_import.py` — importing the matcher in a hypothesis-free environment must not raise `ImportError`.
+1. Empty string (no PATH set).
+2. `$HOME/bin` literal (unexpanded shell variable).
+3. Legacy fallback (`/usr/local/bin` only).
+4. Idempotent target-already-present case.
+
+**Lazy-import boundary**: `hypothesis` is NOT imported at
+`import nwave_ai.state_delta.matcher` time. It loads only when `path_strategy()`
+is called; `tests/state_delta/unit/test_lazy_import.py` verifies a
+hypothesis-free matcher import does not raise `ImportError`.
 
 ### Integration pattern
 
@@ -133,28 +142,21 @@ from nwave_ai.state_delta import assert_state_delta, prepended_with, unchanged
 @settings(max_examples=500)
 def test_path_injection_all_shapes(initial_path):
     before = {"env.PATH": initial_path, "env.OTHER": "x"}
-
-    result_path = inject_nwave_bin(initial_path)
-
-    after = {"env.PATH": result_path, "env.OTHER": "x"}
-
+    after = {"env.PATH": inject_nwave_bin(initial_path), "env.OTHER": "x"}
     assert_state_delta(
-        before,
-        after,
-        universe={"env.PATH", "env.OTHER"},
+        before, after, universe={"env.PATH", "env.OTHER"},
         expected={"env.PATH": prepended_with("/home/user/.nwave/bin"),
                   "env.OTHER": unchanged()},
     )
 ```
 
-Hypothesis shrinking finds the minimal failing PATH shape automatically when a branch is broken.
-
 ### When to use this combination
 
-- Production code has **multiple branches over input shape** (empty vs. populated, legacy vs. current format).
-- You want both shrinking (Hypothesis strength) and surrounding-state verification (delta-first strength).
-- Single `@given` replaces N parametrized example tests covering the same branches.
+- Production code has multiple branches over input shape.
+- Shrinking and surrounding-state verification are both needed.
+- One property honestly replaces the matching finite cases.
 
 ### Reference
 
-- D-12 Part B hard gate: `tests/state_delta/integration/test_pilot_bug48.py::test_pilot_bug48_post_fix_validated` — 500 examples, GREEN in 0.88s.
+`tests/state_delta/integration/test_pilot_bug48.py::test_pilot_bug48_post_fix_validated`
+is D-12 Part B hard-gate evidence: 500 examples, GREEN in 0.88s.

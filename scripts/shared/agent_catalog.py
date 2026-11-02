@@ -54,17 +54,55 @@ class CatalogParseError(ValueError):
 # uncatalogued public-methodology skill is not private work.
 PUBLIC_SHARED_SKILLS: frozenset[str] = frozenset(
     {
-        "nw-density-resolution-contract",
+        # Auto microkernel (2026-08-08): loaded by the installed product's
+        # hook spine directly, not via any owning public agent's frontmatter
+        # skills list -- same load-bearing pattern as above.
+        "nw-auto",
+        "nw-role-invocation",
         "nw-jtbd-core",
         "nw-jtbd-interviews",
         "nw-jtbd-opportunity-scoring",
         "nw-jtbd-workflow-selection",
+        # Language PBT deep dives are selected exactly one-at-a-time by the
+        # acceptance-designer's loading table, not frontmatter-preloaded.
+        "nw-pbt-dotnet",
+        "nw-pbt-erlang-elixir",
+        "nw-pbt-go",
+        "nw-pbt-haskell",
+        "nw-pbt-jvm",
+        "nw-pbt-python",
+        "nw-pbt-rust",
+        "nw-pbt-typescript",
+        # FP language idioms are the SAME load-bearing pattern, one row
+        # below: resolved by target language from the table at
+        # nw-code-design-fp/SKILL.md, not frontmatter-preloaded by
+        # nw-functional-software-crafter despite declaring it as `agent:`
+        # in their own frontmatter (2026-08-24, F-FP-LANGUAGE-SKILLS-
+        # SHIPPED-UNREACHABLE).
+        "nw-fp-clojure",
+        "nw-fp-erlang-elixir",
+        "nw-fp-fsharp",
+        "nw-fp-haskell",
+        "nw-fp-kotlin",
+        "nw-fp-rust",
+        "nw-fp-scala",
+        "nw-fp-typescript",
         "nw-persona-jtbd-analysis",
-        "nw-roadmap-design",
         "nw-spike-methodology",
         "nw-speculative-dispatch",
         "nw-tdd-cross-language",
-        "nw-wizard-shared-rules",
+        # Optional remote System One methodology, available to every installed
+        # host but never preloaded into a role. It is used by default when its
+        # API key is available and falls back locally when it is not.
+        "nw-typesafe-system-one",
+        # Decomposed command-design-patterns modules (2026-06-17): the public
+        # core nw-command-design-patterns (load-bearing for the public
+        # agent-builder via *optimize-command) composes these via its loading
+        # table; they are routed via-core, not frontmatter-owned, so the
+        # ownership strip would drop them — same load-bearing pattern as above.
+        "nw-command-design-patterns-classification",
+        "nw-command-design-patterns-reduction",
+        "nw-command-design-patterns-authoring",
     }
 )
 
@@ -172,6 +210,89 @@ def load_public_agents(nwave_dir: Path, *, strict: bool = True) -> set[str]:
     }
 
 
+def scrub_removed_skill_references(
+    agents_dir: Path,
+    target_dir: Path,
+    removed_skills: set[str],
+    public_agents: set[str],
+) -> list[str]:
+    """Drop ``skills:`` frontmatter entries naming a skill the strip removed.
+
+    WHY: a surviving public agent whose frontmatter still names a removed
+    skill ships a dangling instruction. The public user installs an agent
+    that points at a directory the package does not contain, and nothing
+    fails loudly -- the reference is inert at load time, so the defect
+    surfaces only as missing behaviour.
+
+    The edit is line-scoped on purpose: a YAML round-trip would reformat
+    every surviving public agent file, turning a two-line correction into
+    an unreviewable diff. Only the matching list-item lines are dropped;
+    the rest of the file, frontmatter included, is left byte-identical.
+
+    Returns one report string per scrubbed reference.
+    """
+    if not removed_skills or not agents_dir.exists():
+        return []
+
+    scrubbed: list[str] = []
+    for agent_file in sorted(agents_dir.glob("nw-*.md")):
+        if not is_public_agent(agent_file.name, public_agents):
+            continue
+        text = agent_file.read_text(encoding="utf-8")
+        if not text.startswith("---"):
+            continue
+        end = text.find("\n---", 3)
+        if end == -1:
+            continue
+
+        head, tail = text[:end], text[end:]
+        kept_lines: list[str] = []
+        in_skills = False
+        dropped: list[str] = []
+        for line in head.split("\n"):
+            stripped = line.strip()
+            if not line.startswith((" ", "\t")) and stripped.endswith(":"):
+                in_skills = stripped == "skills:"
+            elif in_skills and stripped.startswith("- "):
+                name = stripped[2:].strip().strip("\"'")
+                key = name if name.startswith("nw-") else f"nw-{name}"
+                if key in removed_skills:
+                    dropped.append(key)
+                    continue
+            kept_lines.append(line)
+
+        if not dropped:
+            continue
+        agent_file.write_text("\n".join(kept_lines) + tail, encoding="utf-8")
+        rel = agent_file.relative_to(target_dir)
+        scrubbed.extend(f"{rel} no longer references {name}" for name in dropped)
+
+    return scrubbed
+
+
+def is_public_command(metadata: dict, public_agents: set[str]) -> bool:
+    """A command is public unless all of its declared agents are non-public."""
+    agents = metadata.get("agents") or []
+    return not agents or any(
+        agent.replace("_", "-") in public_agents for agent in agents
+    )
+
+
+def load_public_commands(nwave_dir: Path) -> set[str]:
+    """Return catalog command names using the task roster's hyphen spelling."""
+    catalog = _load_catalog(nwave_dir)
+    public_agents = {
+        name
+        for name, metadata in catalog.get("agents", {}).items()
+        if metadata.get("public") is not False
+    }
+    return {
+        name.replace("_", "-")
+        for name, metadata in catalog.get("commands", {}).items()
+        if is_public_command(metadata, public_agents)
+    }
+
+
 def load_private_agents(nwave_dir: Path) -> set[str]:
     """Read framework-catalog.yaml and return agents where ``public`` is ``False``.
 
@@ -185,6 +306,40 @@ def load_private_agents(nwave_dir: Path) -> set[str]:
         name
         for name, info in catalog.get("agents", {}).items()
         if info.get("public") is False
+    }
+
+
+def load_private_skills(nwave_dir: Path, *, strict: bool = True) -> set[str]:
+    """Read framework-catalog.yaml and return skills declared ``public: false``.
+
+    Skill visibility is DERIVED by default (a skill is public when at least
+    one owning agent is public -- see :func:`is_public_skill`). The optional
+    top-level ``skills:`` catalog section is the one place that can OVERRIDE
+    that derivation for a single skill, so that knowledge held to be a
+    competitive advantage stays out of the public repository and the PyPI
+    wheel even while a public agent owns it.
+
+    Keys are skill DIRECTORY names as they appear in ``nWave/skills/``
+    (``nw-`` prefixed). Only ``public: false`` is an override; ``public:
+    true`` and an absent entry both mean "derive as usual".
+
+    With ``strict=False`` a missing or unparseable catalog yields an empty
+    set. That is not a silent pass: every release caller loads the same
+    catalog strictly through :func:`load_public_agents` first and aborts
+    with ``unverifiable catalog`` before any visibility decision is made.
+    """
+    catalog = _load_catalog(nwave_dir, strict=strict)
+    if catalog is None:
+        return set()
+
+    skills_section = catalog.get("skills")
+    if not isinstance(skills_section, dict):
+        return set()
+
+    return {
+        name
+        for name, info in skills_section.items()
+        if isinstance(info, dict) and info.get("public") is False
     }
 
 
@@ -258,7 +413,102 @@ def build_ownership_map(agents_dir: Path) -> dict[str, set[str]]:
             skill_key = skill if skill.startswith("nw-") else f"nw-{skill}"
             ownership.setdefault(skill_key, set()).add(agent_name)
 
+    _add_role_skill_registry_ownership(agents_dir, ownership, yaml)
+
     return ownership
+
+
+def _add_role_skill_registry_ownership(
+    agents_dir: Path, ownership: dict[str, set[str]], yaml_module: object
+) -> None:
+    """Fold the sibling role-skill-loading.yaml registry's direct role fields
+    (on_demand/phase keys, paradigm/language_pbt values, catalog_only items)
+    into ``ownership``, keyed under the bare role owner name -- these skills
+    are conditionally projected by docgen, not frontmatter-listed, so the
+    frontmatter-only scan above would otherwise miss them. ``catalog_only``
+    entries are build-time ownership only (never rendered by docgen) for
+    skills a role owns without eager preload or an ON-TRIGGER row. Also maps
+    each ``reviewer_of`` role to every reviewed owner's ``on_demand`` keys,
+    since a reviewer's usage ownership of a reviewed role's on-demand skills
+    is a distribution concern, not author-phase ownership or eager preload.
+    Missing or malformed registry is a no-op: this is a secondary
+    distribution seam, not the registry's schema authority.
+    """
+    registry_path = agents_dir.parent / "data" / "role-skill-loading.yaml"
+    if not registry_path.exists():
+        return
+
+    try:
+        registry = yaml_module.safe_load(registry_path.read_text(encoding="utf-8"))  # type: ignore[union-attr]
+    except Exception:
+        return
+
+    if not isinstance(registry, dict):
+        return
+
+    roles = registry.get("roles")
+    if not isinstance(roles, dict):
+        return
+
+    global_on_demand = registry.get("global_on_demand")
+    if global_on_demand is None:
+        global_on_demand = {}
+    if not isinstance(global_on_demand, dict):
+        return
+
+    for role_name, entry in roles.items():
+        if not isinstance(role_name, str) or not isinstance(entry, dict):
+            continue
+        owner = role_name.removeprefix("nw-")
+        skills: list[str] = []
+        for field in ("on_demand", "phase"):
+            values = entry.get(field)
+            if isinstance(values, dict):
+                skills.extend(k for k in values if isinstance(k, str))
+        for field in ("paradigm", "language_pbt"):
+            values = entry.get(field)
+            if isinstance(values, dict):
+                skills.extend(v for v in values.values() if isinstance(v, str))
+        catalog_only = entry.get("catalog_only")
+        if isinstance(catalog_only, list):
+            skills.extend(v for v in catalog_only if isinstance(v, str))
+        for skill in skills:
+            skill_key = skill if skill.startswith("nw-") else f"nw-{skill}"
+            ownership.setdefault(skill_key, set()).add(owner)
+
+    # Global on-demand lenses are rendered into every shipped agent, including
+    # older roles that have no role-specific registry entry.  Their ownership
+    # must use the same complete population or the public strip can preserve a
+    # skill while the loaded-but-unowned validator still reports drift.
+    for agent_file in sorted(agents_dir.glob("nw-*.md")):
+        owner = agent_file.stem.removeprefix("nw-")
+        for skill in global_on_demand:
+            if not isinstance(skill, str):
+                continue
+            skill_key = skill if skill.startswith("nw-") else f"nw-{skill}"
+            ownership.setdefault(skill_key, set()).add(owner)
+
+    for role_name, entry in roles.items():
+        if not isinstance(role_name, str) or not isinstance(entry, dict):
+            continue
+        reviewer_of = entry.get("reviewer_of")
+        if not isinstance(reviewer_of, list):
+            continue
+        reviewer = role_name.removeprefix("nw-")
+        for reviewed in reviewer_of:
+            if not isinstance(reviewed, str):
+                continue
+            owner_entry = roles.get(reviewed)
+            if not isinstance(owner_entry, dict):
+                continue
+            on_demand = owner_entry.get("on_demand")
+            if not isinstance(on_demand, dict):
+                continue
+            for skill in on_demand:
+                if not isinstance(skill, str):
+                    continue
+                skill_key = skill if skill.startswith("nw-") else f"nw-{skill}"
+                ownership.setdefault(skill_key, set()).add(reviewer)
 
 
 def _parse_frontmatter(file_path: Path, yaml_module: object) -> dict | None:
@@ -362,11 +612,19 @@ def detect_command_skills(skills_dir: Path) -> set[str]:
     return command_skills
 
 
+def _skill_key(skill_dir_name: str) -> str:
+    """Normalize a skill name to its ``nw-``-prefixed directory-name key."""
+    return (
+        skill_dir_name if skill_dir_name.startswith("nw-") else f"nw-{skill_dir_name}"
+    )
+
+
 def is_public_skill(
     skill_dir_name: str,
     public_agents: set[str],
     ownership_map: dict[str, set[str]] | None = None,
     command_skills: set[str] | None = None,
+    private_skills: set[str] | None = None,
 ) -> bool:
     """Check whether a skill directory belongs to a public agent.
 
@@ -379,6 +637,12 @@ def is_public_skill(
     agent(s) for the skill. A skill is public if at least one of its
     owning agents is public.
 
+    When *private_skills* is provided (from :func:`load_private_skills`),
+    every skill it names is private no matter who owns it and no matter
+    which public override would otherwise apply. Callers deciding real
+    distribution MUST pass it; ``tests/build/unit/test_is_public_skill_
+    call_sites_pass_private_skills.py`` pins that they do.
+
     When *command_skills* is provided, skills in this set are always
     treated as public (they are user-facing commands, not agent-only).
 
@@ -390,6 +654,13 @@ def is_public_skill(
     """
     if not public_agents:
         return True
+
+    # The catalog's private declaration is the FIRST thing consulted: it wins
+    # over every public path below -- the shared-skill allow-list, command
+    # skill status, and any public owning agent. Fail-closed by ordering.
+    if private_skills and _skill_key(skill_dir_name) in private_skills:
+        return False
+
     if skill_dir_name in ("common", "nw-canary"):
         return True
     if skill_dir_name in PUBLIC_SHARED_SKILLS:
@@ -399,13 +670,40 @@ def is_public_skill(
 
     if ownership_map is not None:
         # Normalize to nw-prefixed key (matching ownership map convention)
-        if skill_dir_name.startswith("nw-"):
-            lookup_key = skill_dir_name
-        else:
-            lookup_key = f"nw-{skill_dir_name}"
+        lookup_key = _skill_key(skill_dir_name)
         if lookup_key in ownership_map:
             owning_agents = ownership_map[lookup_key]
             return any(agent in public_agents for agent in owning_agents)
 
     # Fallback: skill must match a public agent name explicitly (no inheritance)
     return skill_dir_name in public_agents
+
+
+def surviving_skill_dirs(nwave_dir: Path, *, strict: bool = True) -> set[str]:
+    """Skill directory names that survive the public release strip.
+
+    The one computation of skill survival. ``strip_private_agents.strip``
+    removes every skill directory outside this set, and the docs renderer
+    emits a skill page (and its Source link) only for a member of it.
+    ``strict`` reaches every catalog read: the release fails closed on a
+    missing or corrupt catalog, while documentation may read it leniently.
+    """
+    public_agents = load_public_agents(nwave_dir, strict=strict)
+    private_skills = load_private_skills(nwave_dir, strict=strict)
+    skills_dir = nwave_dir / "skills"
+    if not skills_dir.is_dir():
+        return set()
+    ownership_map = build_ownership_map(nwave_dir / "agents")
+    command_skills = detect_command_skills(skills_dir)
+    return {
+        child.name
+        for child in skills_dir.iterdir()
+        if child.is_dir()
+        and is_public_skill(
+            child.name,
+            public_agents,
+            ownership_map=ownership_map,
+            command_skills=command_skills,
+            private_skills=private_skills,
+        )
+    }

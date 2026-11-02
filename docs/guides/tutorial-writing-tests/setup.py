@@ -5,7 +5,7 @@ Creates an empty md-converter Python project with pytest, git init, and
 an initial commit. Idempotent: a second run exits cleanly; pass --force
 to wipe and recreate.
 
-Run from outside the nwave-dev repo (e.g. ``cd $(mktemp -d)`` first).
+Run from outside the nWave repo (e.g. ``cd $(mktemp -d)`` first).
 See manual-setup.md for the same steps written as prose.
 """
 
@@ -24,7 +24,7 @@ PYPROJECT_TOML = """\
 [project]
 name = "md-converter"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

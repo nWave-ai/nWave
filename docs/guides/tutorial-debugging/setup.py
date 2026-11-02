@@ -5,7 +5,7 @@ Creates the csv-processor starter project — buggy code with a CSV
 fixture and tests that mostly fail. The user investigates the failure
 with /nw-root-why during the tutorial.
 
-Run from outside the nwave-dev repo (e.g. ``cd $(mktemp -d)`` first).
+Run from outside the nWave repo (e.g. ``cd $(mktemp -d)`` first).
 See manual-setup.md for the same steps written as prose.
 """
 

@@ -47,9 +47,9 @@ class StateDeltaTest {
     void cleanPrependPasses() {
         StateDelta.assertDelta(
                 Map.of("PATH", "/usr/bin"),
-                Map.of("PATH", "/des/bin:/usr/bin"),
+                Map.of("PATH", "/app/bin:/usr/bin"),
                 Set.of("PATH"),
-                Map.of("PATH", Predicates.prependedWith("/des/bin")));
+                Map.of("PATH", Predicates.prependedWith("/app/bin")));
     }
 
     @Test
@@ -60,16 +60,16 @@ class StateDeltaTest {
                         Map.of("PATH", "/usr/bin"),
                         Map.of("PATH", "/wrong"),
                         Set.of("PATH"),
-                        Map.of("PATH", Predicates.prependedWith("/des/bin"))));
+                        Map.of("PATH", Predicates.prependedWith("/app/bin"))));
         assertEquals(1, ex.violations().size());
         StateDeltaViolation v = ex.violations().get(0);
         assertEquals(ViolationKind.PREDICATE_FAILED, v.kind());
         assertEquals("PATH", v.key());
         assertEquals("/usr/bin", v.oldValue());
         assertEquals("/wrong", v.newValue());
-        assertEquals("prepended_with(/des/bin)", v.predicateName());
+        assertEquals("prepended_with(/app/bin)", v.predicateName());
         assertTrue(ex.getMessage().contains("PATH"));
-        assertTrue(ex.getMessage().contains("predicate_name='prepended_with(/des/bin)'"));
+        assertTrue(ex.getMessage().contains("predicate_name='prepended_with(/app/bin)'"));
     }
 
     @Test
@@ -78,9 +78,9 @@ class StateDeltaTest {
         StateDeltaException ex = assertThrows(StateDeltaException.class, () ->
                 StateDelta.assertDelta(
                         Map.of("PATH", "/u/bin", "HOME", "/home/u"),
-                        Map.of("PATH", "/des/bin:/u/bin", "HOME", "/home/changed"),
+                        Map.of("PATH", "/app/bin:/u/bin", "HOME", "/home/changed"),
                         Set.of("PATH", "HOME"),
-                        Map.of("PATH", Predicates.prependedWith("/des/bin"))));
+                        Map.of("PATH", Predicates.prependedWith("/app/bin"))));
         assertEquals(1, ex.violations().size());
         StateDeltaViolation v = ex.violations().get(0);
         assertEquals(ViolationKind.UNDECLARED_CHANGE, v.kind());
@@ -92,7 +92,7 @@ class StateDeltaTest {
     void multiViolationAggregation() {
         StateDeltaException ex = assertThrows(StateDeltaException.class, () -> {
             Map<String, Predicate> expected = new HashMap<>();
-            expected.put("PATH", Predicates.prependedWith("/des"));
+            expected.put("PATH", Predicates.prependedWith("/app"));
             expected.put("HOME", Predicates.unchanged());
             StateDelta.assertDelta(
                     Map.of("PATH", "/u", "HOME", "/h", "X", "1"),
@@ -112,9 +112,9 @@ class StateDeltaTest {
         StateDeltaException ex = assertThrows(StateDeltaException.class, () ->
                 StateDelta.assertDelta(
                         Map.of("PATH", "/u", "EXTRA", "x"),
-                        Map.of("PATH", "/des:/u", "EXTRA", "x2"),
+                        Map.of("PATH", "/app:/u", "EXTRA", "x2"),
                         Set.of("PATH"),
-                        Map.of("PATH", Predicates.prependedWith("/des")),
+                        Map.of("PATH", Predicates.prependedWith("/app")),
                         true));
         boolean foundExtra = ex.violations().stream()
                 .anyMatch(v -> v.kind() == ViolationKind.STRICT_UNIVERSE_MISMATCH && v.key().equals("EXTRA"));
@@ -143,8 +143,8 @@ class StateDeltaTest {
     @Test
     @DisplayName("prependedWith(prefix, sep) — concrete pass + fail")
     void prependedWithConcrete() {
-        assertTrue(Predicates.prependedWith("/des/bin").test("/usr/bin", "/des/bin:/usr/bin").ok());
-        assertFalse(Predicates.prependedWith("/des/bin").test("/usr/bin", "/wrong").ok());
+        assertTrue(Predicates.prependedWith("/app/bin").test("/usr/bin", "/app/bin:/usr/bin").ok());
+        assertFalse(Predicates.prependedWith("/app/bin").test("/usr/bin", "/wrong").ok());
     }
 
     @Property
@@ -172,8 +172,8 @@ class StateDeltaTest {
     @Test
     @DisplayName("containing(sub) — string substring + collection element")
     void containingSubstringOrElement() {
-        assertTrue(Predicates.containing("/usr/bin").test("", "/des/bin:/usr/bin").ok());
-        assertFalse(Predicates.containing("/usr/bin").test("", "/des/bin:/opt/bin").ok());
+        assertTrue(Predicates.containing("/usr/bin").test("", "/app/bin:/usr/bin").ok());
+        assertFalse(Predicates.containing("/usr/bin").test("", "/app/bin:/opt/bin").ok());
         assertTrue(Predicates.containing(Map.of("id", 1))
                 .test(null, List.of(Map.of("id", 1), Map.of("id", 2))).ok());
         assertFalse(Predicates.containing(Map.of("id", 9))
@@ -192,20 +192,20 @@ class StateDeltaTest {
     @Test
     @DisplayName("idempotentAfter(prefix) — first segment match")
     void idempotentAfterFirstSegment() {
-        assertTrue(Predicates.idempotentAfter("DES_BIN").test("anything", "DES_BIN:/usr/bin").ok());
-        assertFalse(Predicates.idempotentAfter("DES_BIN").test("anything", "/usr/bin:/opt/bin").ok());
+        assertTrue(Predicates.idempotentAfter("APP_BIN").test("anything", "APP_BIN:/usr/bin").ok());
+        assertFalse(Predicates.idempotentAfter("APP_BIN").test("anything", "/usr/bin:/opt/bin").ok());
     }
 
     @Test
     @DisplayName("legacyHealed(det, heal) — D-11 paper-trace 4 cases")
     void legacyHealedFourCases() {
-        final String LEGACY = "DES_BIN:SYSTEM_PATH_FALLBACK";
+        final String LEGACY = "APP_BIN:SYSTEM_PATH_FALLBACK";
         Predicate pred = Predicates.legacyHealed(
                 old -> LEGACY.equals(old),
-                next -> next instanceof String s && !s.equals(LEGACY) && s.startsWith("DES_BIN:"));
-        assertTrue(pred.test(LEGACY, "DES_BIN:/usr/bin").ok(), "case 1: healed");
+                next -> next instanceof String s && !s.equals(LEGACY) && s.startsWith("APP_BIN:"));
+        assertTrue(pred.test(LEGACY, "APP_BIN:/usr/bin").ok(), "case 1: healed");
         assertFalse(pred.test(LEGACY, LEGACY).ok(), "case 2: heal not applied");
-        assertFalse(pred.test("/usr/bin", "DES_BIN:/usr/bin").ok(), "case 3: not legacy");
+        assertFalse(pred.test("/usr/bin", "APP_BIN:/usr/bin").ok(), "case 3: not legacy");
     }
 
     @Test
@@ -239,9 +239,9 @@ class StateDeltaTest {
         try {
             StateDelta.assertDelta(
                     Map.of("PATH", "/u", "HOME", oldHome),
-                    Map.of("PATH", "/des:/u", "HOME", newHome),
+                    Map.of("PATH", "/app:/u", "HOME", newHome),
                     Set.of("PATH", "HOME"),
-                    Map.of("PATH", Predicates.prependedWith("/des")));
+                    Map.of("PATH", Predicates.prependedWith("/app")));
         } catch (StateDeltaException e) {
             threw = true;
         }
@@ -253,9 +253,9 @@ class StateDeltaTest {
     void permittedMutationGoesGreen() {
         StateDelta.assertDelta(
                 Map.of("PATH", "/u", "HOME", "/h"),
-                Map.of("PATH", "/des:/u", "HOME", "/h"),
+                Map.of("PATH", "/app:/u", "HOME", "/h"),
                 Set.of("PATH", "HOME"),
-                Map.of("PATH", Predicates.prependedWith("/des")));
+                Map.of("PATH", Predicates.prependedWith("/app")));
     }
 
     // ------------------------------------------------------------------------

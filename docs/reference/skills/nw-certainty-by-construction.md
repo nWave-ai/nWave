@@ -1,0 +1,7 @@
+# nw-certainty-by-construction
+
+Turn a stable layer claim (domain, application, adapter, or infrastructure) into a construction boundary so the invalid state cannot be built, and state honestly what remains unguarded. Use when a requirement says an invalid state or transition must not occur, when values need a canonical form, or when a rewrite/cache/optimisation must preserve meaning. Complements nw-fp-domain-modeling, which shows the encodings; this decides whether to encode, how strong the claim really is, and what obligation is left over.
+
+**Used by:** [nw-ddd-architect](../agents/nw-ddd-architect.md), [nw-ddd-architect-reviewer](../agents/nw-ddd-architect-reviewer.md), [nw-functional-software-crafter](../agents/nw-functional-software-crafter.md), [nw-platform-architect](../agents/nw-platform-architect.md), [nw-platform-architect-reviewer](../agents/nw-platform-architect-reviewer.md), [nw-software-crafter](../agents/nw-software-crafter.md), [nw-software-crafter-reviewer](../agents/nw-software-crafter-reviewer.md), [nw-solution-architect](../agents/nw-solution-architect.md), [nw-solution-architect-reviewer](../agents/nw-solution-architect-reviewer.md), [nw-system-designer](../agents/nw-system-designer.md), [nw-system-designer-reviewer](../agents/nw-system-designer-reviewer.md)
+
+**Source:** [SKILL.md on GitHub](https://github.com/nWave-ai/nWave/blob/main/nWave/skills/nw-certainty-by-construction/SKILL.md)

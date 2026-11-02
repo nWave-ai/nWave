@@ -283,7 +283,7 @@ agent-activation:
 # # ❌ WRONG - This uses orchestrator's conversation context
 # Task(prompt="""Execute: 01-01.json
 #
-# Based on our earlier analysis, the SISTER constraint affects 20% of tests.
+# Based on our earlier analysis, the slow-test constraint affects 20% of tests.
 # The tier 2 tests at 532 seconds are the main bottleneck.
 # Focus on parallelization as we discussed.""")
 # ```
@@ -308,31 +308,28 @@ agent-activation:
 # [EMBED COMPLETE STEP FILE CONTENT OR TASK SPECIFICATION HERE - INLINE]
 #
 # INSTRUCTIONS:
-# [COMPLETE WORKFLOW INSTRUCTIONS - DO NOT REFERENCE /nw:* COMMANDS]
-# [Each step must be self-contained - do not assume agent can invoke skills]
+# [Bounded task, canonical owner references and exact installed role definition]
+# [Supply required evidence bytes when the role cannot read paths]
 #
 # EXPECTED OUTPUTS:
-# [EXPLICIT LIST OF DELIVERABLES WITH FILE PATHS AND CONTENT DESCRIPTIONS]
+# [Deliverable selected by the task and actual host-supported schema; configured destinations]
 #
-# QUALITY GATES:
-# [VALIDATION CRITERIA INLINE - DO NOT SAY "RUN /nw-review"]
-# [Include validation logic inline that agent can perform independently]
+# QUALITY:
+# [Use canonical rule owners, not duplicated inline methodology/checklists]
+# [Host owns invocation; nwdes constructs documents and supplies grammar, never semantic dispatch]
 # ```
 #
-# ANTI-PATTERNS (NEVER INCLUDE IN COMMANDS OR AGENT PROMPTS):
-# ❌ "Agent should invoke /nw-review" → SILENT FAILURE (agent can't invoke)
-# ❌ "Use /nw-execute to process the step" → AGENT CANNOT EXECUTE THIS
-# ❌ "After completion, run /nw-finalize" → SILENT FAILURE (agent can't invoke)
-# ❌ "See nWave/tasks/nw/baseline.md for workflow" → AGENT NEEDS CONTENT, NOT PATH
-# ❌ Any reference to agents calling skills or commands → AGENT CANNOT ACCESS
-# ❌ Assuming agents have access to anything beyond Read, Write, Edit, Bash, Grep
-#
-# CORRECT PATTERNS:
-# ✅ "Orchestrator should read /nw-review and embed review criteria in prompt"
-# ✅ "Provide agent with complete workflow instructions inline (not as paths)"
-# ✅ "Agent prompt must contain full file content, not references to files"
-# ✅ "Include all quality gate criteria directly in the prompt for agent use"
-# ✅ "Orchestrator translates skill references into inline workflows"
+# CAPABILITY RULES:
+# Native skill loading and file reads depend on the exact installed role and
+# supported host, not a blanket assumption that agents cannot use skills.
+# Do not invent slash-command execution or unavailable tools.
+# Load mandatory skills through the real supported route; on-demand references
+# remain references to their canonical owners rather than copied workflows.
+# Roles with Read consume permitted paths/views; tools-empty/source-blind roles
+# receive only permitted bytes, never code/test paths or widened tools.
+# Reviewer request/response exchanges preserve its own authored questions.
+# A candidate reviewer packet is not preimplementation ATD evidence.
+# Use nw-role-invocation for exact capability, boundary and handoff contracts.
 #
 # VALIDATION CHECKLIST FOR ORCHESTRATOR BRIEFING:
 # - [ ] Section header present: "## Orchestrator Briefing"
@@ -384,7 +381,7 @@ agent-activation:
 # - [ ] NO references to agents invoking /nw:* commands
 # - [ ] NO assumptions that agents can call skills
 # - [ ] Quality gates embedded inline (never "run /nw-review")
-# - [ ] All workflow instructions inline (never "see /nw-execute")
+# - [ ] All workflow instructions inline (never defer to another command)
 # - [ ] Anti-patterns section included (what NOT to put in agent prompts)
 # - [ ] Correct patterns section included (what TO put in agent prompts)
 # - [ ] **NEW**: Contains "## Agent Prompt Reinforcement" section with:

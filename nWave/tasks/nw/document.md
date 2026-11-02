@@ -92,9 +92,6 @@ Full 4-phase pipeline with deep-dive research. Output to `docs/explanation/`.
 ```
 Orchestrator prompts user to select DIVIO type before proceeding.
 
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes. This gives the user real-time visibility into progress.
 
 ## Success Criteria
 

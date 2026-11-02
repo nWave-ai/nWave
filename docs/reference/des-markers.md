@@ -1,8 +1,16 @@
-# DES Markers Reference
+# DES Markers Reference (historical)
 
-Task prompts dispatched through the DES orchestrator embed HTML-comment
-markers that carry execution context. Hooks (`pre_tool_use`,
-`subagent_stop`, `deliver_progress`) parse them via
+**Status: historical record, no live instructions.** The DES task-prompt markers
+belong to a retired orchestration. The current route uses `nwdes`: `nwdes prompt`
+builds each role bundle and emits no marker, and roles record typed values with
+their kind verbs. No step of the current route writes the markers on this page.
+Keep this page to read old logs, ADRs and audit records; never follow it to
+configure or run a delivery. Use `nwdes --help` and the
+[nwdes command reference](../guides/nwdes/reference/index.md) instead.
+
+Task prompts dispatched through the retired DES orchestrator embedded HTML-comment
+markers that carried execution context. Hooks (`pre_tool_use`,
+`subagent_stop`, `deliver_progress`) parsed them via
 `des.domain.des_marker_parser.DesMarkerParser` to validate, route, and
 audit each Task invocation.
 
@@ -88,18 +96,51 @@ execution-log was chosen.
 <!-- DES-VALIDATION : required -->
 <!-- DES-PROJECT-ID : fix-des-worktree-project-root-marker -->
 <!-- DES-STEP-ID : 01-01 -->
-<!-- DES-PROJECT-ROOT : /home/alex/worktrees/fix-des-worktree -->
+<!-- DES-PROJECT-ROOT : /home/u/worktrees/fix-des-worktree -->
 ```
 
-**Scope** (this iteration): marker honored on the hook side. Orchestrator-
-side injection (DISPATCH and DELIVER skills emitting the marker) is
-tracked under follow-up backlog item `F-DES-WORKTREE-ORCHESTRATOR-
-INJECTION`.
+**Producer**: NONE in the current route. From 2026-07-28 until its retirement,
+a retired dispatch command wrote the marker from its `--repo-root` value,
+resolved to an absolute path with `Path.resolve()`, the same `resolve()` the
+hook-side validator applied, so generator and consumer agreed by construction
+rather than by coincidence. That command no longer exists and no surviving step
+emits this marker; a replacement producer is not named here because none has
+been authored.
+
+The CONSUMER, `project_root_validator.py`, is described above as it behaved
+when the markers were live; this page does not promise it still runs.
+
+### `DES-SWARM-ISOLATED-DISPATCH` *(added 2026-07-28)*
+
+Declares that this dispatch runs in an ISOLATED parallel worktree, which DEFERS
+the carpaccio slice-order check to integration time. Needed because a swarm
+worktree's local ledger carries no `SliceCommitVerified` record for predecessor
+slices — those live on trunk — so the order check would otherwise refuse a
+legitimately-ready slice.
+
+**Value**: free text naming which worktree this is, and which predecessor
+`SliceCommitVerified` record lands at integration.
+
+**Status**: RETIRED — historical marker, with no live producer and no live
+consumer. A retired dispatch command wrote it from two flags that were
+required together (either flag alone was refused at exit 2 at the authoring
+surface), and `carpaccio_intercept.py` read it through `des_marker_parser.py`.
+Neither module is part of the current route, so this section records what the
+declaration meant, not a surface anything can use today. No replacement
+exists; do not treat any current step as emitting it.
+
+The isolation is a DECLARED fact, never inferred: the CLI does not sniff whether
+`.git` is a file or a directory, nor inspect the shape of the cwd. A gate decides
+on declared facts, never on inferred signals.
+
+```
+<!-- DES-SWARM-ISOLATED-DISPATCH : wt/df-slice-05; predecessor slice-04's SliceCommitVerified lands at integration -->
+```
 
 ## Empirical anchor
 
-`docs/feature/fix-des-worktree-project-root-marker/discuss/wave-decisions.md`
-(Rex RCA 2026-05-19) — audit-2026-05-19.log:270,365 showed
+Rex RCA 2026-05-19 (feature `fix-des-worktree-project-root-marker`,
+wave-decisions record) — audit-2026-05-19.log:270,365 showed
 false-positive validation halts where the orchestrator running on master
 dispatched a crafter on a worktree; the stop hook read `execution-log`
 from master's `docs/feature/...` rather than the worktree's, then

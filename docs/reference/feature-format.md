@@ -11,7 +11,7 @@ nWave supports two directory layouts for feature documentation: **legacy** (mult
 | **Section typing** | No explicit type labels | `## Wave: <WAVE> / [REF\|WHY\|HOW] <Section>` headings |
 | **Concurrent waves** | Manual conflict resolution | Git auto-resolves via wave-owned section ownership |
 | **Density control** | Not applicable | `lean` (refs only) or `full` (all sections) |
-| **Tooling** | Existing scripts, agents familiar | Validator: `scripts/validation/validate_feature_delta.py` |
+| **Tooling** | Existing scripts, agents familiar | Heading schema checked by review; no installed validator |
 | **Status** | In-place; no migration required | Greenfield new features; opt-in migration available |
 
 ---
@@ -100,14 +100,14 @@ The lean contract is **not** "one file ever". It is "one narrative file plus dec
 |------|----------------------|--------------|
 | DEVOPS | `environments.yaml` | DISTILL parses environment matrix to parametrize acceptance scenarios |
 | DISTILL | `*.feature` files + `steps/**` modules | Executable Gherkin specs; pytest-bdd discovery requires per-file layout |
-| DELIVER | `roadmap.json`, `execution-log.json` | DES self-host runtime parses these for phase tracking |
+| DELIVER | `roadmap.json`, `execution-log.json` | Legacy runtime files for phase tracking; the current `nwdes` route records the handoff and run records instead |
 | All waves | `slices/slice-NN-*.md` (when used) | Per-slice briefs are inherently per-file; PO reviewer enforces composition |
 | All waves | `spike/findings.md`, `spike/wave-decisions.md` | Spike isolation; promoted into feature-delta.md only on PROMOTE verdict |
 | Bug fixes | `bugfix/rca.md` | RCA artifacts kept separate from feature-delta narrative |
 
 **Machine companion rule**: only files whose downstream consumer is a parser (validator, agent, runtime) qualify. Loose human-readable markdown does NOT qualify and MUST live inside `feature-delta.md` as a `## Wave: <NAME> / [REF|WHY|HOW] <Section>` block.
 
-**Validator**: `scripts/validation/validate_feature_layout.py` enforces the whitelist. See `docs/analysis/investigation-overtesting-hypothesis-2026-04-28.md` for audit findings that motivated this rule.
+**Validator**: `scripts/validation/validate_feature_layout.py` enforces the whitelist. This rule was motivated by an internal audit of over-testing patterns in generated feature layouts (2026-04-28).
 
 **SSOT integration** (separate concern): each wave back-propagates to `docs/product/` (jobs.yaml, journeys/, personas/, architecture/, kpi-contracts.yaml). See each wave skill's "SSOT updates" subsection for paths.
 
@@ -234,7 +234,7 @@ python scripts/migrate_to_l7.py docs/feature/my-feature
 The script:
 1. Reads files from `docs/feature/my-feature/{discover,discuss,design,devops,distill,deliver}/`
 2. Classifies each artifact (user story, decision, scenario, etc.) by heuristic rules.
-3. Writes `docs/feature/my-feature/feature-delta.md` with proper `## Wave: ... / [TYPE]` headings.
+3. Writes `docs/feature/<feature-id>/feature-delta.md` with proper `## Wave: ... / [TYPE]` headings.
 4. Demotes optional expansions (JTBD narrative, persona narrative, migration playbooks) to `[WHY]/[HOW]` sections (not auto-included in lean mode).
 5. Creates a `FORMAT` file or adds frontmatter to `feature-delta.md` marking the feature as `lean`.
 6. Leaves legacy subdirectories in place for git diff inspection (not deleted automatically).
@@ -286,21 +286,12 @@ grep -r "US-1" docs/feature/my-feature/
 
 ## Schema validation (developer)
 
-nWave provides a validator to ensure lean L7 files conform to the heading schema.
+No installed command validates lean L7 files; the current delivery route ships
+no feature-delta validator. Check headings by review against the schema above.
+A heading is valid when it has the form `## Wave: <WAVE> / [REF|WHY|HOW] <Section>`,
+the wave is one of the six named waves and no heading repeats within a wave.
 
-### Running the validator
-
-```bash
-python scripts/validation/validate_feature_delta.py docs/feature/my-feature/feature-delta.md
-```
-
-**Exit codes**:
-- `0`: Valid. Headings match the schema.
-- `1`: Invalid. Malformed headings detected (see stderr for details).
-
-**Output**: Validator reports the count of `[REF]`, `[WHY]`, and `[HOW]` sections per wave, plus any errors.
-
-### Common validation failures
+### Common heading failures
 
 | Error | Cause | Fix |
 |-------|-------|-----|

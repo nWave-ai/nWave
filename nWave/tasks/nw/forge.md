@@ -1,50 +1,43 @@
 ---
-description: "Creates new specialized agents using the 5-phase workflow (ANALYZE > DESIGN > CREATE > VALIDATE > REFINE). Use when building a new AI agent or validating an existing agent specification."
+description: Creates new specialized agents using the 5-phase workflow (ANALYZE > DESIGN > CREATE > VALIDATE > REFINE). Use when building a new AI agent or validating an existing agent specification.
 argument-hint: '[agent-name] - Optional: --type=[specialist|reviewer|orchestrator] --pattern=[react|reflection|router]'
 ---
 
-# NW-FORGE: Create Agent (V2)
+# NW-FORGE: Agent Builder Router
 
-**Wave**: CROSS_WAVE
-**Agent**: Zeus (nw-agent-builder)
+**Wave**: CROSS_WAVE | **Agent**: Zeus (`nw-agent-builder`)
 
 ## Overview
 
-Create a new agent using research-validated v2 approach: focused core (200-400 lines) with Skills for domain knowledge. 5-phase workflow: ANALYZE > DESIGN > CREATE > VALIDATE > REFINE.
+Routes the existing `forge` surface to one owning procedure. The procedure creates and tracks its own task list.
 
-## Agent Invocation
+## Routes
+
+| Request condition | Internal procedure | Result |
+|---|---|---|
+| Create a new agent | `nw-ab-create-agent` | New agent and only needed skills |
+| Validate only an existing agent | `nw-ab-validate-spec` | Per-item checklist verdict |
+| Migrate an existing agent monolith | `nw-ab-migrate-monolith` | Lean agent core plus routed skills |
+| Optimize one existing skill | `nw-ab-optimize-skill` | Measured optimization result or `NOT_ELIGIBLE` |
+
+## Agent invocation
 
 @nw-agent-builder
 
-Execute \*forge to create {agent-name} agent.
+1. **Classify** — Select exactly one route from the table. Stop: request intent or target is ambiguous.
+2. **Execute** — Load and run the selected `nw-ab-*` procedure. Preserve established public command and agent names. Stop: the target is not eligible for that procedure.
+3. **Handoff** — Return the procedure's terminal evidence. Stop: it reports unresolved preservation or behavior risk.
 
-**Configuration:**
-- agent_type: specialist | reviewer | orchestrator
-- design_pattern: react | reflection | router | planning | sequential | parallel | hierarchical
+## Contract
 
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes. This gives the user real-time visibility into progress.
+- `forge` remains the public command; this task owns only routing.
+- Existing behavioral projections are immutable. Do not create a command, validator, grammar, compiler, hook, or gate for this change.
+- Safety by construction first; hooks last resort with a recorded reason (GDP-0).
+- Creation follows the five-phase `nw-ab-create-agent` workflow; validation runs `nw-ab-validate-spec` over the `nw-ab-validation-checklist` items.
+- Skill optimization is internal routing, not a new public command.
 
 ## Success Criteria
 
-- [ ] Agent definition under 400 lines (`wc -l`)
-- [ ] Official YAML frontmatter format (name, description, tools, maxTurns)
-- [ ] 11-point validation checklist passes
-- [ ] Only divergent behaviors specified (no Claude defaults)
-- [ ] 3-5 canonical examples included
-- [ ] Domain knowledge extracted to Skills if >50 lines
-- [ ] No aggressive language (no CRITICAL/MANDATORY/ABSOLUTE)
-- [ ] Safety via platform features (frontmatter/hooks), not prose
-
-## Next Wave
-
-**Handoff To**: Agent installation and deployment
-**Deliverables**: Agent specification file + Skill files (if any)
-
-## Expected Outputs
-
-```
-~/.claude/agents/nw/nw-{agent-name}.md
-~/.claude/skills/nw/{agent-name}/*.md    (if Skills needed)
-```
+- [ ] Exactly one route selected.
+- [ ] Established command and agent names preserved.
+- [ ] The selected procedure returns its terminal evidence.

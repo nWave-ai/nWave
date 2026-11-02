@@ -1,112 +1,82 @@
 # nWave Tutorial Index
 
-A prioritized roadmap of tutorials, organized by learning paths. Each tutorial is mapped to a real job users are hiring nWave to do.
+Tutorials teach by doing: a guided, hands-on lesson with a visible result.
+Pick by the job you want to learn.
 
-**Legend**: Published | Planned
-
----
-
-## Learning Path 1: Getting Started
-
-The minimum path from zero to productive. Start here.
-
-| # | Tutorial | Description | JTBD | Time | Level | Prerequisites | Status |
-|---|----------|-------------|------|------|-------|---------------|--------|
-| 1 | [Your First Delivery](./tutorial-first-delivery/) | Clone a starter project, run `/nw-deliver`, watch tests go green | "Ship a feature fast with quality" | ~13 min | Beginner | Python 3.10+, Claude Code + nWave | Published |
-| 2 | [Writing Acceptance Tests That Guide Delivery](./tutorial-writing-tests/) | Write your own tests from scratch (not a starter repo) and deliver against them | "Define what 'done' means, then let AI build it" | ~15 min | Beginner | Tutorial 1 | Published |
-| 3 | [Understanding the Delivery Pipeline](./tutorial-delivery-pipeline/) | What happens inside `/nw-deliver` — roadmap, execute, review, mutation test, finalize — and how to read the output | "Know what the tool is doing so I can trust it" | ~16 min | Beginner | Tutorial 1 | Published |
+> **Currency note (v4).** The tutorials under "The wave tutorials" and
+> "Standalone lessons" were written for the 3.x workflow. The `/nw-*`
+> commands they teach still exist, but 3.x delivery internals (per-wave
+> directories, `roadmap.json`, `execution-log.json`) were removed in v4 and
+> replaced by the nwdes handoff ([What's new in v4](./whats-new-v4/)). They
+> are kept because the wave concepts and command behavior they teach still
+> apply; expect artifact paths to differ.
 
 ---
 
-## Learning Path 2: Full Product Workflow
+## Start here
 
-The complete nWave lifecycle: from idea to production. These tutorials follow the 7-wave sequence (DISCOVER, DIVERGE, DISCUSS, DESIGN, DEVOPS, DISTILL, DELIVER) and can be done as a series on a single project.
+| # | Tutorial | Description | JTBD | Level | Status |
+|---|----------|-------------|------|-------|--------|
+| 1 | [First feature with nwdes](./tutorial-nwdes-first-feature/) | A safe walk through the command flow in a throwaway repository: create a handoff, declare one slice, observe RED, implement, reach GREEN, render examination material | "See the delivery flow once, safely" | Beginner | Current (v4) |
+| 2 | [Deliver a feature](./nwdes/deliver-feature.md) (how-to) | The practical first run on the v4 route: handoff, product facts, design, oracle, craft, review, examination, integration | "Ship a feature fast with quality" | Beginner | Current (v4) |
+| 3 | [Fix a bug](./nwdes/fix-bug.md) (how-to) | The lean v4 route on one understood defect | "Fix this defect properly, not just patch it" | Beginner | Current (v4) |
 
-| # | Tutorial | Description | JTBD | Time | Level | Prerequisites | Status |
-|---|----------|-------------|------|------|-------|---------------|--------|
-| 4 | [From Idea to Validated Problem](./tutorial-discovery/) | Run product discovery — identify assumptions, validate a problem exists before writing any code | "Make sure I'm building the right thing" | ~15 min | Intermediate | Tutorials 1-3 | Published |
-| 5 | [Exploring Design Directions](./diverge-wave-guide/) | Run design exploration — evaluate multiple solution approaches and make an informed architecture recommendation | "Choose between competing design approaches" | ~15 min | Intermediate | Tutorial 4 | Planned |
-| 6 | [Requirements and UX Journey](./tutorial-discuss/) | Turn a validated problem into user stories with acceptance criteria using the AI product owner | "Get clear, testable requirements without a PM" | ~15 min | Intermediate | Tutorial 5 | Published |
-| 7 | [Architecture Design](./tutorial-design/) (`/nw-design` + `/nw-diagram`) | Design system architecture and generate visual diagrams from requirements | "Make the right architecture decisions early" | ~15 min | Intermediate | Tutorial 6 | Published |
-| 8 | [Generating Acceptance Tests](./tutorial-distill/) (`/nw-distill`) | Auto-generate BDD acceptance tests from user stories and architecture docs | "Turn requirements into executable specs" | ~12 min | Intermediate | Tutorial 7 | Published |
-| 9 | [Delivering the Feature](./tutorial-deliver-feature/) (`/nw-deliver`) | Full delivery with architecture-guided roadmap on a real multi-component feature | "Ship a non-trivial feature end-to-end" | ~20 min | Intermediate | Tutorial 8 | Published |
-| 10 | [Production Readiness](./tutorial-devops/) (`/nw-devops`) | Set up CI/CD, infrastructure design, and deployment strategy for the delivered feature | "Get to production with confidence" | ~15 min | Intermediate | Tutorial 9 | Published |
+Tutorial 1 uses fixed role-output fixtures, so it needs no model calls —
+read its disclaimer before treating anything in it as delivery evidence.
 
 ---
 
-## Learning Path 3: Everyday Tasks
+## The wave tutorials (3.x workflow)
 
-Standalone tutorials for common jobs. No specific order required.
+Sequenced lessons following the wave sequence DISCOVER → DIVERGE → DISCUSS →
+DESIGN → DEVOPS → DISTILL → DELIVER. Read the currency note above before
+starting.
 
-| # | Tutorial | Description | JTBD | Time | Level | Prerequisites | Status |
-|---|----------|-------------|------|------|-------|---------------|--------|
-| 11 | [Safe Refactoring with Mikado](./tutorial-refactoring/) (`/nw-refactor` + `/nw-mikado`) | Untangle a messy codebase using progressive refactoring levels and the Mikado Method for dependency graphs | "Safely improve legacy code without breaking things" | ~20 min | Intermediate | Tutorial 1 | Published |
-| 12 | [Debugging with 5 Whys](./tutorial-debugging/) (`/nw-root-why`) | Investigate a production bug using systematic root cause analysis | "Find the real cause, not just the symptom" | ~12 min | Intermediate | Tutorial 1 | Published |
-| 13 | [Evidence-Based Research](./tutorial-research/) (`/nw-research`) | Research a technology choice with verified sources and structured output | "Make informed decisions backed by evidence" | ~10 min | Beginner | Claude Code + nWave | Published |
-| 14 | [Validating Your Test Suite](./tutorial-mutation-testing/) (`/nw-mutation-test`) | Run mutation testing to find gaps in your test coverage | "Know if my tests actually catch bugs" | ~12 min | Intermediate | Tutorial 1 | Published |
-| 15 | [Creating Quality Documentation](./tutorial-documentation/) (`/nw-document`) | Generate DIVIO-compliant docs (tutorial, how-to, reference, explanation) from existing code | "Keep documentation accurate and useful" | ~12 min | Beginner | Claude Code + nWave | Published |
+| # | Tutorial | Description | JTBD | Level |
+|---|----------|-------------|------|-------|
+| 4 | [From Idea to Validated Problem](./tutorial-discovery/) (`/nw-discover`) | Product discovery: validate a problem exists before writing code | "Make sure I'm building the right thing" | Intermediate |
+| 5 | [Exploring Design Directions](./diverge-wave-guide/) (`/nw-diverge`) | Evaluate multiple solution approaches and recommend one | "Choose between competing design approaches" | Intermediate |
+| 6 | [Requirements and UX Journey](./tutorial-discuss/) (`/nw-discuss`) | Turn a validated problem into user stories with acceptance criteria | "Get clear, testable requirements without a PM" | Intermediate |
+| 7 | [Architecture Design](./tutorial-design/) (`/nw-design` + `/nw-diagram`) | Design system architecture and generate diagrams from requirements | "Make the right architecture decisions early" | Intermediate |
+| 8 | [Generating Acceptance Tests](./tutorial-distill/) (`/nw-distill`) | Turn user stories and architecture into executable BDD acceptance tests | "Turn requirements into executable specs" | Intermediate |
+| 9 | [Delivering the Feature](./tutorial-deliver-feature/) (`/nw-deliver`) | Whole delivery on a multi-component feature (teaches the 3.x roadmap flow; for v4 use [Deliver a feature](./nwdes/deliver-feature.md)) | "Ship a non-trivial feature end-to-end" | Intermediate |
+| 10 | [Production Readiness](./tutorial-devops/) (`/nw-devops`) | CI/CD, infrastructure design, and deployment strategy | "Get to production with confidence" | Intermediate |
 
----
+## Standalone lessons (3.x workflow)
 
-## Learning Path 4: Power User
+| # | Tutorial | Description | JTBD | Level |
+|---|----------|-------------|------|-------|
+| 11 | [Understanding the Delivery Pipeline](./tutorial-delivery-pipeline/) | What happened inside a 3.x `/nw-deliver` run, and how to read its artifacts | "Know what the tool is doing so I can trust it" | Beginner |
+| 12 | [Writing Acceptance Tests That Guide Delivery](./tutorial-writing-tests/) | Write your own tests from scratch and deliver against them | "Define what 'done' means, then let AI build it" | Beginner |
+| 13 | [Safe Refactoring with Mikado](./tutorial-refactoring/) (`/nw-refactor` + `/nw-mikado`) | Untangle a messy codebase with progressive levels and the Mikado Method | "Safely improve legacy code without breaking things" | Intermediate |
+| 14 | [Debugging with 5 Whys](./tutorial-debugging/) (`/nw-root-why`) | Investigate a production bug with systematic root cause analysis | "Find the real cause, not just the symptom" | Intermediate |
+| 15 | [Evidence-Based Research](./tutorial-research/) (`/nw-research`) | Research a technology choice with verified sources | "Make informed decisions backed by evidence" | Beginner |
+| 16 | [Validating Your Test Suite](./tutorial-mutation-testing/) (`/nw-mutation-test`) | Mutation testing to find gaps in test coverage | "Know if my tests actually catch bugs" | Intermediate |
+| 17 | [Creating Quality Documentation](./tutorial-documentation/) (`/nw-document`) | Generate DIVIO-compliant docs from existing code | "Keep documentation accurate and useful" | Beginner |
+| 18 | [Your First Outcome](./outcomes-first-outcome/) | Register and check an outcome with the `nwave-ai outcomes` CLI | "Measure what my work changed" | Beginner |
 
-For users who want to extend nWave itself.
-
-| # | Tutorial | Description | JTBD | Time | Level | Prerequisites | Status |
-|---|----------|-------------|------|------|-------|---------------|--------|
-| 16 | Building Custom Agents (`/nw-forge`) | Create a domain-specific agent with skills, reviewer, and test harness | "Extend nWave with agents for my domain" | ~25 min | Advanced | Tutorials 1-3, familiarity with agent architecture | Planned |
-| 17 | Functional TDD Workflow | Use the functional software crafter for FP-first projects (F#, Haskell, Scala, Elixir) | "Use nWave with my functional codebase" | ~15 min | Advanced | Tutorial 1, experience with FP language | Planned |
-
----
-
-## Legacy Tutorials
-
-Earlier tutorials superseded by the current learning paths. Preserved for reference.
-
-| # | Tutorial | Description | Status |
-|---|----------|-------------|--------|
-| L1 | [Quick Start: Hello nWave](./tutorial-hello-nwave/) | Build a feature in 5 minutes with three commands | Legacy |
-| L2 | [Your First Feature](./tutorial-first-feature/) | End-to-end feature using the four-command workflow | Legacy |
-
----
-
-## Recommended Reading Order
-
-**If you have 15 minutes**: Tutorial 1 only. You will ship a feature and understand the core value.
-
-**If you have 1 hour**: Tutorials 1, 2, 3. You will be self-sufficient for day-to-day delivery.
-
-**If you have a day**: Tutorials 1-10 in order. You will know the complete product lifecycle.
-
-**Pick-and-choose**: Tutorials 11-15 are standalone — jump to whichever job you need done today.
+The 3.x-era first-run tutorials ([Your First Delivery](./tutorial-first-delivery/),
+[Hello nWave](./tutorial-hello-nwave/), [Your First Feature](./tutorial-first-feature/))
+are superseded by the v4 route above and kept as history.
 
 ---
 
-## JTBD Summary
+## Recommended reading order
 
-| Job | Primary Persona | nWave Command | Tutorial |
-|-----|----------------|---------------|----------|
-| Ship a feature fast with quality | Solo Dev | `/nw-deliver` | 1, 9 |
-| Define "done" and let AI build it | Solo Dev, Tech Lead | Tests + `/nw-deliver` | 2 |
-| Understand what the tool is doing | New Team Member | — | 3 |
-| Validate a product idea | Product-Minded Dev | `/nw-discover` | 4 |
-| Explore design directions | Tech Lead | `/nw-diverge` | 5 |
-| Get clear requirements without a PM | Solo Dev, Tech Lead | `/nw-discuss` | 6 |
-| Make architecture decisions early | Tech Lead | `/nw-design` | 7 |
-| Turn requirements into test specs | Tech Lead | `/nw-distill` | 8 |
-| Get to production | Solo Dev, Tech Lead | `/nw-devops` | 10 |
-| Safely improve legacy code | Legacy Maintainer | `/nw-refactor`, `/nw-mikado` | 11 |
-| Debug hard production issues | Solo Dev | `/nw-root-why` | 12 |
-| Make evidence-based tech decisions | Tech Lead | `/nw-research` | 13 |
-| Verify test suite catches real bugs | Tech Lead | `/nw-mutation-test` | 14 |
-| Keep docs accurate and useful | Tech Lead | `/nw-document` | 15 |
-| Extend nWave for my domain | Power User | `/nw-forge` | 16 |
-| Get help with methodology or commands | Any | `/nw-buddy` | -- |
+**If you have 15 minutes**: [What's new in v4](./whats-new-v4/), then start
+[Deliver a feature](./nwdes/deliver-feature.md) on a toy request.
+
+**If you have an hour**: finish the delivery end to end, then
+[Fix a bug](./nwdes/fix-bug.md) and [Understanding nwdes](./understanding-nwdes/).
+
+**Product lifecycle**: tutorials 4–10 in order, reading them as wave-concept
+lessons while running the v4 route for the artifacts.
+
+**Pick-and-choose**: tutorials 11–18 are standalone — jump to the job you
+need done today.
 
 ---
 
-> **Tip**: At any point, type `/nw-buddy` followed by your question to get contextual help about nWave methodology, commands, project state, or migration.
-
----
-
-**Last Updated**: 2026-05-03
+> **Tip**: at any point, type `/nw-buddy` followed by your question to get
+contextual help about nWave methodology, commands, project state, or
+migration.

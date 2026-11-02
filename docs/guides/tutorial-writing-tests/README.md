@@ -2,7 +2,7 @@
 
 **Time**: ~15 minutes (6 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorial 1](../tutorial-first-delivery/) completed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 1](../tutorial-first-delivery/) completed
 **Dependencies**: None beyond pytest. Pure Python.
 
 ---
@@ -285,12 +285,11 @@ This takes 3-5 minutes. You'll see phases scroll by:
 
 The agent reads your four tests, plans an implementation, and builds code that makes each test pass — one at a time, following the TDD cycle.
 
-### Messages you can safely ignore
+### Read reported failures
 
-Lines like these are normal internal coordination, not errors:
-
-- `PreToolUse:Task hook error` — DES validation checkpoint
-- `DES_MARKERS_MISSING` — Internal formatting check, auto-retries
+Do not dismiss hook or command errors as successful coordination. Inspect the
+cause and the actual verification results. nwdes builds artifacts and does not
+enforce a test cycle or automatically repair a failed run.
 
 ### Verify success
 

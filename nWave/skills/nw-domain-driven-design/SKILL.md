@@ -31,6 +31,9 @@ DDD addresses domain complexity (business rules, language, boundaries), not tech
 - Small team, small codebase, single bounded context
 - For simple microservices, anemic domain model is acceptable (not an anti-pattern)
 
+### Tactical Patterns Are Paradigm-Neutral
+Aggregates, entities and value objects name consistency boundaries and invariant owners, not carriers. Express them in the repository's settled paradigm: in a `procedural` design the aggregate is the transaction script or module that owns the invariant and its single-transaction boundary; in a `functional` design it is a type plus pure decision functions; classes belong only to an `object_oriented` design. Never introduce entity classes or move rules into objects merely to fit a pattern; the fixes below apply within the settled paradigm.
+
 ## Strategic DDD
 
 ### Subdomain Classification

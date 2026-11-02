@@ -225,7 +225,7 @@ print(f"Rationale: {rationale}")
 
 ## 10. Empirical Baseline (walking skeleton)
 
-Walking skeleton verified 2026-05-05 (`tests/speculative/test_walking_skeleton.py`):
+Walking skeleton verified 2026-05-05. The test that produced these numbers has since been removed as dead code (commit `3bf327a3f`, "remove Tier-1 dead code ... speculative"); the figures below are a historical baseline, not a re-runnable check, and nothing in the current tree reproduces them:
 
 Three candidates implement `prepended_with(value, prefix) -> bool`:
 

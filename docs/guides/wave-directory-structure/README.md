@@ -30,8 +30,10 @@ docs/features/{id}/
   user-stories.md           ← stories for this feature (from DISCUSS)
   wave-decisions.md         ← decisions made across all waves
   acceptance-tests.feature  ← executable specs (from DISTILL)
-  roadmap.json              ← implementation plan (from DELIVER)
+  handoff.json              ← delivery facts recorded by nwdes (from DELIVER)
 ```
+
+DELIVER writes through nwdes, not a hand-authored plan: `handoff.json` lives in the directory `nwdes.feature.directory` selects (default `docs/feature/{id}/`), with the rendered `brief.md`, `architecture.md` and `acceptance.md` beside it and the craft and review run records under `runs/`.
 
 See [Understanding the SSOT Model](../understanding-ssot-model/) for the full explanation.
 
@@ -91,12 +93,12 @@ Acceptance test files and cross-feature documents live outside the per-feature t
 |----------|---------|-----------|
 | `tests/{test-type}/{feature-id}/acceptance/` | Executable test files (.feature, step definitions) | acceptance-designer (DISTILL) |
 | `docs/product/architecture/adr-*.md` | Architecture Decision Records (SSOT) | solution-architect (DESIGN) |
-| `docs/evolution/` | Post-completion archives | platform-architect (/nw-finalize) |
+| `docs/evolution/` | Historical post-completion archives; the current route writes none | — (existing files only) |
 | `CLAUDE.md` (project root) | Development paradigm, mutation testing strategy | solution-architect, platform-architect |
 
 ## Feature ID Derivation
 
-When you run `/nw-new`, `/nw-deliver`, or any wave command, nWave derives a feature ID from your description:
+When you run `/nw-deliver` or any wave command, nWave derives a feature ID from your description:
 
 1. Strip common prefixes: "implement", "add", "create", "build"
 2. Remove English stop words: "a", "the", "to", "for", "with", "and", "in", "on", "of"
@@ -127,7 +129,7 @@ The acceptance-designer (DISTILL wave) designs the tests and writes them directl
 
 ## Wave Detection
 
-`/nw-continue` uses these rules to detect progress:
+Use these rules to detect progress when you resume a feature. nwdes keeps no workflow state and has no resume command; read the artifacts yourself (see [Wave Routing](../wave-routing-and-entry-points/)).
 
 ### New model (SSOT)
 
@@ -139,7 +141,7 @@ The acceptance-designer (DISTILL wave) designs the tests and writes them directl
 | DESIGN | `docs/product/architecture/brief.md` updated for this feature |
 | DEVOPS | `docs/product/kpi-contracts.yaml` has contracts for this feature |
 | DISTILL | `docs/features/{id}/acceptance-tests.feature` exists AND `tests/acceptance/{id}/` has feature files |
-| DELIVER | `docs/features/{id}/roadmap.json` with all steps at COMMIT/PASS |
+| DELIVER | every slice in `docs/feature/{id}/handoff.json` has an accepted craft run, the whole-candidate review and examiner verdicts are accepted, and the candidate is integrated |
 
 ### Old model (archived features)
 
@@ -162,8 +164,7 @@ The acceptance-designer (DISTILL wave) designs the tests and writes them directl
 | DESIGN | solution-architect | `architecture/brief.md` + ADRs | `wave-decisions.md` | Architecture with C4 diagrams |
 | DEVOPS | platform-architect | `kpi-contracts.yaml` | — | KPI contracts defined |
 | DISTILL | acceptance-designer | — | `acceptance-tests.feature` | Feature files + step definitions |
-| DELIVER | software-crafter | code | `roadmap.json` | All steps COMMIT/PASS |
-| FINALIZE | platform-architect | — | — | Evolution doc committed |
+| DELIVER | software-crafter | code | `handoff.json` | Slices GREEN, review and examine accepted, candidate integrated |
 
 ## Handoff Chain
 
@@ -175,7 +176,7 @@ DIVERGE  → DISCUSS reads recommendation.md + jobs.yaml (selected direction + j
 DISCUSS  → DESIGN reads journeys/*.yaml + user-stories.md (experience + requirements)
 DESIGN   → DEVOPS reads architecture/brief.md + kpi-contracts.yaml (components + measurement)
 DEVOPS   → DISTILL reads all 3 SSOT dimensions (journeys + architecture + kpi-contracts)
-DISTILL  → DELIVER reads acceptance-tests.feature + roadmap.json (specs + plan)
+DISTILL  → DELIVER reads acceptance-tests.feature + handoff.json (specs + recorded design and slices)
 ```
 
-After DELIVER completes and all tests pass, `/nw-finalize` archives a summary to `docs/evolution/`.
+After DELIVER completes and all declared checks pass, `nwdes lane integrate` fast-forwards trunk and removes the lane. The route has no separate archive step, and nothing new is written to `docs/evolution/`.

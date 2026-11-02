@@ -29,6 +29,7 @@ Usage:
         pass
 """
 
+import sys
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -50,6 +51,22 @@ except ImportError:
     Table = None  # type: ignore
     Text = None  # type: ignore
     rprint = print  # type: ignore
+
+
+def _warn_log_write_failed(log_file: Path, exc: Exception) -> None:
+    """Surface a failed log-file write to stderr instead of swallowing it.
+
+    The log write itself stays fail-open (a broken log must never break
+    installation), but a silent ``except Exception: pass`` left the operator
+    with no way to learn logging had stopped, nor why (GDP-3: self-explaining
+    error surfaces). stderr is the out-of-band channel available even when
+    the log file itself is unwritable.
+    """
+    print(
+        f"WARN: failed to write log: {log_file}: {exc}. "
+        "Proceeding without log persistence.",
+        file=sys.stderr,
+    )
 
 
 class RichLogger:
@@ -102,8 +119,8 @@ class RichLogger:
         try:
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(log_msg + "\n")
-        except Exception:
-            pass  # Ignore log file errors
+        except Exception as exc:
+            _warn_log_write_failed(self.log_file, exc)
 
     def _print_rich(self, message: str, style: str) -> None:
         """Print using Rich console with style."""
@@ -306,8 +323,8 @@ class PlainLogger:
             try:
                 with open(self.log_file, "a", encoding="utf-8") as f:
                     f.write(log_msg + "\n")
-            except Exception:
-                pass
+            except Exception as exc:
+                _warn_log_write_failed(self.log_file, exc)
 
     def info(self, message: str) -> None:
         """Log info message."""
@@ -412,8 +429,8 @@ class SilentLogger:
         try:
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(log_msg + "\n")
-        except Exception:
-            pass
+        except Exception as exc:
+            _warn_log_write_failed(self.log_file, exc)
 
     def info(self, message: str) -> None:
         """Log info message to file."""

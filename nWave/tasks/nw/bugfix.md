@@ -1,166 +1,41 @@
 ---
-description: "Bug fix workflow: root cause analysis → user review → regression test + fix via TDD"
-argument-hint: "[bug-description] - Describe the defect observed"
+description: Routes one observed defect Request through nwdes delivery.
+argument-hint: '[observed defect]'
 ---
+# NW-BUGFIX
 
-# NW-BUGFIX: Defect Resolution Workflow
+Load `nw-bugfix`, `nw-auto` and `nw-role-invocation`. Report the affected baseline
+before authoring the regression oracle or changing production code.
 
-**Wave**: CROSS_WAVE
-**Agents**: Rex (nw-troubleshooter) → selected crafter (OOP or FP per project paradigm)
+Load `nw-nwdes` and use nwdes as the delivery route. Invoke the native installed
+Product Owner with the observed defect verbatim and its generated prompt.
+It records product values with `nwdes product` record edits and
+`nwdes product close`. Every role records through its kind's nwdes CLI verbs using Bash.
+The host writes no JSON and copies no reply into another command. For each role
+the route invokes, it passes that role's generated `nwdes prompt` bundle verbatim,
+and that role, not the host, runs its kind's verbs. Facts the route assigns to the
+host, such as `feature new` and `slice set`, stay with the host.
+Run every nwdes command from the checkout's top level; roots default to cwd and
+the repository root, and lane verbs resolve the main worktree. The first add,
+set or remove creates the draft. Use `open --from-current` to revise current
+authority; close with no draft validates empty values.
 
-## Overview
+Keep the defect and regression obligation on the same public observation.
+Use `nwdes prompt` for the selected architect and acceptance designer.
+The architect records design values with design verbs; the acceptance designer
+records acceptance rows for its assigned slice and closes its draft.
+Roles supply typed semantic values; nwdes constructs ids, structure and
+serialization, rather than requiring handwritten authority documents.
 
-End-to-end bug fix pipeline: diagnose root cause, review findings with user, then deliver regression tests that fail with the bug and pass with the fix. Ensures every defect produces a test that prevents recurrence.
+The host runs the declared verification commands against the original pre-fix
+source to observe RED, then against the native crafter's implementation to
+observe GREEN. Do not substitute an already-fixed HEAD for the original source.
+Keep the actual command results as evidence; no verification seals are needed.
 
-## Flow
-
-```
-INPUT: "{bug-description}"
-  │
-  ├─ Phase 1: Root Cause Analysis (@nw-troubleshooter)
-  │   └─ /nw-root-why "{bug-description}"
-  │   └─ Output: RCA document with root cause chain + fix proposal
-  │
-  ├─ Phase 2: User Review (INTERACTIVE — STOP here)
-  │   └─ Present RCA findings to user
-  │   └─ User confirms root cause + approves fix direction
-  │   └─ If user rejects → refine RCA or stop
-  │
-  └─ Phase 3: Regression Test + Fix (via /nw-deliver)
-      └─ /nw-deliver "fix-{bug-id}" with bug-fix scope
-      └─ Paradigm detection determines crafter (OOP or FP)
-      └─ Roadmap: regression test (RED) → fix (GREEN) → verify (COMMIT)
-```
-
-## Execution Steps
-
-### Phase 1: Root Cause Analysis
-
-**Skill loading**: The troubleshooter loads its skills from `~/.claude/skills/nw-{skill}/SKILL.md`:
-- `nw-five-whys-methodology` — core investigation methodology
-- `nw-investigation-techniques` — systematic debugging patterns
-- `nw-post-mortem-framework` — structured incident analysis
-
-Invoke @nw-troubleshooter via Agent tool:
-
-```
-Execute *investigate-root-cause for the following defect:
-
-{bug-description}
-
-Configuration:
-- investigation_depth: 5
-- multi_causal: true
-- evidence_required: true
-
-Produce:
-1. Root cause chain (5 Whys with evidence at each level)
-2. Contributing factors
-3. Proposed fix with specific code changes
-4. Files affected
-5. Risk assessment of the fix
-```
-
-After the troubleshooter returns, present findings to the user. Include:
-- Root cause summary (1-2 sentences)
-- Evidence chain
-- Proposed fix
-- Files to modify
-- Risk level
-
-**STOP and wait for user confirmation before proceeding to Phase 3.**
-
-### Phase 2: User Review
-
-Present the RCA findings and ask:
-1. "Does this root cause match your understanding?"
-2. "Do you approve the proposed fix direction?"
-3. "Any additional constraints or context?"
-
-If user rejects:
-- Refine the RCA with additional context
-- Or stop the workflow entirely
-
-If user approves → proceed to Phase 3.
-
-### Phase 3: Regression Test + Fix (via /nw-deliver)
-
-This phase delegates entirely to `/nw-deliver`, which handles:
-- Paradigm detection (reads project CLAUDE.md for `## Development Paradigm`)
-- Crafter selection (@nw-software-crafter for OOP, @nw-functional-software-crafter for FP)
-- DES enforcement with proper markers
-- Rigor profile from `.nwave/des-config.json`
-
-**Preparation before invoking /nw-deliver:**
-
-1. Derive feature-id: `fix-{kebab-case-bug-summary}` (max 5 words)
-2. Create `docs/feature/{feature-id}/deliver/` directory
-3. Prepare RCA context from Phase 1 output (root cause, files affected, proposed fix)
-
-**Invoke /nw-deliver with bug-fix scope:**
-
-```
-/nw-deliver "fix-{bug-summary}"
-```
-
-The deliver orchestrator creates a minimal roadmap with 2 steps:
-
-**Step 01-01: Regression test (RED)**
-- Write a test that reproduces the exact defect
-- Test MUST fail against current code (proves the bug exists)
-- Test location: `tests/regression/{component}/` or `tests/bugs/`
-- Test name: `test_bug_{description}.py`
-
-**Step 01-02: Fix implementation (GREEN)**
-- Implement the minimal fix identified in RCA
-- Run ALL tests — regression test must now PASS
-- Existing tests must not regress
-
-The crafter handles the TDD cycle (3-phase canon RED → GREEN → COMMIT per ADR-025, or legacy 5-phase PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT for pre-2026-05-07 audit-log replay) with DES monitoring.
-
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes. This gives the user real-time visibility into progress.
-
-## Success Criteria
-
-- [ ] Root cause identified with evidence at each causal level
-- [ ] User reviewed and approved fix direction
-- [ ] Regression test written that fails with the bug
-- [ ] Fix implemented that makes the regression test pass
-- [ ] All existing tests still pass (no regressions)
-- [ ] Commit with conventional message: `fix(scope): description`
-
-## Examples
-
-### Example 1: Runtime crash
-```
-/nw-bugfix "DES hook crashes with FileNotFoundError when template schema is missing"
-```
-Phase 1: Rex traces to missing `step-tdd-cycle-schema.json` in plugin cache.
-Phase 2: User confirms.
-Phase 3: `/nw-deliver "fix-missing-template-schema"` → crafter writes `test_bug_missing_template_schema.py` (RED), adds fallback path resolution (GREEN), commits.
-
-### Example 2: Silent failure
-```
-/nw-bugfix "Skills plugin reports success but installs zero files when source has nw-prefixed layout"
-```
-Phase 1: Rex traces to `is_public_skill()` returning False for all nw-prefixed names due to ownership map key mismatch.
-Phase 2: User confirms.
-Phase 3: `/nw-deliver "fix-ownership-map-keys"` → crafter writes regression test with nw-prefixed fixture (RED), fixes ownership map keys (GREEN), commits.
-
-### Example 3: Functional project bug
-```
-/nw-bugfix "Pipeline composition breaks when filter predicate returns None"
-```
-Phase 1: Rex traces to missing None guard in compose() function.
-Phase 2: User confirms.
-Phase 3: `/nw-deliver "fix-compose-none-guard"` → paradigm detected as FP → @nw-functional-software-crafter writes property-based test (RED), adds None guard (GREEN), commits.
-
-## Notes
-
-- This command is for **known defects** (something is broken). For new features, use `/nw-deliver`.
-- The regression test is the primary deliverable — it prevents the bug from recurring.
-- Keep the fix minimal. Refactoring belongs in `/nw-refactor`, not here.
-- If the RCA reveals a design flaw (not just a code bug), escalate to `/nw-design` before fixing.
-- Phase 3 uses `/nw-deliver` which handles paradigm detection, DES enforcement, and rigor profile automatically.
+The crafter records files and command results with craft verbs for its
+assigned slice. The host chooses the next action and independently invokes
+the installed reviewer and fresh public-perspective examiner on prepared evidence.
+The reviewer records findings with review verbs; the examiner uses
+`nwdes expectations` before oracle authoring and `nwdes examine` for final
+verdicts through the same CLI. Resume from the
+feature's handoff and briefs with `nwdes document`; nwdes keeps no workflow state.

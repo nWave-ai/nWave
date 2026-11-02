@@ -20,29 +20,28 @@ The framework operates as a sequential pipeline of 7 waves:
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Skip waves you don't need** — brownfield work may start at `diverge`, bug fixes at `root-why` + `execute`.
+**Skip waves you don't need** — brownfield work may start at `diverge`, bug fixes at `root-why` + `bugfix`.
 
 ### What `/nw-deliver` Automates
 
-`/nw-deliver` orchestrates the full inner loop with DES (Deterministic Execution System):
-
-```text
-/nw-deliver = roadmap → execute → refactor → review → mutation-test → finalize
-```
+`/nw-deliver` drives the nwdes route: each role records its design and acceptance
+values through the nwdes verbs, the crafter implements the owned targets, and the host runs
+verification before independent review and examination. nwdes builds artifacts;
+it does not enforce phases or track a next-step cursor.
 
 ### Manual Inner Loop (Learning Mode)
 
-If you are still learning the framework, run each step yourself instead of `/nw-deliver`:
+If you are still learning the framework, run each step yourself instead of `/nw-deliver`. `$H` is the feature's `handoff.json`; `$EXPECTED` and `$CANDIDATE` are the identities `nwdes lane compose` prints:
 
 ```bash
-/nw-execute @software-crafter "implement login endpoint" # Execute one task
-/nw-refactor                                             # Improve structure
-/nw-review @software-crafter task "implement login endpoint" # Quality check
-/nw-mutation-test                            # Validate test effectiveness
-/nw-finalize                                 # Archive and clean up
+nwdes prompt --role nw-software-crafter --handoff "$H" --slice S1 --jev unauthorized  # Implement one slice
+/nw-refactor                                                  # Improve structure
+/nw-review @software-crafter task "implement login endpoint"  # Quality check
+/nw-mutation-test                                             # Validate test effectiveness
+nwdes lane integrate --feature <name> --expected "$EXPECTED" --candidate "$CANDIDATE"  # Close the lane
 ```
 
-This gives you hands-on understanding of each step without DES orchestration. Graduate to `/nw-deliver` when the pattern feels natural.
+This gives you hands-on understanding of each responsibility. Use `/nw-deliver` to have the host coordinate the route when the pattern feels natural.
 
 **Cross-wave commands** (can be used anytime): `research`, `diagram`, `root-why`, `document`, `refactor`, `mikado`
 
@@ -185,7 +184,7 @@ Research is not a fixed step in a sequence - it's a capability you invoke **when
 **Sequence**:
 
 ```text
-[research] → root-why → execute → review
+[research] → root-why → bugfix → review
 ```
 
 **Minimal sequence** - focused intervention only.
@@ -195,7 +194,7 @@ Research is not a fixed step in a sequence - it's a capability you invoke **when
 ```bash
 /nw-research "JWT token expiration edge cases"  # Optional: if unfamiliar with area
 /nw-root-why "authentication timeout errors in production"
-/nw-execute @software-crafter "fix-auth-timeout"
+/nw-bugfix "fix-auth-timeout"
 /nw-review @software-crafter implementation "src/auth/"
 ```
 
@@ -237,7 +236,7 @@ research → [decision point: which job to pursue next]
 | **Greenfield** | No | [discover] → [diverge] → discuss → design → devops → distill → deliver |
 | **Brownfield** | Yes | [diverge] → [discuss] → deliver |
 | **Refactoring** | Partially | [research] → mikado → deliver |
-| **Bug Fix** | Yes (symptom) | [research] → root-why → execute → review |
+| **Bug Fix** | Yes (symptom) | [research] → root-why → bugfix → review |
 | **Research** | No | research → (output informs next job) |
 | **Documentation** | Varies | [research] → document |
 
@@ -298,8 +297,8 @@ This section breaks down what specific job each wave command fulfills.
 | Job | Command | Outcome |
 |-----|---------|---------|
 | Plan and execute with TDD | `/nw-deliver` | Working, tested code |
-| Track progress | `/nw-deliver` | TODO → IN_PROGRESS → DONE |
-| Quality gates | `/nw-deliver` | Review at each step |
+| Track progress | `/nw-deliver` | Slice facts and run records in the nwdes handoff |
+| Quality gates | `/nw-deliver` | One whole-candidate review and examination |
 
 ### Cross-Wave Jobs
 
@@ -317,7 +316,7 @@ This section breaks down what specific job each wave command fulfills.
 
 | Job | Command | Outcome |
 |-----|---------|---------|
-| Execute single task | `/nw-execute` | Clean context per task |
+| Fix one observed defect | `/nw-bugfix` | Regression oracle and fix as one slice |
 | Refactor safely | `/nw-refactor` | Improved structure |
 | Handle complex dependencies | `/nw-mikado` | Reversible change path |
 | Expert critique | `/nw-review` | Domain-specific feedback |
@@ -326,7 +325,7 @@ This section breaks down what specific job each wave command fulfills.
 
 | Job | Command | Outcome |
 |-----|---------|---------|
-| Archive completed work | `/nw-finalize` | Clean project closure |
+| Close delivered work | `nwdes lane integrate` | Trunk advanced, lane removed |
 | Create documentation | `/nw-document` | DIVIO-compliant docs |
 
 ### Job Categories Summary
@@ -397,7 +396,7 @@ For complete agent specifications and selection guidance, see the [nWave Command
 
 ```bash
 /nw-root-why "users cannot login after password reset"
-/nw-execute @software-crafter "fix-password-reset-flow"
+/nw-bugfix "users cannot login after password reset"
 /nw-review @software-crafter implementation "src/auth/"
 ```
 
@@ -430,8 +429,8 @@ For complete agent specifications and selection guidance, see the [nWave Command
 |--------------|---------|----------|
 | Skip research | Decisions without evidence | Research when unfamiliar with domain |
 | Skip distill | No definition of "done" | Define acceptance tests before deliver |
-| Monolithic execution | Context degradation | Let deliver break work into atomic tasks |
-| Skip review | Quality issues propagate | Review at each step |
+| Monolithic execution | Context degradation | Let deliver break work into thin slices, each recorded by its own role |
+| Skip review | Quality issues propagate | Run the whole-candidate review before integrating |
 | Architecture before research | Over-engineering | Research identifies quick wins first |
 
 ---

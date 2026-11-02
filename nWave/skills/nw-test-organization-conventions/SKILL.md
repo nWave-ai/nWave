@@ -91,6 +91,12 @@ tests/
 
 ## Language-Specific Conventions
 
+The table is illustrative, not a closed discovery allowlist. Follow actual
+manifest/build/test targets under `nw-test-design-mandates`, including Dune
+`test`/`tests`/alias stanzas, `.ml` and relevant `.mli`/opam dependencies in an
+OCaml project. Incumbent native layouts/helpers win; no `.py`, Gherkin,
+`tests/common` or compulsory adapter registration is inferred from this table.
+
 | Language | File Convention | Discovery Rule | Co-located? |
 |----------|---------------|----------------|-------------|
 | Python (pytest) | `test_*.py` or `*_test.py` | Prefix/suffix match | Separate `tests/` (recommended) or inlined |
@@ -171,3 +177,4 @@ tests/integration/
 | Cross-module imports in tests | Violates module boundaries | Use inter-module tests with event bus |
 | E2E inside single microservice | They span services by definition | Move to separate e2e-tests/ project |
 | No contract tests between services | Mocks drift from reality | Consumer-driven contract tests (Pact) |
+| Process metadata in the test file name (`test_slice_01_*`, `test_slice_02_*`) | The name outlives the scheduling decision and says nothing about protected behavior | Name the file after what it VERIFIES (`test_shared_git_worktree_refusal.py`), never after the delivery segment that authored it. Scheduling metadata is not a durable test identity. |

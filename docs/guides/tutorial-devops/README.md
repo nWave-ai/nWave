@@ -2,7 +2,7 @@
 
 **Time**: ~15 minutes (7 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorial 9](../tutorial-deliver-feature/) completed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 9](../tutorial-deliver-feature/) completed
 **What this is**: A hands-on walkthrough of `/nw-devops` -- nWave's production readiness command. You will take the delivered bookmark CLI from Tutorial 9 and generate CI/CD pipeline design, infrastructure recommendations, deployment strategy, and a production readiness checklist.
 
 ---

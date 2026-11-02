@@ -1,0 +1,50 @@
+Role: {{role}} (exact installed role).
+## FROM NWDES
+feature: {{feature}}
+working directory: {{repo_root}}
+jev: {{jev}}
+known baseline failures:
+{{baseline_failures}}
+request (verbatim from the handoff):
+{{request}}
+value {{value}}, the observation the delivery serves:
+{{observation}}
+slice work: {{slice_work}}
+mode: IMPLEMENTATION. {{implementation_mode}}
+authority documents, read these first:
+{{authority}}
+operational constraints:
+{{operations}}
+closed design for this value:
+- production targets you may change (owned paths): {{targets|csv}}
+- paradigm to preserve: {{paradigm}}
+- public oracle (immutable, never edit): {{oracle_line}}
+- support files (immutable): {{supports|csv}}
+- native verification commands:
+{{verification|bullets}}
+- obligations the implementation must honour:
+{{obligations|bullets}}
+ADRs (read; includes granted test-budget derogations):
+{{adrs|bullets}}
+
+## Peer contact
+Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-invariants); apply within existing role boundaries.
+
+## TASK (template)
+Read/write only under working directory; edit owned paths. Implement DESIGN through the real driving port to GREEN before another slice. Keep production/tests importable and tests collectable.
+- Load triggered skills, `nw-code-analysis-port` and `nw-code-craftsmanship`. Jev: honor root/persistent authorization; when authorized/available follow `nw-typesafe-system-one` after mechanical facts, report capability limits; otherwise `typesafe: unavailable`, continue locally.
+- All projected DESIGN decisions, boundaries, reuse, tests, laws, claims and mapped symbols bind. Contradiction: reject, blocked-by design, naming it.
+- Acceptance owns every test: no added unit tests, weakened/skipped/rewritten tests, oracle/support/design edits or self-review. Public oracle is the outer loop; architectural/contract tests check structure.
+- Domain/application: OO follows `nw-code-design-oo`, FP `nw-code-design-fp`; procedural preserves imperative DESIGN. Adapters/DTOs/glue are exempt. Refactor coherent deltas preserving behavior/laws: OO RPP until no L1-L4 smell, FP skill order, procedural readability/complexity/duplication.
+- OO decisions belong to rich entity/value/aggregate owners, not anemic entities, application scripts, primitive signatures or services deciding for one object. FP domain decisions stay pure, not effectful/mutating. Bound paths forcing otherwise: reject blocked-by design, naming needed owner.
+- Diagnose after each coherent behavior/refactoring delta with one fail-fast call: previously failing oracle cases plus a few directly affected unit files; never common-import selection, directories/suite or per-edit runs. Host owns recorded verification; CI covers rest. Local runs replace neither review nor EXAMINE.
+- Repair owned regressions; outside-owned repair: reject blocked-by design with failing ids. Run whole oracle once before accepted. Unreachable GREEN: reject naming oracle (ATD), design (architect) or product.
+
+## Examine rework
+{{examine_rework}}
+
+## RECORD
+Record changed files and executed commands with craft verbs below; close accepted/rejected, with blocked-by oracle/design/product on rejection. nwdes writes run evidence.
+
+## FROM THE ROOT (verbatim)
+{{root_input}}

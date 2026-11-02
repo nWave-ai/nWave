@@ -6,6 +6,7 @@ Each factory returns a ``Predicate`` — a callable ``(old, new) -> bool`` — w
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from typing import Any
 
@@ -31,8 +32,10 @@ def unchanged() -> Predicate:
     return _predicate
 
 
-def prepended_with(prefix: str, sep: str = ":") -> Predicate:
+def prepended_with(prefix: str, sep: str | None = None) -> Predicate:
     """Return a predicate that passes when ``new == prefix + sep + old``.
+
+    ``sep`` defaults to ``os.pathsep``, resolved when the factory is called.
 
     Example::
 
@@ -40,7 +43,7 @@ def prepended_with(prefix: str, sep: str = ":") -> Predicate:
         pred("/usr/bin", "/des/bin:/usr/bin")  # True
         pred("/usr/bin", "/wrong")             # False
     """
-    expected_prefix = prefix + sep
+    expected_prefix = prefix + (os.pathsep if sep is None else sep)
 
     def _predicate(old: Any, new: Any) -> bool:
         return bool(new == expected_prefix + old)
@@ -49,8 +52,10 @@ def prepended_with(prefix: str, sep: str = ":") -> Predicate:
     return _predicate
 
 
-def appended_with(suffix: str, sep: str = ":") -> Predicate:
+def appended_with(suffix: str, sep: str | None = None) -> Predicate:
     """Return a predicate that passes when ``new == old + sep + suffix``.
+
+    ``sep`` defaults to ``os.pathsep``, resolved when the factory is called.
 
     Example::
 
@@ -59,8 +64,10 @@ def appended_with(suffix: str, sep: str = ":") -> Predicate:
         pred("/etc/hosts", "/etc/hosts")       # False
     """
 
+    separator = os.pathsep if sep is None else sep
+
     def _predicate(old: Any, new: Any) -> bool:
-        return bool(new == f"{old}{sep}{suffix}")
+        return bool(new == f"{old}{separator}{suffix}")
 
     _predicate.__name__ = f"appended_with({suffix})"
     return _predicate
@@ -121,8 +128,10 @@ def normalized_to(normalizer: Normalizer) -> Predicate:
     return _predicate
 
 
-def idempotent_after(prefix: str, sep: str = ":") -> Predicate:
+def idempotent_after(prefix: str, sep: str | None = None) -> Predicate:
     """Return a predicate that passes when ``prefix`` is already the first segment of ``new``.
+
+    ``sep`` defaults to ``os.pathsep``, resolved when the factory is called.
 
     Used to assert that a "prepend if absent" operation was already applied (i.e. the
     prepend is idempotent because the prefix is already present as the first segment).
@@ -134,8 +143,10 @@ def idempotent_after(prefix: str, sep: str = ":") -> Predicate:
         pred("anything", "/usr/bin:/opt/bin")  # False — prefix not first segment
     """
 
+    separator = os.pathsep if sep is None else sep
+
     def _check(old: Any, new: Any) -> bool:
-        return bool(new.split(sep)[0] == prefix)
+        return bool(new.split(separator)[0] == prefix)
 
     _check.__name__ = f"idempotent_after({prefix})"
     return _check

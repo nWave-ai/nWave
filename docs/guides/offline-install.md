@@ -2,7 +2,7 @@
 
 ## Who This Is For
 
-This guide is for developers in government, military, or corporate-hardened environments where target machines have no access to PyPI or the internet. It assumes you know Python and have Claude Code installed or know how to install it via your organization's approved mechanism.
+This guide is for developers in government, military, or corporate-hardened environments where target machines have no access to PyPI or the internet. It assumes you know Python and have Claude Code installed or know how to install it via your organization's approved mechanism. **Host scope:** the bundle's install script deploys the Claude Code surface (`~/.claude/`); for other hosts, transfer the bundle and run `nwave-ai install --platform <host>` yourself — this guide does not walk through that per host.
 
 ## How It Works
 
@@ -16,9 +16,9 @@ build bundle  ------> scp / USB / etc. ------> unpack + run install-offline.sh
 
 ## Build the Bundle
 
-**Prerequisites on the connected machine**: Python 3.10+, pip, and either `uv` or `pipx`.
+**Prerequisites on the connected machine**: Python 3.11+, pip, and either `uv` or `pipx`.
 
-From the root of the nWave-dev repository, run:
+From the root of the nWave repository, run:
 
 ```bash
 python scripts/build_offline_bundle.py
@@ -27,9 +27,9 @@ python scripts/build_offline_bundle.py
 Expected output:
 
 ```
-[INFO] Bundle created: dist/releases/nwave-offline-bundle-2.17.5.tar.gz
+[INFO] Bundle created: dist/releases/nwave-offline-bundle-{version}.tar.gz
 [INFO] SHA256: a3f1c2d4e5...
-[INFO] Companion: dist/releases/nwave-offline-bundle-2.17.5.tar.gz.sha256
+[INFO] Companion: dist/releases/nwave-offline-bundle-{version}.tar.gz.sha256
 ```
 
 The tarball is placed at `dist/releases/nwave-offline-bundle-{version}.tar.gz`. Bundle size varies with the dependency tree; expect under 100 MB for typical builds.
@@ -44,16 +44,16 @@ Use whatever transfer mechanism your organization approves: `scp`, USB drive, in
 
 ```bash
 # Example: scp to target
-scp dist/releases/nwave-offline-bundle-2.17.5.tar.gz \
-    dist/releases/nwave-offline-bundle-2.17.5.tar.gz.sha256 \
+scp dist/releases/nwave-offline-bundle-{version}.tar.gz \
+    dist/releases/nwave-offline-bundle-{version}.tar.gz.sha256 \
     user@target-host:/tmp/
 ```
 
 Verify the checksum on the target before proceeding:
 
 ```bash
-sha256sum -c nwave-offline-bundle-2.17.5.tar.gz.sha256
-# Expected: nwave-offline-bundle-2.17.5.tar.gz: OK
+sha256sum -c nwave-offline-bundle-{version}.tar.gz.sha256
+# Expected: nwave-offline-bundle-{version}.tar.gz: OK
 ```
 
 ## Install on the Target Machine
@@ -61,7 +61,7 @@ sha256sum -c nwave-offline-bundle-2.17.5.tar.gz.sha256
 Unpack the bundle into a dedicated directory:
 
 ```bash
-mkdir nwave-bundle && tar -xzf nwave-offline-bundle-2.17.5.tar.gz -C nwave-bundle
+mkdir nwave-bundle && tar -xzf nwave-offline-bundle-{version}.tar.gz -C nwave-bundle
 cd nwave-bundle
 ```
 
@@ -73,7 +73,7 @@ Run the install script:
 ./install-offline.sh
 ```
 
-The script installs the `nwave-ai` CLI from the bundled wheels using `pip install --no-index --find-links wheels/`, then calls `nwave-ai install` to deploy agents, commands, skills, and DES hooks into `~/.claude/`.
+The script installs the `nwave-ai` CLI from the bundled wheels using `pip install --no-index --find-links wheels/`, then calls `nwave-ai install` to deploy agents, commands and skills into `~/.claude/`.
 
 Verify the installation:
 
@@ -83,27 +83,14 @@ nwave-ai doctor
 
 ## Verification
 
-A healthy offline install produces output similar to:
-
-```
-nWave Doctor
-============
-CLI version       2.17.5       OK
-Framework assets  installed    OK
-DES hooks         registered   OK
-Shims             present      OK
-Claude Code       found        OK
-Network check     skipped (offline mode)
-
-All checks passed.
-```
+Read the actual doctor output for the installed bundle. Check the reported
+paths and causes rather than relying on a fixed count or a sample from an
+older release.
 
 Key items to confirm:
 
 - **CLI version**: matches the bundle version you built
 - **Framework assets**: agents, commands, and skills are in `~/.claude/`
-- **DES hooks**: pre-tool-use, post-tool-use, and subagent-stop hooks are registered in `~/.claude/settings.json`
-- **Shims**: the Python shim wrappers that invoke DES are present and executable
 - **Claude Code**: the `claude` binary is on PATH; if not, Claude Code is not installed (see Limitations)
 
 Restart Claude Code after a successful install. You should see `nWave ready` in your session context.
@@ -136,11 +123,12 @@ claude --version
 
 If Claude Code is absent, install it first, then rerun `nwave-ai install`.
 
-### `nwave-ai doctor` reports DES hook failures or missing shims
+### `nwave-ai doctor` reports missing framework assets
 
-The install script ran but the DES hook registration step did not complete. This can happen if `~/.claude/settings.json` was locked or Claude Code was running during install.
+Read the named path and remedy. Check that installation used the intended
+environment and host configuration root.
 
-**Fix**: Close Claude Code and rerun the registration step:
+**Fix**: Close Claude Code and rerun installation after correcting the cause:
 
 ```bash
 nwave-ai install
@@ -176,7 +164,7 @@ Build one bundle per distinct target environment.
 - **Verify tarball integrity** using the `.sha256` companion file before unpacking on the target (see Transfer section above).
 - **Audit wheels before install.** The `wheels/` directory contains all Python packages the installer will execute. You can inspect them with `pip show --files <package>` on a sandboxed machine before approving the bundle for distribution.
 - **No network calls during install.** `install-offline.sh` uses `pip install --no-index` exclusively. No package index or CDN is contacted at any point during installation.
-- **DES hooks run as the installing user.** The hooks are Python scripts invoked by Claude Code under your user account. They do not require elevated privileges and do not persist as system services.
+- **Run as the installing user.** Framework installation does not require a persistent system service.
 
 ## See Also
 

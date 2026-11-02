@@ -1,8 +1,52 @@
 # Skills
 
+## nw-ab-agent-template
+
+- [nw-ab-agent-template](nw-ab-agent-template.md) — KNOWLEDGE — the canonical agent-spec template (frontmatter + body skeleton). Reference loaded by the create/migrate procedures; no sequence.
+
+## nw-ab-anti-patterns
+
+- [nw-ab-anti-patterns](nw-ab-anti-patterns.md) — KNOWLEDGE — agent/skill/command anti-pattern catalog with fixes. Reference scanned by validate-spec; no sequence.
+
+## nw-ab-create-agent
+
+- [nw-ab-create-agent](nw-ab-create-agent.md) — PROCEDURE — create a NEW agent via the 5-phase workflow (ANALYZE→DESIGN→CREATE→VALIDATE→REFINE). Trigger: build a new AI agent. Composes nw-ab-validate-spec.
+
 ## nw-ab-critique-dimensions
 
 - [nw-ab-critique-dimensions](nw-ab-critique-dimensions.md) — Review dimensions for validating agent quality - template compliance, safety, testing, and priority validation
+
+## nw-ab-examples
+
+- [nw-ab-examples](nw-ab-examples.md) — KNOWLEDGE — canonical worked examples for agent creation, migration, and command optimization. Reference for the relevant procedures; no sequence.
+
+## nw-ab-house-style
+
+- [nw-ab-house-style](nw-ab-house-style.md) — KNOWLEDGE — caveman-native authoring house style + by-construction guarantees (Reasoning Mandate injection, measured-gain compression). Reference for create/migrate; no sequence.
+
+## nw-ab-merge-agents
+
+- [nw-ab-merge-agents](nw-ab-merge-agents.md) — PROCEDURE — merge agent B into agent A, relocating skills and cleaning up all references. Trigger: two agents must become one. Composes nw-ab-validate-spec.
+
+## nw-ab-migrate-monolith
+
+- [nw-ab-migrate-monolith](nw-ab-migrate-monolith.md) — PROCEDURE — migrate one legacy monolithic agent to a lean core plus routed skills. Trigger: an existing agent has measured size, embedded-configuration, duplication, aggressive-language, or multi-responsibility debt. Composes agent validation and requested skill optimization.
+
+## nw-ab-optimize-command
+
+- [nw-ab-optimize-command](nw-ab-optimize-command.md) — PROCEDURE — optimize a bloated command file to a lean declarative definition (forge.md pattern). Trigger: a command file over its size target with reducible content.
+
+## nw-ab-optimize-skill
+
+- [nw-ab-optimize-skill](nw-ab-optimize-skill.md) — PROCEDURE — optimize one requested existing skill. Measures multi-trigger, duplication, and resident-context debt before editing; preserves its name as the lean core and behavioral projections.
+
+## nw-ab-validate-spec
+
+- [nw-ab-validate-spec](nw-ab-validate-spec.md) — PROCEDURE — validate an EXISTING agent spec against the nw-ab-validation-checklist. Trigger: checking a spec for compliance (also the shared composition target create/migrate/merge invoke). One job: run the checklist, report pass/fail.
+
+## nw-ab-validation-checklist
+
+- [nw-ab-validation-checklist](nw-ab-validation-checklist.md) — KNOWLEDGE (data) — the agent-spec validation checklist. The item definitions the validate-spec procedure RUNS against. No sequence of its own.
 
 ## nw-abr-critique-dimensions
 
@@ -16,9 +60,17 @@
 
 - [nw-agent-creation-workflow](nw-agent-creation-workflow.md) — Detailed 5-phase workflow for creating agents - from requirements analysis through validation and iterative refinement
 
+## nw-agent-evals
+
+- [nw-agent-evals](nw-agent-evals.md) — Lightweight eval method for testing nWave AGENTS and SKILLS (LLM behavior) as a lean alternative to heavy BDD/ATD. An eval = one prompt -> one captured run (trace + artifacts) -> a small set of checks -> a comparable score over time. Load when validating agent behavior, building a regression net for an agent/skill, or reducing agent-test bloat.
+
 ## nw-agent-testing
 
 - [nw-agent-testing](nw-agent-testing.md) — 5-layer testing approach for agent validation including adversarial testing, security validation, and prompt injection resistance
+
+## nw-algebraic-design-protocol
+
+- [nw-algebraic-design-protocol](nw-algebraic-design-protocol.md) — The METHOD for finding a design — name observations and equality before constructors, then follow any contradiction to the type or observation that causes it. Use when a design decision is contested, a law has exceptions, a census or model keeps producing wrong answers, or a representation change must preserve meaning. Complements nw-fp-algebra-driven-design, which catalogues the structures; this says how to arrive at one and what to do when it breaks.
 
 ## nw-architectural-styles-tradeoffs
 
@@ -30,15 +82,19 @@
 
 ## nw-at-completeness-check
 
-- [nw-at-completeness-check](nw-at-completeness-check.md) — Canonical AT completeness gate — research-anchored 7-category taxonomy (C1-C7) + 15-item mechanical checklist. Paradigm-neutral. Drives acceptance-designer reviewer verdict deterministically.
+- [nw-at-completeness-check](nw-at-completeness-check.md) — Verify that one minimal oracle falsifies every declared delivery obligation without checklist ceremony or duplicate tests.
 
 ## nw-authoritative-sources
 
 - [nw-authoritative-sources](nw-authoritative-sources.md) — Domain-specific authoritative source databases, search strategies by topic category, and source freshness rules
 
+## nw-auto
+
+- [nw-auto](nw-auto.md) — Evaluates and revises Request S/M/L and delivery choices from evidence, then uses nwdes to construct delivery artifacts.
+
 ## nw-bdd-methodology
 
-- [nw-bdd-methodology](nw-bdd-methodology.md) — BDD patterns for acceptance test design - Given-When-Then structure, scenario writing rules, pytest-bdd implementation, anti-patterns, and living documentation
+- [nw-bdd-methodology](nw-bdd-methodology.md) — BDD patterns for acceptance test design - Given-When-Then as a language-neutral specification style, scenario writing rules, realization in the project's incumbent native scenario syntax (Python pytest-bdd binding labelled), anti-patterns, and living documentation
 
 ## nw-bdd-requirements
 
@@ -50,39 +106,51 @@
 
 ## nw-buddy
 
-- [nw-buddy](nw-buddy.md) — nWave concierge — ask any question about methodology, project state, commands, migration, or troubleshooting. Read-only, contextual answers.
+- [nw-buddy](nw-buddy.md) — Read-only nWave concierge for methodology, current project evidence, command routing, migration, and troubleshooting.
 
 ## nw-buddy-command-catalog
 
-- [nw-buddy-command-catalog](nw-buddy-command-catalog.md) — All /nw-* commands — what they do, when to use them, which agent they invoke. For the buddy agent to help users pick the right command.
+- [nw-buddy-command-catalog](nw-buddy-command-catalog.md) — Current public nWave delivery commands.
 
 ## nw-buddy-project-reading
 
-- [nw-buddy-project-reading](nw-buddy-project-reading.md) — How the nWave buddy agent reads a project to answer questions — detection, order of inspection, and citation discipline.
+- [nw-buddy-project-reading](nw-buddy-project-reading.md) — Evidence-first project reading protocol based on durable authorities, Git, tests, and installed surfaces.
 
 ## nw-buddy-ssot-knowledge
 
 - [nw-buddy-ssot-knowledge](nw-buddy-ssot-knowledge.md) — Single Source of Truth detection — where truth lives in an nWave repo and how to avoid contradicting it.
 
-## nw-buddy-wave-knowledge
-
-- [nw-buddy-wave-knowledge](nw-buddy-wave-knowledge.md) — Wave methodology knowledge for the buddy agent — what each wave does, its inputs and outputs, and how to route questions.
-
 ## nw-bugfix
 
-- [nw-bugfix](nw-bugfix.md) — Bug fix workflow: root cause analysis → user review → regression test + fix via TDD
+- [nw-bugfix](nw-bugfix.md) — Routes an observed defect through host-owned diagnosis and nwdes delivery artifacts.
 
 ## nw-canary
 
 - [nw-canary](nw-canary.md) — Canary skill for auto-injection detection
 
+## nw-certainty-by-construction
+
+- [nw-certainty-by-construction](nw-certainty-by-construction.md) — Turn a stable layer claim (domain, application, adapter, or infrastructure) into a construction boundary so the invalid state cannot be built, and state honestly what remains unguarded. Use when a requirement says an invalid state or transition must not occur, when values need a canonical form, or when a rewrite/cache/optimisation must preserve meaning. Complements nw-fp-domain-modeling, which shows the encodings; this decides whether to encode, how strong the claim really is, and what obligation is left over.
+
 ## nw-cicd-and-deployment
 
 - [nw-cicd-and-deployment](nw-cicd-and-deployment.md) — CI/CD pipeline design methodology, deployment strategies, GitHub Actions patterns, and branch/release strategies. Load when designing pipelines or deployment workflows.
 
-## nw-collaboration-and-handoffs
+## nw-code-analysis-port
 
-- [nw-collaboration-and-handoffs](nw-collaboration-and-handoffs.md) — Cross-agent collaboration protocols, workflow handoff patterns, and commit message formats for TDD/Mikado/refactoring workflows
+- [nw-code-analysis-port](nw-code-analysis-port.md) — KNOWLEDGE — resolve code facts (who-calls-X / where-defined-or-read / call-graph / change-scope / file-atoms) through the vendor-neutral CLI `code-fact`, degrading LOUD through bundled adapters (AST, TextSearch). Trigger: any time an agent designs, writes, analyzes, or reviews code or tests and needs a structural code fact.
+
+## nw-code-craftsmanship
+
+- [nw-code-craftsmanship](nw-code-craftsmanship.md) — Universal OO/FP craftsmanship foundation — domain-language naming, small cohesive units, semantic DRY/SSOT, reuse-before-new, one owner per rule/config/fact, prefactoring before new behavior, ports/adapters for testability. Consult before writing or reviewing any unit of code, either paradigm.
+
+## nw-code-design-fp
+
+- [nw-code-design-fp](nw-code-design-fp.md) — FP code-design SSOT — the WHAT-to-design catalog (algebra-driven design, domain modelling with types, railway/error-track isolation) shared by the solution architect (design-time) and the functional crafter (execution-time).
+
+## nw-code-design-oo
+
+- [nw-code-design-oo](nw-code-design-oo.md) — OO code-design SSOT — the WHAT-to-design anti-smell catalog (Object Calisthenics, RPP smell taxonomy, effect isolation) shared by the solution architect (design-time) and the crafter (execution-time).
 
 ## nw-collapse-detection
 
@@ -92,13 +160,41 @@
 
 - [nw-command-design-patterns](nw-command-design-patterns.md) — Best practices for command definition files - size targets, declarative template, anti-patterns, and canonical examples based on research evidence
 
+## nw-command-design-patterns-authoring
+
+- [nw-command-design-patterns-authoring](nw-command-design-patterns-authoring.md) — The v2.8+ new-command installation contract - which three files to produce and their frontmatter when creating a brand-new command
+
+## nw-command-design-patterns-classification
+
+- [nw-command-design-patterns-classification](nw-command-design-patterns-classification.md) — How to size and categorize a command, the declarative command template, and the WHAT-vs-HOW logic-placement rule
+
+## nw-command-design-patterns-reduction
+
+- [nw-command-design-patterns-reduction](nw-command-design-patterns-reduction.md) — What is reducible in a bloated command - the duplication triangle, the anti-pattern catalog, and the compress/never-compress rules
+
 ## nw-command-optimization-workflow
 
 - [nw-command-optimization-workflow](nw-command-optimization-workflow.md) — Step-by-step workflow for converting bloated command files to lean declarative definitions
 
-## nw-continue
+## nw-cross-cutting-context-residency
 
-- [nw-continue](nw-continue.md) — Detects current wave progress for a feature and resumes at the next step. Scans docs/feature/ for artifacts.
+- [nw-cross-cutting-context-residency](nw-cross-cutting-context-residency.md) — KNOWLEDGE — use when choosing resident, map-only, or on-demand context.
+
+## nw-cross-cutting-evidence-instrumentation
+
+- [nw-cross-cutting-evidence-instrumentation](nw-cross-cutting-evidence-instrumentation.md) — KNOWLEDGE — use when evaluating a claim, check, measurement, or shared-log count.
+
+## nw-cross-cutting-input-data-contracts
+
+- [nw-cross-cutting-input-data-contracts](nw-cross-cutting-input-data-contracts.md) — KNOWLEDGE — use when adding data, declaring inputs, or choosing a join key.
+
+## nw-cross-cutting-invariants
+
+- [nw-cross-cutting-invariants](nw-cross-cutting-invariants.md) — Cross-cutting normative invariants — routing core for the software/model boundary doctrine, gate/construction principles and on-demand knowledge lenses. Cite clause ids; never re-declare.
+
+## nw-css-implementation-recipes
+
+- [nw-css-implementation-recipes](nw-css-implementation-recipes.md) — Concrete CSS code snippets for futuristic UI patterns -- glassmorphism, neon glows, HUD elements, data grids, holographic effects
 
 ## nw-data-architecture-patterns
 
@@ -107,6 +203,10 @@
 ## nw-database-technology-selection
 
 - [nw-database-technology-selection](nw-database-technology-selection.md) — Database comparison catalogs, RDBMS vs NoSQL selection criteria, CAP/ACID/BASE theory, OLTP vs OLAP, and technology-specific characteristics
+
+## nw-ddd-architect
+
+- [nw-ddd-architect](nw-ddd-architect.md) — DDD architect design-time mandates — the Fixture-Fanout Enumeration Mandate for shared-substrate per-caller migration (enumerate production callers plus fixture sites plus atomic bundle scope, mechanically enforced) that both the ddd-architect and its reviewer load by name
 
 ## nw-ddd-event-modeling
 
@@ -126,15 +226,7 @@
 
 ## nw-deliver
 
-- [nw-deliver](nw-deliver.md) — Orchestrates the full DELIVER wave end-to-end (roadmap > execute-all > finalize). Use when all prior waves are complete and the feature is ready for implementation.
-
-## nw-deliver-orchestration
-
-- [nw-deliver-orchestration](nw-deliver-orchestration.md) — DELIVER wave orchestration workflow -- 9 phases from baseline to finalization. Load when user invokes *deliver command. Covers state tracking, smart skip logic, retry, resume, and quality gate enforcement.
-
-## nw-density-resolution-contract
-
-- [nw-density-resolution-contract](nw-density-resolution-contract.md) — Shared density-resolution contract for wave skills. Canonical detail on the D12 cascade, density resolver call, ad-hoc override workflow, and DocumentationDensityEvent telemetry emission. Referenced from nw-discover / nw-discuss / nw-design / nw-devops / nw-distill / nw-deliver.
+- [nw-deliver](nw-deliver.md) — Routes one strict Request through host-owned delivery using nwdes artifacts.
 
 ## nw-deployment-strategies
 
@@ -146,11 +238,7 @@
 
 ## nw-design
 
-- [nw-design](nw-design.md) — Designs system architecture with C4 diagrams and technology selection. Routes to the right architect based on design scope (system, domain, application, or full stack). Two interaction modes: guide (collaborative Q&A) or propose (architect presents options with trade-offs).
-
-## nw-design-methodology
-
-- [nw-design-methodology](nw-design-methodology.md) — Apple LeanUX++ design workflow, journey schema, emotional arc patterns, and CLI UX patterns. Load when transitioning from discovery to visualization or when designing journey artifacts.
+- [nw-design](nw-design.md) — Establishes durable architecture, reuse, boundaries, cross-layer algebra, residual stress behavior, paradigm, and prefactoring decisions for deterministic minimal handover construction.
 
 ## nw-design-patterns
 
@@ -158,7 +246,7 @@
 
 ## nw-devops
 
-- [nw-devops](nw-devops.md) — Designs CI/CD pipelines, infrastructure, observability, and deployment strategy. Use when preparing platform readiness for a feature.
+- [nw-devops](nw-devops.md) — Establishes durable deployment, environment, observability, recovery, and CI constraints when platform risk requires the DEVOPS lens.
 
 ## nw-diagram
 
@@ -166,11 +254,7 @@
 
 ## nw-discover
 
-- [nw-discover](nw-discover.md) — Conducts evidence-based product discovery through customer interviews and assumption testing. Use at project start to validate problem-solution fit.
-
-## nw-discovery-methodology
-
-- [nw-discovery-methodology](nw-discovery-methodology.md) — Question-first approach to understanding user journeys. Load when starting a new journey design or when the discovery phase needs deepening.
+- [nw-discover](nw-discover.md) — Tests whether a product problem and opportunity are real, then updates the durable product evidence authorities without creating delivery state.
 
 ## nw-discovery-workflow
 
@@ -178,11 +262,23 @@
 
 ## nw-discuss
 
-- [nw-discuss](nw-discuss.md) — Conducts Jobs-to-be-Done analysis, UX journey design, and requirements gathering through interactive discovery. Use when starting feature analysis, defining user stories, or creating acceptance criteria.
+- [nw-discuss](nw-discuss.md) — PO-led product conversation, visible feedback increments and human-readable briefs.
 
 ## nw-distill
 
-- [nw-distill](nw-distill.md) — Acceptance test creation methodology for the DISTILL wave. Domain knowledge for the acceptance designer agent: port-to-port principle, prior wave reading, wave-decision reconciliation, graceful degradation, and document back-propagation.
+- [nw-distill](nw-distill.md) — Produce an executable public oracle from durable authority.
+
+## nw-distill-port-treatment-policy
+
+- [nw-distill-port-treatment-policy](nw-distill-port-treatment-policy.md) — Port-to-port acceptance criteria + the Architecture of Reference (port-class → test treatment) + the Project Infrastructure Policy (concrete mechanism per port) + the walking-skeleton canonical definition and not-applicable exemptions. Consult while classifying a port's test treatment and the concrete mechanism for this codebase.
+
+## nw-distill-prior-wave-reading
+
+- [nw-distill-prior-wave-reading](nw-distill-prior-wave-reading.md) — Reads and reconciles durable product, architecture, and platform authorities before DISTILL compiles an executable oracle.
+
+## nw-distill-red-scaffolding
+
+- [nw-distill-red-scaffolding](nw-distill-red-scaffolding.md) — Prepare declared native oracle/supports and establish failure for the promised business reason without production stubs, invented reports or runner substitution.
 
 ## nw-diverge
 
@@ -196,6 +292,10 @@
 
 - [nw-divio-framework](nw-divio-framework.md) — DIVIO/Diataxis four-quadrant documentation framework - type definitions, classification decision tree, and signal catalog
 
+## nw-doc-as-artifact
+
+- [nw-doc-as-artifact](nw-doc-as-artifact.md) — Use briefs and HTML as shared reading surfaces for human understanding and collaborative review.
+
 ## nw-document
 
 - [nw-document](nw-document.md) — Creates evidence-based documentation following DIVIO/Diataxis principles. Use when writing tutorials, how-to guides, reference docs, or explanations.
@@ -204,25 +304,13 @@
 
 - [nw-domain-driven-design](nw-domain-driven-design.md) — Strategic and tactical DDD patterns, bounded context discovery, context mapping, aggregate design rules, and decision frameworks for when to apply DDD
 
-## nw-dor-validation
-
-- [nw-dor-validation](nw-dor-validation.md) — Definition of Ready checklist criteria, antipattern detection patterns, UAT quality rules, and domain language enforcement for product owner review
-
 ## nw-dr-review-criteria
 
 - [nw-dr-review-criteria](nw-dr-review-criteria.md) — Critique dimensions, severity framework, verdict decision matrix, and review output format for documentation assessment reviews
 
-## nw-execute
+## nw-expectation-charter
 
-- [nw-execute](nw-execute.md) — Use when a DELIVER roadmap already exists and you need to dispatch exactly one identified step through its TDD cycle. Use nw-roadmap to create the plan, nw-deliver for the whole wave, and nw-continue to resume at the next inferred step.
-
-## nw-fast-forward
-
-- [nw-fast-forward](nw-fast-forward.md) — Fast-forwards through remaining waves end-to-end without stopping for review between waves.
-
-## nw-finalize
-
-- [nw-finalize](nw-finalize.md) — Archives a completed feature to docs/evolution/, migrates lasting artifacts to permanent directories, and cleans up the temporary workspace. Use after all implementation steps pass and mutation testing completes.
+- [nw-expectation-charter](nw-expectation-charter.md) — Supplies or reviews user-view qualitative charter facts when EXAMINE applies.
 
 ## nw-five-whys-methodology
 
@@ -230,7 +318,7 @@
 
 ## nw-forge
 
-- [nw-forge](nw-forge.md) — Creates new specialized agents using the 5-phase workflow (ANALYZE > DESIGN > CREATE > VALIDATE > REFINE). Use when building a new AI agent or validating an existing agent specification.
+- [nw-forge](nw-forge.md) — Backward-compatible router for creating agents, validating existing agents, migrating existing agent monoliths, or optimizing one existing skill.
 
 ## nw-formal-verification-tlaplus
 
@@ -248,6 +336,10 @@
 
 - [nw-fp-domain-modeling](nw-fp-domain-modeling.md) — Domain modeling with algebraic data types, smart constructors, and type-level error handling
 
+## nw-fp-erlang-elixir
+
+- [nw-fp-erlang-elixir](nw-fp-erlang-elixir.md) — Erlang/Elixir language-specific patterns, OTP as the effect model, and runtime-enforced immutability
+
 ## nw-fp-fsharp
 
 - [nw-fp-fsharp](nw-fp-fsharp.md) — F# language-specific patterns, Railway-Oriented Programming, and Computation Expressions
@@ -255,10 +347,6 @@
 ## nw-fp-haskell
 
 - [nw-fp-haskell](nw-fp-haskell.md) — Haskell language-specific patterns, GADTs, type classes, and effect systems
-
-## nw-fp-hexagonal-architecture
-
-- [nw-fp-hexagonal-architecture](nw-fp-hexagonal-architecture.md) — Hexagonal architecture patterns with pure core and side-effect shell for functional codebases
 
 ## nw-fp-kotlin
 
@@ -268,25 +356,37 @@
 
 - [nw-fp-principles](nw-fp-principles.md) — Core functional programming thinking patterns and type system foundations, language-agnostic
 
+## nw-fp-rust
+
+- [nw-fp-rust](nw-fp-rust.md) — Rust language-specific patterns, compiler-verified exhaustive ADTs, and Result/Option as railway-oriented programming
+
 ## nw-fp-scala
 
 - [nw-fp-scala](nw-fp-scala.md) — Scala 3 language-specific patterns with ZIO, Cats Effect, and opaque types
 
-## nw-fp-usable-design
+## nw-fp-typescript
 
-- [nw-fp-usable-design](nw-fp-usable-design.md) — Naming conventions, API ergonomics, and usability patterns for functional code
+- [nw-fp-typescript](nw-fp-typescript.md) — TypeScript language-specific patterns with fp-ts/Effect, discriminated unions, and railway-oriented error handling
 
-## nw-hexagonal-testing
+## nw-futuristic-color-typography
 
-- [nw-hexagonal-testing](nw-hexagonal-testing.md) — 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
+- [nw-futuristic-color-typography](nw-futuristic-color-typography.md) — Color palettes, font pairing, and visual treatments for sci-fi aesthetics -- concrete values with rationale
 
 ## nw-hotspot
 
 - [nw-hotspot](nw-hotspot.md) — Git change frequency hotspot analysis — find the most-changed files in your codebase
 
+## nw-human-collaboration
+
+- [nw-human-collaboration](nw-human-collaboration.md) — Collaborate with the human to refine product, architecture and operational decisions before implementation; preserve explicit delegation preferences.
+
 ## nw-infrastructure-and-observability
 
 - [nw-infrastructure-and-observability](nw-infrastructure-and-observability.md) — Infrastructure as Code patterns (Terraform, Kubernetes), observability design (SLOs, metrics, alerting, dashboards), and pipeline security stages. Load when designing infrastructure, observability, or security scanning.
+
+## nw-interaction-choreography
+
+- [nw-interaction-choreography](nw-interaction-choreography.md) — Animation principles, timing, easing curves, and choreography sequences for futuristic interfaces -- motion as communication
 
 ## nw-interviewing-techniques
 
@@ -299,10 +399,6 @@
 ## nw-jtbd-analysis
 
 - [nw-jtbd-analysis](nw-jtbd-analysis.md) — JTBD methodology for extracting real jobs behind feature requests — job statements, abstraction layers, first-principles extraction, ODI outcome statements, and opportunity scoring
-
-## nw-jtbd-bdd-integration
-
-- [nw-jtbd-bdd-integration](nw-jtbd-bdd-integration.md) — Translating JTBD analysis to BDD scenarios - job story to Given-When-Then patterns, forces-based test discovery, job-map-based test discovery, and property-shaped criteria
 
 ## nw-jtbd-core
 
@@ -320,29 +416,21 @@
 
 - [nw-jtbd-workflow-selection](nw-jtbd-workflow-selection.md) — JTBD workflow classification and routing - ODI two-phase framework, five job types with workflow sequences, baseline type selection, workflow anti-patterns, and common recipes
 
-## nw-leanux-methodology
-
-- [nw-leanux-methodology](nw-leanux-methodology.md) — LeanUX backlog management methodology - user story template, story sizing, story states, task types, Definition of Ready/Done, anti-pattern detection and remediation
-
-## nw-legacy-refactoring-ddd
-
-- [nw-legacy-refactoring-ddd](nw-legacy-refactoring-ddd.md) — DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
-
 ## nw-mikado
 
 - [nw-mikado](nw-mikado.md) — [EXPERIMENTAL] Complex refactoring roadmaps with visual tracking
 
-## nw-mikado-method
+## nw-mode-select
 
-- [nw-mikado-method](nw-mikado-method.md) — Enhanced Mikado Method for complex architectural refactoring - systematic dependency discovery, tree-based planning, and bottom-up execution
+- [nw-mode-select](nw-mode-select.md) — Choose or change how to collaborate with the human for the current scope; reuses human-collaboration guidance without runtime gates.
 
 ## nw-mutation-test
 
-- [nw-mutation-test](nw-mutation-test.md) — Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%).
+- [nw-mutation-test](nw-mutation-test.md) — Run an explicit mutation probe over a named production delta, or support the project-level nightly-delta policy. Disabled by default.
 
-## nw-new
+## nw-nwdes
 
-- [nw-new](nw-new.md) — Guided wizard to start a new feature. Asks what you want to build, recommends the right starting wave, and launches it.
+- [nw-nwdes](nw-nwdes.md) — nwdes routes and verbs for host-led delivery of a Request.
 
 ## nw-operational-safety
 
@@ -354,7 +442,7 @@
 
 ## nw-optimize-tests
 
-- [nw-optimize-tests](nw-optimize-tests.md) — Minimizes test count while preserving coverage. Detects byte-identical pairs, parametrize-inflation, language-guarantee tests, AST-shape tests, stale migration nets. Approval gate before any change.
+- [nw-optimize-tests](nw-optimize-tests.md) — Consolidates a test scope to the fewest tests that preserve coverage and behavior, deleting duplication, parametrize inflation, language-guarantee tests, AST-shape tests, and stale migration nets. An independent read-only reviewer with veto always validates the result.
 
 ## nw-outcome-kpi-framework
 
@@ -367,6 +455,38 @@
 ## nw-par-review-criteria
 
 - [nw-par-review-criteria](nw-par-review-criteria.md) — Quality dimensions and review checklist for devop reviews
+
+## nw-pbt-dotnet
+
+- [nw-pbt-dotnet](nw-pbt-dotnet.md) — .NET property-based testing with FsCheck, CsCheck, and fsharp-hedgehog frameworks
+
+## nw-pbt-erlang-elixir
+
+- [nw-pbt-erlang-elixir](nw-pbt-erlang-elixir.md) — Erlang/Elixir property-based testing with PropEr, PropCheck, and StreamData frameworks
+
+## nw-pbt-go
+
+- [nw-pbt-go](nw-pbt-go.md) — Go property-based testing with rapid and gopter frameworks
+
+## nw-pbt-haskell
+
+- [nw-pbt-haskell](nw-pbt-haskell.md) — Haskell property-based testing with QuickCheck and Hedgehog frameworks
+
+## nw-pbt-jvm
+
+- [nw-pbt-jvm](nw-pbt-jvm.md) — JVM property-based testing with jqwik, ScalaCheck, and ZIO Test frameworks
+
+## nw-pbt-python
+
+- [nw-pbt-python](nw-pbt-python.md) — Python property-based testing with Hypothesis framework, strategies, and pytest integration
+
+## nw-pbt-rust
+
+- [nw-pbt-rust](nw-pbt-rust.md) — Rust property-based testing with proptest, quickcheck, and bolero frameworks
+
+## nw-pbt-typescript
+
+- [nw-pbt-typescript](nw-pbt-typescript.md) — TypeScript/JavaScript property-based testing with fast-check framework and arbitraries
 
 ## nw-pdr-review-criteria
 
@@ -384,6 +504,10 @@
 
 - [nw-po-review-dimensions](nw-po-review-dimensions.md) — Requirements quality critique dimensions for peer review - confirmation bias detection, completeness validation, clarity checks, testability assessment, and priority validation
 
+## nw-po-scenario-exploration
+
+- [nw-po-scenario-exploration](nw-po-scenario-exploration.md) — Assess product values for Quint relevance and explore them through actual traces and mechanically rendered scenarios for human review.
+
 ## nw-por-review-criteria
 
 - [nw-por-review-criteria](nw-por-review-criteria.md) — Review dimensions and bug patterns for journey artifact reviews
@@ -392,25 +516,17 @@
 
 - [nw-post-mortem-framework](nw-post-mortem-framework.md) — Blameless post-mortem structure, incident timeline reconstruction, response evaluation, and organizational learning
 
+## nw-product-value-slicing
+
+- [nw-product-value-slicing](nw-product-value-slicing.md) — Product-owner foundation for slicing value — elephant carpaccio thin vertical slices, one walking skeleton per feature (not per slice), feature identity from user/product authority, JTBD/domain language framing. Consult when decomposing a feature into independently observable increments.
+
 ## nw-production-readiness
 
 - [nw-production-readiness](nw-production-readiness.md) — Monitoring, observability, operational procedures, CI/CD lessons learned, and quality gate definitions. Load when assessing production readiness or validating operational excellence.
 
-## nw-production-safety
-
-- [nw-production-safety](nw-production-safety.md) — Agent safety boundaries - input validation, output filtering, scope constraints, and document creation policy
-
-## nw-progressive-refactoring
-
-- [nw-progressive-refactoring](nw-progressive-refactoring.md) — Progressive L1-L6 refactoring hierarchy, 22 code smell taxonomy, atomic transformations, test code smells, and Fowler refactoring catalog
-
 ## nw-property-based-testing
 
-- [nw-property-based-testing](nw-property-based-testing.md) — Property-based testing strategies, mutation testing, shrinking, and combined PBT+mutation workflow for test quality validation
-
-## nw-quality-framework
-
-- [nw-quality-framework](nw-quality-framework.md) — Quality gates - 11 commit readiness gates, build/test protocol, validation checkpoints, and quality metrics
+- [nw-property-based-testing](nw-property-based-testing.md) — Property-based testing strategies (PBT — ACTIVE, authored by the acceptance-designer during DISTILL), shrinking, PBT+TDD integration.
 
 ## nw-quality-validation
 
@@ -434,31 +550,19 @@
 
 ## nw-review
 
-- [nw-review](nw-review.md) — Dispatches an expert reviewer agent to critique workflow artifacts. Use when a roadmap, implementation, or step needs quality review before proceeding.
+- [nw-review](nw-review.md) — Dispatches an independent reviewer for a durable authority, immutable oracle, candidate diff, charter set, or operational artifact.
 
 ## nw-review-output-format
 
 - [nw-review-output-format](nw-review-output-format.md) — YAML output format and approval criteria for platform design reviews. Load when generating review feedback.
 
-## nw-review-workflow
-
-- [nw-review-workflow](nw-review-workflow.md) — Detailed review process, v2 validation checklist, and scoring methodology for agent definition reviews
-
 ## nw-rigor
 
-- [nw-rigor](nw-rigor.md) — Selects a quality-vs-token-consumption profile (lean, standard, thorough, exhaustive, custom, inherit) and persists it globally (~/.nwave/global-config.json) or per-project (.nwave/des-config.json). Use when tuning how much rigor wave commands apply.
+- [nw-rigor](nw-rigor.md) — Configure explicit Codex or Claude model facts for nWave defaults or published roles, consumed by the native host where supported. Never derives a model from a competence label.
 
-## nw-roadmap
+## nw-role-invocation
 
-- [nw-roadmap](nw-roadmap.md) — Creates a phased roadmap.json for a feature goal with acceptance criteria and TDD steps. Use when planning implementation steps before execution.
-
-## nw-roadmap-design
-
-- [nw-roadmap-design](nw-roadmap-design.md) — Roadmap concision rules, step decomposition efficiency, AC abstraction guidelines, and step-to-scenario mapping. Load when creating implementation roadmaps.
-
-## nw-roadmap-review-checks
-
-- [nw-roadmap-review-checks](nw-roadmap-review-checks.md) — Roadmap-specific validation checks for architecture reviews. Load when reviewing roadmaps for implementation readiness.
+- [nw-role-invocation](nw-role-invocation.md) — KNOWLEDGE — how a wave entrypoint invokes its specialist: the real installed role definition, never a generic persona. Load when a wave delegates to a role.
 
 ## nw-root-why
 
@@ -479,6 +583,10 @@
 ## nw-sc-review-dimensions
 
 - [nw-sc-review-dimensions](nw-sc-review-dimensions.md) — Reviewer critique dimensions for peer review - implementation bias detection, test quality validation, completeness checks, and priority validation
+
+## nw-sci-fi-design-patterns
+
+- [nw-sci-fi-design-patterns](nw-sci-fi-design-patterns.md) — Catalog of UI patterns from games, anime, and films with analysis of why they work -- structural principles extractable to real interfaces
 
 ## nw-sd-case-studies
 
@@ -504,9 +612,9 @@
 
 - [nw-security-by-design](nw-security-by-design.md) — Security design principles, STRIDE threat modeling, OWASP Top 10 architectural mitigations, and secure patterns. Load when designing systems or reviewing architecture for security.
 
-## nw-shared-artifact-tracking
+## nw-solution-architect-formal-verification
 
-- [nw-shared-artifact-tracking](nw-shared-artifact-tracking.md) — Shared artifact registry, common artifact patterns, and integration validation. Load when tracking data that flows across journey steps or validating horizontal coherence.
+- [nw-solution-architect-formal-verification](nw-solution-architect-formal-verification.md) — PROCEDURE — formally verify every design's algebraic claims with need-selected checkers and explicit host-relayed installation or human waiver.
 
 ## nw-source-verification
 
@@ -518,11 +626,11 @@
 
 ## nw-spike
 
-- [nw-spike](nw-spike.md) — Runs a timeboxed PROBE to validate one core assumption, then optionally PROMOTES the probe into a walking skeleton — the first e2e thin slice of the feature, committed and demo-able. Use after DISCUSS when the feature involves a new mechanism, performance requirement, or external integration.
+- [nw-spike](nw-spike.md) — A bounded probe of one product, visual-experience or technical uncertainty; returns evidence to its owner without starting a wave or promoting code automatically.
 
 ## nw-spike-methodology
 
-- [nw-spike-methodology](nw-spike-methodology.md) — Teaches agents how to run a timeboxed spike - throwaway code that validates one assumption before DESIGN
+- [nw-spike-methodology](nw-spike-methodology.md) — Guides a bounded, decision-relevant probe for a product, visual or technical uncertainty without creating wave authority
 
 ## nw-stakeholder-engagement
 
@@ -530,7 +638,7 @@
 
 ## nw-stress-analysis
 
-- [nw-stress-analysis](nw-stress-analysis.md) — Advanced architecture stress analysis methodology for designing systems that survive unknown stresses. Load when --residuality flag is used or when designing high-uncertainty, mission-critical systems.
+- [nw-stress-analysis](nw-stress-analysis.md) — Advanced architecture stress analysis methodology for designing systems that survive unknown stresses. Load on its semantic trigger — external/nondeterministic dependency, recovery/retry/compensation/degradation, contagion, infrastructure/substrate uncertainty, high-uncertainty socio-technical/business boundary — or on explicit --residuality (force-on).
 
 ## nw-taste-evaluation
 
@@ -544,17 +652,53 @@
 
 - [nw-tdd-methodology](nw-tdd-methodology.md) — Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
 
-## nw-tdd-review-enforcement
+## nw-tdd-methodology-paradigm
 
-- [nw-tdd-review-enforcement](nw-tdd-review-enforcement.md) — Test design mandate enforcement, test budget validation, TDD phase validation (3-phase canon per ADR-025), and external validity checks for the software crafter reviewer
+- [nw-tdd-methodology-paradigm](nw-tdd-methodology-paradigm.md) — Native contract-driven unit and acceptance testing: generative broad laws, finite examples, public-state preservation and real-boundary evidence.
+
+## nw-tdd-methodology-pbt-deep
+
+- [nw-tdd-methodology-pbt-deep](nw-tdd-methodology-pbt-deep.md) — Deep property-based-testing mechanics (Hebert) - stateful PBT command-precondition anti-patterns (A13/P6), the four property-finding strategies, the two shrinking mechanisms, and targeted/search-based PBT with its hard limitations
+
+## nw-tdd-methodology-port-to-port
+
+- [nw-tdd-methodology-port-to-port](nw-tdd-methodology-port-to-port.md) — What a test asserts on and where it enters - port-to-port discipline at all test levels, the layer-specific Universe, refactoring-resilience, and the hexagonal per-layer testing strategy
+
+## nw-tdd-methodology-test-doubles
+
+- [nw-tdd-methodology-test-doubles](nw-tdd-methodology-test-doubles.md) — Choosing and building a test double - Meszaros taxonomy, classical-vs-mockist verification, the mock-only-at-port-boundaries policy, and the contract that every InMemory double must validate inputs like the real adapter
+
+## nw-tdd-methodology-walking-skeleton
+
+- [nw-tdd-methodology-walking-skeleton](nw-tdd-methodology-walking-skeleton.md) — Building and validating a walking skeleton - the WS protocol scoped to the FEATURE (one skeleton, extended by every slice), Mandate 5 adapter port-class real-I/O treatment (resource table), and Mandate 6 adapter-integration real-I/O requirement
 
 ## nw-test-design-mandates
 
-- [nw-test-design-mandates](nw-test-design-mandates.md) — Design mandates for acceptance tests - hexagonal boundary, business language abstraction, user journey completeness, pure function extraction, 3 Pillars (domain language / chained narrative / production composition), and the layered ATD discipline (Universe-bound assertion, layer-dependent PBT mode, two-tier acceptance, example-based sad paths)
+- [nw-test-design-mandates](nw-test-design-mandates.md) — Design mandates for acceptance tests - hexagonal boundary, business language abstraction, user journey completeness, pure function extraction, 3 Pillars (domain language / chained narrative / production composition), and the layered ATD discipline (Universe-bound assertion, layer-dependent PBT mode, two-tier acceptance, example-based sad paths). Lean recomposing core - routes to three narrow mandate modules.
+
+## nw-test-design-mandates-composition-contract
+
+- [nw-test-design-mandates-composition-contract](nw-test-design-mandates-composition-contract.md) — Composition-root authoring-contract mandates for acceptance tests — SSOT + Zero Duplication via Types + Services + DSL, Driving-Port-Only Boundary (Farley four-layer protocol-driver contract, fixture-theater/tautological-test anti-pattern), Contract Shape Classification (@in-memory/@real-io tag-vs-composition), and Dormant-Seam Reconciliation (AT drives the DESIGN-declared seam, not the new component). Consult while composing the AT's driving surface, structuring step/type/service code, and tagging the contract shape. Canonical definitions; SSOT for these mandates.
+
+## nw-test-design-mandates-layered-mechanics
+
+- [nw-test-design-mandates-layered-mechanics](nw-test-design-mandates-layered-mechanics.md) — Layered acceptance-test mechanics: public state preservation, native generative laws, real-boundary journeys and explicit failure observations.
+
+## nw-test-design-mandates-scenario-design
+
+- [nw-test-design-mandates-scenario-design](nw-test-design-mandates-scenario-design.md) — Scenario-design mandates for acceptance tests — Hexagonal Boundary Enforcement (drive through driving ports, never internals), Business Language Abstraction (three abstraction layers), User Journey Completeness, Pure Function Extraction Before Fixtures, Algebraic Analysis Before the Scenario (name the law, find its narrowest surface, declare every gated input, prove the scenario can fail), the 3 Pillars style backbone, and Walking Skeleton Strategy. Consult while shaping or judging a scenario's boundary, language, journey completeness, and fixture strategy. Canonical definitions; SSOT for these mandates.
 
 ## nw-test-optimization
 
-- [nw-test-optimization](nw-test-optimization.md) — Methodology for minimizing test count while maximizing behavioral coverage - behavior definition, anti-pattern catalog, consolidation patterns, stopping criterion, coverage-preserving validation
+- [nw-test-optimization](nw-test-optimization.md) — Methodology for minimizing test count while maximizing behavioral coverage - lean core composing behavior-counting, anti-patterns, consolidation, paradigm-match, coverage-validation, scope-selection modules
+
+## nw-test-optimization-consolidation
+
+- [nw-test-optimization-consolidation](nw-test-optimization-consolidation.md) — Coverage-preserving consolidation patterns applied in order - parametrize-collapse, dict-iteration, fixture-scope, xdist-group, migration-collapse lifecycle, cross-tier dedup, single-lifecycle consolidation, state-delta cross-ref
+
+## nw-test-optimization-paradigm-match
+
+- [nw-test-optimization-paradigm-match](nw-test-optimization-paradigm-match.md) — Decision rule matching test SHAPE to the right paradigm before authoring/migrating - closed-world vs multi-step-setup vs state-mutation vs unbounded-invariant vs few-examples, plus the falsifier-gate that blocks PBT on finite domains
 
 ## nw-test-organization-conventions
 
@@ -564,42 +708,22 @@
 
 - [nw-test-refactoring-catalog](nw-test-refactoring-catalog.md) — Detailed refactoring mechanics with step-by-step procedures, and test code smell catalog with detection patterns and before/after examples
 
-## nw-tlaplus-verification
+## nw-throughput
 
-- [nw-tlaplus-verification](nw-tlaplus-verification.md) — TLA+ formal verification for design correctness and PBT pipeline integration
+- [nw-throughput](nw-throughput.md) — Evidence-led orchestration for maximizing delivery throughput with independent fan-out, capacity-bounded local test runs, long runs batched off the box, and concise whole-value evidence.
 
-## nw-tr-review-criteria
+## nw-type-level-design
 
-- [nw-tr-review-criteria](nw-tr-review-criteria.md) — Review dimensions and scoring for root cause analysis quality assessment
+- [nw-type-level-design](nw-type-level-design.md) — Design or review evidence-preserving APIs that model invalid states, state transitions, capabilities, and trusted construction proportionately to the target language.
 
-## nw-update
+## nw-typesafe-system-one
 
-- [nw-update](nw-update.md) — Queues a deferred self-update of nwave-ai. Writes a PendingUpdateFlag that the SessionStart hook replays on the next Claude Code launch, so the current session is not interrupted. Falls back to manual instructions when the package manager cannot be detected.
+- [nw-typesafe-system-one](nw-typesafe-system-one.md) — Use Jev System One for every supported, authorized semantic judgment when available: relevance selection, handoff preflight, evidence mapping, finding clustering, and confidence-gated escalation.
+
+## nw-usability-engineering
+
+- [nw-usability-engineering](nw-usability-engineering.md) — Cognitive science principles applied to futuristic interface design -- Fitts, Hick, Miller, cognitive load theory, and Nielsen heuristics
 
 ## nw-user-story-mapping
 
-- [nw-user-story-mapping](nw-user-story-mapping.md) — User story mapping for backlog management and outcome-based prioritization. Load during Phase 2.5 (User Story Mapping) to produce story-map.md and prioritization.md.
-
-## nw-ux-desktop-patterns
-
-- [nw-ux-desktop-patterns](nw-ux-desktop-patterns.md) — Desktop application UI patterns for product owners. Load when designing native or cross-platform desktop applications, writing desktop-specific acceptance criteria, or evaluating panel layouts and keyboard workflows.
-
-## nw-ux-emotional-design
-
-- [nw-ux-emotional-design](nw-ux-emotional-design.md) — Emotional design and delight patterns for product owners. Load when designing onboarding flows, empty states, first-run experiences, or evaluating the emotional quality of an interface.
-
-## nw-ux-principles
-
-- [nw-ux-principles](nw-ux-principles.md) — Core UX principles for product owners. Load when evaluating interface designs, writing acceptance criteria with UX requirements, or reviewing wireframes and mockups.
-
-## nw-ux-tui-patterns
-
-- [nw-ux-tui-patterns](nw-ux-tui-patterns.md) — Terminal UI and CLI design patterns for product owners. Load when designing command-line tools, interactive terminal applications, or writing CLI-specific acceptance criteria.
-
-## nw-ux-web-patterns
-
-- [nw-ux-web-patterns](nw-ux-web-patterns.md) — Web UI design patterns for product owners. Load when designing web application interfaces, writing web-specific acceptance criteria, or evaluating responsive designs.
-
-## nw-wizard-shared-rules
-
-- [nw-wizard-shared-rules](nw-wizard-shared-rules.md) — Shared rules for feature ID derivation and wave detection used by /nw-new, /nw-continue, and /nw-fast-forward wizards
+- [nw-user-story-mapping](nw-user-story-mapping.md) — User story mapping knowledge for exploring journeys, release boundaries, activity gaps, and outcome-based prioritization.

@@ -3,14 +3,13 @@ name: nw-fp-principles
 agent: nw-functional-software-crafter
 description: Core functional programming thinking patterns and type system foundations, language-agnostic
 user-invocable: false
-disable-model-invocation: true
 ---
 
 # FP Principles
 
 Core functional programming thinking patterns. Language-agnostic.
 
-Cross-references: [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) | [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md)
+Cross-references: [fp-domain-modeling](../nw-fp-domain-modeling/SKILL.md) | [code-craftsmanship: FP Hexagonal Architecture](../nw-code-craftsmanship/SKILL.md) | [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md)
 
 ---
 
@@ -29,6 +28,16 @@ Three operations replace most loops:
 **When to use Map**: Transform every element without changing collection shape. Nested maps handle nested structures.
 **When to use Filter**: Select elements without changing their values.
 **When to use Fold**: Reduce collection to single value. Accumulator IS your state. Combining function IS your state transition. Folds make state machines explicit.
+
+**Dependent streams**: Fold over the evolving descriptive state, not the initial
+state for every item. Approve then archive an invoice uses the post-approval
+invoice; snapshots project only the final register. Law:
+`prepare(s, xs ++ ys) = prepare(prepare(s, xs), ys)` on admitted transitions.
+When refusal forbids construction activity, load `nw-certainty-by-construction`
+for its readiness boundary before execution. Basis: Sandy Maguire,
+*Algebra-Driven Design*, Designing Algebras → Scavenger Hunt → A Unified
+Observation; *Thinking with Types*, Indexed Monads → Definition and Necessary
+Machinery.
 
 **Decision**: "Am I transforming, selecting, or accumulating?" Pick matching operation. If none fit, compose two.
 
@@ -109,7 +118,9 @@ Progressive hierarchy for working with values inside containers (nullables, list
 
 **What**: Apply a function inside a container to values inside other containers.
 **Plain English**: "I have a function in a box AND values in boxes. Combine them."
-**When**: Validation -- check multiple fields independently, combine results only if all succeed. Doesn't short-circuit; collects all errors.
+**When**: Combining independent inputs. For all-errors validation, select an
+error-accumulating Validation interpretation; Applicative alone does not fix
+failure behavior.
 
 ### [INTERMEDIATE] Combinable Values (Monoid)
 
@@ -123,6 +134,20 @@ Progressive hierarchy for working with values inside containers (nullables, list
 **What**: Chain operations where each step produces wrapped value, next step depends on previous result.
 **Plain English**: "Step 1's output determines what step 2 does. Each step might fail/branch/have effects."
 **When**: Sequential dependent operations where each step can fail, branch, or produce effects.
+
+**Independent versus dependent checks**: For an all-errors diagnostic contract,
+accumulate independent branches; bind a consumer only after its actual inputs
+were produced. Preserve successful sibling
+evidence alongside failures until final assembly. Parse quantity and address
+independently; stock checking consumes parsed quantity, never a default substituted
+for failed parsing. Report all and only runnable failures: invalid quantity
+suppresses stock checking; invalid address alone does not. A simple pair of
+composed branches suffices when that is the whole graph. For API evidence shape,
+load `nw-type-level-design` when per-unit witnesses matter. Exact validation
+composition is application synthesis from Sandy Maguire, *Algebra-Driven Design*,
+Reference Material → Common Algebraic Components → Applicative Functors;
+Designing Algebras → Scavenger Hunt → Challenge Completion; *Thinking with
+Types*, Indexed Monads → Definition and Necessary Machinery.
 
 ### Decision Tree: Which Abstraction Do I Need?
 
@@ -168,7 +193,7 @@ pendingTotals = orders
 | **Accumulator** (Writer) | Side-channel output | Logging, auditing, collecting metadata |
 | **Stateful** (State) | Sequential state changes | Counters, parsers, accumulators |
 
-These compose: real applications stack multiple patterns. See [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) for DI patterns.
+These compose: real applications stack multiple patterns. See [code-craftsmanship: FP Dependency Injection](../nw-code-craftsmanship/SKILL.md) for DI patterns.
 
 ---
 

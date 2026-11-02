@@ -159,7 +159,7 @@ If the command prints `COLLISION` and the exit code is `1`, the registry is work
 ## Where to go next
 
 - **[How to resolve a collision](../howto-resolve-outcomes-collision.md)** — your `check` exited 1 and you need to decide link vs supersede vs annotate.
-- **[Outcomes CLI reference](../../reference/outcomes-cli.md)** — every flag, exit code, and stdout/stderr format for `register | check | check-delta`.
+- **[Outcomes CLI reference](../../reference/outcomes-cli.md)** — every flag, exit code, and stdout/stderr format for `register | check`.
 - **[Why an outcomes registry?](../../product/outcomes/README.md)** — the design rationale, locked decisions, and empirical validation.
 
 ## Cleanup

@@ -106,7 +106,7 @@ argument-hint: "[param] - Optional: --flag=[value]"
 
 {One paragraph: what this command orchestrates.}
 
-Sub-agents cannot use Skill tool or `/nw:*` commands. You MUST:
+Sub-agents cannot use `/nw:*` commands (Skill tool is available). You MUST:
 - Read the relevant command file and embed instructions in the Task prompt
 - Remind the agent to load its skills at `~/.claude/skills/nw/{agent-name}/`
 
@@ -124,7 +124,7 @@ Sub-agents cannot use Skill tool or `/nw:*` commands. You MUST:
 
 ## Rigor Profile Integration
 
-Before dispatching, read rigor config from `.nwave/des-config.json` (key: `rigor`). If absent, use standard defaults.
+Before dispatching, use `nw-rigor` to resolve explicit model configuration and its defaults.
 
 - **`agent_model`**: Pass as `model` to Task tool. If `"inherit"`, omit.
 - **`reviewer_model`**: Pass to reviewer Task. If `"skip"`, skip review phase.
@@ -238,8 +238,9 @@ definition or skill, not in the command file.
 ### SKILL_LOADING Reminder
 
 Every command dispatching a sub-agent via Task MUST include a SKILL_LOADING reminder
-in the Task prompt. Sub-agents cannot use the Skill tool and the `skills:` frontmatter
-is decorative only.
+in the Task prompt. Sub-agents can invoke the Skill tool (but not slash commands); the
+`skills:` frontmatter field eagerly preloads full skill content into custom subagents,
+so this reminder targets skills meant to load at point-of-use instead.
 
 ```
 SKILL_LOADING: Read your skill files at ~/.claude/skills/nw/{agent-name}/.

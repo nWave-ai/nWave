@@ -4,9 +4,9 @@ Use to validate Claude Code plugin structure and schema during DISTILL/DELIVER v
 
 **Wave:** Other
 **Model:** haiku
-**Max turns:** 20
-**Tools:** Read, Glob, Grep
+**Max turns:** 40
+**Tools:** Read, Glob, Grep, Write, SendMessage
 
-## Skills
+## Preloaded skills
 
-- [nw-agent-creation-workflow](../skills/nw-agent-creation-workflow.md) — Detailed 5-phase workflow for creating agents - from requirements analysis through validation and iterative refinement
+- [nw-typesafe-system-one](../skills/nw-typesafe-system-one.md) — Use Jev System One for every supported, authorized semantic judgment when available: relevance selection, handoff preflight, evidence mapping, finding clustering, and confidence-gated escalation.

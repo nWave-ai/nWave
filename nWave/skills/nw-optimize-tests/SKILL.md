@@ -1,108 +1,30 @@
 ---
 name: nw-optimize-tests
-description: "Minimizes test count while preserving coverage. Detects byte-identical pairs, parametrize-inflation, language-guarantee tests, AST-shape tests, stale migration nets. Approval gate before any change."
+description: Consolidates a test scope to the fewest tests that preserve coverage and behavior, deleting duplication, parametrize inflation, language-guarantee tests, AST-shape tests, and stale migration nets. An independent read-only reviewer with veto always validates the result.
 user-invocable: true
-argument-hint: '[scope] - Optional: a path (e.g. tests/des/unit/), a feature-id (auto-resolves to tests/<id>/), or omit for full unit suite. --reviewer to chain reviewer agent.'
+argument-hint: '[scope] - a path, a feature-id (resolves to tests/<id>/), or omit for the full unit suite.'
 ---
 
-# NW-OPTIMIZE-TESTS: Test Suite Optimization
+# NW-OPTIMIZE-TESTS
 
-**Wave**: CROSS_WAVE
-**Agent**: Trim (nw-test-optimizer)
-**Reviewer**: Trim Review (nw-test-optimizer-reviewer)
+Act when invoked. Do not wait for approval, do not present a plan table, and do
+not produce a report artifact.
 
-## Overview
+Dispatch `nw-test-optimizer` over `{scope}` (methodology: `nw-test-optimization`).
 
-Dispatches Trim to inventory a test scope, detect duplication and anti-patterns, propose a consolidation plan, and apply it after explicit approval. Coverage is preserved; production code is never modified. Use after a feature lands, when a suite feels slow or noisy, on weekly audit, or whenever overtesting is suspected.
+Invariants:
 
-## Context Files Required
+- Run the exact project-declared command vector before and after, in the same
+  environment and over the same scope. Compare terminal process timing only.
+- Production files in the diff: zero.
+- Coverage and observed behavior preserved; any drop is justified in the reply.
+- Consolidate by deletion, never by adding a test to cover a removed one.
+- Tests must prove observable behavior, never source prose or AST shape.
 
-- The scope path (passed as argument or auto-detected)
-- `~/.claude/skills/nw-test-optimization/SKILL.md` — methodology (loaded by agent)
+After the mutation, always dispatch `nw-test-optimizer-reviewer` over the
+resulting diff. It reads only, and it holds veto: production drift, coverage or
+behavior loss, and any deletion not mapped to a stated pattern are refusals the
+optimizer must repair before the work is done. Its verdict is prose in the
+reply, not an artifact or a schema.
 
-## Timing Baseline
-
-Trim compares against the wall-clock figures recorded in the execution-log.json.
-
-## Agent Invocation
-
-@nw-test-optimizer
-
-Execute test optimization for `{scope}`.
-
-**Configuration:**
-- scope: <path | feature-id | empty for full unit suite>
-- approval_required: true  # always; gate is non-negotiable
-- mutation_validation: false  # set true for critical scopes (financial, safety, infra)
-- reviewer_chain: false  # set true to dispatch nw-test-optimizer-reviewer after apply
-
-## Approval Gate
-
-Trim presents the plan as a markdown table after Phase 3 (PLAN). The orchestrator (or invoking user) responds with one of:
-
-1. **APPROVE** — full plan, all rows
-2. **APPROVE WITH EXCLUSIONS** — list row IDs to skip
-3. **REJECT** — abort, return findings as deferred report
-4. **REPLAN** — provide new scope or constraint
-
-No changes are applied without one of these responses. Trim never assumes approval.
-
-## Reviewer Chain (optional)
-
-If `reviewer_chain: true`:
-
-@nw-test-optimizer-reviewer
-
-Validate the optimization output for `{scope}`.
-
-Reviewer hard-blocks on: production drift, coverage drop without justification, unmapped removal, missing approval gate evidence.
-
-## Success Criteria
-
-- [ ] Baseline numbers recorded (passed count, coverage %)
-- [ ] Plan presented before any change
-- [ ] Explicit approval received
-- [ ] Production files in diff: 0
-- [ ] Coverage % preserved (or drop documented per skill 5.3)
-- [ ] Atomic commits per consolidation pattern
-- [ ] Final report with deltas and SHAs
-
-## Examples
-
-### Example 1: Full unit suite audit
-```
-/nw-optimize-tests
-```
-Trim inventories the unit suite, runs md5sum cross-check, scans for anti-patterns, produces a leverage-sorted plan covering byte-identical pairs and parametrize-inflated files.
-
-### Example 2: Scoped to a feature
-```
-/nw-optimize-tests lean-wave-documentation
-```
-Trim resolves to `tests/<feature-id>/` paths from the execution-log.json if available, otherwise scopes to test files referencing the feature-id.
-
-### Example 3: Single fat file
-```
-/nw-optimize-tests tests/build/unit/test_skill_restructuring.py
-```
-Trim probes the single file (315 collected tests), checks migration-collapse lifecycle (skill 3.5), proposes collapse to ~3 tests.
-
-### Example 4: With reviewer
-```
-/nw-optimize-tests tests/des/unit/ --reviewer
-```
-Trim runs the workflow, then dispatches Trim Review for adversarial validation. Reviewer issues YAML verdict.
-
-## Out of Scope
-
-- Authoring new tests (crafter scope, DELIVER wave)
-- Production code refactoring (`/nw-refactor`, crafter scope)
-- Test infrastructure changes (platform-architect, troubleshooter)
-
-## Expected Outputs
-
-```
-git log --oneline {base}..HEAD                  (atomic commits per pattern)
-<scope>                                          (test files modified or deleted)
-report (returned inline by agent)                (baseline, after, deltas, SHAs)
-```
+Out of scope: authoring new tests, production refactoring, test infrastructure.

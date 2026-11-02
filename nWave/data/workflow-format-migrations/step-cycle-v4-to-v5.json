@@ -1,0 +1,19 @@
+{
+  "to-tag": "v5",
+  "from-tags": ["v4", "v4-revised"],
+  "phase-map": {
+    "PREPARE": "RED",
+    "RED_ACCEPTANCE": "RED",
+    "RED_UNIT": "RED",
+    "NOT_STARTED": "NOT_STARTED",
+    "GREEN": "GREEN",
+    "COMMIT": "COMMIT",
+    "COMPLETED": "COMPLETED"
+  },
+  "required-fields": ["schema-version", "phase", "tag"],
+  "legacy-field-map": {
+    "schema-version": {"disposition": "copy", "destination": "schema-version"},
+    "phase": {"disposition": "transform", "rule": "phase-map", "destination": "phase"},
+    "tag": {"disposition": "transform", "rule": "target-tag", "destination": "tag"}
+  }
+}

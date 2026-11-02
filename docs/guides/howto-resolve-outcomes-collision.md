@@ -1,6 +1,6 @@
 # How to resolve an outcomes collision
 
-You ran `nwave-ai outcomes check-delta` (or `check`) and it exited `1`. The CLI flagged your candidate against an existing `OUT-id`. This guide walks you through the three-step triage that resolves the flag.
+You ran `nwave-ai outcomes check` and it exited `1`. The CLI flagged your candidate against an existing `OUT-id`. This guide walks you through the three-step triage that resolves the flag.
 
 If you have never registered an outcome, start with the **[Your First Outcome tutorial](outcomes-first-outcome/README.md)** instead — this guide assumes you already understand the verdict matrix.
 
@@ -25,7 +25,7 @@ Example: the CLI flagged `COLLISION: OUT-E3 (Tier-1 + Tier-2 0.67)`. You read th
 - id: OUT-E3
   summary: Every CommitmentRow non-empty across 4 columns
   keywords: [non-empty, required, cell]
-  artifact: nwave_ai/feature_delta/domain/rules/e3_non_empty_rows.py
+  artifact: nwave_ai/outcomes/application/collision_detector.py
 ```
 
 You wrote your candidate intending it to detect *cherry-picks* (downstream row count exceeds upstream without a ratifying DDD). The summary says non-empty cells. **They are different rules with overlapping vocabulary.** Move to step 2.
@@ -80,7 +80,7 @@ Edit the *old* entry (not yours) to add `superseded_by: OUT-MY-NEW`. The old ent
   superseded_by: OUT-MY-NEW
 ```
 
-Then delete or refactor the artifact (`nwave_ai/feature_delta/domain/rules/e3_non_empty_rows.py`) per your supersession plan. The registry tracks the contract; you still own the code.
+Then delete or refactor the named artifact per your supersession plan. The registry tracks the contract; you still own the code.
 
 ### Dismiss as ambiguous (do nothing)
 
@@ -141,7 +141,7 @@ Six months later, when an author proposes E3c with the same shape, the chain `OU
 ## What this guide does *not* cover
 
 - **Auto-resolution via supersede sweep** — out of scope for the MVP. The registry tracks supersession; cleaning up superseded artifacts is manual.
-- **Cross-feature collision dashboards** — defer to v2. Currently `outcomes check-delta` reports one feature at a time.
-- **CI gate on collisions** — `--strict` flag is reserved for v2 (D-7 in the feature-delta DISCUSS).
+- **Cross-feature collision dashboards** — defer until a measured need justifies a project-wide aggregation surface.
+- **CI gate on collisions** — no default gate; add one only if collision evidence proves marginal value.
 
 If your situation is none of the above, file an issue with the exact CLI invocation and verdict so we can extend the decision tree.

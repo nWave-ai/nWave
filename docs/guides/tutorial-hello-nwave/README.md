@@ -1,132 +1,74 @@
-# Quick Start: Your First Feature in 5 Minutes
+# Tutorial: Hello nWave
 
-**Version**: 1.0.0
-**Date**: 2026-02-17
+Build and observe a deliberately small Python function: `render_banner("AB")` returns five rows of ASCII block letters. The agreed contract will support `A`, `B`, and spaces, return an empty string for empty input, and reject other characters with `ValueError`. This is an exercise in agreeing on an outcome before implementing it, not a promise to ship a full A–Z command-line program in five minutes.
 
-Build a working, tested feature from scratch using nWave. Three commands, five minutes.
+## 1. Get the beta into a new project
 
-**Prerequisites**:
-- **Platform**: Linux, macOS, or Windows (WSL2 required)
-- nWave installed — `sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"` — in your terminal, not Claude Code
-- Claude Code open in an empty Python project with `pytest` available
-- Use a permanent directory (not `/tmp`) — later tutorials build on this project
-
----
-
-## What You'll Build
-
-An ASCII art banner generator. Give it text, get back block letters in your terminal:
-
-```
-$ python -m banner "nWave"
-
- N   N  W   W   AA   V   V  EEEEE
- NN  N  W   W  A  A  V   V  E
- N N N  W W W  AAAA   V V   EEE
- N  NN  WW WW  A  A   V V   E
- N   N  W   W  A  A    V    EEEEE
-```
-
-Three commands. You review at each step. The machine never runs without your approval.
-
----
-
-## Step 1: Define What You Want
-
-```
-/nw-discuss "ASCII art banner generator: a pure Python function that takes a string and returns multi-line ASCII block letters. Only uppercase A-Z and spaces. No external dependencies."
-```
-
-The `@product-owner` agent asks clarifying questions — answer simply. When it finishes, you'll find requirements under:
-
-```
-docs/feature/{feature-id}/discuss/
-```
-
-> **SSOT model**: Product-level documents (journeys, architecture) are in `docs/product/`. Feature-specific artifacts (user stories, wave decisions) are in `docs/feature/{feature-id}/discuss/`.
-
-**What to check**: Open the file. Are the requirements reasonable? Is the scope small? If the agent added too much (colors, fonts, animations), edit the file and remove it. Keep it simple: one function, block letters, A-Z + space.
-
-**Expected time**: ~1 minute
-
----
-
-## Step 2: Define "Done"
-
-```
-/nw-distill
-```
-
-The `@acceptance-designer` creates Given-When-Then test scenarios. You'll find them under `tests/`.
-
-**What to check**: You should see 2-4 scenarios like:
-- Single letter renders correctly
-- Full word renders correctly
-- Spaces between words work
-- Empty input returns empty output
-
-If there are more than 5 scenarios, ask the agent to consolidate. Fewer scenarios = faster delivery.
-
-**Expected time**: ~1 minute
-
----
-
-## Step 3: Build It
-
-```
-/nw-deliver
-```
-
-This is where the magic happens. The `@software-crafter` implements your feature using Outside-In TDD:
-
-1. Reads your acceptance tests
-2. Creates a roadmap (one step per scenario)
-3. For each step: writes a failing test → makes it pass → cleans up
-4. Commits after each green test
-
-**What you'll see**: The agent works through each step. This takes 2-3 minutes for a feature this small. You'll see test runs, code being written, and commits being made.
-
-**When it's done**: All acceptance tests pass. Run them yourself:
+You need Python 3.11+, [uv](https://docs.astral.sh/uv/), Git, and Claude Code or Codex CLI. In a terminal, install from a **local clone** of this repository:
 
 ```bash
-pytest tests/ -v
+git clone https://github.com/nWave-ai/nWave.git
+cd nWave
+uv sync
+NWAVE_REPO="$(pwd -P)"
+uv run python -m nwave_ai.cli install --platform claude-code
+uv run python -m nwave_ai.cli doctor
 ```
 
-You should see all green.
+For Codex, use `uv run python -m nwave_ai.cli install --platform codex` instead and check the installer's Codex-specific final validation; `doctor` checks Claude Code, not a Codex-only install. The beta has no published `nwave-ai` package, and `uv tool install .` does not currently carry every required framework asset. The checkout's CLI lives at `"$NWAVE_REPO/.venv/bin/nwave-ai"`; keep `NWAVE_REPO` in the same terminal when changing directories. Restart the chosen host after installing. Move to a permanent workspace **outside the nWave clone**:
 
----
-
-## Try It
-
-Your banner generator is ready. Test it:
-
-```python
-python -c "from banner import render; print(render('HI'))"
+```bash
+cd /path/to/your/workspace
+mkdir hello-nwave
+cd hello-nwave
+git init
+printf '.venv/\n' > .gitignore
+uv venv .venv
+uv pip install --python .venv/bin/python pytest
+"$NWAVE_REPO/.venv/bin/nwave-ai" project enable
+"$NWAVE_REPO/.venv/bin/nwave-ai" status
 ```
 
-You should see block letters in your terminal.
+On Windows, run this shell workflow in WSL2. Make sure status says `This project is active.` The marker is `.nwave/config.json` (`enabled: true`); `project enable` also repairs `.gitignore` so that marker can be tracked. Review these files before you commit. If you want optional project-level `CLAUDE.md`/`AGENTS.md` beta guidance, `project enable --yes` adds the managed sections; it is not required to activate the project.
 
----
+## 2. Agree on the behavior
 
-## What Just Happened
+Launch `claude` from `hello-nwave` and enter this **inside Claude Code**, not the shell:
 
-Three commands. Three human checkpoints. One working feature with tests.
-
-```
-You typed          Agent did                    You checked
-─────────          ─────────                    ───────────
-/nw-discuss        Wrote requirements           ✓ Scope right?
-/nw-distill        Created acceptance tests     ✓ Scenarios cover it?
-/nw-deliver        TDD implementation           ✓ Tests pass?
+```text
+/nw-discuss "Build a tiny Python banner function in banner.py: render_banner(text) returns five-row block letters for A, B, and spaces; empty input returns an empty string; unsupported characters raise ValueError. Help me choose the exact appearance of A, B, and spacing before implementation."
 ```
 
-The feature is tested, committed, and ready to use.
+If using Codex, launch `codex` and invoke `$nw-discuss` with the same request. **Every** subsequent `/nw-...` command shown below is a Claude Code command; in Codex substitute the corresponding `$nw-...` skill. Read the reported DISCUSS brief and agree on a concrete `A`, `B`, and space example. Its location depends on scope and project configuration; a feature-scoped default is `docs/feature/<feature-id>/brief.md`, not the older `docs/feature/<feature-id>/discuss/user-stories.md`.
 
----
+## 3. Resolve the small design
 
-## What's Next
+```text
+/nw-design "For the agreed banner behavior, use one public render_banner(text) function in banner.py. Specify how each five-row glyph and inter-character spacing compose; reuse the project's Python and pytest setup."
+```
 
-- **Bigger feature**: See [Your First Feature](../tutorial-first-feature/) for a multi-phase workflow with architecture design
-- **Existing codebase**: See [Jobs To Be Done Guide](../jobs-to-be-done-guide/) for adding features to brownfield projects
-- **Need help?**: Type `/nw-buddy "what should I do next?"` to get contextual guidance from the concierge agent
-- **All commands**: See [nWave Commands Reference](../../reference/commands/index.md)
+Review the decision and actual path the command reports. For such a small function, avoid introducing a framework or claiming a system design is needed. If adequate architecture already exists in your own project, reuse it instead; DESIGN is about closing a real contract, not collecting documents.
+
+## 4. Define the observation before code
+
+```text
+/nw-distill "Make the agreed A/B/space, empty-input, and invalid-character behaviors executable through the public banner function, using this project's pytest environment."
+```
+
+Inspect the resulting acceptance brief and test locator. Run the **reported** verification command with `.venv/bin/python` if necessary. Before delivery, expect RED for the specified behavior—not collection errors or a missing dependency. If the preimplementation run is broken instead of meaningfully RED, ask the host to repair its test infrastructure and inspect it again before proceeding.
+
+## 5. Deliver, verify, and recover
+
+```text
+/nw-deliver "Implement the agreed render_banner behavior against the accepted public oracle in this project."
+```
+
+The host drives nwdes prompts and applies accepted role payloads; follow the actual results instead of expecting fixed minutes, commit counts or test filenames. Once it reports completion, run the acceptance verification command it reported and try the **public function** yourself:
+
+```bash
+.venv/bin/python -c 'from banner import render_banner; print(render_banner("AB"))'
+```
+
+Compare the five printed rows to the approved glyphs and spacing; also verify empty and invalid-input cases through the reported tests. If tests pass but the banner differs, correct the owning requirement, oracle or implementation and redeliver. If a command refuses or a session stops, retain the files and inspect the feature's handoff and briefs (`nwdes document`) before resuming. nwdes keeps no workflow cursor. `/nw-buddy` (Codex: `$nw-buddy`) can explain routing.
+
+You have completed this tutorial only when the reported delivery is terminal **and** your own observation matches the agreed example. Next, [Your First Feature](../tutorial-first-feature/) applies the same sequence to an existing project.

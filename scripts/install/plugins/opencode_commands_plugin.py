@@ -11,7 +11,6 @@ user-created ones.
 """
 
 import json
-import os
 from pathlib import Path
 
 from scripts.install.plugins.base import (
@@ -20,7 +19,10 @@ from scripts.install.plugins.base import (
     PluginResult,
 )
 from scripts.install.plugins.opencode_common import (
+    ManifestPluginConfig,
+    opencode_config_dir,
     parse_frontmatter,
+    remove_manifest_owned_assets,
     render_frontmatter,
     uninstall_with_manifest,
     verify_with_manifest,
@@ -45,9 +47,7 @@ def _opencode_commands_dir() -> Path:
     Returns:
         Path to ~/.config/opencode/commands/
     """
-    override = os.environ.get("OPENCODE_CONFIG_DIR")
-    base = Path(override) if override else Path.home() / ".config" / "opencode"
-    return base / "commands"
+    return opencode_config_dir() / "commands"
 
 
 def _find_commands_source(context: InstallContext) -> Path | None:
@@ -221,6 +221,23 @@ class OpenCodeCommandsPlugin(InstallationPlugin):
             target_dir = _opencode_commands_dir()
             target_dir.mkdir(parents=True, exist_ok=True)
 
+            # Clean-then-write: a command retired upstream must not stay
+            # resolvable in the host. Command names carry no nw- prefix, so
+            # ownership rests entirely on the previous manifest -- a foreign
+            # or user-authored command it never listed survives untouched.
+            stale = remove_manifest_owned_assets(
+                target_dir,
+                _MANIFEST_FILENAME,
+                ".md",
+                manifest_key="installed_commands",
+                required_prefix="",
+            )
+            if stale:
+                context.logger.info(
+                    f"  \U0001f5d1\ufe0f Removed {len(stale)} previously installed "
+                    "OpenCode command(s) before rewrite"
+                )
+
             command_files = sorted(commands_source.glob("*.md"))
             if not command_files:
                 context.logger.info("  \u23ed\ufe0f No command files found, skipping")
@@ -285,21 +302,25 @@ class OpenCodeCommandsPlugin(InstallationPlugin):
         """Uninstall only nWave-installed OpenCode commands using manifest."""
         return uninstall_with_manifest(
             context=context,
-            plugin_name=self.name,
-            target_dir=_opencode_commands_dir(),
-            manifest_filename=_MANIFEST_FILENAME,
-            noun="commands",
-            installed_key="installed_commands",
+            config=ManifestPluginConfig(
+                plugin_name=self.name,
+                target_dir=_opencode_commands_dir(),
+                manifest_filename=_MANIFEST_FILENAME,
+                noun="commands",
+                installed_key="installed_commands",
+            ),
         )
 
     def verify(self, context: InstallContext) -> PluginResult:
         """Verify OpenCode commands were installed correctly."""
         return verify_with_manifest(
             context=context,
-            plugin_name=self.name,
-            target_dir=_opencode_commands_dir(),
-            manifest_filename=_MANIFEST_FILENAME,
-            noun="commands",
-            installed_key="installed_commands",
+            config=ManifestPluginConfig(
+                plugin_name=self.name,
+                target_dir=_opencode_commands_dir(),
+                manifest_filename=_MANIFEST_FILENAME,
+                noun="commands",
+                installed_key="installed_commands",
+            ),
             source_finder=_find_commands_source,
         )

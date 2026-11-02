@@ -30,9 +30,9 @@ describe("assertStateDelta — walking skeleton + core semantics", () => {
     expect(() =>
       assertStateDelta({
         before: { PATH: "/usr/bin" },
-        after: { PATH: "/des/bin:/usr/bin" },
+        after: { PATH: "/app/bin:/usr/bin" },
         universe: ["PATH"],
-        expected: { PATH: prependedWith("/des/bin") },
+        expected: { PATH: prependedWith("/app/bin") },
       }),
     ).not.toThrow();
   });
@@ -44,7 +44,7 @@ describe("assertStateDelta — walking skeleton + core semantics", () => {
         before: { PATH: "/usr/bin" },
         after: { PATH: "/wrong" },
         universe: ["PATH"],
-        expected: { PATH: prependedWith("/des/bin") },
+        expected: { PATH: prependedWith("/app/bin") },
       });
     } catch (err) {
       caught = err;
@@ -57,10 +57,10 @@ describe("assertStateDelta — walking skeleton + core semantics", () => {
       key: "PATH",
       old: "/usr/bin",
       next: "/wrong",
-      predicateName: "prepended_with(/des/bin)",
+      predicateName: "prepended_with(/app/bin)",
     });
     expect(err.message).toContain("PATH");
-    expect(err.message).toContain("predicate_name='prepended_with(/des/bin)'");
+    expect(err.message).toContain("predicate_name='prepended_with(/app/bin)'");
   });
 
   it("implicit-unchanged catches an undeclared change", () => {
@@ -68,9 +68,9 @@ describe("assertStateDelta — walking skeleton + core semantics", () => {
     try {
       assertStateDelta({
         before: { PATH: "/u/bin", HOME: "/home/u" },
-        after: { PATH: "/des/bin:/u/bin", HOME: "/home/changed" },
+        after: { PATH: "/app/bin:/u/bin", HOME: "/home/changed" },
         universe: ["PATH", "HOME"],
-        expected: { PATH: prependedWith("/des/bin") },
+        expected: { PATH: prependedWith("/app/bin") },
       });
     } catch (err) {
       caught = err;
@@ -93,7 +93,7 @@ describe("assertStateDelta — walking skeleton + core semantics", () => {
         before: { PATH: "/u", HOME: "/h", X: "1" },
         after: { PATH: "/wrong", HOME: "/h2", X: "1" },
         universe: ["PATH", "HOME", "X"],
-        expected: { PATH: prependedWith("/des"), HOME: unchanged() },
+        expected: { PATH: prependedWith("/app"), HOME: unchanged() },
       });
     } catch (err) {
       caught = err;
@@ -110,9 +110,9 @@ describe("assertStateDelta — walking skeleton + core semantics", () => {
     try {
       assertStateDelta({
         before: { PATH: "/u", EXTRA: "x" },
-        after: { PATH: "/des:/u", EXTRA: "x2" },
+        after: { PATH: "/app:/u", EXTRA: "x2" },
         universe: ["PATH"],
-        expected: { PATH: prependedWith("/des") },
+        expected: { PATH: prependedWith("/app") },
         strict: true,
       });
     } catch (err) {
@@ -137,8 +137,8 @@ describe("predicate library — Python parity", () => {
   });
 
   it("prependedWith(prefix, sep) passes iff next === prefix + sep + old (string)", () => {
-    expect(prependedWith("/des/bin")("/usr/bin", "/des/bin:/usr/bin")).toBe(true);
-    expect(prependedWith("/des/bin")("/usr/bin", "/wrong")).toBe(false);
+    expect(prependedWith("/app/bin")("/usr/bin", "/app/bin:/usr/bin")).toBe(true);
+    expect(prependedWith("/app/bin")("/usr/bin", "/wrong")).toBe(false);
     // PBT: any tail string produces a matching composition
     fc.assert(
       fc.property(fc.string(), (tail) => {
@@ -160,8 +160,8 @@ describe("predicate library — Python parity", () => {
   });
 
   it("containing(sub) checks substring (string) or array element", () => {
-    expect(containing("/usr/bin")("", "/des/bin:/usr/bin")).toBe(true);
-    expect(containing("/usr/bin")("", "/des/bin:/opt/bin")).toBe(false);
+    expect(containing("/usr/bin")("", "/app/bin:/usr/bin")).toBe(true);
+    expect(containing("/usr/bin")("", "/app/bin:/opt/bin")).toBe(false);
     expect(containing({ id: 1 })(null, [{ id: 1 }, { id: 2 }])).toBe(true);
     expect(containing({ id: 9 })(null, [{ id: 1 }, { id: 2 }])).toBe(false);
   });
@@ -174,19 +174,19 @@ describe("predicate library — Python parity", () => {
   });
 
   it("idempotentAfter(prefix) checks first segment of next", () => {
-    expect(idempotentAfter("DES_BIN")("anything", "DES_BIN:/usr/bin")).toBe(true);
-    expect(idempotentAfter("DES_BIN")("anything", "/usr/bin:/opt/bin")).toBe(false);
+    expect(idempotentAfter("APP_BIN")("anything", "APP_BIN:/usr/bin")).toBe(true);
+    expect(idempotentAfter("APP_BIN")("anything", "/usr/bin:/opt/bin")).toBe(false);
   });
 
   it("legacyHealed(det, heal) implements the 4-case paper-trace", () => {
-    const LEGACY = "DES_BIN:SYSTEM_PATH_FALLBACK";
+    const LEGACY = "APP_BIN:SYSTEM_PATH_FALLBACK";
     const pred = legacyHealed(
       (s) => s === LEGACY,
-      (s) => typeof s === "string" && s !== LEGACY && s.startsWith("DES_BIN:"),
+      (s) => typeof s === "string" && s !== LEGACY && s.startsWith("APP_BIN:"),
     );
-    expect(pred(LEGACY, "DES_BIN:/usr/bin")).toBe(true);
+    expect(pred(LEGACY, "APP_BIN:/usr/bin")).toBe(true);
     expect(pred(LEGACY, LEGACY)).toBe(false);
-    expect(pred("/usr/bin", "DES_BIN:/usr/bin")).toBe(false);
+    expect(pred("/usr/bin", "APP_BIN:/usr/bin")).toBe(false);
   });
 
   it("arrayPrepended(item) matches next === [item, ...old]", () => {
@@ -215,9 +215,9 @@ describe("universe semantics — PBT", () => {
           try {
             assertStateDelta({
               before: { PATH: "/u", HOME: oldHome },
-              after: { PATH: "/des:/u", HOME: newHome },
+              after: { PATH: "/app:/u", HOME: newHome },
               universe: ["PATH", "HOME"],
-              expected: { PATH: prependedWith("/des") },
+              expected: { PATH: prependedWith("/app") },
             });
           } catch {
             threw = true;
@@ -232,9 +232,9 @@ describe("universe semantics — PBT", () => {
     expect(() =>
       assertStateDelta({
         before: { PATH: "/u", HOME: "/h" },
-        after: { PATH: "/des:/u", HOME: "/h" },
+        after: { PATH: "/app:/u", HOME: "/h" },
         universe: ["PATH", "HOME"],
-        expected: { PATH: prependedWith("/des") },
+        expected: { PATH: prependedWith("/app") },
       }),
     ).not.toThrow();
   });

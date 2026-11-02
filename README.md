@@ -1,315 +1,141 @@
 # nWave
 
-AI agents that guide you from idea to working code, with human judgment at every gate.
+nWave supplies specialist roles and a host-led delivery workflow for software teams. Its `nwdes` command builds one canonical handoff per feature — the single JSON record of the feature's facts — and renders briefs, role prompts, output schemas, and review packets from it. Your coding host (Claude Code, Codex, OpenCode, OMP, Cursor, Copilot, or Devin) invokes the roles and runs the models; the root assistant — the session you talk to — runs verification and decides what happens next. You decide scope and trade-offs.
 
-nWave runs inside [Claude Code](https://claude.com/product/claude-code). It breaks feature delivery into seven waves (discover, diverge, discuss, design, devops, distill, deliver). Specialized agents produce artifacts at each wave. You review and approve before proceeding.
+New to the vocabulary? Each term below is defined at first use; the [glossary](https://github.com/nWave-ai/nWave/tree/main/docs/guides/glossary.md) collects them in one place.
 
-**Documentation**: [docs.nwave.ai](https://docs.nwave.ai) — guides, reference, and explanations, versioned per release.
+## What is new in v4
 
-## Install in 5 Minutes
+- **`nwdes` is the delivery tool.** One canonical handoff per feature; briefs, prompts, schemas and packets are rendered from it. The host invokes the roles.
+- **The previous delivery runtime was removed** from the source tree. `nwave-ai install`, `nwdes` and `code-fact` keep working.
+- **Python 3.11 or newer is required.** pip and uv refuse the install on Python 3.10.
+- **Commit attribution is on by default** (a `Co-Authored-By: nWave <nwave@nwave.ai>` trailer). An explicit off still wins.
+- **Jev questions are on by default.** Jev, the remote judgment service for bounded questions, is authorized by default in `nwdes`; an explicit refusal always wins (`--jev unauthorized` on the call, or `"jev": "unauthorized"` in `~/.nwave/config.json`). The `TYPESAFE_API_KEY` environment variable is only a technical prerequisite — nwdes never reads it.
 
-**Requirements**: Python 3.10+ and Claude Code.
+Full notes and upgrade steps: [nWave 4.0.0 release](https://github.com/nWave-ai/nWave/releases), [What's new in v4](https://github.com/nWave-ai/nWave/tree/main/docs/guides/whats-new-v4/), [Migrate from 3.x](https://github.com/nWave-ai/nWave/tree/main/docs/guides/migrating-from-3x.md).
+
+## Install
+
+Requires:
+
+- Python 3.11 or newer;
+- a supported coding host (see the table below);
+- Git for commits — 2.38 or newer for the lane actions.
+- Linux or macOS; on Windows, use WSL ([installation guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md)).
+
+Preview any install with `--dry-run` before it writes host files.
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
+uv tool install nwave-ai            # or: pipx install nwave-ai
+nwave-ai install --platform claude-code --dry-run   # preview first
+nwave-ai install --platform claude-code             # then install
 ```
 
-This installs the `nwave-ai` CLI and wires nWave into Claude Code in one step. It uses [uv](https://docs.astral.sh/uv/) when available (recommended); [pipx](https://pipx.pypa.io/) is supported but not recommended. Restart Claude Code when it finishes.
+`--platform` accepts exactly: `auto`, `claude-code`, `opencode`, `codex`, `cursor`, `copilot`, `omp`, `devin`, `all`. Auto-detect never guesses: with no detected host, the installer refuses before writing anything.
 
-Need CLI flags, environment variables, CI/non-interactive use, or manual and offline steps? See the **[Installation Guide](docs/guides/installation-guide/README.md)**.
+| Platform | The installer deploys | Verified by | Guide |
+|---|---|---|---|
+| `claude-code` | Templates, utilities, agents, `/nw-*` commands, skills | Container end-to-end install tests | [Installation guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md) |
+| `opencode` | Skills, agents, commands, plugin | Container end-to-end install tests | [Installation guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md) |
+| `codex` | Skills, TOML agents, hook integration | Container end-to-end install tests | [Installing for Codex](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installing-codex.md) |
+| `omp` | Skills, agents, `/nw-*` commands, extension | Installer self-validation | [Installing for OMP](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installing-omp.md) |
+| `cursor` | Global user hooks only | Installer self-validation | [Installing for Cursor](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installing-cursor.md) |
+| `copilot` | Hook integration only | Installer self-validation | [Vendor support](https://github.com/nWave-ai/nWave/tree/main/docs/guides/vendor-support.md) (no guide yet) |
+| `devin` | Public skills under `~/.config/devin/skills/` plus a manifest | Installer self-validation | [Installing for Devin](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installing-devin.md) |
 
-## Your First Command
+Verification depth differs per host, as the table states: container end-to-end install tests exercise a full install in a container, while installer self-validation means the installer's own prerequisite checks and final validation report — no dedicated end-to-end test covers those hosts yet. Cursor and Copilot are hook-only (no agents or native skills); Devin is skills-only; OMP receives skills, agents, commands and an extension. Restart the host after installation, then confirm `nwdes --help` works.
 
-Inside Claude Code, type:
-
-```
-/nw-buddy What should I do next?
-```
-
-The buddy reads your project and tells you which wave to start, where your artifacts are, and how to use nWave for your specific context. It works on day one with no configuration.
-
-**Before nWave**: "Where do I start? Requirements doc or code first? Which agent?"
-**After nWave**: The buddy reads your project and gives you a concrete next step.
-
-Using pipx, OpenCode, or Codex instead? See the [Installation Guide](docs/guides/installation-guide/README.md).
-
-## Learn More
-
-| Resource | What it covers |
-|----------|---------------|
-| **[Your First Feature](docs/guides/tutorial-first-feature/)** | End-to-end walkthrough, zero to working code |
-| **[Team Rollout Guide](docs/guides/team-rollout.md)** | Onboard a second developer onto an nWave project |
-| **[Offline / Air-Gapped Install](docs/guides/offline-install.md)** | Install nWave on a machine without PyPI access |
-| **[Jobs To Be Done](docs/guides/jobs-to-be-done-guide/)** | Which wave fits your task |
-| **[Wave Directory Structure](docs/guides/wave-directory-structure/)** | How artifacts are organized per feature |
-| **[Feature Delta Format (L7)](docs/guides/feature-delta-l7-format.md)** | Author features in the lean single-file model |
-| **[Outcomes Registry](docs/reference/outcomes-cli.md)** | Catch duplicate rules and operations at design time |
-| **[Configuring Doc Density](docs/guides/configuring-doc-density.md)** | Control lean vs full wave output |
-| **[Agents and Commands Reference](docs/reference/index.md)** | All agents and commands |
-| **[Troubleshooting](docs/guides/troubleshooting-guide/)** | Common issues and fixes |
-
----
-
-## Latest Maintenance Release: v3.22.1
-
-[nWave v3.22.1](https://github.com/nWave-ai/nWave/releases/tag/v3.22.1) is the current corrective maintenance release for the v3 line. It carries forward the twelve community fixes that are already present in published 3.22.0, across installation, configuration, finalization, diagnostics, repository hygiene, command discovery, and contributor guidance:
-
-Thank you to everyone in the community who reported these problems and helped make nWave better.
-
-- delivery guidance keeps the hand-off green for squash, rebase, and fast-forward-only workflows ([#56](https://github.com/nWave-ai/nWave/issues/56));
-- the installed outcomes registry now includes the schema it needs ([#63](https://github.com/nWave-ai/nWave/issues/63));
-- relative DES log paths are anchored to the worktree root ([#79](https://github.com/nWave-ai/nWave/issues/79));
-- platform and delivery architecture work is routed to the appropriate specialist ([#81](https://github.com/nWave-ai/nWave/issues/81));
-- finalization preserves feature workspace history while removing transient session state ([#83](https://github.com/nWave-ai/nWave/issues/83));
-- supported documentation-density prompt modes are documented and validated ([#84](https://github.com/nWave-ai/nWave/issues/84));
-- public repository dotfiles and local-only state receive the intended protection ([#90](https://github.com/nWave-ai/nWave/issues/90));
-- generated documentation links no longer depend on which worktree produced them ([#91](https://github.com/nWave-ai/nWave/issues/91));
-- Git verification failures now provide more actionable explanations ([#92](https://github.com/nWave-ai/nWave/issues/92));
-- `/nw-execute` is easier to discover for a known single step ([#96](https://github.com/nWave-ai/nWave/issues/96));
-- contributor guidance identifies the generated plugin payload and its canonical sources ([#97](https://github.com/nWave-ai/nWave/issues/97)); and
-- a skipped commit no longer counts as completed work ([#99](https://github.com/nWave-ai/nWave/issues/99)).
-
-Security hardening carried forward from 3.22.0 replaces legacy content fingerprints with SHA-256 and removes the vulnerable gitlint toolchain.
-
-**Release scope:** Graphify ran only inside the release workflow's isolated verification environment; it is not included in the release artifacts or installed for users. No polyglot toolchain was added, and the installed polyglot templates are unchanged from v3.21. This remains a v3 release and does not include the experimental v4 line.
-
-**Known limitation:** The commit-metadata correction reported in [#78](https://github.com/nWave-ai/nWave/issues/78) is not complete: some generated metadata may not be recognized as Git trailers. Please continue to track #78 rather than relying on that correction in v3.22.1.
-
-## Previous Releases
-
-### v3.22.0
-
-The twelve fixes above shipped in [nWave v3.22.0](https://github.com/nWave-ai/nWave/releases/tag/v3.22.0).
-
-### v3.19
-
-- **Per-project activation (opt-in gate)** — nWave's globally-installed DES hooks are now **opt-in per repository**. Unmarked repos stay silent (hooks exit 0); a tracked `.nwave/local-config.json` marker plus a global `activation.mode` (`opt-in` default, or `all`) decide where nWave runs. Manage it with `nwave-ai project enable|disable`, `nwave-ai mode`, and `nwave-ai status`. Existing projects auto-adopt on first `/nw-` use, so nothing breaks. See **[Activating nWave in a Project](docs/guides/activating-nwave-per-project.md)**.
-- **`nwave-ai` CLI reference** — the user-facing command surface (`install`, `uninstall`, `doctor`, `status`, `project`, `mode`, `attribution`, `completion`, `version`) is documented in one place, including the `install` flag pass-through to the underlying installer. See **[CLI Reference](docs/reference/cli.md)**.
-
-See the full **[What's New in v3.19](docs/guides/whats-new-v319/)** for details.
-
-### v3.15
-
-- **3-Phase TDD Canon (Default)** — New canonical TDD methodology (RED → GREEN → COMMIT) replaces the legacy 5-phase contract (PREPARE → RED_ACCEPTANCE → RED_UNIT → GREEN → COMMIT). Documented in ADR-025. Dual-canon backward compatibility: existing audit logs and pre-2026-05-07 executions replay correctly under the legacy five-phase execution-log schema; new work uses 3-phase by default. Configured per rigor profile (lean mode uses RED → GREEN).
-- **Codex CLI support** — Full nWave DES enforcement now works with [OpenAI Codex CLI](https://platform.openai.com/docs/guides/codex). Pre-tool-use hooks wire automatically; every Bash and file action validates against your TDD phase gates. See **[Installing for Codex CLI](docs/guides/installing-codex.md)**.
-
-### v3.14
-
-- **Lean wave docs (L7 single-file)** — Each feature lives in one `feature-delta.md` with schema-typed section headings (`## Wave: <WAVE> / [REF|WHY|HOW] <name>`). Tier-1 `[REF]` is auto-produced; Tier-2 `[WHY]` and `[HOW]` are opt-in via `--expand`. Downstream agents grep section headings instead of reading whole subdirectories. See **[Feature Delta Format (L7)](docs/guides/feature-delta-l7-format.md)**.
-- **Feature-delta validator** — `nwave-ai validate-feature-delta <path>` checks structural rules (E1–E5) and emits JSON for CI integration. Vendor-neutral: no hooks auto-installed; pick a recipe from **[Enforcement Recipes](docs/guides/enforcement-recipes.md)** (12 platforms covered).
-- **Outcomes registry** — Design-time deduplication. `nwave-ai outcomes register|check|check-delta` flags spec-level collisions before code is written, via type-shape + keyword Jaccard. See the **[Outcomes CLI reference](docs/reference/outcomes-cli.md)** and **[Your first outcome](docs/guides/outcomes-first-outcome/README.md)**.
-- **Doc density config** — Per-project `lean` vs `full` density controls how much each wave emits. Tune token cost per wave. See **[Configuring Doc Density](docs/guides/configuring-doc-density.md)**.
-- **Uninstall correctness fix (v3.14.0-rc1)** — `nwave-ai uninstall --force` now removes all installed artifacts (`skills/nw-*`, `lib/python/des/`, all 5 DES hook event types in `settings.json`) while preserving user-created skills. Previous versions left ~197 skill dirs and 3 hook entries behind. See **[Troubleshooting → Uninstall left files behind](docs/guides/troubleshooting-guide/#uninstall-left-files-behind-fixed-in-v314)**.
-
-For upgrading from v3.3 or earlier, see [Breaking Changes](#breaking-changes) below.
-
-## How It Works
-
-```text
-  machine        human         machine        human         machine
-    │              │              │              │              │
-    ▼              ▼              ▼              ▼              ▼
-  Agent ──→ Documentation ──→ Review ──→ Decision ──→ Agent ──→ ...
- generates    artifacts      validates   approves    continues
-```
-
-Each wave produces artifacts that you review before the next wave begins. The machine never runs unsupervised end-to-end.
-
-The workflow has seven waves. Entry point depends on your context:
-
-| Wave | Command | Agent | Entry? |
-|------|---------|-------|--------|
-| DISCOVER | `/nw-discover` | product-discoverer | Greenfield: explore market and problem space |
-| DIVERGE | `/nw-diverge` | nw-diverger | Greenfield: structured brainstorming before converging |
-| DISCUSS | `/nw-discuss` | product-owner | All: write requirements and user journeys |
-| DESIGN | `/nw-design` | system-designer, ddd-architect, solution-architect | All: architecture and domain model |
-| DEVOPS | `/nw-devops` | platform-architect | All: infrastructure and deployment |
-| DISTILL | `/nw-distill` | acceptance-designer | All: acceptance tests (Given-When-Then) |
-| DELIVER | `/nw-deliver` | software-crafter | All: TDD implementation |
-
-**Wave routing**: Entry points vary by context:
-- **Greenfield project**: Start at DISCOVER or DIVERGE, proceed through all waves
-- **Brownfield feature**: Start at DIVERGE or DISCUSS, skip to DESIGN
-- **Bug fix**: Jump straight to DISTILL (write failing test) then DELIVER
-- **Refactoring**: Jump to DELIVER (green already, refactor inside existing tests)
-
-DISTILL then DELIVER is always the terminal pair. See the [Wave Routing Guide](docs/guides/wave-routing-and-entry-points/) for the full decision matrix.
-
-40 agents total: 10 wave agents (including 3 DESIGN specialists), 1 concierge, 8 cross-wave specialists, 14 peer reviewers, 7 business agents. Full list: **[Commands Reference](docs/reference/commands/index.md)**
-
-## Quick Start
-
-### Requirements
-
-- **Python 3.10+** — nWave's DES hooks use `match/case` statements and `X | Y` union type syntax introduced in Python 3.10. Verify with `python3 --version`.
-
-### CLI Installer
-
-Run the one-liner under **Install in 5 Minutes** at the top of this page. Agents and commands go to `~/.claude/`.
-
-> **Don't have uv?** Install with: `curl -LsSf https://astral.sh/uv/install.sh | sh` or see [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/). Alternatively, use [pipx](https://pipx.pypa.io/stable/installation/) (requires Python 3.10+): `pip install pipx && pipx ensurepath`.
-> **Windows users**: Use WSL (Windows Subsystem for Linux). Install with: `wsl --install`
-
-Full setup details: **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide/README.md)**
-
-### Other install methods
-
-Looking for step-by-step instructions or a different setup? The **[Installation Guide](docs/guides/installation-guide/README.md)** covers every path — the single-script bootstrap, manual **uv** / **pipx** / **pip** steps, **Codex CLI**, **OpenCode**, and offline / air-gapped install.
-
-### Plugin marketplace (not recommended)
-
-> **DES enforcement does not work via the plugin marketplace and never will.** The plugin marketplace install path is blocked on an upstream Claude Code limitation ([anthropics/claude-code#24529](https://github.com/anthropics/claude-code/issues/24529)) where `${CLAUDE_PLUGIN_ROOT}` is not populated in plugin hook execution contexts. Without DES hooks, you lose phase enforcement, TDD validation, rigor profiles, and audit logging, which are the core of what nWave does.
->
-> **Use the CLI installer above.** The plugin marketplace ships agents, commands, and skills only; consider it a degraded preview, not a supported install method.
-
-> **OpenCode and Codex CLI** are supported too. Their step-by-step setup lives in the [Installation Guide](docs/guides/installation-guide/README.md).
-
-### Which method?
-
-| Scenario | Use | Why |
-|----------|-----|-----|
-| First time | CLI | Full features, full DES enforcement |
-| Team rollout | CLI | Automation, full DES enforcement |
-| Contributing | CLI | Dev scripts, internals access |
-
-### Use (inside Claude Code, after reopening it)
-
-**Start with the buddy:**
-
-```
-/nw-buddy What should I do next?
-```
-
-The buddy reads your project and gives contextual answers. Use it anytime you're unsure of the next step, where to find documents, or how a feature of nWave works.
-
-**Ready to build? Follow the waves:**
-
-```
-/nw-diverge "user authentication approaches"       # Design exploration (optional for greenfield)
-/nw-discuss "user login with email and password"   # Requirements
-/nw-design --architecture=hexagonal                 # Architecture
-/nw-distill "user-login"                            # Acceptance tests
-/nw-deliver                                         # TDD implementation
-```
-
-Each wave produces artifacts you review. The machine never runs unsupervised end-to-end.
-
-Full walkthrough: **[Your First Feature](docs/guides/tutorial-first-feature/)**
-
-## Keeping nWave Updated
-
-nWave checks for new versions when you open Claude Code. When available, you'll see a note in your context with version details and changes.
-
-**CLI:**
-```bash
-uv tool upgrade nwave-ai     # or: pipx upgrade nwave-ai
-nwave-ai install
-```
-
-**Adjust check frequency:**
-```bash
-# Edit ~/.nwave/des-config.json: "update_check.frequency" = "daily", "weekly", "every_session", or "never"
-```
-
-## Uninstalling
+Installation is host-wide; project activation is separate and opt-in:
 
 ```bash
-nwave-ai uninstall              # Remove agents, commands, config, DES hooks
-uv tool uninstall nwave-ai      # or: pipx uninstall nwave-ai
+cd /path/to/your/project
+nwave-ai project enable
+nwave-ai status        # expect: This project is active.
 ```
 
-Both methods remove agents, commands, and configuration from `~/.claude/`. Your project files are unaffected.
+`project enable` writes `.nwave/config.json` with `"enabled": true` and makes it trackable. Commit that file if your team should inherit the activation. Then, inside the host, ask `/nw-buddy What should I do next?` (Claude Code), `$nw-buddy` (Codex, OpenCode) or `/nw-buddy` (OMP installs the same `/nw-*` commands). Cursor, Copilot and Devin have no host command: restart the host, then drive a delivery with the `nwdes` command in your terminal — see [Deliver a feature](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/deliver-feature.md) — or, on Devin, ask about the installed `nw-` skills.
 
-## Token Efficiency — Scale Quality to Stakes
+Before an upgrade you can create a recovery point with `nwave-ai install --backup-only`. `nwave-ai install --restore` rolls back a Claude Code installation; on Codex a restore is currently a no-op, and the other hosts differ — read the [installation guide](https://github.com/nWave-ai/nWave/tree/main/docs/guides/installation-guide/README.md) for your host's recovery surface. On Claude Code, `nwave-ai doctor` checks the installation; on the other hosts, read the installer's own final validation (doctor checks Claude Code assets, so a host-only install can fail it without being broken).
 
-nWave enforces proven engineering practices (TDD, peer review, mutation testing) at every step. Use `/nw-rigor` to adjust the depth of quality practices to match your task's risk level. A config tweak needs less rigor than a security-critical feature.
+## First steps
 
-```
-/nw-rigor                    # Interactive: compare profiles
-/nw-rigor lean               # Quick switch to lean mode
-/nw-rigor custom             # Build your own combination
-```
+- [First feature with nwdes](https://github.com/nWave-ai/nWave/tree/main/docs/guides/tutorial-nwdes-first-feature/) — a safe walk through the command flow in a throwaway repository.
+- [Deliver a feature](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/deliver-feature.md) — the real route, end to end.
+- [Fix a bug](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/fix-bug.md) — the single-defect route.
 
-| Profile | Agent | Reviewer | TDD | Mutation | Cost | Use When |
-|---------|-------|----------|-----|----------|------|----------|
-| **lean** | haiku | none | RED→GREEN | no | lowest | Spikes, config, docs |
-| **standard** (default) | sonnet | haiku | 3-phase (RED→GREEN→COMMIT) | no | moderate | Most features |
-| **thorough** | opus | sonnet | 3-phase (RED→GREEN→COMMIT) | no | higher | Critical features |
-| **exhaustive** | opus | opus | 3-phase (RED→GREEN→COMMIT) | ≥80% kill | highest | Production core |
-| **custom** | *you choose* | *you choose* | *you choose* | *you choose* | varies | Exact combination |
+Per-wave lessons (discovery, discuss, design, distill, deliver, devops and more) live under `docs/guides/tutorial-*`.
 
-Picked once, persists across sessions. Every `/nw-deliver`, `/nw-design`, `/nw-review` respects your choice. Need to mix profiles? `/nw-rigor custom` walks through each setting.
+## How a delivery runs
 
-```
-/nw-rigor lean        # prototype fast
-/nw-deliver           # haiku crafter, no review, RED→GREEN only
-/nw-rigor standard    # ready to ship — bump up
-/nw-deliver           # sonnet crafter, haiku reviewer, full TDD
-```
+Three routes are open to a request. **Spine waves** run the `/nw-*` commands with their gates, independent review and source-blind examination for a whole feature. **Host-led nwdes steps** let the root invoke roles with generated prompts; roles record their own values and close their drafts; a public oracle is approved before code. **Working directly** keeps no gate and no delivery authority. Choose by what must survive the session and what a late refusal would cost; the choice is stated openly. Working directly remains a valid answer when little must survive.
 
-## Understanding DES Messages
+Every request starts with a working **S/M/L assessment** — small, medium, or large — with its reason: outcome, number and coupling of values, correction radius, cost of a late refusal. It is a judgment to revise as evidence changes; it never selects the route, and no command routes by it.
 
-DES is nWave's quality enforcement layer. It monitors every Agent tool invocation during feature delivery to enforce TDD discipline and protect accidental edits. Most DES messages are normal enforcement, not errors. They appear when agents skip required safety checks or when your code contains patterns that look like step execution.
+Only two waves are required for development: **DISTILL**, which authors the executable public oracle, and **DELIVER**, which implements against it. DISCOVER, DIVERGE, DISCUSS, DESIGN and DEVOPS are optional; each answers a question you may not have.
 
-DES also runs automatic housekeeping at every session start: it removes audit logs beyond the retention window, cleans up signal files left by crashed sessions, and rotates the skill-loading log when it grows too large. This happens silently in the background and never blocks your session.
+A delivery produces its artifacts in this order (all in your repository):
 
-If `nwave-ai doctor` reports a problem at startup, you will see an advisory in your Claude Code session context. Run `nwave-ai doctor` from the terminal to get the specific fix.
+1. The root records product facts: promises and slices. A **slice** is one observable behavior.
+2. The architect records design facts, when the request needs them.
+3. The examiner fixes **expectations**: the statements it will later judge.
+4. The acceptance designer writes the **oracle** — an executable check of the promised public behavior — and the oracle is independently approved before any production code.
+5. The host observes the oracle fail (**RED**), the crafter implements, the host observes it pass (**GREEN**).
+6. A fresh independent **review** judges the whole candidate, including the oracle.
+7. **EXAMINE**: a source-blind examiner judges every expectation from the user's point of view, without seeing the source, reviews or producer claims.
+8. The candidate integrates.
+One optional **charter** records the feature's intent with at least one positive and one negative observation; it is written once for the whole feature, never per slice.
 
-| Message | What It Means | What To Do |
-|---------|---------------|-----------|
-| **DES_MARKERS_MISSING** | Agent prompt mentions a step ID (01-01 pattern) but lacks DES markers. | Either: add DES markers for step execution, OR add `<!-- DES-ENFORCEMENT : exempt -->` comment if it's not actually step work. |
-| **Source write blocked** | You tried to edit a file during active `/nw-deliver` outside a DES task. | Edit requests must go through the active deliver session. If you need to make changes, finalize the current session first. |
-| **TDD phase incomplete** | Sub-agent returned without finishing all required TDD phases. | Re-dispatch the same agent to complete missing phases (typically COMMIT or refactoring steps). |
-| **nWave update available** | SessionStart detected a newer version available. | Optional. Run `uv tool upgrade nwave-ai && nwave-ai install` (or `pipx upgrade nwave-ai && nwave-ai install`) when ready to upgrade, or dismiss and continue working. |
-| **False positive blocks** | Your prompt accidentally matches step-ID pattern (e.g., dates like "2026-02-09"). | Add `<!-- DES-ENFORCEMENT : exempt -->` comment to exempt the agent call from step-ID enforcement. |
+The **handoff** — `docs/feature/<id>/handoff.json` in your repository — holds every recorded fact of the feature. nwdes keeps no workflow state: after an interruption, you resume by reading the handoff and the briefs rendered from it, not by replaying a pipeline. [Understanding delivery artifacts](https://github.com/nWave-ai/nWave/tree/main/docs/guides/understanding-delivery-artifacts/) explains each artifact, its producer and the flow diagram.
 
-These messages protect code quality but never prevent your work. They guide you toward the safe path.
+## nwdes is a tool, not a runner
 
-## Documentation
+nwdes builds prompts and packets, records the typed values that roles supply, and refuses what does not add up. It makes no model calls, stores no verdicts of its own, and has no gates: the root assistant chooses the next step; humans decide scope. Roles record through typed verbs — the first `add` opens a draft, `close` publishes it, and a refusal preserves the draft unchanged. Wrong states are made hard to write: you cannot close an incomplete record, submit another role's draft, or hand-edit the handoff instead of recording facts.
 
-### Getting Started
+Every refusal names WHAT is wrong, WHY it was refused, and HOW to correct it. For example, `nwdes review close` without a recorded observation refuses `ReviewUnobserved`, naming the missing fact and how to record one — an unobserved review cannot be published. [Understanding nwdes](https://github.com/nWave-ai/nWave/tree/main/docs/guides/understanding-nwdes/) expands the tool's contract and its limits.
 
-- **[Installation Guide](https://github.com/nWave-ai/nWave/blob/main/docs/guides/installation-guide/README.md)** — Setup instructions
-- **[Your First Feature](docs/guides/tutorial-first-feature/)** — Build a feature end-to-end (tutorial)
-- **[Team Rollout Guide](docs/guides/team-rollout.md)** — Onboard a second developer onto an nWave project
-- **[Jobs To Be Done](docs/guides/jobs-to-be-done-guide/)** — Which workflow fits your task
+## Parallel work on one machine
 
-### Guides and Reference
+A **lane** is an isolated Git worktree and branch for one feature: `nwdes lane open`, then `nwdes lane compose` (merge trunk in; it prints the EXPECTED and CANDIDATE identities), then `nwdes lane integrate` (fast-forward trunk and remove the lane, refusing every problem in one pass). Independent features run in parallel lanes. Open lanes are a work-in-progress count, not a cap: what admits a local test run is machine capacity — check available memory before each run, never starve the box, and send broad runs to CI. CI gates the push, never the local integration. [Throughput and swarm](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/throughput-and-swarm.md), [use lanes](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/use-lanes.md).
 
-- **[Agents and Commands Reference](docs/reference/index.md)** — All agents, commands, skills, templates
-- **[Wave Directory Structure](docs/guides/wave-directory-structure/)** — How wave outputs are organized per feature
-- **[Invoke Reviewers](docs/guides/invoke-reviewer-agents/)** — Peer review workflow
-- **[Troubleshooting](docs/guides/troubleshooting-guide/)** — Common issues and fixes
+## Choosing a model per role
 
-## Community
+The role defines the work; the model is your choice, per role. The mechanism is the host's agent file: on Claude Code each agent's frontmatter carries a `model:` field (values such as `claude-opus-5`, `sonnet`, `haiku`, or `inherit`) — edit the installed file to change one role. On OMP, installed roles inherit your configured model. On Codex, each agent TOML has an optional `model` field; Claude-named selectors are dropped at install (with a visible notice), so Codex roles answer on the host-configured model unless you set a Codex model there. [Assigning models to roles](https://github.com/nWave-ai/nWave/tree/main/docs/guides/assigning-models-to-roles.md) covers every host, including the ones without role agents.
 
-- **[Discord](https://discord.gg/Cywj3uFdpd)** — Questions, feedback, success stories
-- **[GitHub Issues](https://github.com/nWave-ai/nWave/issues)** — Bug reports and feature requests
-- **[Contributing](CONTRIBUTING.md)** — Development setup and guidelines
+## Configuration
 
-## Breaking Changes
+nwdes reads nested JSON tiers; a later tier overrides the same key: global `~/.nwave/config.json`, then the repository's `.nwave/config.json`, then — for destination keys only — the feature's `.nwave/features/<id>/config.json`. Keys select output directories, the lane trunk branch (`lanes.trunk`, no built-in default) and the Jev choice. Project activation is separate and opt-in (`nwave-ai project enable` / `disable`; machine-wide `nwave-ai mode opt-in|all`). How much explanation you get after a completed wave is `documentation.expansion_prompt` in the global file (`ask-intelligent` by default). Details: [configuration reference](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/reference/index.md#configuration), [activating nWave per project](https://github.com/nWave-ai/nWave/tree/main/docs/guides/activating-nwave-per-project.md), [documentation detail](https://github.com/nWave-ai/nWave/tree/main/docs/guides/configuring-doc-density.md).
 
-### Command Format (v2.8.0)
+## Jev and privacy
 
-**Starting with v2.8.0, all slash commands use hyphen format instead of colons.**
+Jev (TypeSafe System One) answers bounded semantic questions — a choice between stated candidates, a score against a rubric — for supported task-level decisions. Jev is authorized by default in nWave. `nwdes` resolves the authorization from the `--jev` flag when given, else the repository's `.nwave/config.json`, else the global `~/.nwave/config.json`, else the default `authorized`; an explicit refusal always wins, and every role bundle prints the resolved value. What authorizes Jev is the default policy plus your refusal switch. The `TYPESAFE_API_KEY` environment variable only lets the service accept requests; without it nothing is sent and the caller records `typesafe: unavailable` — nwdes never reads the variable. Credentials, secrets, personal data, private findings and confidential identifiers are never sent. nWave collects no telemetry: workflow artifacts stay on your machine. [Understanding Jev](https://github.com/nWave-ai/nWave/tree/main/docs/guides/understanding-jev.md), [Privacy Policy](PRIVACY.md).
 
-| Before (v2.7.x) | After (v2.8.0+) |
+## Design depth, when you want it
+
+For a design that keeps giving wrong answers, nWave's algebraic protocol names what a user can observe and what counts as equal before choosing any representation, then follows each contradiction back to the representation that caused it. **Prefactoring** is a behavior-preserving structural move made before new behavior: the design declares it, and the check runs before the move and again after the move, before any new behavior exists. Formal checkers are optional and per role: Quint explores product scenarios for the product owner; Agda, Quint and TLA+ check architect models. nWave ships none of them — the assistant offers the installation once, and never blocks on a proof. [Understanding design rigor](https://github.com/nWave-ai/nWave/tree/main/docs/guides/understanding-design-rigor.md).
+
+## What nWave writes, and when not to use it
+
+In your repository: `.nwave/config.json` (activation and project settings) and, per feature, `docs/feature/<id>/handoff.json` with `brief.md`, `architecture.md`, `acceptance.md` (plus HTML renderings) and the roles' run records beside it. The installer writes only host directories; preview it with `--dry-run`. Commits stay yours: one plain `git commit` per green slice, hooks on — nwdes never passes `--no-verify`. The attribution trailer is on by default; `nwave-ai attribution off` removes it.
+
+Not every job needs nWave. Working directly stays open and honest: no gate, no retained authority, nothing that attests the result. A one-off script, a throwaway probe, or a change you will verify yourself may not need roles, oracles or review. If you want the result to survive the session — reviewed, examined, resumable — use a route that provides it.
+
+## Reference
+
+| Look up | Read |
 |---|---|
-| `/nw:deliver` | `/nw-deliver` |
-| `/nw:design` | `/nw-design` |
-| `/nw:discuss` | `/nw-discuss` |
-| `/nw:distill` | `/nw-distill` |
-| `/nw:discover` | `/nw-discover` |
-| *All other commands* | `/nw-{command}` |
+| nwdes verbs and options | [nwdes reference](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/reference/index.md) |
+| The delivery workflow contract | [nw-nwdes reference](https://github.com/nWave-ai/nWave/tree/main/docs/reference/skills/nw-nwdes.md) |
+| Routing and size assessment | [nw-auto reference](https://github.com/nWave-ai/nWave/tree/main/docs/reference/skills/nw-auto.md) |
+| Models per role | [nw-rigor reference](https://github.com/nWave-ai/nWave/tree/main/docs/reference/skills/nw-rigor.md) |
+| Terms | [Glossary](https://github.com/nWave-ai/nWave/tree/main/docs/guides/glossary.md) |
+| Host support levels | [Vendor support](https://github.com/nWave-ai/nWave/tree/main/docs/guides/vendor-support.md) |
+| Agents, skills, commands | [Agents index](https://github.com/nWave-ai/nWave/tree/main/docs/reference/agents/index.md), [Skills index](https://github.com/nWave-ai/nWave/tree/main/docs/reference/skills/index.md), [Commands index](https://github.com/nWave-ai/nWave/tree/main/docs/reference/commands/index.md) |
+| Troubleshooting, offline, teams | [Troubleshooting](https://github.com/nWave-ai/nWave/tree/main/docs/guides/troubleshooting-guide/README.md), [Offline install](https://github.com/nWave-ai/nWave/tree/main/docs/guides/offline-install.md), [Team rollout](https://github.com/nWave-ai/nWave/tree/main/docs/guides/team-rollout.md) |
+| Uninstall | `nwave-ai uninstall` (see the per-host guides) |
+| What changed in v4 | [What's new in v4](https://github.com/nWave-ai/nWave/tree/main/docs/guides/whats-new-v4/) |
 
-**Why?** Commands migrated from Claude Code's dynamic `commands/` directory to the stable `skills/` system to prevent commands from disappearing during long sessions.
+## Community and privacy
 
-**To upgrade**: Run `uv tool upgrade nwave-ai && nwave-ai install` (or `pipx upgrade nwave-ai && nwave-ai install`). Old `/nw:` commands are automatically removed.
+Report defects and feature requests on [GitHub Issues](https://github.com/nWave-ai/nWave/issues); discuss on [Discord](https://discord.gg/Cywj3uFdpd); develop with [Contributing](CONTRIBUTING.md). Workflow artifacts stay local; no telemetry. See the [Privacy Policy](PRIVACY.md).
 
-## Privacy
-
-nWave does not collect user data. See [Privacy Policy](PRIVACY.md) for details.
-
-## License
-
-MIT — see [LICENSE](LICENSE) for details.
+MIT licensed. See [LICENSE](LICENSE).

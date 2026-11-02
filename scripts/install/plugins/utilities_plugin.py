@@ -38,7 +38,10 @@ class UtilitiesPlugin(InstallationPlugin):
     """Plugin for installing utilities into the nWave framework."""
 
     # Utility scripts installed (with version checking) to ~/.claude/scripts/
-    UTILITY_SCRIPTS = ["install_nwave_target_hooks.py", "validate_step_file.py"]
+    UTILITY_SCRIPTS = [
+        "install_nwave_target_hooks.py",
+        "validate_step_file.py",
+    ]
 
     def __init__(self):
         """Initialize utilities plugin with name and priority."""
@@ -217,23 +220,46 @@ class UtilitiesPlugin(InstallationPlugin):
                     errors=["Target directory not found"],
                 )
 
-            # Check for utility scripts (primary: .py files)
-            utility_scripts = list(target_scripts_dir.glob("*.py"))
+            # Check the PROPERTY this plugin owns -- each of its OWN declared
+            # UTILITY_SCRIPTS landed at the target -- never the proxy "some .py
+            # file exists here" (GDP-8): the target directory is SHARED with the
+            # DES plugin family, so a bare glob('*.py') is satisfied by a
+            # sibling plugin's files even when zero utility scripts installed.
+            missing = [
+                name
+                for name in self.UTILITY_SCRIPTS
+                if not (target_scripts_dir / name).exists()
+            ]
 
-            if not utility_scripts:
+            if len(missing) == len(self.UTILITY_SCRIPTS):
                 return PluginResult(
                     success=False,
                     plugin_name=self.name,
-                    message="Utilities verification failed: no utility scripts found",
-                    errors=["No .py files in target directory"],
+                    message=(
+                        "Utilities verification failed: no utility scripts found "
+                        f"({', '.join(missing)})"
+                    ),
+                    errors=[f"Missing utility script: {name}" for name in missing],
                 )
 
-            context.logger.info(f"  ✅ Verified {len(utility_scripts)} utility scripts")
+            if missing:
+                return PluginResult(
+                    success=False,
+                    plugin_name=self.name,
+                    message=(
+                        "Utilities verification failed: missing declared "
+                        f"utility scripts: {', '.join(missing)}"
+                    ),
+                    errors=[f"Missing utility script: {name}" for name in missing],
+                )
+
+            present_count = len(self.UTILITY_SCRIPTS)
+            context.logger.info(f"  ✅ Verified {present_count} utility scripts")
 
             return PluginResult(
                 success=True,
                 plugin_name=self.name,
-                message=f"Utilities verification passed ({len(utility_scripts)} scripts)",
+                message=f"Utilities verification passed ({present_count} scripts)",
             )
         except Exception as e:
             context.logger.error(f"  ❌ Failed to verify utilities: {e}")

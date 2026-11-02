@@ -22,6 +22,7 @@ Usage:
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from scripts.shared.install_paths import host_neutral_runtime_dir
 from scripts.shared.skill_distribution import (
     SCRIPTS_FAMILY_KEY,
     SKILLS_FAMILY_KEY,
@@ -107,18 +108,55 @@ class InstallationVerifier:
         ("skills", SKILLS_FAMILY_KEY),
     )
 
-    def __init__(self, claude_config_dir: Path | None = None):
+    def __init__(
+        self,
+        claude_config_dir: Path | None = None,
+        *,
+        use_host_neutral_runtime: bool = False,
+        check_essential_commands: bool = True,
+        check_manifest: bool = True,
+        require_runtime_package: bool = True,
+    ):
         """Initialize InstallationVerifier.
 
         Args:
             claude_config_dir: Optional path to Claude config directory.
                               Defaults to ~/.claude via PathUtils.
+            use_host_neutral_runtime: Verify DES under the shared runtime
+                                      instead of Claude's legacy location.
+            check_essential_commands: Whether the essential nw-* command
+                                      skills are expected at all. They are
+                                      shipped only by CommandsPlugin, which
+                                      install_nwave.py's _create_plugin_registry
+                                      registers only when "claude_code" is in
+                                      the requested platforms -- a Copilot/
+                                      OpenCode-only install never receives
+                                      them, so judging it against this list
+                                      fails validation unconditionally
+                                      regardless of what actually succeeded.
+            check_manifest: Whether nwave-manifest.txt is expected at all.
+                             install_nwave.py's main() only writes it under
+                             claude_config_dir when "claude_code" is among the
+                             effective target platforms -- a native-only
+                             target (Codex/Copilot/OpenCode alone or combined)
+                             has no Claude discovery surface to hold it, so
+                             judging it against this file fails validation
+                             unconditionally regardless of what actually
+                             succeeded (same class of gap as
+                             check_essential_commands above).
         """
         self.claude_config_dir = claude_config_dir or PathUtils.get_claude_config_dir()
         self.agents_dir = self.claude_config_dir / "agents" / "nw"
         self.skills_dir = self.claude_config_dir / "skills"
-        self.des_dir = self.claude_config_dir / "lib" / "python" / "des"
+        self.des_dir = (
+            host_neutral_runtime_dir() / "des"
+            if use_host_neutral_runtime
+            else self.claude_config_dir / "lib" / "python" / "des"
+        )
         self.manifest_path = self.claude_config_dir / "nwave-manifest.txt"
+        self._check_essential_commands = check_essential_commands
+        self._check_manifest = check_manifest
+        self._require_runtime_package = require_runtime_package
 
     def verify_agent_files(self) -> int:
         """Count agent markdown files in the agents directory.
@@ -159,8 +197,12 @@ class InstallationVerifier:
         """Check if the installation manifest file exists.
 
         Returns:
-            True if nwave-manifest.txt exists, False otherwise.
+            True if nwave-manifest.txt exists, or if this target platform
+            never receives a Claude discovery surface to write it into (see
+            check_manifest in __init__); False otherwise.
         """
+        if not self._check_manifest:
+            return True
         return self.manifest_path.exists()
 
     def verify_essential_commands(self) -> list[str]:
@@ -170,8 +212,12 @@ class InstallationVerifier:
 
         Returns:
             List of missing essential command-skill names.
-            Empty list if all essential commands are present.
+            Empty list if all essential commands are present, or if this
+            target platform never receives CommandsPlugin in the first place
+            (see check_essential_commands in __init__).
         """
+        if not self._check_essential_commands:
+            return []
         missing = []
         for skill_name in self.ESSENTIAL_COMMAND_SKILLS:
             skill_path = self.skills_dir / skill_name / "SKILL.md"
@@ -259,13 +305,15 @@ class InstallationVerifier:
         # Verification fails if:
         # - Essential command-skills are missing
         # - Manifest does not exist
-        # - Skills are not installed
+        # - Skills are not installed (only when this target expects them --
+        #   SkillsPlugin, like CommandsPlugin, ships only when "claude_code"
+        #   is requested; see check_essential_commands in __init__)
         # - DES module is not installed
         success = (
             len(missing_essential) == 0
             and manifest_exists
-            and skill_file_count > 0
-            and des_installed
+            and (skill_file_count > 0 or not self._check_essential_commands)
+            and (des_installed or not self._require_runtime_package)
         )
 
         # Build result message
@@ -285,7 +333,7 @@ class InstallationVerifier:
                 )
             if not manifest_exists:
                 issues.append("manifest file not found")
-            if skill_file_count == 0:
+            if skill_file_count == 0 and self._check_essential_commands:
                 issues.append("no skills installed")
             if not des_installed:
                 issues.append("DES module not installed")

@@ -38,11 +38,16 @@ Desired Outcome
 **Formula**: Score = Importance + Max(0, Importance - Satisfaction)
 Importance: 1-10 | Satisfaction: 1-10 | Max score: 20
 
+Use the canonical JTBD classification bands:
+
 | Score | Meaning | Action |
 |-------|---------|--------|
-| >8 | High importance, satisfaction gap -- underserved | Pursue |
-| 5-8 | Moderate importance or partially served | Evaluate |
-| <5 | Low importance or well-served | Deprioritize |
+| 15 <= score <= 20 | Extremely underserved | High-priority investment |
+| 12 < score < 15 | Underserved | Strong opportunity |
+| 10 <= score <= 12 | Appropriately served | Maintain |
+| <10 | Overserved | Consider simplification |
+
+DISCOVER G2 uses >8 as its selection threshold. Passing that threshold is not evidence that an outcome is underserved; rank candidates without changing their JTBD classification.
 
 Process: gather importance + satisfaction from 5+ interviews, calculate per opportunity, rank, select top 2-3.
 

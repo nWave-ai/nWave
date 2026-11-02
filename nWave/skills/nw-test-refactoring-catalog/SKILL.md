@@ -67,6 +67,7 @@ Extract: CreatePremiumCustomer(), CreateHighValueOrder()
 - **Detection**: if, switch, for loops in test methods
 - **Solution**: replace with parameterized tests
 
+Python illustration (pytest binding; use the native table/parameterized-test facility elsewhere):
 ```python
 # Before: if/else in test
 # After:

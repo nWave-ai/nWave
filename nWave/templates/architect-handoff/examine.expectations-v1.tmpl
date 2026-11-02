@@ -1,0 +1,24 @@
+## FROM NWDES
+jev: {{jev}}
+Public promises:
+{{promises}}
+
+Current fixed expectations:
+{{expectations}}
+
+## Peer contact
+Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-invariants); apply within existing role boundaries.
+
+## TASK
+First set (Current fixed expectations is None.): Record expectations for the public promises with nwdes expectations row add, citing covered promise ids; nwdes assigns row ids.
+
+Revision (Current fixed expectations has rows): Use expectations open --from-current, remove replaced rows and add revised expectations. Preserve unchanged rows and promise mappings. Cover every current promise, then close with --revise; never revise to fit implementation.
+
+Judge supplied public promises and fixed expectations from the user's point of view, not implementation details. You have no need to inspect code. Record rows through the CLI, never document edits.
+
+## RECORD
+Use the generated nwdes expectations verbs through Bash, then close with outcome and diagnostic. Never write JSON.
+
+## FROM THE ROOT (verbatim)
+{{root_input}}
+

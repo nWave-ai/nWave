@@ -4,7 +4,7 @@
 Creates the messy expense-tracker starter project — intentionally smelly
 code with passing tests, ready to refactor.
 
-Run from outside the nwave-dev repo (e.g. ``cd $(mktemp -d)`` first).
+Run from outside the nWave repo (e.g. ``cd $(mktemp -d)`` first).
 See manual-setup.md for the same steps written as prose.
 """
 

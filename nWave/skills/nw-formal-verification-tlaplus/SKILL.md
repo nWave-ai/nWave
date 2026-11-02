@@ -7,6 +7,8 @@ disable-model-invocation: true
 
 # Formal Verification with TLA+
 
+For a selected formal claim, load `nw-solution-architect-formal-verification` for toolchain probing, actual checker execution, refinement evidence and unavailable-tool fallback. A tool's presence or a version probe is not proof of the claim; this reference skill does not select a new proof obligation.
+
 ## When to Recommend Formal Verification
 
 ### Decision Tree

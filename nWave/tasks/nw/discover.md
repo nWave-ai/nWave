@@ -9,9 +9,19 @@ argument-hint: "[product-concept] - Optional: --interview-depth=[overview|compre
 
 ## Overview
 
-Execute evidence-based product discovery through assumption testing and market validation. First wave in nWave (DISCOVER > DISCUSS > SPIKE > DESIGN > DEVOPS > DISTILL > DELIVER).
+Execute evidence-based product discovery through assumption testing and market validation. First wave in nWave (DISCOVER > DIVERGE > DISCUSS > DESIGN > DEVOPS > DISTILL > DELIVER).
 
 Scout establishes product-market fit through rigorous customer development using Mom Test interviewing principles and continuous discovery practices.
+
+## Delivery route
+
+Use nwdes for delivery: read `nw-nwdes`. Discovery evidence informs product
+intent; it does not create a delivery plan or a second feature handoff.
+When proceeding to DISCUSS, the host creates or selects the nwdes feature and
+builds the installed Product Owner's prompt with `nwdes prompt`. The PO records
+selected evidence-backed promises, scope and decisions through Bash with
+`nwdes product` recording verbs, then closes. The host renders it with `nwdes document`;
+neither discovery prose nor a copied role reply replaces that authority.
 
 ## Context Files Required
 
@@ -22,27 +32,17 @@ Scout establishes product-market fit through rigorous customer development using
 
 None (DISCOVER is the first wave).
 
-## Wave Decisions Summary
+## SSOT Update
 
-Before completing DISCOVER, produce `docs/feature/{feature-id}/discover/wave-decisions.md`:
-
-```markdown
-# DISCOVER Decisions — {feature-id}
-
-## Key Decisions
-- [D1] {decision}: {rationale} (see: {source-file})
-
-## Constraints Established
-- {constraint from evidence}
-
-## Validated Assumptions
-- {assumption validated by evidence, with confidence level}
-
-## Invalidated Assumptions
-- {assumption disproved, with evidence reference}
-```
-
-This summary enables downstream waves to quickly assess DISCOVER outcomes without reading all artifacts.
+DISCOVER writes its lasting facts directly to the durable product SSOT — not
+to a per-wave decision file. Update the artifact that owns each fact:
+validated/invalidated assumptions and problem evidence go to
+`docs/product/vision.md` and/or `docs/product/jobs.yaml` (create under
+`docs/product/` if it does not yet exist — this is SSOT bootstrap); a
+quantified KPI baseline goes to `docs/product/kpi-contracts.yaml`. Preserve
+provenance (source, sample size, date, confidence) inline in the updated
+artifact. Downstream waves read these SSOT files directly; there is no
+DISCOVER decision-summary ledger to assess instead.
 
 ## Document Update (Back-Propagation)
 
@@ -60,9 +60,6 @@ Execute \*discover for {product-concept-name}.
 - interactive: high | output_format: markdown
 - interview_depth: comprehensive | evidence_standard: past_behavior
 
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes. This gives the user real-time visibility into progress.
 
 ## Success Criteria
 
@@ -88,12 +85,12 @@ Scout conducts customer development interviews, validates problem-solution fit t
 
 ## Expected Outputs
 
+DISCOVER returns concise evidence directly — problem validation, opportunity
+assessment, solution testing signal, lean-canvas shape and interview
+citations — and updates only the durable product SSOT it owns:
+
 ```
-docs/feature/{feature-id}/discover/
-  problem-validation.md
-  opportunity-tree.md
-  solution-testing.md
-  lean-canvas.md
-  interview-log.md
-  wave-decisions.md
+docs/product/
+  vision.md and/or jobs.yaml     (updated with validated/invalidated assumptions + provenance)
+  kpi-contracts.yaml             (updated, if a quantified baseline was established)
 ```

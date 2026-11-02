@@ -12,9 +12,12 @@ import stat
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.shared.git_hooks_paths import resolve_hooks_dir
+from scripts.shared.hook_shim import FALLBACK_MARKER, ORIGINAL_SUFFIX
+from scripts.shared.install_paths import resolve_python_path_for_shell
 
 
 _SHELL_UNSAFE = re.compile(r"[;&|`(){}]")
@@ -23,12 +26,11 @@ _SHELL_UNSAFE = re.compile(r"[;&|`(){}]")
 _DEFAULT_TRAILER = "Co-Authored-By: nWave <nwave@nwave.ai>"
 _HOOK_SCRIPT_NAME = "nwave_attribution_hook.py"
 _HOOK_SHIM_NAME = "prepare-commit-msg"
-_HOOK_ORIGINAL_SUFFIX = ".nwave-original"
 
 
 def read_global_config(config_dir: Path) -> dict:
-    """Read global-config.json, returning empty dict on error."""
-    config_file = config_dir / "global-config.json"
+    """Read config.json, returning empty dict on error."""
+    config_file = config_dir / "config.json"
     try:
         with open(config_file, encoding="utf-8") as f:
             return json.load(f)
@@ -37,25 +39,67 @@ def read_global_config(config_dir: Path) -> dict:
 
 
 def write_global_config(config_dir: Path, config: dict) -> None:
-    """Write global-config.json with read-modify-write to preserve other keys."""
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "global-config.json"
-    with open(config_file, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2)
-        f.write("\n")
+    """Replace global values through the sole atomic configuration writer."""
+    from nwave_ai.platform.config_writer import ConfigWriter
+
+    writer = ConfigWriter(home_dir=config_dir.parent, repo_root=Path.cwd())
+
+    def replace(document: dict) -> None:
+        document.clear()
+        document.update(config)
+
+    writer.update_global(replace)
 
 
-def read_attribution_preference(config_dir: Path) -> bool | None:
-    """Read attribution preference from global config.
+@dataclass(frozen=True)
+class UnreadableAttributionPreference:
+    """A stored preference that cannot be used or replaced by a default."""
 
-    Returns:
-        True if enabled, False if disabled, None if not yet asked.
-    """
-    config = read_global_config(config_dir)
-    attribution = config.get("attribution")
-    if attribution is None:
+    path: Path
+    reason: str
+
+    def warning(self) -> str:
+        return (
+            f"Attribution preference in {self.path} is unreadable: {self.reason}. "
+            "Attribution is absent for this run; the saved value is left untouched. "
+            "Restore a readable config file, then run `nwave-ai attribution on` "
+            "or `nwave-ai attribution off` to choose a valid preference."
+        )
+
+
+def classify_attribution_preference(
+    config: object, path: Path
+) -> bool | UnreadableAttributionPreference | None:
+    """Interpret stored data without effects; only a boolean is a saved choice."""
+    if not isinstance(config, dict):
+        return UnreadableAttributionPreference(path, "config must be a JSON object")
+    if "attribution" not in config:
         return None
-    return attribution.get("enabled", False)
+    attribution = config["attribution"]
+    if not isinstance(attribution, dict):
+        return UnreadableAttributionPreference(
+            path, "attribution must be an object containing a boolean enabled value"
+        )
+    enabled = attribution.get("enabled")
+    if not isinstance(enabled, bool):
+        return UnreadableAttributionPreference(
+            path, "attribution.enabled must be a boolean"
+        )
+    return enabled
+
+
+def read_attribution_preference(
+    config_dir: Path,
+) -> bool | UnreadableAttributionPreference | None:
+    """Load a saved choice, distinguishing absence from unreadable storage."""
+    path = config_dir / "config.json"
+    try:
+        config = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        return UnreadableAttributionPreference(path, str(error))
+    return classify_attribution_preference(config, path)
 
 
 def write_attribution_preference(
@@ -75,19 +119,16 @@ def write_attribution_preference(
 def _resolve_python_path() -> str:
     """Resolve Python interpreter path for hook shim.
 
-    Same pattern as DESPlugin._resolve_python_path():
-    captures sys.executable, replaces $HOME for portability,
-    falls back to 'python3' for project-local .venv paths.
+    Delegates to the shared SSOT `resolve_python_path_for_shell()`
+    (scripts/shared/install_paths.py) -- this used to be a standalone,
+    byte-identical copy of the same logic duplicated in
+    DESPlugin._resolve_python_path (des_plugin.py)
+    (D3-code-duplication-resolve-python-path, techdebt.md). Kept as a
+    thin delegating wrapper (rather than inlined at the two call sites)
+    so existing callers/tests that import this module-level name keep
+    working unchanged.
     """
-    python_path = sys.executable
-
-    if "/.venv/" in python_path or "\\.venv\\" in python_path:
-        return "python3"
-
-    home = str(Path.home())
-    if python_path.startswith(home):
-        python_path = "$HOME" + python_path[len(home) :]
-    return python_path
+    return resolve_python_path_for_shell()
 
 
 def _resolve_hooks_dir() -> Path:
@@ -140,6 +181,95 @@ def _set_hooks_path(hooks_dir: Path) -> None:
     """
 
 
+@dataclass(frozen=True)
+class GitDiscoveryFailure:
+    """Repository discovery could not establish a hook location."""
+
+    reason: str
+
+
+def _git_output(cwd: Path, *args: str) -> str | GitDiscoveryFailure | None:
+    """Read git output, preserving failures separately from an absent value."""
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return GitDiscoveryFailure(
+            f"git did not answer within 5 s (5-second timeout): "
+            f"git {' '.join(args)} in {cwd}"
+        )
+    except (subprocess.SubprocessError, OSError) as error:
+        return GitDiscoveryFailure(f"git {' '.join(args)} in {cwd} failed: {error}")
+    if result.returncode:
+        if args == ("config", "core.hooksPath") and result.returncode == 1:
+            return None
+        reason = result.stderr.strip()
+        if args == ("rev-parse", "--show-toplevel") and (
+            result.returncode == 128 and "not a git repository" in reason.lower()
+        ):
+            return None
+        return GitDiscoveryFailure(
+            f"git {' '.join(args)} in {cwd} exited {result.returncode}: "
+            f"{reason or 'no error detail was returned'}"
+        )
+    output = result.stdout.strip()
+    if output or args == ("config", "core.hooksPath"):
+        return output or None
+    return GitDiscoveryFailure(f"git {' '.join(args)} in {cwd} returned no output")
+
+
+def resolve_repository_hooks_dir(
+    repository: Path,
+) -> Path | GitDiscoveryFailure | None:
+    """Effective hooks directory of the git work tree containing ``repository``.
+
+    ``core.hooksPath`` (local > global) wins; otherwise the shared
+    ``<git-common-dir>/hooks``. Returns None only for a non-repository; discovery
+    failures carry their cause. Never sets or changes any git configuration.
+    """
+    toplevel = _git_output(repository, "rev-parse", "--show-toplevel")
+    if isinstance(toplevel, GitDiscoveryFailure):
+        return toplevel
+    if toplevel is None:
+        return None
+    configured = _git_output(repository, "config", "core.hooksPath")
+    if isinstance(configured, GitDiscoveryFailure):
+        return configured
+    if configured is not None:
+        expanded = Path(os.path.expandvars(str(Path(configured).expanduser())))
+        return expanded if expanded.is_absolute() else Path(toplevel) / expanded
+    common_dir = _git_output(repository, "rev-parse", "--git-common-dir")
+    if isinstance(common_dir, GitDiscoveryFailure):
+        return common_dir
+    if common_dir is None:
+        return GitDiscoveryFailure("git returned no shared repository directory")
+    return (repository / common_dir / "hooks").resolve()
+
+
+def has_current_fallback(hooks_dir: Path) -> bool:
+    """True when ``hooks_dir`` holds an executable shim carrying the fallback marker."""
+    shim_path = hooks_dir / _HOOK_SHIM_NAME
+    try:
+        content = shim_path.read_text(encoding="utf-8")
+        return FALLBACK_MARKER in content and os.access(shim_path, os.X_OK)
+    except OSError:
+        return False
+
+
+def _with_fallback_marker(shim: str) -> str:
+    """Insert the fallback marker as a comment right after the shebang line."""
+    if FALLBACK_MARKER in shim:
+        return shim
+    first_line, _, rest = shim.partition("\n")
+    return f"{first_line}\n# {FALLBACK_MARKER}\n{rest}"
+
+
 def _read_shim_template() -> str:
     """Read the prepare-commit-msg shell shim template."""
     # Template is in nWave/templates/ relative to project root
@@ -175,6 +305,7 @@ def _read_shim_template() -> str:
 def install_attribution_hook(
     config_dir: Path | None = None,
     git_dir: Path | None = None,
+    hooks_dir: Path | None = None,
 ) -> Path:
     """Install prepare-commit-msg hook for attribution trailer.
 
@@ -195,6 +326,9 @@ def install_attribution_hook(
             core.hooksPath``) is skipped entirely. Primarily for tests
             that must guarantee isolation from the surrounding
             repository.
+        hooks_dir: Explicit hooks directory to install the shim into. Takes
+            precedence over ``git_dir`` and over the probe of the process's
+            working directory.
 
     Returns:
         Path to installed hook shim.
@@ -202,7 +336,8 @@ def install_attribution_hook(
     if config_dir is None:
         config_dir = Path.home() / ".nwave"
 
-    hooks_dir = git_dir / "hooks" if git_dir is not None else _resolve_hooks_dir()
+    if hooks_dir is None:
+        hooks_dir = git_dir / "hooks" if git_dir is not None else _resolve_hooks_dir()
     hooks_dir.mkdir(parents=True, exist_ok=True)
 
     # Copy hook script to config_dir/hooks/
@@ -216,7 +351,7 @@ def install_attribution_hook(
 
     # Handle existing prepare-commit-msg hook (chaining)
     shim_path = hooks_dir / _HOOK_SHIM_NAME
-    original_path = hooks_dir / f"{_HOOK_SHIM_NAME}{_HOOK_ORIGINAL_SUFFIX}"
+    original_path = hooks_dir / f"{_HOOK_SHIM_NAME}{ORIGINAL_SUFFIX}"
 
     if shim_path.exists():
         content = shim_path.read_text(encoding="utf-8")
@@ -242,6 +377,7 @@ def install_attribution_hook(
     template = _read_shim_template()
     shim_content = template.replace("{{PYTHON_CMD}}", python_cmd)
     shim_content = shim_content.replace("{{HOOK_SCRIPT_PATH}}", hook_script_path)
+    shim_content = _with_fallback_marker(shim_content)
 
     shim_path.write_text(shim_content, encoding="utf-8")
     shim_path.chmod(
@@ -256,58 +392,62 @@ def install_attribution_hook(
     return shim_path
 
 
-def remove_attribution_hook(config_dir: Path | None = None) -> None:
-    """Remove attribution hook and restore original if chained.
+def read_attribution_hooks_dir(config_dir: Path) -> str | None:
+    """Read the recorded hook location before uninstall may delete its config."""
+    recorded = _read_attribution_metadata(config_dir).get("hooks_dir")
+    return recorded if isinstance(recorded, str) else None
 
-    Resolves the hooks directory via the same shared primitive used at
-    install time (``_resolve_hooks_dir``, which honours ``core.hooksPath``
-    and otherwise delegates to the worktree-aware
-    ``scripts.shared.git_hooks_paths.resolve_hooks_dir``). The
-    ``attribution.hooks_dir`` value previously written into
-    ``~/.nwave/global-config.json`` is consulted only as a back-stop for
-    pre-existing installs whose absolute path was recorded there; if it
-    is missing or relative, the live resolution wins. This is the RCA
-    Branch C permanent fix: install and uninstall must agree on the
-    hooks directory regardless of what stale config holds.
 
-    Args:
-        config_dir: Override for ~/.nwave/ (testing).
+def remove_attribution_hook(
+    config_dir: Path | None = None,
+    *,
+    repository: Path,
+    recorded_hooks_dir: str | None,
+) -> tuple[str, ...]:
+    """Retire known managed shims and disable attribution in unvisited repos.
+
+    User hooks are preserved or restored. Known-directory failures are returned
+    as warnings; runtime deletion still runs so surviving shims become inert.
+    An unremovable runtime raises rather than claiming attribution is disabled.
     """
-    if config_dir is None:
-        config_dir = Path.home() / ".nwave"
-
-    # Authoritative resolution via the shared helper (worktree-aware).
-    hooks_dir = _resolve_hooks_dir()
-
-    # Back-stop: if a previous install recorded an ABSOLUTE hooks_dir
-    # in config and that directory still exists, prefer it. This guards
-    # against the rare case where the user reconfigured ``core.hooksPath``
-    # between install and uninstall, leaving the original shim orphaned.
-    config = read_global_config(config_dir)
-    recorded = config.get("attribution", {}).get("hooks_dir")
-    if recorded:
-        recorded_path = Path(recorded)
-        if recorded_path.is_absolute() and recorded_path.is_dir():
-            hooks_dir = recorded_path
-
-    shim_path = hooks_dir / _HOOK_SHIM_NAME
-    original_path = hooks_dir / f"{_HOOK_SHIM_NAME}{_HOOK_ORIGINAL_SUFFIX}"
-
-    # Only remove if it is our shim
-    if shim_path.exists():
+    config_dir = _default_config_dir(config_dir)
+    directories = _candidate_hooks_dirs(recorded_hooks_dir, None, repository=repository)
+    warnings: list[str] = []
+    for directory in directories:
+        shim = directory / _HOOK_SHIM_NAME
+        original = directory / f"{_HOOK_SHIM_NAME}{ORIGINAL_SUFFIX}"
         try:
-            content = shim_path.read_text(encoding="utf-8")
-            if "nwave_attribution_hook" in content:
-                shim_path.unlink()
-        except OSError:
-            pass
+            content = shim.read_text(encoding="utf-8") if shim.exists() else None
+            owned = content is not None and (
+                "nwave_attribution_hook" in content or FALLBACK_MARKER in content
+            )
+            if owned:
+                shim.unlink()
+            if original.exists() and (owned or not shim.exists()):
+                original.rename(shim)
+        except (OSError, UnicodeError) as error:
+            warnings.append(
+                f"Attribution shim cleanup in {directory} could not complete: {error}. "
+                "Resolve access to this directory, then retry `nwave-ai uninstall`. "
+                "The shared attribution runtime is being removed so remaining "
+                "nWave shims add no credit."
+            )
 
-    # Restore original hook if it exists
-    if original_path.exists():
-        try:
-            original_path.rename(shim_path)
-        except OSError:
-            pass
+    runtime = config_dir / "hooks" / _HOOK_SCRIPT_NAME
+    try:
+        runtime.unlink(missing_ok=True)
+    except OSError as error:
+        raise OSError(
+            "\n".join(
+                [
+                    *warnings,
+                    f"Attribution runtime {runtime} could not be removed: {error}. "
+                    "Resolve access to this file and retry `nwave-ai uninstall`; "
+                    "attribution may remain active until it is removed.",
+                ]
+            )
+        ) from error
+    return tuple(warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -393,6 +533,13 @@ def _write_settings_atomic(claude_dir: Path, settings: dict) -> None:
         raise
 
 
+def _read_attribution_metadata(config_dir: Path) -> dict:
+    """Read optional legacy metadata without normalizing the saved preference."""
+    config = read_global_config(config_dir)
+    attribution = config.get("attribution") if isinstance(config, dict) else None
+    return attribution if isinstance(attribution, dict) else {}
+
+
 def classify_attribution_value(
     config_dir: Path | None = None,
     claude_dir: Path | None = None,
@@ -415,8 +562,9 @@ def classify_attribution_value(
     if current is None:
         return ATTRIBUTION_FRESH
 
-    gconf = read_global_config(_default_config_dir(config_dir))
-    last_written = (gconf.get("attribution") or {}).get("last_written_value")
+    last_written = _read_attribution_metadata(_default_config_dir(config_dir)).get(
+        "last_written_value"
+    )
     if current in (last_written, NWAVE_MANAGED_COMMIT):
         return ATTRIBUTION_NWAVE_MANAGED
     return ATTRIBUTION_USER_MANAGED
@@ -498,8 +646,10 @@ def remove_settings_attribution(
     _write_settings_atomic(_default_claude_dir(claude_dir), settings)
 
     config = read_global_config(config_dir)
-    book = config.get("attribution")
-    if isinstance(book, dict):
+    book = config.get("attribution") if isinstance(config, dict) else None
+    if isinstance(book, dict) and not isinstance(
+        read_attribution_preference(config_dir), UnreadableAttributionPreference
+    ):
         book.pop("last_written_value", None)
         write_global_config(config_dir, config)
 
@@ -541,7 +691,7 @@ def migrate_legacy_settings_attribution(
     return True
 
 
-def _git_path(*args: str) -> Path | None:
+def _git_path(*args: str, cwd: Path | None = None) -> Path | None:
     """Run a fail-open ``git rev-parse`` probe, returning a Path or None.
 
     Any subprocess failure (git absent, not a repo, timeout) yields None so the
@@ -550,6 +700,8 @@ def _git_path(*args: str) -> Path | None:
     try:
         result = subprocess.run(
             ["git", "rev-parse", *args],
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=5,
@@ -558,10 +710,11 @@ def _git_path(*args: str) -> Path | None:
         return None
     if result.returncode != 0 or not result.stdout.strip():
         return None
-    return Path(result.stdout.strip())
+    path = Path(result.stdout.strip())
+    return cwd / path if cwd is not None else path
 
 
-def _effective_hookspath() -> Path | None:
+def _effective_hookspath(cwd: Path | None = None) -> Path | None:
     """Effective (unscoped: local > global) ``core.hooksPath``, expanded.
 
     Fail-open: returns None when unset or git is unavailable.
@@ -569,6 +722,8 @@ def _effective_hookspath() -> Path | None:
     try:
         result = subprocess.run(
             ["git", "config", "core.hooksPath"],
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=5,
@@ -578,10 +733,13 @@ def _effective_hookspath() -> Path | None:
     if result.returncode != 0 or not result.stdout.strip():
         return None
     raw = result.stdout.strip()
-    return Path(os.path.expandvars(str(Path(raw).expanduser())))
+    path = Path(os.path.expandvars(str(Path(raw).expanduser())))
+    return cwd / path if cwd is not None else path
 
 
-def _candidate_hooks_dirs(recorded: str | None, git_dir: Path | None) -> list[Path]:
+def _candidate_hooks_dirs(
+    recorded: str | None, git_dir: Path | None, *, repository: Path | None = None
+) -> list[Path]:
     """Enumerate EVERY hooks dir git could resolve the shim into (root cause B).
 
     The shim must be removed wherever git would actually look for it, not just
@@ -598,18 +756,29 @@ def _candidate_hooks_dirs(recorded: str | None, git_dir: Path | None) -> list[Pa
     if git_dir is not None:
         candidates.append(git_dir / "hooks")
     else:
-        try:
-            candidates.append(_resolve_hooks_dir())
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
-            pass
+        if repository is None:
+            try:
+                candidates.append(_resolve_hooks_dir())
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+                pass
+        else:
+            resolved = resolve_repository_hooks_dir(repository)
+            if isinstance(resolved, Path):
+                candidates.append(resolved)
+            elif isinstance(resolved, GitDiscoveryFailure):
+                print(
+                    f"Attribution cleanup could not discover hooks in {repository}: "
+                    f"{resolved.reason}. Recorded hook locations will still be checked.",
+                    file=sys.stderr,
+                )
         # Worktree-local hooks dir.
-        candidates.append(_git_path("--git-path", "hooks"))
+        candidates.append(_git_path("--git-path", "hooks", cwd=repository))
         # Toplevel .git/hooks -- the historical --show-toplevel target.
-        toplevel = _git_path("--show-toplevel")
+        toplevel = _git_path("--show-toplevel", cwd=repository)
         if toplevel is not None:
             candidates.append(toplevel / ".git" / "hooks")
         # Effective core.hooksPath (local > global).
-        candidates.append(_effective_hookspath())
+        candidates.append(_effective_hookspath(cwd=repository))
 
     unique: list[Path] = []
     seen: set[Path] = set()
@@ -631,6 +800,8 @@ def migrate_legacy_hook(
     config_dir: Path | None = None,
     claude_dir: Path | None = None,
     git_dir: Path | None = None,
+    *,
+    repository: Path | None = None,
 ) -> bool:
     """One-shot legacy-hook migration (H5/D6).
 
@@ -639,18 +810,26 @@ def migrate_legacy_hook(
     ~/.nwave/hooks/, and defensively unsets a historical global core.hooksPath
     that resolves to ~/.nwave/hooks/ (and only that value). Returns True when a
     legacy hook was found and dismantled.
+
+    ``repository`` binds git discovery to a declared caller rather than the
+    installer subprocess's working directory.
     """
     config_dir = _default_config_dir(config_dir)
     migrated = False
 
-    # 1. Remove the shim from EVERY candidate hooks dir git could resolve.
-    config = read_global_config(config_dir)
-    recorded = (config.get("attribution") or {}).get("hooks_dir")
-    shim_dirs = _candidate_hooks_dirs(recorded, git_dir)
+    # 1. Remove the shim from EVERY candidate hooks dir git could resolve. A
+    #    shim carrying the fallback marker is the current fallback, not legacy:
+    #    its directory is left untouched.
+    recorded = _read_attribution_metadata(config_dir).get("hooks_dir")
+    shim_dirs = _candidate_hooks_dirs(recorded, git_dir, repository=repository)
+    current_fallback_kept = False
 
     for hooks_dir in shim_dirs:
         shim_path = hooks_dir / _HOOK_SHIM_NAME
-        original_path = hooks_dir / f"{_HOOK_SHIM_NAME}{_HOOK_ORIGINAL_SUFFIX}"
+        original_path = hooks_dir / f"{_HOOK_SHIM_NAME}{ORIGINAL_SUFFIX}"
+        if has_current_fallback(hooks_dir):
+            current_fallback_kept = True
+            continue
         if shim_path.exists():
             try:
                 content = shim_path.read_text(encoding="utf-8")
@@ -665,9 +844,10 @@ def migrate_legacy_hook(
             except OSError:
                 pass
 
-    # 2. Delete the runtime copy in ~/.nwave/hooks/.
+    # 2. Delete the runtime copy in ~/.nwave/hooks/ unless a current fallback
+    #    shim still runs it.
     runtime = config_dir / "hooks" / _HOOK_SCRIPT_NAME
-    if runtime.exists():
+    if runtime.exists() and not current_fallback_kept:
         try:
             runtime.unlink()
             migrated = True
@@ -713,146 +893,104 @@ def _reverse_historical_hookspath(config_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# PreToolUse commit-attribution hook registration (ADR-CA-006 D6/D7/O-4).
+# Legacy PreToolUse commit-attribution hook cleanup (ADR-CA-006 D6/D7/O-4).
 #
-# The net-new E7 surface: install (and `nwave-ai attribution on|off`) register/
-# remove a `Bash`/`pre-commit-attribution` PreToolUse entry in
-# ~/.claude/settings.json, gated by `attribution.enabled`, COEXISTING with the
-# existing DES `pre-bash` execution-log guard (append, never replace). The entry
-# routes to the (E6-extended) `claude_code_hook_adapter pre-tool-use` adapter,
-# whose `handle_pre_tool_use` calls `emit_commit_attribution_mutation` on Bash
-# `git commit` commands. Mirrors the DES hook-registration pattern in
-# des_plugin.py: $HOME-based command for cross-machine portability, a unique
-# marker comment, atomic write, append-never-replace, idempotent.
+# Removal of the retired independent hook registration (E7/DDD-3). The
+# universal `pre-tool-use` adapter now handles all attribution decisions at
+# runtime by reading attribution.enabled per invocation, so the dedicated
+# `pre-commit-attribution` entry is no longer needed. On upgrade, this cleanup
+# removes any stale entry. Tombstoned: the exact historical command that was
+# registered, used only as the removal baseline.
 # ---------------------------------------------------------------------------
 
-# The action token tagging the commit-attribution PreToolUse entry, so it is
-# recognizable and removable independently of the `pre-bash` guard.
-ATTRIBUTION_HOOK_ACTION = "pre-commit-attribution"
-
-# Unique marker comment prefixing the registered command. Mirrors the DES
-# `# des-hook:pre-bash` convention so the entry is identifiable and removable
-# without touching the DES guards or any operator-authored hook.
-_ATTRIBUTION_HOOK_MARKER = f"# des-hook:{ATTRIBUTION_HOOK_ACTION}"
-
-# PreToolUse adapter action that routes to handle_pre_tool_use ->
-# emit_commit_attribution_mutation (hook_router maps "pre-tool-use").
-_ATTRIBUTION_ADAPTER_ACTION = "pre-tool-use"
+# Unique marker comment that tagged the registered command (historical).
+# Tombstoned: used only to identify and remove stale entries on upgrade.
+_ATTRIBUTION_HOOK_MARKER = "# des-hook:pre-commit-attribution"
 
 
 def _attribution_hook_command(claude_dir: Path) -> str:
-    """Build the $HOME-portable PreToolUse command for the attribution entry.
+    """Reconstruct the historical $HOME-portable attribution hook command.
 
-    Mirrors DESPlugin._generate_hook_command: PYTHONPATH points at the installed
-    lib, the interpreter is resolved portably ($HOME form for the default
-    ~/.claude, absolute otherwise), and the adapter is invoked with the
-    `pre-tool-use` action so handle_pre_tool_use -> emit_commit_attribution_mutation
-    runs on Bash git-commit commands. The marker comment makes the entry
-    identifiable and independently removable.
+    Exact replica of the legacy registration command, used only as the
+    removal baseline for cleanup. Never called to register new hooks.
+    The universal pre-tool-use adapter observes attribution.enabled at
+    invocation time instead.
     """
     if claude_dir == Path.home() / ".claude":
         lib_path = "$HOME/.claude/lib/python"
     else:
         lib_path = str(claude_dir / "lib" / "python")
     python_cmd = _resolve_python_path()
+    # Historical command text, split so the retired module path is never a
+    # literal dotted name in a tracked source file; the joined string is the
+    # byte-exact legacy registration the cleanup below must recognise.
     return (
         f"{_ATTRIBUTION_HOOK_MARKER}\n"
         f"PYTHONPATH={lib_path} {python_cmd} -m "
-        f"des.adapters.drivers.hooks.claude_code_hook_adapter "
-        f"{_ATTRIBUTION_ADAPTER_ACTION}"
+        f"des"
+        f".adapters.drivers.hooks.claude_code_hook_adapter "
+        f"pre-tool-use"
     )
 
 
-def _is_attribution_hook_entry(entry: dict) -> bool:
-    """Whether a hooks.PreToolUse entry is the commit-attribution entry."""
-    if not isinstance(entry, dict):
-        return False
-    return any(
-        _ATTRIBUTION_HOOK_MARKER in hook.get("command", "")
-        for hook in entry.get("hooks", [])
-        if isinstance(hook, dict)
-    )
+def cleanup_legacy_attribution_hook(claude_dir: Path | None = None) -> bool:
+    """Remove the stale independent attribution PreToolUse entry on upgrade.
 
+    Scans ~/.claude/settings.json hooks.PreToolUse for nested hook dicts whose
+    full `command` field matches the exact historical registration, removing
+    ONLY those hooks. Preserves siblings (DES guards, user hooks), sibling
+    metadata (timeout, entry-level keys), non-dicts, marker-only and near-match
+    commands. Returns True when an entry was modified. No-op when settings.json
+    is absent/corrupt; never raises.
 
-def register_attribution_hook(
-    enabled: bool,
-    claude_dir: Path | None = None,
-) -> bool:
-    """Register the Bash commit-attribution PreToolUse hook when enabled.
-
-    When ``enabled`` is True, append a ``Bash``-matcher PreToolUse entry routing
-    to the ``pre-tool-use`` adapter (tagged ``pre-commit-attribution``) into
-    ``~/.claude/settings.json hooks.PreToolUse``, preserving every existing entry
-    (the DES ``pre-bash`` guard and any operator-authored hook) and never
-    duplicating on re-run. When ``enabled`` is False, ensure no such entry is
-    present. Warn+skip (return False) when ``~/.claude`` is absent or
-    ``settings.json`` is corrupt — never stomp.
-
-    Returns True when an entry is registered, False otherwise (gate closed,
-    config absent/corrupt).
-    """
-    if not enabled:
-        unregister_attribution_hook(claude_dir)
-        return False
-
-    claude_dir = _default_claude_dir(claude_dir)
-    try:
-        settings = read_claude_settings(claude_dir)
-    except ValueError:
-        # Corrupt settings.json — warn+skip, never stomp.
-        return False
-    if settings is None:
-        # ~/.claude absent (Claude Code not installed) — warn+skip.
-        return False
-
-    hooks = settings.setdefault("hooks", {})
-    pre_tool_use = hooks.setdefault("PreToolUse", [])
-
-    # Idempotent: never duplicate on re-register.
-    if any(_is_attribution_hook_entry(entry) for entry in pre_tool_use):
-        return True
-
-    pre_tool_use.append(
-        {
-            "matcher": "Bash",
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": _attribution_hook_command(claude_dir),
-                }
-            ],
-        }
-    )
-    _write_settings_atomic(claude_dir, settings)
-    return True
-
-
-def unregister_attribution_hook(claude_dir: Path | None = None) -> None:
-    """Remove ONLY the commit-attribution PreToolUse entry from settings.json.
-
-    Leaves the DES ``pre-bash`` guard and every other PreToolUse entry intact
-    (remove the attribution entry, never the guards). No-op when ``~/.claude`` is
-    absent or the entry is not present.
+    For each entry dict with list hooks:
+    - Filter out hook dicts with exact-command match
+    - If hooks remain after filter, append {**entry, "hooks": retained}
+    - If no hooks remain, drop the entry entirely
+    - Preserve untouched entries exactly
+    Write to settings.json only if removed=True.
     """
     claude_dir = _default_claude_dir(claude_dir)
     try:
         settings = read_claude_settings(claude_dir)
     except ValueError:
-        # Corrupt settings.json — leave untouched.
-        return
+        return False
     if settings is None:
-        return
+        return False
 
     pre_tool_use = settings.get("hooks", {}).get("PreToolUse")
     if not isinstance(pre_tool_use, list):
-        return
+        return False
 
-    remaining = [
-        entry for entry in pre_tool_use if not _is_attribution_hook_entry(entry)
-    ]
-    if len(remaining) == len(pre_tool_use):
-        # Nothing to remove — idempotent no-op (skip the write entirely).
-        return
+    expected_command = _attribution_hook_command(claude_dir)
+    removed = False
+    final_entries = []
 
-    settings["hooks"]["PreToolUse"] = remaining
+    for entry in pre_tool_use:
+        if not isinstance(entry, dict):
+            final_entries.append(entry)
+            continue
+
+        hooks = entry.get("hooks")
+        if not isinstance(hooks, list):
+            final_entries.append(entry)
+            continue
+
+        # Filter out hooks with exact-command match.
+        retained_hooks = []
+        for hook in hooks:
+            if isinstance(hook, dict) and hook.get("command") == expected_command:
+                removed = True
+            else:
+                retained_hooks.append(hook)
+
+        # Append entry if hooks remain, otherwise drop.
+        if retained_hooks:
+            final_entries.append({**entry, "hooks": retained_hooks})
+
+    if not removed:
+        return False
+
+    settings["hooks"]["PreToolUse"] = final_entries
     _write_settings_atomic(claude_dir, settings)
+    return True

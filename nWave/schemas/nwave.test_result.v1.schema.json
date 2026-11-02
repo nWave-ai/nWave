@@ -1,0 +1,24 @@
+{
+  "schema": "nwave.test_result.v1",
+  "_provenance": {
+    "ssot": "cross-tree-frozen",
+    "source": "ADR-042 Earned-Verdict (concept) — frozen 2026-05-29",
+    "version_locked": true,
+    "mirror": "the wheel copy nWave/nWave/schemas/ — copies MUST be content-identical",
+    "ip_boundary": "concept + language-agnostic architecture + this contract = allowed exchange; gate implementation is runner-specific"
+  },
+  "_description": "Output of TestRunnerPort: the observed counts and exit code of one test invocation in the target language. A runner that cannot start emits nwave.test_observation.v1 instead; it is never represented as a passing result. 'error' is SINGULAR for byte-identity with the pytest-plugin emission.",
+  "fields": {
+    "schema": "nwave.test_result.v1",
+    "runner": "pytest|jest|go-test|cargo",
+    "exit_code": "int",
+    "collected": "int",
+    "passed": "int",
+    "failed": "int",
+    "xfailed": "int",
+    "xpassed": "int",
+    "skipped": "int",
+    "deselected": "int",
+    "error": "int"
+  }
+}

@@ -1,0 +1,42 @@
+// {Feature}Scenarios.kt — domain-language acceptance scenarios.
+//
+// Gojko Adzic Pillars 1+2:
+//   - Pillar 1: scenarios written in the domain language, no infrastructure
+//               noise.
+//   - Pillar 2: chained narrative — each scenario's Given may be the
+//               composition of the previous scenario's Given + When.
+//
+// Step methods (`given*`, `when*`, `then*`) live in
+// `{Feature}Specifications.kt`. This file contains NO direct asserts and NO
+// test doubles wiring — those live in the specifications module.
+//
+// Production composition (Tier A): step methods construct the SUT through the
+// real composition root and swap only external / non-deterministic ports with
+// fakes. State-delta assertions go through `common/StateDelta.kt`.
+
+import io.kotest.core.spec.style.FunSpec
+
+class FeatureScenarios : FunSpec({
+
+    // Per-scenario fixture — Kotest's beforeEach resets the SUT through the
+    // specifications module so scenarios stay infrastructure-free.
+    beforeEach {
+        FeatureSpecifications.setup()
+    }
+
+    test("User signs up with a valid email and is added to the registry") {
+        FeatureSpecifications.given_aFreshSignupRegistry()
+        FeatureSpecifications.`when_userSignsUpWithEmail`("alice@example.com")
+        FeatureSpecifications.then_userIsAddedToRegistryAndAuditedOnce("alice@example.com")
+    }
+
+    test("Duplicate signup is rejected and leaves registry+audit unchanged") {
+        // Pillar 2: this Given is the composition of the previous scenario's
+        // Given + When — start with a registry already containing alice.
+        FeatureSpecifications.given_aFreshSignupRegistry()
+        FeatureSpecifications.`when_userSignsUpWithEmail`("alice@example.com")
+
+        FeatureSpecifications.`when_userAttemptsDuplicateSignup`("alice@example.com")
+        FeatureSpecifications.then_secondSignupIsRejectedAndStateIsUnchanged()
+    }
+})

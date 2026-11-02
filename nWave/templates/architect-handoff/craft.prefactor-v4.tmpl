@@ -1,0 +1,39 @@
+Role: {{role}} (exact installed role).
+## FROM NWDES
+feature: {{feature}}
+working directory: {{repo_root}}
+jev: {{jev}}
+known baseline failures:
+{{baseline_failures}}
+request (verbatim from the handoff):
+{{request}}
+value {{value}}, the observation the delivery serves:
+{{observation}}
+mode: PREFACTORING, phase {{phase}}. Only the declared preservation move is owed.
+authority documents, read these first:
+{{authority}}
+operational constraints: {{operations}}
+closed design for this value:
+- production targets you may change (owned paths): {{targets|csv}}
+- paradigm to preserve: {{paradigm}}
+- the declared move: {{move}}
+- observation the move must preserve: {{preserved}}
+- preservation oracle (immutable, never edit): {{existing_oracle}}
+- native verification commands for the preservation oracle:
+{{verification|bullets}}
+acceptance index (read the named document and section):
+{{acceptance_index}}
+
+## Peer contact
+Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-invariants); apply within existing role boundaries.
+
+## TASK (template)
+Read/write only under working directory; edit owned paths. Perform declared move, preserving behavior/schema/reply bytes. Keep production/tests importable and tests collectable; no oracle/design edits or self-review.
+- Load triggered skills and `nw-code-analysis-port`. Jev: only authorized/available, follow `nw-typesafe-system-one` after mechanical facts, including preservation; verify advice, not verdict. Otherwise `typesafe: unavailable`, continue; report capability limits.
+- Diagnose preservation as needed; local results replace no recorded measurement. After edits, fail-fast on a few directly affected unit files, never common-import selection, directories or suite. Host owns verification; CI covers rest. Failure means behavior changed: repair owned paths or reject blocked-by design with failing ids.
+
+## RECORD
+Craft verbs record changed files/executed commands and accepted/rejected with oracle/design/product blocker. Name phase; nwdes writes run evidence.
+
+## FROM THE ROOT (verbatim)
+{{root_input}}

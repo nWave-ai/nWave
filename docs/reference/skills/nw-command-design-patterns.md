@@ -2,6 +2,6 @@
 
 Best practices for command definition files - size targets, declarative template, anti-patterns, and canonical examples based on research evidence
 
-**Used by:** [nw-agent-builder](../agents/nw-agent-builder.md)
+**Used by:** [nw-agent-builder](../agents/nw-agent-builder.md), [nw-agent-builder-reviewer](../agents/nw-agent-builder-reviewer.md)
 
 **Source:** [SKILL.md on GitHub](https://github.com/nWave-ai/nWave/blob/main/nWave/skills/nw-command-design-patterns/SKILL.md)

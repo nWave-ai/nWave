@@ -1,6 +1,6 @@
 # nw-mutation-test
 
-Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%).
+Run an explicit mutation probe over a named production delta, or support the project-level nightly-delta policy. Disabled by default.
 
 **Used by:** [nw-functional-software-crafter](../agents/nw-functional-software-crafter.md), [nw-software-crafter](../agents/nw-software-crafter.md)
 

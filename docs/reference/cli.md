@@ -1,6 +1,6 @@
 # nWave CLI Reference
 
-The `nwave-ai` command-line tool installs, configures, and manages the nWave framework in your Claude AI environment. For hands-on setup, see the **[Installation Guide](../guides/installation-guide/README.md)**. For per-project activation, see the **[Activation Guide](../guides/activating-nwave-per-project.md)**.
+The `nwave-ai` command-line tool installs, configures, and manages the nWave framework in supported agentic hosts. For hands-on setup, see the **[Installation Guide](../guides/installation-guide/README.md)**. For per-project activation, see the **[Activation Guide](../guides/activating-nwave-per-project.md)**.
 
 ## Invocation
 
@@ -21,7 +21,7 @@ python -m nwave_ai.cli <command> [options] [arguments]
 All commands accept `--help` / `-h` and return exit code 0 on success, nonzero on failure.
 
 ```
-nwave-ai install [--platform <tool>] [--target <path>] [--yes] [--density-only]
+nwave-ai install [--platform <tool>] [--target <path>] [--yes]
                  [--dry-run] [--backup-only] [--restore]
 
 nwave-ai uninstall [--target <path>]
@@ -29,6 +29,8 @@ nwave-ai uninstall [--target <path>]
 nwave-ai doctor [--json] [--fix]
 
 nwave-ai attribution <on|off|status>
+
+nwave-ai model set --provider {codex,claude} --model MODEL [--role ROLE] [--project]
 
 nwave-ai project <enable|disable>
 
@@ -42,30 +44,22 @@ nwave-ai version
 
 nwave-ai --version
 
-nwave-ai outcomes [--registry PATH] register | check | check-delta
-nwave-ai outcomes [--registry PATH] check-delta DELTA_PATH
+nwave-ai outcomes [--registry PATH] register | check
 
 nwave-ai plugin <list|install|uninstall> [name]
 
-nwave-ai sync
-
-nwave-ai validate-feature-delta <path> [--warn-only|--enforce] [--maturity-manifest <path>]
-
-nwave-ai extract-gherkin <path>
-
-nwave-ai migrate-feature <directory>
 ```
 
 ---
 
 ## nwave-ai install
 
-Install nWave framework into Claude's configuration directory (`~/.claude/` by default), or a custom target. On first install, prompts for documentation density preference (lean/full) unless `--yes` is passed.
+Install nWave into the selected host's configuration directories. `--target` selects a custom Claude configuration directory; native OMP installation uses its own discovery roots. Installation does not ask for or write documentation-density preferences.
 
 ### Synopsis
 
 ```
-nwave-ai install [--platform <tool>] [--target <path>] [--yes] [--density-only] \
+nwave-ai install [--platform <tool>] [--target <path>] [--yes] \
                  [--dry-run] [--backup-only] [--restore]
 ```
 
@@ -73,47 +67,43 @@ nwave-ai install [--platform <tool>] [--target <path>] [--yes] [--density-only] 
 
 | Flag              | Required | Type   | Description                                                                |
 |-------------------|----------|--------|----------------------------------------------------------------------------|
-| `--platform`      | no       | enum   | Target agentic tool: `claude-code`, `codex`, or `opencode`. Forwarded to the installer subprocess. Default: inferred. |
+| `--platform`      | no       | enum   | Target agentic tool: `auto`, `claude-code`, `codex`, `cursor`, `opencode`, `copilot`, `omp`, `devin`, or `all`; `auto` infers available hosts and refuses when none are detected. Forwarded to the installer subprocess. |
 | `--target`        | no       | path   | Install into <path> instead of `~/.claude/`. Must not be `$HOME` (rejected with exit 2). Sets `CLAUDE_CONFIG_DIR` for subprocess. Default: `~/.claude/`. |
-| `--yes`           | no       | bool   | Non-interactive mode. Suppresses the density prompt; silently defaults to `lean`. Recommended for CI. |
+| `--yes`           | no       | bool   | Non-interactive mode. Recommended for CI. |
 | `--density-only`  | no       | bool   | Run only the first-run documentation density prompt and exit (test-driving fixture; not a user flag). Exit 0 on completion. |
 | `--dry-run`       | no       | bool   | Preview changes without modifying the filesystem. Passed through to install script. |
 | `--backup-only`   | no       | bool   | Create a backup only without installing. Passed through to install script. |
 | `--restore`       | no       | bool   | Restore nWave from a previous backup. Passed through to install script. |
 
-**Pass-through behavior**: All flags except `--yes`, `--density-only`, and `--target` are forwarded to the `scripts/install/install_nwave.py` subprocess, which may recognize additional flags (e.g. `--help`, `--dry-run`). The `--target` flag is consumed by the wrapper to set the subprocess environment variable `CLAUDE_CONFIG_DIR`; `--yes` is consumed to control the density prompt.
+**Pass-through behavior**: All flags except `--yes` and `--target` are forwarded to `scripts/install/install_nwave.py`. `--target` sets `CLAUDE_CONFIG_DIR` for the subprocess; `--yes` selects non-interactive mode.
+
+For `--platform omp`, public skills and native task agents use OMP's separate discovery roots. `PI_CONFIG_DIR` selects the configuration-root name under the user home; `PI_CODING_AGENT_DIR` selects the native skill/data root when set. Named `OMP_PROFILE`/`PI_PROFILE` installations are refused rather than silently writing to the default profile. The installer reports capabilities that OMP cannot project, including Claude-specific hooks and unsupported scoped tool permissions. User-owned skills and agents are not nWave-managed assets.
 
 ### Exit codes
 
 | Code | Condition                                                              |
 |------|--------|
 | 0    | Installation succeeded. Package manager recorded in global config if needed. |
-| 1    | Installation failed (subprocess error or density prompt failure). |
+| 1    | Installation failed (subprocess error). |
 | 2    | Configuration error: `--target` points to `$HOME`, or `--target` argument missing. |
 
 ### Output
 
-**stdout** on success:
-
-```
-Documentation density default 'lean' written to ~/.nwave/global-config.json (existing configuration upgraded).
-```
-
-(or no output if density already configured)
-
+Installation reports its actual installer result; it does not report a
+documentation-density preference being written.
 **stderr** on error:
 
 ```
-nwave-ai: --target must point to a Claude config directory (e.g. ~/.claude-nwave or ./.claude), not your home directory
+nwave-ai: --target must point to a config directory (e.g. ~/.claude-nwave or ./.claude), not your home directory
 ```
 
 ### Example
 
 ```bash
-# First-time install, interactive prompt for documentation density
+# First-time install, without a density prompt
 nwave-ai install
 
-# CI environment: silent lean default, no user interaction
+# CI environment: no user interaction
 nwave-ai install --yes
 
 # Install to a custom Claude config directory
@@ -130,7 +120,9 @@ nwave-ai install --restore
 
 ## nwave-ai uninstall
 
-Remove the nWave framework from the configured Claude directory. Project files (`.nwave/`, source code) are not touched; only the framework itself is removed.
+Remove the nWave framework from configured tool directories. Project files
+(`.nwave/`, source code) are not touched; only the framework itself is
+removed.
 
 ### Synopsis
 
@@ -142,7 +134,7 @@ nwave-ai uninstall [--target <path>]
 
 | Flag       | Required | Type | Description                                                          |
 |------------|----------|------|------|
-| `--target` | no       | path | Uninstall from <path> instead of `~/.claude/`. Must not be `$HOME` (rejected with exit 2). Sets `CLAUDE_CONFIG_DIR` for subprocess. |
+| `--target` | no       | path | Uninstall from <path> instead of assistant default config path. Must not be `$HOME` (rejected with exit 2). Sets `CLAUDE_CONFIG_DIR` for subprocess. |
 
 ### Exit codes
 
@@ -199,24 +191,30 @@ nwave-ai doctor [--json] [--fix] [--help]
 **stdout** on check pass (human):
 
 ```
-✓ Claude Code hooks: OK
-✓ Global config: OK
-✓ DES runtime: OK
+✓ python_version: OK
+✓ framework_files: OK
+✓ hooks_registered: OK
+✓ hook_python_path: OK
+✓ config_ssot: OK
+✓ attribution: OK
+✓ version_sync: OK
 ```
+
+The report lists one line per installed check; a failing check shows its
+diagnostic and a remediation line instead of `OK`.
 
 **stdout** on check failure (human):
 
 ```
-✗ Global config: file not found at ~/.nwave/global-config.json
+✗ config_ssot: the configuration file could not be read or parsed
 ```
-
 **stdout** on `--json`:
 
 ```json
 {
   "checks": [
     {
-      "name": "Claude Code hooks",
+      "name": "config_ssot",
       "passed": true,
       "message": "OK"
     }
@@ -236,6 +234,27 @@ nwave-ai doctor --fix
 # → --fix not yet implemented. Run `nwave-ai install` to restore a broken installation.
 # → (exit 2)
 ```
+
+## nwave-ai model
+
+Select the provider and model for nWave roles. Records an explicit
+provider/model pair in `model_runtime` (`model_runtime.default`, or
+`model_runtime.roles.<role>` with `--role`) instead of deriving a model from
+a competence label.
+
+### Synopsis
+
+```
+nwave-ai model set --provider {codex,claude} --model MODEL [--role ROLE [--competence COMPETENCE]] [--project]
+```
+
+Without `--project` the global default is updated; with `--project` the
+project's `.nwave/config.json` is written instead. With `--role`, that role
+is updated instead of the tier default. The supported providers are `codex`
+and `claude`; whether your host consumes `model_runtime` depends on that
+host's model-configuration support (see
+[Assigning models to roles](../guides/assigning-models-to-roles.md)).
+
 
 ---
 
@@ -304,29 +323,33 @@ nwave-ai attribution <on|off|status>
 
 ### Output
 
+`on` and `off` write the machine preference. A project override takes
+precedence; credit also requires an active project and a supported commit
+hook. These commands do not change project activation or overrides.
+
 **stdout** on `attribution on`:
 
 ```
-Attribution enabled. Your commits will include the nWave credit line.
+Attribution enabled. New Claude commits will carry the nWave credit via the universal handler (observes the preference at commit time).
 ```
 
 **stdout** on `attribution off`:
 
 ```
-Attribution disabled. Your commits will not include the nWave credit line.
+Attribution disabled. New Claude commits will not carry the nWave credit (the universal handler observes the preference at commit time).
 ```
 
-**stdout** on `attribution status` (enabled):
+**stdout** on `attribution status` with an active project override:
 
 ```
 Attribution is currently on.
+Preference source: project.
+Attribution is active for this repo.
 ```
 
-**stdout** on `attribution status` (disabled):
-
-```
-Attribution is currently off.
-```
+`status` reads the effective preference (project, global, or default) and
+reports attribution as inactive if the project is inactive or the preference
+is off. It does not change any configuration.
 
 **stderr** on invalid action:
 
@@ -349,7 +372,7 @@ nwave-ai attribution off
 
 ## nwave-ai project
 
-Enable or disable nWave activation for the current project repository. Creates `.nwave/local-config.json` as a version-controlled marker and reconciles `.gitignore` so the marker stays tracked.
+Enable or disable nWave activation for the current project repository. Writes `.nwave/config.json` with `enabled: true|false` as a version-controlled marker and reconciles `.gitignore` so the marker stays tracked.
 
 ### Synopsis
 
@@ -392,8 +415,8 @@ Usage: nwave-ai project <enable|disable>
 
 ### Details
 
-- **enable**: Creates `.nwave/local-config.json` with `{"enabled_for_repo": true}` and fixes `.gitignore` to allow the marker file.
-- **disable**: Creates `.nwave/local-config.json` with `{"enabled_for_repo": false}` (sticky opt-out; presence of the marker signals explicit non-participation).
+- **enable**: Writes `"enabled": true` into `.nwave/config.json` and fixes `.gitignore` to allow the marker file.
+- **disable**: Writes `"enabled": false` into `.nwave/config.json` (sticky opt-out; the recorded value signals explicit non-participation).
 
 See the **[Activation Guide](../guides/activating-nwave-per-project.md)** for the full concept and workflow.
 
@@ -409,7 +432,7 @@ nwave-ai project disable
 
 ## nwave-ai mode
 
-Set the global activation mode for nWave across all projects. Writes to `~/.nwave/global-config.json` under the key `activation.mode`.
+Set the global activation mode for nWave across all projects. Writes to `~/.nwave/config.json` under the key `activation.mode`.
 
 ### Synopsis
 
@@ -469,7 +492,12 @@ nwave-ai mode opt-in
 
 ## nwave-ai status
 
-Print the current global activation mode and whether nWave is active for the current project. Read-only; no changes to configuration.
+Show effective activation, attribution, verbosity, running CLI version, and
+detected Claude Code/Codex assets with the source of each setting. Labels
+distinguish detected host files from a validated installation. Persisted
+`update_check` is retired and ignored. Documentation density is diagnostic-only;
+the global expansion preference controls optional explanation after completed
+waves. This command reads local state without writing files or checking releases.
 
 ### Synopsis
 
@@ -482,22 +510,31 @@ nwave-ai status
 | Code | Condition         |
 |------|------|
 | 0    | Status printed.   |
+| 1    | Invalid selected home override; no status printed. |
 
 ### Output
 
-**stdout**:
+**stdout**, for example:
 
 ```
-Global activation mode: all
+Global activation mode: opt-in (default)
 This project is active.
+Activation source: project.
+Version: 4.0.0 (running CLI; check releases: nwave-ai update --check)
+Attribution: off (global); nWave co-author credit will not be added here.
+Verbosity: terse (global).
+Claude Code: framework files found.
+Codex: installation manifests not detected.
+Retired update_check: ignored (global); no automatic update prompt.
+Documentation density: diagnostic-only (global); does not reshape waves.
+Wave-end explanation: ask-intelligent (default; after completed waves only).
+To credit future nWave commits: nwave-ai attribution on (machine-wide).
+Host detection is not validation; use nwave-ai doctor for Claude Code or the Codex installer's validation.
 ```
 
-or
-
-```
-Global activation mode: opt-in
-This project is inactive.
-```
+Activation and other settings can come from a project override, the machine
+config, or a default. An inactive repo instead shows
+`nwave-ai project enable`. Status does not turn attribution on automatically.
 
 ### Example
 
@@ -571,24 +608,44 @@ source ~/.zshrc
 The following subcommands are supported but are not part of the everyday user surface. Refer to their sources or existing documentation for details:
 
 - **outcomes** — Register / check shipped outcomes (Tier-1 collision detection). See **[Outcomes CLI Reference](./outcomes-cli.md)**.
-- **sync** — Mirror in-flight `feature-delta.md` files from feature worktrees into `<master>/.nwave/in-flight/`.
-- **validate-feature-delta** — Validate `feature-delta.md` for cross-wave drift.
-- **extract-gherkin** — Extract embedded Gherkin blocks from `feature-delta.md`.
-- **migrate-feature** — Migrate `.feature` files to embedded gherkin blocks in `feature-delta.md`.
 - **plugin** — Install, uninstall, or list nWave tool plugins.
 
 ---
 
-## DES utility commands
+## nwdes
 
-The following console scripts are available for DES (Deterministic Execution System) internals and are not part of the everyday user surface:
+`nwdes` is the delivery tool. It builds role prompts and packets, writes handoff and authority records, and manages lanes. It starts no model and runs no verification command. The command list, arguments, refusals and an example for each verb come from `nwdes --help` and `nwdes VERB --help`.
 
-- **des-log-phase** — Inspect DES task-prompt phase logs.
-- **des-commit** — Create a Git commit containing only a delivery step's declared owned paths and append its `Step-Id` and `Task-Id` trailers.
-- **des-init-log** — Initialize a fresh DES audit log.
-- **des-verify-integrity** — Verify DES audit-log integrity.
-- **des-roadmap** — Display DES phase roadmap.
-- **des-health-check** — Check DES runtime health.
+### Route facts
+
+| Fact | Behavior |
+|------|----------|
+| Roots | `--repo-root` defaults to the current directory and `--project-root` to the repository root. Lane verbs resolve the main worktree. |
+| First recording | The first `add`, `set` or `remove` of a role kind creates its scoped draft. |
+| Revision | `open --from-current` seeds a draft from published authority. It is not a first call. |
+| Close | `close --outcome OUTCOME --diagnostic TEXT` publishes the draft and removes it. A refusal keeps the draft for correction. |
+| Abort | `abort` removes the draft. |
+| Values | Roles record typed values with CLI flags or `--FIELD-file PATH`. The root submits no role output. |
+| Lane | `nwdes lane integrate` fast-forwards trunk to CANDIDATE, then removes the lane worktree and branch without force. |
+
+### Prompt
+
+```
+nwdes prompt --role ROLE --handoff PATH [--jev {authorized,unauthorized}] [--task TASK] [--slice ID] [--phase PHASE] [--diff PATH] [--root-context TEXT]
+```
+
+`--jev` is optional and `authorized` by default: when neither the flag nor a
+configuration tier declares `jev`, the resolved authorization is `authorized`
+(the flag wins over the repository tier, which wins over the global tier; a
+malformed value is refused; nwdes never writes or persists the key).
+
+The output is one complete inline role bundle that ends with the generated verb reference for that role. See the **[prompt contract](../guides/nwdes/reference/prompt.md)** and the **[nwdes command reference](../guides/nwdes/reference/index.md)**.
+
+### Source-blind examiner prompts
+
+The examiner works from the user's point of view and needs only public product facts. Pass only public text in `--root-context`; it is rendered verbatim. The examiner prompt replaces the preloaded `nw-typesafe-system-one` client recipe with the skill's source-blind EXAMINE limit notice (do not call Jev; report `typesafe: unavailable`).
+
+Unavailable or inconsistent required inputs produce a nonzero result with WHAT/WHY/HOW on **stderr**, not a partial prompt.
 
 ---
 
@@ -596,7 +653,6 @@ The following console scripts are available for DES (Deterministic Execution Sys
 
 - **[Installation Guide](../guides/installation-guide/README.md)** — step-by-step setup for new users.
 - **[Activation Guide](../guides/activating-nwave-per-project.md)** — per-project activation workflow and opt-in/all mode concepts.
-- **[Global Config Reference](./global-config.md)** — `~/.nwave/global-config.json` keys and schema.
+- **[Global Config Reference](./global-config.md)** — `~/.nwave/config.json` keys and schema.
 - **[Outcomes CLI Reference](./outcomes-cli.md)** — outcomes registration and collision detection.
-- **[DES Markers Reference](./des-markers.md)** — DES task-prompt marker syntax.
-- **[Feature-delta Format](./feature-format.md)** — `feature-delta.md` schema and sections.
+- **[nwdes command reference](../guides/nwdes/reference/index.md)** — the delivery CLI: roots, drafts, close and lane integration.

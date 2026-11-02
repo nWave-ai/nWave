@@ -1,16 +1,23 @@
 # Troubleshooting Guide
 
-Quick fixes for common nWave issues.
+Quick fixes for common nWave issues. The checks below inspect the Claude
+Code installation; on Codex, OpenCode, OMP, Cursor, Copilot or Devin, use
+the installer's own final validation and the
+[per-host guides](../vendor-support.md) instead.
 
-## Diagnostic Quick Check
+## Diagnostic Quick Check (Claude Code)
 
 ```bash
 echo "Agents: $(ls ~/.claude/agents/nw/ 2>/dev/null | wc -l)"
 echo "Commands: $(ls ~/.claude/commands/nw/ 2>/dev/null | wc -l)"
 python3 --version
+nwave-ai doctor
 ```
 
-If agents or commands show 0, run: `nwave-ai install`
+If agents or commands show 0, run: `nwave-ai install`, then restart Claude
+Code. The exact agent count changes between releases — compare what you see
+with the [agents index](../../reference/agents/index.md), not with a fixed
+number.
 
 ---
 
@@ -49,20 +56,30 @@ nwave-ai install
 ```
 Then close and reopen Claude Code.
 
+### Doctor fails (Claude Code)
+
+Run `nwave-ai doctor` and read the failing check's diagnostic line; each
+line names the check that failed (for example `python_version`,
+`framework_files`, `hooks_registered`, `config_ssot`, `version_sync`).
+`doctor --fix` is not implemented — address the named check and rerun
+`nwave-ai install --platform claude-code` and `doctor`, then restart Claude
+Code. Doctor checks Claude Code assets: on a host-only install it can fail
+without anything being broken; use that host's installer validation instead.
+
 ### Installation fails
 
-**Cause**: Missing Python 3, permission issues, or corrupted state.
+**Cause**: Missing Python 3.11+, permission issues, or corrupted state.
 
 **Fix**:
 ```bash
-# Check Python
+# Check Python (3.11 or newer required)
 python3 --version
 
 # Check permissions
 ls -la ~/.claude/
 
 # Clean reinstall
-nwave-ai uninstall --backup --force
+nwave-ai uninstall
 nwave-ai install
 ```
 
@@ -72,7 +89,7 @@ nwave-ai install
 
 **Fix**:
 ```bash
-nwave-ai uninstall --backup --force
+nwave-ai uninstall
 nwave-ai install
 ```
 
@@ -93,30 +110,18 @@ nwave-ai plugin install dedup
 NWAVE_INSTALLER=pipx nwave-ai plugin install dedup
 ```
 
-Valid values: `uv`, `pipx`, `pip`. The override is honored only when the named tool is on PATH; otherwise nwave-ai falls back to auto-detection.
+Valid values: `uv`, `pipx`, `pip`. The override is honored only when the named tool is on PATH; otherwise nWave-ai falls back to auto-detection.
 
-### Uninstall left files behind (fixed in v3.14)
+### Uninstall left files behind
 
-**Symptom**: After running `nwave-ai uninstall --force` (v3.13.x or earlier), the uninstaller reported success but the following remained on disk:
+Read the uninstaller's actual path report. Use `nwave-ai uninstall` from the
+environment that owns the package, then inspect only the reported nWave-owned
+assets. Preserve custom skills and unrelated host configuration. Remove the CLI
+package separately with the package manager that installed it.
 
-- `~/.claude/skills/nw-*` directories (~197 dirs)
-- `~/.claude/lib/python/des/` runtime
-- 3 specific hook entries in `~/.claude/settings.json`: one with the `des-hook:pre-bash` prefix (matcher: `Bash`), and two `claude_code_hook_adapter` entries under `SessionStart` and `SubagentStart` events. (DES installs hooks across 5 event types total — `PreToolUse`, `SubagentStop`, `PostToolUse`, `SessionStart`, `SubagentStart` — but only the first three were correctly removed pre-fix.)
-
-**Cause**: install/uninstall path drift — the installer wrote to `skills/nw-<name>/` (flat), the uninstaller searched the obsolete `skills/nw/` (nested); `lib/python/des/` was never targeted; and the hook removal iterated only 3 of the 5 registered event types (missing `SessionStart` and `SubagentStart`) plus its hook-detection pattern matched only `claude_code_hook_adapter`, not the shell-prefix `des-hook:` form used by the inline `Bash` matcher.
-
-**Fix (v3.14.0-rc1)**: upgrade and re-run uninstall — it now removes all three classes correctly while preserving any non-`nw-` prefixed skills you created. Background: GitHub issue #39.
-
-```bash
-uv tool upgrade nwave-ai    # or: pipx upgrade nwave-ai
-nwave-ai uninstall --force
-# Verify residuals are gone:
-ls ~/.claude/skills/nw-* 2>/dev/null | wc -l    # expected 0
-ls ~/.claude/lib/python/des 2>/dev/null         # expected: not found
-grep -c 'des\.' ~/.claude/settings.json 2>/dev/null  # expected 0
-```
-
-If you uninstalled under v3.13 and never re-installed, manually remove the leftover paths above — your custom skills (no `nw-` prefix) are untouched.
+For a v3 installation, use its matching runtime and recovery instructions.
+Updating the current package does not convert its delivery artifacts; see the
+[migration guide](../migrating-from-3x.md).
 
 ---
 
@@ -126,12 +131,14 @@ If you uninstalled under v3.13 and never re-installed, manually remove the lefto
 
 **Cause**: Agent specification files missing or not loaded.
 
-**Fix**: Verify agent files exist:
+**Fix**: Verify agent files exist and compare them with the
+[agents index](../../reference/agents/index.md):
+
 ```bash
 ls ~/.claude/agents/nw/nw-*.md | wc -l
 ```
 
-Expected: 22 files (11 primary + 11 reviewers). If missing: `nwave-ai install`
+If files are missing: `nwave-ai install`, then restart Claude Code.
 
 ---
 
@@ -147,7 +154,7 @@ chmod -R 755 ~/.claude/commands/nw/
 
 ### macOS: Python version conflicts
 
-**Fix**: Ensure `python3` points to 3.10+:
+**Fix**: Ensure `python3` points to 3.11+:
 ```bash
 python3 --version
 which python3
@@ -183,14 +190,20 @@ nwave-ai install
 
 ### Complete reset
 ```bash
-nwave-ai uninstall --backup
+nwave-ai uninstall
 nwave-ai install
 ```
 
 ### Restore from backup
+
 ```bash
 nwave-ai install --restore
 ```
+
+`--backup-only` snapshots the Claude Code and Codex installations;
+`--restore` restores the Claude Code snapshot (on a Codex-only install it
+currently finds nothing to restore). No backup or restore exists for
+OpenCode, Cursor, Copilot, OMP or Devin.
 
 ---
 

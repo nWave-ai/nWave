@@ -31,13 +31,13 @@ Flag and reject if >20% of evidence is future-intent.
 | 3: Solution | 5 per iteration | 3 iterations max | Before decision |
 | 4: Viability | 5 | -- | Stakeholder review required |
 
-Pivot decision rule: min 5 consistent signals. Block decisions on fewer.
+Decision rule: min 5 actual, consistent signals supporting the decision. Block decisions on fewer; do not infer missing customers or discard negative evidence to satisfy a threshold.
 
 ## Decision Gate Criteria
 
 ### G1: Problem to Opportunity
-Proceed: 5+ confirm pain + willingness to pay | Pivot: differs from expected | Kill: <20% confirm
-Checks: 5+ interviews, >60% confirmation, customer words, 3+ examples
+Proceed: 5+ interviews, 5+ participants confirm pain, >60% confirmation across all Phase 1 interviews, willingness to pay supported by past spending or observed commitment | Pivot: differs from expected | Kill: <20% confirm
+Checks: verify both confirmation count and strict percentage from actual interview evidence, preserve sources and disconfirming observations, customer words, 3+ examples. 3/5 fails both requirements; 4/5 fails the count; 5/8 passes both count and percentage.
 
 ### G2: Opportunity to Solution
 Proceed: top 2-3 score >8 (0-20) | Pivot: new opportunities | Kill: all low-value
@@ -112,6 +112,9 @@ Fix: min 5 interviews per segment, 5+ signals for decisions
 
 ## Approval Decision
 
-- **Approved**: all checks pass, no critical issues. Formal handoff to product-owner.
-- **Conditionally approved**: minor issues only (no critical/high). Approval with recommendations.
-- **Rejected**: any critical/high issue. Structured rejection with remediation. Blocks handoff.
+First matching outcome wins:
+
+- **Rejected**: supplied evidence fails a criterion, or any critical/high issue. Structured rejection with remediation. Blocks handoff.
+- **Indeterminate**: nothing fails on supplied evidence, but a criterion's needed evidence is absent or unreadable. Name the missing evidence and its supplier. Blocks handoff; never approval.
+- **Conditionally approved**: every criterion judged, minor issues only (no critical/high). Approval with recommendations.
+- **Approved**: every criterion judged and passing, no critical issues. Formal handoff to product-owner.

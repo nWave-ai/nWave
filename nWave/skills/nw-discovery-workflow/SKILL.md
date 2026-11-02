@@ -38,11 +38,11 @@ Core question: Can we build a viable business?
 ## Decision Gates
 
 ### G1: Problem to Opportunity
-Proceed: 5+ confirm pain + willingness to pay | Pivot: problem differs from expected | Kill: <20% confirm
+Proceed: 5+ interviews, 5+ participants confirm pain, >60% confirmation across all Phase 1 interviews, willingness to pay supported by past spending or observed commitment | Pivot: problem differs from expected | Kill: <20% confirm
 
 ### G2: Opportunity to Solution
 Proceed: top 2-3 score >8 (max 20) | Pivot: new opportunities discovered | Kill: all low-value
-Scoring: Score = Importance + Max(0, Importance - Satisfaction). Each 1-10. >8 = high importance with satisfaction gap.
+Scoring: Score = Importance + Max(0, Importance - Satisfaction). Each 1-10. >8 is the G2 selection threshold, not the JTBD underserved classification; use the canonical bands in `nw-jtbd-opportunity-scoring`.
 
 ### G3: Solution to Viability
 Proceed: >80% task completion, usability validated | Pivot: needs refinement | Kill: fundamental blocks
@@ -55,13 +55,13 @@ Proceed: all 4 risks addressed, model validated | Pivot: model needs adjustment 
 ### Phase 1: Problem Validation
 | Metric | Target |
 |--------|--------|
-| Problem confirmation | >60% (3+ of 5) |
+| Problem confirmation | 5+ confirming participants AND >60% of all Phase 1 interviews |
 | Frequency | Weekly+ |
-| Current spending | >$0 on workarounds |
+| Willingness to pay | Past spending on workarounds or observed commitment; retain the actual evidence, not hypothetical intent |
 | Emotional intensity | Frustration evident |
 
-Done when: 5+ interviews, >60% confirmation, articulated in customer words, 3+ examples.
-Threshold: 60% aligns with Mom Test -- 3/5 consistent signals = proceed, <20% = kill. Combined with qualitative markers.
+Done when: 5+ interviews, 5+ participants confirm pain, >60% confirmation, willingness to pay evidenced by past spending or observed commitment, articulated in customer words, 3+ examples.
+Both the confirmation count and strict percentage must pass: 3/5 is exactly 60% and fails; 4/5 passes the percentage but fails the count; 5/8 passes both. Preserve actual interview counts, participant sources and negative evidence; never infer missing interviews or commitments.
 
 ### Phase 2: Opportunity Mapping
 | Metric | Target |
@@ -109,7 +109,7 @@ artifacts_created: "list of file paths"
 
 | Transition | Gate | Requirements |
 |-----------|------|-------------|
-| 1 to 2 | G1 | 5+ interviews, >60% confirmation, customer words, 3+ examples |
+| 1 to 2 | G1 | 5+ interviews, 5+ participants confirm pain, >60% confirmation across all interviews, evidenced willingness to pay, customer words, 3+ examples |
 | 2 to 3 | G2 | OST complete, top 2-3 identified, scores >8, team alignment |
 | 3 to 4 | G3 | 5+ users tested, >80% task completion, core flow usable, validated |
 | 4 to handoff | G4 | Lean Canvas complete, 4 risks acceptable, go/no-go, stakeholder sign-off |

@@ -1,0 +1,568 @@
+name: nWave
+version: 4.0.0
+description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192DESIGN\u2192DEVOPS\u2192\
+  DISTILL\u2192DELIVER methodology with visual architecture lifecycle management"
+author: nWave Team
+license: MIT
+documentation_url: https://github.com/nWave-ai/nWave
+methodology: nWave
+wave_phases:
+- DISCOVER
+- DIVERGE
+- DISCUSS
+- DESIGN
+- DEVOPS
+- DISTILL
+- DELIVER
+agents:
+  product-discoverer:
+    wave: DISCOVER
+    priority: 1
+    role: product_discovery
+    public: true
+    description: Evidence-based product discovery and market validation
+  diverger:
+    wave: DIVERGE
+    priority: 1
+    role: divergent_thinking
+    public: true
+    description: Structured divergent option generation through JTBD, competitive
+      research, brainstorming, and taste evaluation (Flux)
+  product-owner:
+    wave: DISCUSS
+    priority: 1
+    role: requirements_and_ux_design
+    public: true
+    description: UX journey design, emotional arcs, requirements gathering, BDD acceptance
+      criteria (Luna)
+  solution-architect:
+    wave: DESIGN
+    priority: 1
+    role: architecture_design
+    public: true
+    description: System architecture and technical design
+  system-designer:
+    wave: DESIGN
+    priority: 1
+    role: system_design
+    public: true
+    description: Distributed systems infrastructure design - scalability, caching,
+      sharding, load balancing, message queues, back-of-envelope estimation, and trade-off
+      analysis (Titan)
+  ddd-architect:
+    wave: DESIGN
+    priority: 1
+    role: domain_modeling
+    public: true
+    description: Domain discovery and modeling using DDD, Event Modeling, and selective
+      ES/CQRS recommendations (Hera)
+  acceptance-designer:
+    wave: DISTILL
+    priority: 1
+    role: test_scenarios
+    public: true
+    description: BDD scenarios and acceptance criteria
+  software-crafter:
+    wave: DELIVER
+    priority: 1
+    role: outside_in_tdd
+    knowledge_preservation: COMPLETE
+    public: true
+    description: Outside-in TDD implementation and refactoring
+  functional-software-crafter:
+    wave: DELIVER
+    priority: 2
+    role: functional_outside_in_tdd
+    knowledge_preservation: COMPLETE
+    public: true
+    description: Outside-In TDD with functional paradigm. Pure functions, pipeline
+      composition, types as documentation, property-based testing.
+  user-examiner:
+    wave: DELIVER
+    priority: 2
+    role: user_examination
+    public: true
+    description: Non-technical User-Examiner - derives public expectations before
+      craft and examines the real user surface (browser/CLI/API) at final EXAMINE,
+      verdict plus constructive beta feedback; works from the user's point of view
+      and needs no source code (Vera)
+  platform-architect:
+    wave: DEVOPS
+    priority: 1
+    role: platform_and_delivery
+    public: true
+    description: Platform infrastructure design, CI/CD, deployment, and production
+      readiness
+  researcher:
+    wave: CROSS_WAVE
+    priority: 1
+    role: evidence_driven_research
+    methodology: SOURCE_VERIFICATION
+    knowledge_preservation: COMPLETE
+    public: true
+    description: Evidence-based research with source verification
+  troubleshooter:
+    wave: CROSS_WAVE
+    priority: 2
+    role: problem_investigation
+    methodology: TOYOTA_5_WHYS
+    public: true
+    description: Root cause analysis and problem investigation
+  documentarist:
+    wave: CROSS_WAVE
+    priority: 1
+    role: documentation_quality
+    methodology: DIVIO_DIATAXIS
+    collaboration_mode: QUALITY_GUARDIAN
+    public: true
+    description: DIVIO-compliant documentation quality assurance
+  data-engineer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: data_architecture
+    public: true
+    description: Database design and data pipeline architecture
+  agent-builder:
+    wave: CROSS_WAVE
+    priority: 3
+    role: agent_development
+    public: true
+    description: Use when creating new AI agents, validating agent specifications,
+      optimizing requested existing SKILL.md assets, optimizing command definitions,
+      or ensuring compliance with Claude Code best practices. Creates focused, research-validated
+      agents (200-400 lines) with Skills for domain knowledge.
+  acceptance-designer-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: acceptance_test_review
+    public: true
+    description: Reviews acceptance test scenarios for coverage and quality
+  agent-builder-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: agent_design_review
+    public: true
+    description: Reviews agent specifications for compliance and quality
+  plugin-validator:
+    wave: CROSS_WAVE
+    priority: 2
+    role: plugin_structure_review
+    public: true
+    description: Validates Claude Code plugin structure and schema (manifest, layout,
+      hook/command/agent registration) for deliverable_type plugin
+  skill-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: skill_quality_review
+    public: true
+    description: Reviews SKILL.md quality (structure, scope, frontmatter); reuses
+      nw-agent-builder skill assets for deliverable_type plugin/skill
+  ddd-architect-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: domain_model_review
+    public: true
+    description: Reviews domain models for DDD correctness, aggregate design, context
+      mapping, and ES/CQRS justification (Athena)
+  data-engineer-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: data_architecture_review
+    public: true
+    description: Reviews data architecture and pipeline designs
+  diverger-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: divergence_review
+    public: true
+    description: Reviews DIVERGE artifacts for JTBD rigor, research evidence, option
+      diversity, taste correctness, and recommendation coherence (Prism)
+  documentarist-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: documentation_review
+    public: true
+    description: Reviews documentation quality against DIVIO principles
+  platform-architect-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: platform_review
+    public: true
+    description: Reviews platform design, CI/CD, and deployment readiness
+  product-discoverer-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: discovery_review
+    public: true
+    description: Reviews product discovery evidence and opportunity validation
+  product-owner-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    public: true
+    role: requirements_and_ux_review
+    description: Journey coherence, DoR validation, requirements quality review (Eclipse)
+  researcher-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: research_review
+    public: true
+    description: Reviews research quality, evidence strength, and source verification
+  software-crafter-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: implementation_review
+    public: true
+    description: Reviews code quality, TDD compliance, and testing theater detection
+  solution-architect-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: architecture_review
+    public: true
+    description: Reviews architecture designs, patterns, and quality attributes
+  system-designer-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: system_design_review
+    public: true
+    description: Reviews system design architecture for estimation accuracy, SPOF
+      detection, trade-off completeness, and component justification (Praxis)
+  troubleshooter-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: investigation_review
+    public: true
+    description: Reviews root cause analyses and failure mode investigations
+  ux-designer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: visual_design
+    public: true
+    description: UX/UI support for PO-led DISCUSS, accessible journeys, existing design
+      systems and bounded visual prototypes
+  nwave-buddy:
+    wave: CROSS_WAVE
+    priority: 1
+    role: concierge
+    public: true
+    description: "nWave concierge \u2014 answers methodology questions, navigates\
+      \ project state, recommends commands, assists with migration and onboarding\
+      \ (Guide)"
+  test-optimizer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: test_minimization
+    public: true
+    description: Minimizes test count while preserving coverage. Detects byte-identical
+      pairs, parametrize-inflation, language-guarantee tests, AST-shape tests, stale
+      migration nets. Approval gate before any change. Production code is read-only.
+      (Trim)
+  test-optimizer-reviewer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: test_optimization_review
+    public: true
+    description: "Reviews test-optimizer outputs \u2014 hard-blocks on production\
+      \ drift, coverage drop without justification, unmapped removal, missing approval\
+      \ gate (Trim Review)"
+skills: {}
+commands:
+  mode-select:
+    description: Choose or change the human collaboration mode without runtime gates.
+    argument_hint: '[interactive | final human review | full delegation] [scope]'
+    agents: []
+    wave: CROSS_WAVE
+    outputs: []
+  discover:
+    description: Conducts evidence-based product discovery through customer interviews
+      and assumption testing. Use at project start to validate problem-solution fit.
+    argument_hint: '[product-concept] - Optional: --interview-depth=[overview|comprehensive]
+      --output-format=[md|yaml]'
+    agents:
+    - product-discoverer
+    wave: DISCOVER
+    outputs:
+    - problem_validation
+    - opportunity_tree
+    - lean_canvas
+  diverge:
+    description: Generates 3-5 divergent design directions through JTBD analysis,
+      competitive research, structured brainstorming, and taste evaluation before
+      convergence.
+    argument_hint: '[feature-id] - Optional: --work-type=[new-product|brownfield|pivot]'
+    agents:
+    - diverger
+    wave: DIVERGE
+    outputs:
+    - recommendation
+    - job_analysis
+    - competitive_research
+    - taste_evaluation
+  discuss:
+    description: Clarifies product intent and records jobs, journeys, outcomes and
+      visible increments through nwdes.
+    argument_hint: '[product question or outcome]'
+    agents:
+    - product-owner
+    wave: DISCUSS
+    outputs:
+    - jtbd_job_stories
+    - jtbd_four_forces
+    - jtbd_opportunity_scores
+    - journey_sketch
+    - emotional_arc
+    - shared_artifacts
+    - requirements_document
+    - user_stories
+  spike:
+    description: "[DEPRECATED \u2014 use /nw-design with analysis focus instead] Runs\
+      \ a timeboxed spike to validate one core assumption before DESIGN. Use after\
+      \ DISCUSS when the feature involves a new mechanism, performance requirement,\
+      \ or external integration."
+    argument_hint: '[feature-description] - Example: "wave-matrix -- derive feature
+      status from pytest + filesystem"'
+    agents:
+    - software-crafter
+    - functional-software-crafter
+    wave: CROSS_WAVE
+    outputs:
+    - spike_report
+    - validated_assumption
+    deprecated_in_version: 3.16.0
+    deprecation_note: SPIKE is no longer a canonical wave phase. Use DESIGN with pre-design
+      spike/analysis embedded instead.
+  design:
+    description: Designs system architecture with C4 diagrams and technology selection.
+      Use when defining component boundaries, choosing tech stacks, or creating architecture
+      documents.
+    argument_hint: '[component-name] - Optional: --residuality --paradigm=[auto|oop|fp]'
+    agents:
+    - solution-architect
+    wave: DESIGN
+    outputs:
+    - architecture_document
+    - architecture_diagrams
+  distill:
+    description: Compiles permanent architecture and value authority into an executable
+      public oracle for automatic delivery.
+    argument_hint: '[requested outcome]'
+    agents:
+    - acceptance-designer
+    wave: DISTILL
+    outputs:
+    - acceptance_tests
+    - test_scenarios
+  deliver:
+    description: Routes one strict Request through nwdes product and design construction,
+      design facts, public oracle, craft, independent whole-diff review with public-perspective
+      examination, and integration.
+    argument_hint: '[request]'
+    agents:
+    - platform-architect
+    wave: DELIVER
+    outputs:
+    - complete_feature
+    - quality_gates_passed
+  document:
+    description: Creates evidence-based documentation following DIVIO/Diataxis principles.
+      Use when writing tutorials, how-to guides, reference docs, or explanations.
+    argument_hint: '[topic/component] - Optional: --type=[tutorial|howto|reference|explanation]
+      --research-depth=[overview|detailed|comprehensive|deep-dive]'
+    agents:
+    - researcher
+    - documentarist
+    wave: CROSS_WAVE
+    outputs:
+    - research_document
+    - divio_documentation
+    - validation_report
+  mutation_test:
+    description: Runs a standalone mutation probe, disabled by default, over a named
+      production delta or the explicit nightly production delta.
+    argument_hint: '[--delta <base>...<head> | --nightly-delta] [--threshold 80]'
+    agents:
+    - software_crafter
+    wave: DELIVER
+    outputs:
+    - mutation_report
+  devops:
+    description: Designs CI/CD pipelines, infrastructure, observability, and deployment
+      strategy. Use when preparing platform readiness for a feature.
+    argument_hint: '[deployment-target] - Optional: --environment=[staging|production]
+      --validation=[full|smoke]'
+    agents:
+    - platform-architect
+    wave: DEVOPS
+    outputs:
+    - infrastructure_design
+    - ci_cd_pipeline
+    - deployment_strategy
+  hotspot:
+    description: "Git change frequency hotspot analysis \u2014 find the most-changed\
+      \ files in your codebase"
+    argument_hint: '[--top=N] [--since=6m] [--json] [--rank report.md] [--detail file]'
+    agents: []
+    wave: CROSS_WAVE
+    outputs:
+    - hotspot_ranking
+    - churn_annotated_report
+  bugfix:
+    description: Routes one observed defect Request through nwdes delivery.
+    argument_hint: '[observed defect]'
+    agents:
+    - troubleshooter
+    - software-crafter
+    - functional-software-crafter
+    outputs:
+    - rca_document
+    - regression_test
+    - fix_commit
+  mikado:
+    description: '[EXPERIMENTAL] Complex refactoring roadmaps with visual tracking'
+    argument_hint: '[refactoring-goal] - Optional: --complexity=[simple|moderate|complex]
+      --visualization=[tree|graph]'
+    agents:
+    - software-crafter
+    outputs:
+    - refactoring_roadmap
+    - dependency_diagrams
+  root_why:
+    description: Root cause analysis and debugging
+    argument_hint: '[problem-description] - Optional: --depth=[3|5|7-whys] --output=[text|diagram|report]'
+    agents:
+    - troubleshooter
+    outputs:
+    - root_cause_analysis
+    - investigation_report
+  diagram:
+    description: Generates C4 architecture diagrams (context, container, component)
+      in Mermaid or PlantUML. Use when creating or updating architecture visualizations.
+    argument_hint: '[diagram-type] - Optional: --format=[mermaid|plantuml|c4] --level=[context|container|component]'
+    agents: []
+    outputs:
+    - updated_diagrams
+    - visual_architecture
+  review:
+    description: Routes an actual artifact or candidate diff to the matching independent
+      reviewer.
+    argument_hint: '[owner] [repository-relative artifact or diff identity]'
+    outputs:
+    - review_report
+    agents: []
+  rigor:
+    description: Selects a quality-vs-token-consumption profile (lean, standard, thorough,
+      exhaustive, custom, inherit) and persists it globally (~/.nwave/global-config.json)
+      or per-project configuration. Use when tuning how much rigor wave commands apply.
+    argument_hint: '[profile] - Optional: lean, standard, thorough, exhaustive, custom,
+      inherit. Omit for interactive selection.'
+    agents: []
+    wave: CROSS_WAVE
+    outputs:
+    - rigor_config
+  buddy:
+    description: "nWave concierge \u2014 ask any question about methodology, project\
+      \ state, commands, migration, or troubleshooting. Read-only, contextual answers."
+    argument_hint: '[question] - Example: "What should I do next for rate-limiting?"'
+    agents:
+    - nwave-buddy
+    wave: CROSS_WAVE
+    outputs:
+    - contextual_answer
+    - command_recommendation
+  optimize-tests:
+    description: Minimizes a test portfolio while preserving observable behavior and
+      mutation value.
+    argument_hint: '[test scope]'
+    agents:
+    - test-optimizer
+    - test-optimizer-reviewer
+    wave: CROSS_WAVE
+    outputs:
+    - optimization_plan
+    - test_reduction_report
+  forge:
+    description: Creates new specialized agents using the 5-phase workflow (ANALYZE
+      > DESIGN > CREATE > VALIDATE > REFINE). Use when building a new AI agent or
+      validating an existing agent specification.
+    argument_hint: '[agent-name] - Optional: --type=[specialist|reviewer|orchestrator]
+      --pattern=[react|reflection|router]'
+    agents:
+    - agent-builder
+    wave: CROSS_WAVE
+    outputs:
+    - agent_specification
+  research:
+    description: Gathers knowledge from web and files, cross-references across multiple
+      sources, and produces cited research documents. Use when investigating technologies,
+      patterns, or decisions that need evidence backing.
+    argument_hint: '[topic] - Optional: --research_depth=[overview|detailed|comprehensive|deep-dive]
+      --skill-for=[agent-name]'
+    agents:
+    - researcher
+    wave: CROSS_WAVE
+    outputs:
+    - research_document
+quality_gates:
+  knowledge_preservation:
+    software-crafter: 925_lines_methodology
+    systematic_refactorer: complete_refactoring_mechanics
+    mikado_specialist: enhanced_methodology_full
+  visual_architecture:
+    diagram_synchronization: true
+    evolution_tracking: true
+    validation_integration: true
+  methodology_compliance:
+    atdd_integration: true
+    outside_in_tdd: true
+    toyota_5_whys: true
+    alistair_cockburn_skeleton: true
+reference_materials:
+  atdd_patterns:
+    file: data/atdd-patterns.md
+    description: ATDD implementation patterns and anti-patterns
+    focus: production_service_integration_troubleshooting
+  outside_in_tdd:
+    file: data/outside-in-tdd-reference.md
+    description: Outside-In TDD with double-loop architecture guide
+    methodology: four_stage_atdd_technology_examples
+  visual_architecture:
+    file: data/visual-architecture-principles.md
+    description: Stakeholder communication and implementation synchronization
+    approach: multi_audience_visualization_automation
+  systematic_refactoring:
+    file: data/systematic-refactoring-guide.md
+    description: Six-level refactoring hierarchy with progressive implementation
+    integration: tdd_cycles_technology_examples
+templates:
+  wave_templates:
+    discuss_interactive:
+      file: templates/discuss-requirements-interactive.yaml
+      description: Highly interactive requirements elicitation for DISCUSS wave
+      interactivity: high
+      framework: stakeholder_collaboration_three_amigos
+    design_interactive:
+      file: templates/design-architecture-interactive.yaml
+      description: Highly interactive architectural design for DESIGN wave
+      interactivity: high
+      focus: hexagonal_architecture_visual_stakeholder_communication
+    distill_moderate:
+      file: templates/distill-acceptance-tests.yaml
+      description: Moderately interactive acceptance test creation for DISTILL wave
+      interactivity: moderate
+      patterns: production_service_integration_given_when_then
+    devops_moderate:
+      file: templates/devops-production-readiness.yaml
+      description: Moderately interactive platform readiness for DEVOPS wave
+      interactivity: moderate
+      validation: deployment_infrastructure_design
+  comprehensive_template:
+    complete_methodology:
+      file: templates/nWave-complete-methodology.yaml
+      description: Comprehensive orchestration for complete nWave methodology
+      interactivity: high
+      scope: end_to_end_methodology_execution
+integration:
+  agent_collaboration_patterns: true
+  visual_architecture_lifecycle: true
+  cross_wave_coordination: true
+  knowledge_base_accessibility: true
+  template_orchestration_support: true

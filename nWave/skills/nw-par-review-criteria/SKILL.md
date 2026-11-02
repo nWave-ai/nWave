@@ -7,17 +7,23 @@ disable-model-invocation: true
 
 # DevOp Reviewer: Review Criteria
 
-## Critique Dimension 1: Incomplete Phase Handoffs
+Apply criteria only to the authorized operational/design scope and actual
+deployment promise. This skill defines review dimensions, not a mandatory phase
+sequence or artifact set. Existing authority and explicit no-rollout applicability
+are valid. Project thresholds need their own evidence; percentages/time targets
+below are not universal gates. Use the role-owned platform assessment in
+`nw-typesafe-system-one`; local verified reasons and distinct real observations
+decide findings, and scalar scores never compensate blockers.
 
-**Pattern**: Phase handoffs missing required artifacts or approvals.
+Load `nw-cross-cutting-invariants` and apply `flow:findings-go-to-the-owner-directly` when exchanging findings or questions between roles.
 
-**Required per Phase**:
-- DISCUSS: Requirements document + peer review approval
-- DESIGN: Architecture document + ADRs + peer review approval
-- DISTILL: Acceptance tests + peer review approval
-- DELIVER: Production code + tests (100% passing) + peer review approval
+## Critique Dimension 1: Handoff adequacy
 
-**Severity**: critical. Verify all artifacts present and peer-reviewed before phase transition.
+Compare the supplied authority/evidence against the operational decisions actually
+consumed by this task. A missing load-bearing interface, environment or recovery
+fact is a concrete finding; no fixed DISCUSS/DESIGN/DISTILL/DELIVER artifact or
+approval set is mandatory. DESIGN self-check is not an independent approval.
+Severity follows the consequence of the specific gap, not a phase label.
 
 ---
 
@@ -25,7 +31,7 @@ disable-model-invocation: true
 
 **Pattern**: Feature marked "ready" but missing production prerequisites.
 
-**Required**: All tests passing (100%) | Production configuration complete | Monitoring/alerting configured | Runbook/operational docs created | Rollback plan documented.
+Require only the selected rollout's prerequisites: relevant current tests, configuration, promised telemetry, recovery and operational responsibilities. A document-only/no-rollout plan may be complete while live readiness remains unobserved; never require production validation outside authorization.
 
 **Severity**: critical. Complete missing prerequisite before marking deployment-ready.
 
@@ -83,27 +89,21 @@ A feature with 100% test coverage but 0% wiring tests is not complete.
 
 ## Quality Gate Checklist
 
-### Technical Completion
-- [ ] All acceptance tests passing with stakeholder validation
-- [ ] Unit test coverage meeting project standards (>=80%)
-- [ ] Integration test validation of cross-component functionality
-- [ ] Code review completed with approval
-- [ ] Static analysis and security scan passed
-- [ ] Performance tested under realistic load
+### Applicable technical and architecture evidence
+- Declared obligations have native tests/observations through their real boundaries.
+- Required project checks and review are current; source/oracle/runtime identity is known.
+- Interfaces, invariant owners, security and build/discovery agree with the selected design.
+- Coverage, performance and security measures are supplied only where applicable,
+  under project criteria; no universal coverage percentage or tooling requirement.
 
-### Architecture Compliance
-- [ ] Implementation aligns with architectural design
-- [ ] Component boundaries and interfaces respected
-- [ ] Security architecture implemented correctly
+### Applicable operational evidence
+- A selected live rollout has concrete promotion/failure/rollback conditions.
+- Recovery and persistent-data claims distinguish designed plans from observed runs.
+- Promised KPI/SLO signals trace to collection, alert/runbook and responsibility.
+- Training/support/runbooks are required only when the authorized scope needs them.
 
-### Production Readiness
-- [ ] Monitoring and alerting configured
-- [ ] Logging and debugging capability validated
-- [ ] Rollback procedure documented and tested
-- [ ] Operational runbook complete
-- [ ] Support team trained / knowledge transferred
-
-### Business Completion
-- [ ] All user stories completed with acceptance criteria met
-- [ ] Business rules implemented and validated
-- [ ] Stakeholder acceptance obtained
+### Scope and readiness
+- All original promises and authorized human exclusions/amendments are respected.
+- No producer-only reduction, missing required boundary or stale evidence is approved.
+- Operational document review authorizes no deploy, infrastructure mutation or successor.
+- Unknown/not-applicable carries a concrete cause; a no-rollout feature buys no fake IaC.

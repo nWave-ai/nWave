@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Domain modeling with types. Make illegal states unrepresentable, workflows as pipelines, error handling at the type level.
 
-Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) | [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md)
+Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [code-craftsmanship: FP Hexagonal Architecture](../nw-code-craftsmanship/SKILL.md) | [fp-algebra-driven-design](../nw-fp-algebra-driven-design/SKILL.md)
 
 ---
 
@@ -31,11 +31,11 @@ Combined recursively, these express virtually any domain structure.
 
 [STARTER]
 
-Never use primitives directly in the domain model. Each domain concept gets its own wrapper type.
+Wrap a primitive when a demonstrated invalid state or a mixing risk exists that no native type and no existing invariant owner already excludes. Keep the native type when it suffices (`nw-code-craftsmanship` owns this sufficiency rule).
 
-**What**: Wrap primitives so the compiler distinguishes CustomerId from OrderId.
-**When**: Every primitive with domain meaning.
-**Why**: Prevents accidental mixing (compiler rejects comparing CustomerId with OrderId). Each wrapper carries its own validation rules. The type name IS the documentation.
+**What**: A wrapper lets the compiler distinguish CustomerId from OrderId.
+**When**: Two same-typed domain values can be confused at a real call site, or the value carries a validation rule with no existing owner. Never for template conformance alone.
+**Why**: Prevents accidental mixing (compiler rejects comparing CustomerId with OrderId). Each such wrapper carries its own validation rules. The type name IS the documentation.
 
 ---
 
@@ -66,6 +66,15 @@ Instead of `{ EmailAddress; IsVerified: bool }`, create separate `VerifiedEmailA
 
 Instead of `{ Email: option; Address: option }` (where both could be None), create: `EmailOnly | AddressOnly | EmailAndAddress`. The "at least one required" rule becomes structurally enforced.
 
+Normalize admitted optional wire forms once into `Absent | Present Work`; let
+operations consume that alternative rather than re-inspect raw keys. Setting
+absent work constructs it; clearing absent work returns its declared result.
+Every admitted form has a defined Result; malformed present work is an error,
+not absence. Missing/null/empty are equivalent only where the contract says so.
+Basis: Sandy Maguire, *Thinking with Types*, The Algebra Behind Types → Sum,
+Product and Exponential Types / Canonical Representations; *Certainty by
+Construction*, An Exploration of Numbers → Constructing Evidence.
+
 ### NonEmptyList for "At Least One" Rules
 
 Define a type guaranteeing at least one element. Order with `OrderLines: NonEmptyList<OrderLine>` cannot have zero lines.
@@ -93,6 +102,13 @@ UnvalidatedOrder -> ValidatedOrder -> PricedOrder -> Events
 Each step is stateless, pure, has single input/output type, and is independently testable. The workflow assembles by piping steps together.
 
 **Why**: Pipeline makes the business process visible. Each step name is a domain concept.
+
+For mixed validation dependencies, load `nw-fp-principles` §5 rather than require
+whole-document success too early. For a zero-construction-on-refusal contract,
+load `nw-certainty-by-construction`: independently validate customer/items, price
+validated items, then allocate/render the ready order. A later invalid operation
+cannot follow an already-issued order ID. These examples apply those owners'
+composition and semantic-closure laws, not a new mandatory pipeline framework.
 
 ---
 
@@ -147,7 +163,8 @@ rawInput
 - **map**: Transform success value (one-track into two-track)
 - **bind**: Chain a function that itself returns Result
 - **mapError**: Transform error value
-- **tee**: Perform side effect without changing value (logging)
+- **tee**: Perform a declared side effect without changing value; under a
+  zero-activity-on-refusal contract, keep protected effects after readiness.
 
 ### Error Classification
 
@@ -165,7 +182,9 @@ Each step may have its own error type. Define a common error choice type and use
 
 [ADVANCED]
 
-Standard bind short-circuits on first error. For validation where you want ALL errors, use Applicative style -- runs all validations and accumulates errors into a list. See [fp-principles](../nw-fp-principles/SKILL.md) section 5.
+Standard bind short-circuits its dependent chain. For independent all-errors
+checks, select accumulating Validation; load `nw-fp-principles` section 5 for
+mixed dependencies rather than infer failure behavior from Applicative alone.
 
 **When**: Form validation | batch input checking | any place user needs all errors at once.
 
@@ -186,7 +205,7 @@ GetProductPrice        : ProductCode -> Price
 
 **Public vs. internal**: Top-level workflow hides dependencies from callers. Internal steps make them explicit.
 
-See [fp-hexagonal-architecture](../nw-fp-hexagonal-architecture/SKILL.md) section 5 for full DI decision tree.
+See [code-craftsmanship: FP Dependency Injection](../nw-code-craftsmanship/SKILL.md) for the DI decision tree.
 
 ---
 
@@ -230,7 +249,9 @@ Each context has its own dialect of domain language. Contexts communicate only t
 
 ```
 Is it a simple value with validation rules?
-  YES --> Domain Wrapper + Smart Constructor
+  YES --> Does a native type plus an existing invariant owner already exclude the invalid value or mixing risk?
+            YES --> Keep the native type; call the existing owner (section 2)
+            NO  --> Domain Wrapper + Smart Constructor
   NO -->
     Does it represent one of several alternatives?
       YES --> Choice Type (sum type)
@@ -252,7 +273,13 @@ Is it a simple value with validation rules?
 
 1. **Start from events and workflows**, not data structures
 2. **Let the domain expert drive naming** -- their vocabulary, not technical jargon
-3. **Use types to enforce business rules at compile time** -- every rule in the type system needs no unit test
+3. **Use checked types for their stated proposition** -- a typed price
+   expression excludes adding a Boolean, not a faulty JSON decoder or renderer.
+   Keep boundary correspondence tests/refinement and valid/invalid public paths;
+   load `nw-algebraic-design-protocol` §5 when claiming runtime preservation.
+   Basis: Sandy Maguire, *Thinking with Types*, Constraints and GADTs → GADTs;
+   *Certainty by Construction*, Appendix: Ring Solving → Semantics;
+   *Algebra-Driven Design*, Designing Algebras → Tiles → Observations.
 4. **Document effects in signatures** -- Result for errors | Async for I/O | Option for missing data
 5. **Separate domain types from serialization types** -- domain is pure; serialization is infrastructure
 6. **Prefer explicit over implicit** -- every input and dependency is a function parameter

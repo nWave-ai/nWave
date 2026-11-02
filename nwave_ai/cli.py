@@ -1,206 +1,425 @@
 """nwave-ai CLI: thin wrapper around nWave install/uninstall scripts."""
 
-import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
-from nwave_ai.doctor.context import DoctorContext
-from nwave_ai.doctor.formatter import render_human, render_json
-from nwave_ai.doctor.runner import run_doctor
-from scripts.install.attribution_utils import (
+
+_DISTRIBUTION_ROOT = str(Path(__file__).resolve().parent.parent)
+
+
+def _prefer_current_distribution() -> None:
+    """Keep this wheel/checkout ahead of legacy namespace-package fallbacks."""
+    if _DISTRIBUTION_ROOT in sys.path:
+        sys.path.remove(_DISTRIBUTION_ROOT)
+    sys.path.insert(0, _DISTRIBUTION_ROOT)
+
+
+# Do this before importing installer modules: an old ~/.claude runtime can
+# otherwise supply a stale namespace-package ``scripts`` implementation.
+_prefer_current_distribution()
+
+import nwave_ai  # noqa: E402
+from nwave_ai.doctor.checks.framework_files import FrameworkFilesCheck  # noqa: E402
+from nwave_ai.doctor.checks.hook_python_path import HookPythonPathCheck  # noqa: E402
+from nwave_ai.doctor.checks.hooks_registered import HooksRegisteredCheck  # noqa: E402
+from nwave_ai.doctor.context import DoctorContext  # noqa: E402
+from nwave_ai.doctor.formatter import render_human, render_json  # noqa: E402
+from nwave_ai.doctor.runner import run_doctor  # noqa: E402
+from nwave_ai.platform.locations import NWaveLocations  # noqa: E402
+from nwave_ai.platform.result import Failure  # noqa: E402
+from scripts.install.attribution_utils import (  # noqa: E402
+    cleanup_legacy_attribution_hook,
     migrate_legacy_hook,
     migrate_legacy_settings_attribution,
-    read_attribution_preference,
     read_global_config,
-    register_attribution_hook,
-    unregister_attribution_hook,
     write_attribution_preference,
-    write_global_config,
 )
-from scripts.shared.install_paths import GLOBAL_CONFIG_FILENAME
+from scripts.shared.install_paths import nwave_config_dir  # noqa: E402
+from scripts.shared.version import VersionResolutionError  # noqa: E402
 
 
-# ---------------------------------------------------------------------------
-# DES module bootstrap.
-#
-# The published wheel ships the ``des`` package at
-# ``site-packages/nWave/lib/python/des/`` (a Hatch force-include destination),
-# NOT as a top-level ``des/`` package — so a bare ``import des`` fails unless
-# that directory is on ``sys.path``. Several CLI verbs import ``des``: some
-# unguarded (``project``, ``status``, ``plugin install`` → hard crash) and some
-# guarded (``install`` PM-recording, ``doctor`` activation → silent degrade).
-# ``main()`` dispatches most verbs WITHOUT going through ``main_with_argv``, so
-# this bootstrap runs at import time to cover every entry point at once.
-#
-# No-op in the dev tree / editable install, where ``des`` already resolves from
-# ``src/des``.
-# ---------------------------------------------------------------------------
+def _refuse_version_resolution(exc: VersionResolutionError) -> int:
+    """Print the WHAT/WHY/HOW refusal for a failed version resolution."""
+    print(str(exc), file=sys.stderr)
+    return 1
 
 
-def _bundled_des_paths(pkg_dir: Path, home: Path) -> list[Path]:
-    """Existing directories that may contain an importable ``des`` package.
+def _handle_update(
+    args: list[str], *, wrapper_registration=None, replacement_lease=None
+) -> int:
+    """Observe releases or apply an owner-bound update with explicit consent."""
+    if args[:2] == ["consent", "controlled-launch"]:
+        return _handle_controlled_launch_consent(args[2:])
+    if args[:1] == ["sessions"]:
+        return _handle_update_sessions(args[1:])
+    if len(args) in (3, 4) and args[0] == "consent":
+        permission, choice = args[1:3]
+        confirmation = args[3:]
+        if (
+            permission not in ("check", "install")
+            or choice not in ("on", "off")
+            or confirmation not in ([], [_CONFIRM_OLD_SESSIONS_CLOSED])
+            or (confirmation and (permission, choice) != ("install", "on"))
+        ):
+            print(
+                "Usage: nwave-ai update consent <check|install> <on|off> "
+                f"(install on: {_CONFIRM_OLD_SESSIONS_CLOSED} the first time)",
+                file=sys.stderr,
+            )
+            return 1
+        try:
+            config_dir = _require_mutating_config_dir()
+        except ValueError as error:
+            return _refuse_mutating_location(error)
+        from nwave_ai.platform.config_writer import ConfigWriter
 
-    ``pkg_dir`` is the installed ``nwave_ai`` package dir; in the wheel its
-    parent is ``site-packages`` where ``nWave/lib/python`` sits beside it. The
-    installer's copy under ``~/.claude/lib/python`` is the fallback. Returned in
-    priority order, existing-only.
-    """
-    candidates = [
-        pkg_dir.parent / "nWave" / "lib" / "python",  # wheel-bundled (self-contained)
-        home / ".claude" / "lib" / "python",  # installer copy
-    ]
-    return [p for p in candidates if (p / "des").is_dir()]
+        if (permission, choice) == ("install", "on"):
+            refused = _record_old_sessions_closed(
+                config_dir.parent, confirmed=bool(confirmation)
+            )
+            if refused:
+                return refused
 
+        def set_permission(document: dict) -> None:
+            previous = document.get("updates")
+            updates = dict(previous) if isinstance(previous, dict) else {}
+            updates["check"] = updates.get("check") is True
+            updates["install"] = updates.get("install") is True
+            updates[permission] = choice == "on"
+            document["updates"] = updates
 
-def _ensure_des_importable(
-    pkg_dir: Path | None = None,
-    home: Path | None = None,
-    *,
-    is_importable: Callable[[], bool] | None = None,
-) -> Path | None:
-    """Prepend the bundled ``des`` location to ``sys.path`` when ``des`` is missing.
+        try:
+            ConfigWriter(
+                home_dir=config_dir.parent, repo_root=Path.cwd()
+            ).update_global(set_permission)
+        except Exception as error:
+            print(
+                f"WHAT: update consent was not written. WHY: {error}. "
+                "HOW: repair the selected global config and retry the consent command.",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"Automatic update {permission}: {choice}.")
+        if (permission, choice) == ("install", "on"):
+            from nwave_ai.platform.session_registry import ATTESTATION_RISK
 
-    No-op (returns ``None``) when ``des`` already resolves. Otherwise prepends
-    the first existing bundled location and returns it. Idempotent.
-    """
-    if is_importable is None:
-        import importlib.util
+            print(f"Residual risk: {ATTESTATION_RISK}.")
+        return 0
 
-        importable = importlib.util.find_spec("des") is not None
-    else:
-        importable = is_importable()
-    if importable:
-        return None
+    is_check = args == ["--check"]
+    is_apply = len(args) == 3 and args[:2] == ["--yes", "--root"]
+    is_recovery = args == ["--recover", "--yes", "--confirm-stopped"]
+    if not is_check and not is_apply and not is_recovery:
+        print(
+            "Usage: nwave-ai update --check | --yes --root PATH | "
+            "--recover --yes --confirm-stopped | "
+            "consent <check|install> <on|off> | sessions [close KEY --confirm-closed]",
+            file=sys.stderr,
+        )
+        return 1
 
-    pkg_dir = pkg_dir if pkg_dir is not None else Path(__file__).resolve().parent
-    home = home if home is not None else Path.home()
-    for path in _bundled_des_paths(pkg_dir, home):
-        entry = str(path)
-        if entry not in sys.path:
-            sys.path.insert(0, entry)
-        return path
-    return None
+    from nwave_ai.update.service import UpdateService
 
-
-_ensure_des_importable()
-
-
-# ---------------------------------------------------------------------------
-# D6 + AC-3: install-time density prompt
-# ---------------------------------------------------------------------------
-
-
-DensityPromptOutcome = Literal[
-    "prompted",  # interactive prompt fired, user picked
-    "default_silent",  # CI / --yes -> silent lean default
-    "upgrade_silent",  # existing config without documentation key
-    "noop_already_configured",  # documentation.density already set
-]
-
-
-def _prompt_density_choice() -> str:
-    """Ask Marco once, interactively, which density to use.
-
-    Returns "lean" or "full". Default if user just presses enter is "lean".
-    Wrapped in its own function so unit tests can mock the I/O without faking
-    typer's prompt machinery.
-    """
-    import typer
-
-    print("Documentation density: lean (experienced) / full (first feature)?")
-    raw_answer: str = typer.prompt("Choice", default="lean")
-    answer = raw_answer.strip().lower()
-    if answer not in {"lean", "full"}:
-        # Unknown reply -> default to lean rather than loop forever.
-        # (DELIVER scope: keep simple; rich validation deferred.)
-        return "lean"
-    return answer
-
-
-def handle_install_density_prompt(
-    config_dir: Path,
-    *,
-    non_interactive: bool,
-) -> DensityPromptOutcome:
-    """Run the D6 first-install density branch.
-
-    Pure orchestration: caller passes config_dir + interactivity flag, this
-    function decides whether to (a) skip, (b) prompt, or (c) write a silent
-    default, then persists the choice via the existing global-config helpers.
-
-    Cascade:
-      1. Config file exists with `documentation.density` set -> noop.
-      2. Config file exists but no `documentation` key -> silent lean default
-         (AC-3.e — upgrade path).
-      3. No config file at all + non_interactive -> silent lean default
-         (AC-3.d — CI / --yes).
-      4. No config file at all + interactive -> prompt user (AC-3.a/b).
-
-    Args:
-        config_dir: ~/.nwave directory (created lazily by writers).
-        non_interactive: True when `--yes` was passed or stdin is not a TTY.
-
-    Returns:
-        Outcome literal describing which branch fired (helps callers log).
-    """
-    config_path = config_dir / GLOBAL_CONFIG_FILENAME
-    config_file_exists = config_path.exists()
-    existing_config = read_global_config(config_dir) if config_file_exists else {}
-    documentation_block = existing_config.get("documentation", {})
-
-    # Case 1: density already set -> idempotent no-op.
-    if documentation_block.get("density") is not None:
-        return "noop_already_configured"
-
-    # Case 2: config exists but no documentation block -> silent default.
-    if config_file_exists:
-        _write_density_choice(config_dir, choice="lean")
-        return "upgrade_silent"
-
-    # Case 3: fresh install + non-interactive -> silent default.
-    if non_interactive:
-        _write_density_choice(config_dir, choice="lean")
-        return "default_silent"
-
-    # Case 4: fresh install + interactive -> prompt.
-    choice = _prompt_density_choice()
-    _write_density_choice(config_dir, choice=choice)
-    return "prompted"
-
-
-def _write_density_choice(config_dir: Path, *, choice: str) -> None:
-    """Persist the chosen density alongside `expansion_prompt: ask-intelligent`.
-
-    Uses read-modify-write to preserve unrelated keys (e.g. attribution).
-    Per Decision 4 (2026-04-28), the fresh-install expansion prompt default
-    is `ask-intelligent` (scoped trigger-based menu) — only Tier-2 items
-    that match a fired trigger are shown to the user. This replaces the
-    older broad `ask` default that surfaced the entire 8-item catalog.
-    """
-    config = read_global_config(config_dir)
-    documentation_block = config.get("documentation", {})
-    documentation_block["density"] = choice
-    documentation_block.setdefault("expansion_prompt", "ask-intelligent")
-    config["documentation"] = documentation_block
-    write_global_config(config_dir, config)
-
-
-def _get_version() -> str:
-    """Get version from package metadata (installed) or __init__.py (dev)."""
-    from importlib.metadata import PackageNotFoundError, version
+    if is_recovery:
+        print(
+            "Recovery acknowledgement: all previous updater/installer descendants "
+            "have stopped and affected host sessions are closed.",
+            flush=True,
+        )
+        outcome = UpdateService().recover(
+            on_stage=lambda stage, state: print(f"{stage}: {state}", flush=True),
+        )
+        return _report_update_outcome(outcome)
+    pending = UpdateService.pending_update()
+    if pending is not None:
+        return _report_update_outcome(pending)
 
     try:
-        return version("nwave-ai")
-    except PackageNotFoundError:
-        pass
+        # This is the only current-version read: product identity remains owned
+        # by nwave_ai's existing lazy projection.
+        current_version = nwave_ai.__version__
+    except VersionResolutionError as exc:
+        return _refuse_version_resolution(exc)
 
-    from nwave_ai import __version__
+    from packaging.version import InvalidVersion, Version
 
-    return __version__
+    from nwave_ai.update import ReleaseDiscoveryRefusal, discover_latest_stable_release
+
+    try:
+        parsed_current_version = Version(current_version)
+        if (
+            parsed_current_version.is_prerelease
+            or parsed_current_version.is_devrelease
+            or parsed_current_version.local
+        ):
+            print(
+                "WHAT: the selected beta or dev release has no supported stable update path. "
+                "WHY: a PyPI stable release is a different channel and could remove "
+                "the selected assets. HOW: use the selected source or release channel's "
+                "explicit install instructions.",
+                file=sys.stderr,
+            )
+            return 1
+        if is_check:
+            install = read_global_config(_get_config_dir()).get("install")
+            if isinstance(install, dict) and install.get("dev_mode") is True:
+                print(
+                    "WHAT: the selected --dev install has no supported stable update check. "
+                    "WHY: PyPI stable release availability does not establish compatible "
+                    "private dev assets. HOW: inspect the source checkout's release "
+                    "route and reinstall with --dev for the selected host.",
+                    file=sys.stderr,
+                )
+                return 1
+        origin = UpdateService.release_origin()
+        if origin is not None:
+            print(
+                f"WHAT: update stopped at {origin.failed_stage}. WHY: {origin.cause}. "
+                f"Command: `no process`. HOW: {origin.recovery}.",
+                file=sys.stderr,
+            )
+            return 1
+        latest_version = discover_latest_stable_release()
+    except ReleaseDiscoveryRefusal as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except InvalidVersion as exc:
+        print(
+            "WHAT: the installed nwave-ai version cannot be compared to a public release. "
+            f"WHY: {exc}. "
+            "HOW: reinstall nwave-ai with valid PEP 440 version metadata.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if is_check:
+        state = (
+            "update-available"
+            if latest_version > parsed_current_version
+            else "up-to-date"
+        )
+        print(f"Installed version: {current_version}")
+        print(f"Latest stable release: {latest_version}")
+        print(f"Status: {state}")
+        return 0
+
+    from nwave_ai.update.activity import ReplacementLease
+
+    # The exclusive update lock is taken only after every read-only preflight
+    # and held until the last stage ends, so session registration waits for
+    # the whole replacement and a refused preflight writes nothing.
+    lease = replacement_lease or ReplacementLease(wrapper_registration)
+    try:
+        outcome = UpdateService().apply(
+            current_version=parsed_current_version,
+            discovered_version=latest_version,
+            root=Path(args[2]),
+            on_stage=lambda stage, state: print(f"{stage}: {state}", flush=True),
+            before_replacement=lease.before_replacement,
+        )
+    finally:
+        lease.close()
+    return _report_update_outcome(outcome)
+
+
+def _report_update_outcome(outcome) -> int:
+    if outcome.state == "up-to-date":
+        print(f"nwave-ai is up-to-date ({outcome.version}).")
+        return 0
+    if outcome.state == "refused":
+        stage = outcome.failed_stage or "package-owner"
+        command = " ".join(outcome.command) if outcome.command else "no process"
+        recovery = (
+            outcome.recovery or "verify the running package owner and retry explicitly"
+        )
+        print(
+            f"WHAT: update stopped at {stage}. WHY: {outcome.cause}. "
+            f"Command: `{command}`. HOW: {recovery}.",
+            file=sys.stderr,
+        )
+        return 1
+
+    # ``succeeded`` is the only state that carries a completed target version.
+    print(f"Updated nwave-ai to {outcome.version}.")
+    return 0
+
+
+_CONFIRM_OLD_SESSIONS_CLOSED = "--confirm-old-sessions-closed"
+
+
+def _record_old_sessions_closed(agents_home: Path, *, confirmed: bool) -> int:
+    """Require, then record, the one-time closure attestation for old sessions.
+
+    Returns 0 when the acknowledgement is recorded (now or before), else the
+    exit code of a refusal that wrote nothing.
+    """
+    from nwave_ai.platform.session_registry import (
+        ATTESTATION_RISK,
+        SessionActivityRegistry,
+    )
+
+    registry = SessionActivityRegistry(agents_home)
+    if not registry.legacy_acknowledgement_problem():
+        return 0
+    if not confirmed:
+        print(
+            "WHAT: automatic installation consent was not written. "
+            "WHY: sessions that started before the global activity registry are not "
+            "recorded, so an update could replace the installation during their wave; "
+            f"{ATTESTATION_RISK}. "
+            "HOW: close every host session that uses this installation, "
+            f"then run `nwave-ai update consent install on {_CONFIRM_OLD_SESSIONS_CLOSED}`.",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        with registry.exclusive(10.0) as acquired:
+            if not acquired:
+                print(
+                    "WHAT: automatic installation consent was not written. WHY: an update "
+                    f"holds {registry.lock_file}. HOW: wait for it to finish, then retry.",
+                    file=sys.stderr,
+                )
+                return 1
+            registry.acknowledge_legacy_sessions_closed()
+    except OSError as exc:
+        print(
+            f"WHAT: automatic installation consent was not written. WHY: {exc}. "
+            "HOW: repair the selected agents home's .nwave/activity directory and retry.",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
+def _handle_controlled_launch_consent(args: list[str]) -> int:
+    if args not in (["on", "--confirm-controlled-launch"], ["off"]):
+        print(
+            "Usage: nwave-ai update consent controlled-launch on --confirm-controlled-launch | off",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        config_dir = _require_mutating_config_dir()
+        from nwave_ai.platform.config_writer import ConfigWriter
+
+        def set_commitment(document: dict) -> None:
+            previous = document.get("updates")
+            updates = dict(previous) if isinstance(previous, dict) else {}
+            updates["controlled_launch"] = args[0] == "on"
+            document["updates"] = updates
+
+        ConfigWriter(home_dir=config_dir.parent, repo_root=Path.cwd()).update_global(
+            set_commitment
+        )
+    except Exception as exc:
+        print(f"Controlled-launch commitment was not written: {exc}", file=sys.stderr)
+        return 1
+    print(f"Controlled-launch commitment: {args[0]}.")
+    if args[0] == "on":
+        print(
+            "You confirm that future sessions sharing this package use `nwave-ai run HOST -- ARGS`. Direct launches, disabled hooks and detached work are not covered: close that work before allowing automatic replacement."
+        )
+    return 0
+
+
+def _handle_run(args: list[str]) -> int:
+    if len(args) < 2 or args[1] != "--":
+        print(
+            "Usage: nwave-ai run <claude-code|codex|opencode|copilot> -- [HOST_ARGS ...]",
+            file=sys.stderr,
+        )
+        return 1
+    from nwave_ai.update.managed import run_host
+
+    return run_host(args[0], args[2:], update=_handle_update)
+
+
+def _handle_update_sessions(args: list[str]) -> int:
+    """List registered host sessions, or close one the operator attests ended."""
+    from nwave_ai.platform.session_registry import SessionActivityRegistry
+
+    registry = SessionActivityRegistry.selected()
+    if registry is None:
+        print(
+            "WHAT: the activity registry was not read. WHY: the selected agents home is "
+            "invalid. HOW: set NWAVE_AGENTS_HOME to an absolute path or unset it, then retry.",
+            file=sys.stderr,
+        )
+        return 1
+    from nwave_ai.update.package_activity import PackageActivityLease
+
+    package = PackageActivityLease.for_interpreter()
+    registries = [registry] + ([package.registry] if package is not None else [])
+    if not args:
+        try:
+            records = tuple(
+                record for current in registries for record in current.sessions()
+            )
+        except OSError as exc:
+            print(
+                f"WHAT: the activity registry was not read. WHY: {exc}. "
+                f"HOW: repair {registry.root} and retry.",
+                file=sys.stderr,
+            )
+            return 1
+        problem = registry.legacy_acknowledgement_problem()
+        print(f"Older-session confirmation: {problem if problem else 'recorded'}.")
+        if not records:
+            print("Registered sessions: none.")
+        for record in {record.key: record for record in records}.values():
+            if record.problem:
+                print(f"{record.key}  UNKNOWN  {record.problem}")
+            else:
+                print(
+                    f"{record.key}  {record.host}  {record.cwd}  since {record.registered_at}"
+                )
+        return 0
+    if len(args) == 3 and args[0] == "close" and args[2] == "--confirm-closed":
+        try:
+            if package is not None and not package.acquire(exclusive=True):
+                print(
+                    "No record closed: a controlled host or updater still uses this package.",
+                    file=sys.stderr,
+                )
+                return 1
+            closed = False
+            for current in registries:
+                with current.exclusive(10.0) as acquired:
+                    if not acquired:
+                        print(
+                            f"No record closed in {current.root}: its update lock is busy.",
+                            file=sys.stderr,
+                        )
+                        return 1
+                    closed = current.close_session(args[1]) or closed
+        except OSError as exc:
+            print(
+                f"WHAT: no session record was closed. WHY: {exc}. "
+                f"HOW: repair {registry.root} and retry.",
+                file=sys.stderr,
+            )
+            return 1
+        finally:
+            if package is not None:
+                package.close()
+        if not closed:
+            print(
+                f"WHAT: no registered session is named {args[1]!r}. WHY: the key does not "
+                "match a registry entry. HOW: run `nwave-ai update sessions` and copy the key.",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"Closed session record {args[1]} on your confirmation that it ended.")
+        return 0
+    print(
+        "Usage: nwave-ai update sessions [close KEY --confirm-closed]",
+        file=sys.stderr,
+    )
+    return 1
 
 
 def _get_project_root() -> Path:
@@ -208,8 +427,10 @@ def _get_project_root() -> Path:
     return Path(__file__).parent.parent
 
 
-def _run_script(script_name: str, args: list[str]) -> int:
-    """Run an install script as a subprocess."""
+def _run_script(
+    script_name: str, args: list[str], *, user_project_root: Path | None = None
+) -> int:
+    """Run an install script, carrying the caller project only to that process."""
     project_root = _get_project_root()
     script_path = project_root / "scripts" / "install" / script_name
 
@@ -219,39 +440,48 @@ def _run_script(script_name: str, args: list[str]) -> int:
         return 1
 
     cmd = [sys.executable, str(script_path), *args]
-    result = subprocess.run(cmd, cwd=str(project_root))
+    environment = os.environ.copy()
+    if user_project_root is not None:
+        environment["NWAVE_PROJECT_ROOT"] = str(user_project_root.resolve())
+    result = subprocess.run(cmd, cwd=str(project_root), env=environment)
     return result.returncode
 
 
 def _get_config_dir() -> Path:
-    """Return the nWave config directory (~/.nwave/)."""
-    return Path.home() / ".nwave"
+    """Return the read-compatible nWave config directory for this destination."""
+    return nwave_config_dir()
 
 
-def _record_package_manager(config_dir: Path) -> None:
-    """Persist the detected package manager into global config after install.
+def _require_mutating_config_dir() -> Path:
+    """Resolve the selected global config directory or refuse before a write.
 
-    Runs inside the nwave-ai process, so ``sys.executable`` is the install
-    interpreter and ``detect_pm`` is reliable here -- unlike at ``/nw-update``
-    time, where the skill shells out via an unrelated ambient ``python3``.
-    Recording it now lets ``/nw-update`` read a trustworthy value later
-    (via ``resolve_nwave_pm``).
-
-    Best-effort: a detection/write failure must never fail the install.
+    ``nwave_config_dir`` retains its native-home fallback for legacy read-only
+    callers. CLI commands that publish configuration must instead observe the
+    same ``NWaveLocations`` failure returned to the installer, so a relative
+    override never redirects a write to the operator's native home.
     """
-    try:
-        from des.adapters.driven.package_managers.package_manager_detector import (
-            detect_pm,
-        )
+    locations = NWaveLocations.resolve(
+        home=Path.home(),
+        repo_root=Path.cwd(),
+        agents_home_override=os.environ.get("NWAVE_AGENTS_HOME"),
+        claude_config_override=os.environ.get("CLAUDE_CONFIG_DIR"),
+        codex_config_override=os.environ.get("CODEX_HOME"),
+    )
+    if isinstance(locations, Failure):
+        raise ValueError(locations.error)
+    return locations.unwrap().agents_home / ".nwave"
 
-        pm = detect_pm(Path(sys.executable))
-        config = read_global_config(config_dir)
-        install_block = config.get("install", {})
-        install_block["package_manager"] = pm
-        config["install"] = install_block
-        write_global_config(config_dir, config)
-    except Exception:
-        pass  # Never block install on PM recording.
+
+def _refuse_mutating_location(error: ValueError) -> int:
+    """Render one explicit selected-home refusal for a CLI write command."""
+    print(
+        "WHAT: configuration was not written. "
+        f"WHY: {error}. "
+        "HOW: set NWAVE_AGENTS_HOME, CLAUDE_CONFIG_DIR, and CODEX_HOME to "
+        "absolute paths or unset them and retry.",
+        file=sys.stderr,
+    )
+    return 1
 
 
 def _extract_target_flag(
@@ -302,16 +532,17 @@ def _extract_target_flag(
 
 
 def _handle_install(args: list[str]) -> int:
-    """Run the install pipeline with first-run density prompt (D6).
+    """Run the installer without prompting for inert documentation density.
 
-    The density prompt is run BEFORE the heavyweight install_nwave.py
-    subprocess so a CI host (--yes) gets the silent default and a
-    real Marco gets one prompt. The density prompt does not block the
-    install on failure — at worst the CI default ("lean") is written.
+    ``--yes`` bypasses interactive project guidance prompts; ``--platform``
+    and other installer arguments pass through unchanged. ``--target`` selects
+    a Claude Code profile, with ``$HOME`` refused as an unsafe target. An
+    invalid active wave-end expansion preference refuses before installation.
 
     Flags handled here:
         --platform <tool>  target agentic tool to provision for
-                           (claude-code / codex / opencode). Forwarded
+                           (claude-code / opencode / codex / cursor / copilot / omp /
+                           devin, or auto / all). Forwarded
                            unchanged to install_nwave.py; this is the
                            entry point the cross-OS RC smoke matrix depends
                            on (ADR-PLAT-007).
@@ -324,6 +555,19 @@ def _handle_install(args: list[str]) -> int:
 
     All other args (including --platform) pass through to install_nwave.py.
     """
+    # The installer already owns this subcommand's public help text.  Dispatch
+    # it before parsing targets or constructing any write-capable preflight so
+    # discovery remains usable even when an actual installation is blocked.
+    if "--help" in args or "-h" in args:
+        return _run_script("install_nwave.py", ["--help"])
+
+    # The updater synchronizes installed assets without reenrolling project
+    # guidance that the project owner may have declined. A backup-only run
+    # writes nothing outside the backup, so it never syncs guidance either.
+    sync_project_guidance = (
+        "--no-project-guidance" not in args and "--backup-only" not in args
+    )
+    args = [arg for arg in args if arg != "--no-project-guidance"]
     target, args, error = _extract_target_flag(args)
     if error is not None:
         print(f"nwave-ai: {error}", file=sys.stderr)
@@ -331,43 +575,75 @@ def _handle_install(args: list[str]) -> int:
     if target is not None:
         os.environ["CLAUDE_CONFIG_DIR"] = str(target)
 
-    pass_through_args: list[str] = []
-    non_interactive = False
-    density_only = False
+    pass_through_args = [arg for arg in args if arg != "--yes"]
+    non_interactive = "--yes" in args or not sys.stdin.isatty()
 
-    for arg in args:
-        if arg == "--yes":
-            non_interactive = True
-            # Don't forward --yes to install_nwave.py (it doesn't recognise it).
-            continue
-        if arg == "--density-only":
-            density_only = True
-            continue
-        pass_through_args.append(arg)
+    # A completed wave reads expansion_prompt, so reject an invalid explicit
+    # choice before installing. Legacy density is not an install control.
+    try:
+        config_dir = _require_mutating_config_dir()
+        documentation = read_global_config(config_dir).get("documentation")
+        if isinstance(documentation, dict) and "expansion_prompt" in documentation:
+            from nwave_ai.platform.documentation_density import resolve_density
 
-    # Detect non-interactive mode from environment if not explicit.
-    if not non_interactive and not sys.stdin.isatty():
-        non_interactive = True
+            resolve_density(
+                {
+                    "documentation": {
+                        "expansion_prompt": documentation["expansion_prompt"]
+                    }
+                }
+            )
+    except ValueError as error:
+        print(f"nwave-ai: {error}", file=sys.stderr)
+        return 1
 
-    config_dir = _get_config_dir()
-    outcome = handle_install_density_prompt(
-        config_dir=config_dir, non_interactive=non_interactive
+    # Refuse unsafe Codex ownership before installation writes user state.
+    from scripts.install.install_nwave import (
+        NWaveInstaller,
+        _resolve_platform_override,
     )
 
-    if outcome == "upgrade_silent":
-        config_path = config_dir / GLOBAL_CONFIG_FILENAME
-        print(
-            "Documentation density default 'lean' written to "
-            f"{config_path} (existing configuration upgraded)."
+    platform = "auto"
+    for index, arg in enumerate(pass_through_args):
+        if arg.startswith("--platform="):
+            platform = arg.split("=", 1)[1]
+        elif arg == "--platform" and index + 1 < len(pass_through_args):
+            platform = pass_through_args[index + 1]
+    ownership_preflight = NWaveInstaller(
+        dry_run=True, platform_override=_resolve_platform_override(platform)
+    )
+    if not ownership_preflight.validate_codex_ownership_preflight():
+        return 1
+    caller_project_root = Path.cwd().resolve()
+    if "--dry-run" in pass_through_args:
+        return _run_script(
+            "install_nwave.py",
+            pass_through_args,
+            user_project_root=caller_project_root,
         )
 
-    if density_only:
-        return 0
+    # The installer runs from its packaged source root so it can find its
+    # assets. Preserve the caller's repository separately: configuration and
+    # generated guidance belong to that user project, never the source tree.
+    result = _run_script(
+        "install_nwave.py",
+        pass_through_args,
+        user_project_root=caller_project_root,
+    )
+    if result != 0:
+        return result
 
-    result = _run_script("install_nwave.py", pass_through_args)
-    if result == 0:
-        _record_package_manager(config_dir)
-    return result
+    # Project guidance belongs to the caller's project for every resolved host,
+    # independently of which host-specific assets the installer provisions.
+    if sync_project_guidance:
+        try:
+            _sync_project_claude_section(
+                "enable", caller_project_root, assume_yes=non_interactive
+            )
+        except OSError as exc:
+            print(f"  (could not sync guidance sections: {exc})", file=sys.stderr)
+
+    return 0
 
 
 def _handle_uninstall(args: list[str]) -> int:
@@ -376,7 +652,9 @@ def _handle_uninstall(args: list[str]) -> int:
     Flags handled here:
         --target <path>    uninstall from <path> instead of ~/.claude/
                            (sets CLAUDE_CONFIG_DIR for the subprocess; see
-                           ADR-001). $HOME is refused with exit 2.
+                           ADR-001). $HOME is refused with exit 2. When set,
+                           implies `--force` (scripted/test mode -- no
+                           interactive prompts).
 
     All other args pass through to uninstall_nwave.py.
     """
@@ -386,58 +664,99 @@ def _handle_uninstall(args: list[str]) -> int:
         return 2
     if target is not None:
         os.environ["CLAUDE_CONFIG_DIR"] = str(target)
-    return _run_script("uninstall_nwave.py", remaining)
+        # Scripted/test mode: skip interactive confirmation prompts. The
+        # operator named an explicit target path -- they know what they're
+        # uninstalling.
+        if "--force" not in remaining:
+            remaining = [*remaining, "--force"]
+    try:
+        caller_project_root = Path.cwd().resolve()
+    except FileNotFoundError:
+        print(
+            "nwave-ai: the current directory no longer exists, so the project "
+            "nWave was installed from cannot be located. Change to an existing "
+            "directory and run uninstall again.",
+            file=sys.stderr,
+        )
+        return 1
+    return _run_script(
+        "uninstall_nwave.py", remaining, user_project_root=caller_project_root
+    )
 
 
 def _handle_attribution(args: list[str]) -> int:
-    """Handle 'attribution on|off|status' subcommand."""
+    """Handle 'attribution on|off|status' subcommand.
+
+    Flags handled here:
+        --target <path>    toggle attribution for <path> instead of
+                           ~/.claude/ (sets CLAUDE_CONFIG_DIR for this
+                           process; see ADR-001). Mirrors install/uninstall
+                           (_handle_install / _handle_uninstall) so a
+                           multi-profile setup toggles the profile actually
+                           named, not always the default.
+    """
+    target, args, error = _extract_target_flag(args)
+    if error is not None:
+        print(f"nwave-ai: {error}", file=sys.stderr)
+        return 2
+    if target is not None:
+        os.environ["CLAUDE_CONFIG_DIR"] = str(target)
+
     if not args:
         print("Usage: nwave-ai attribution <on|off|status>", file=sys.stderr)
         return 1
 
     action = args[0].lower()
-    config_dir = _get_config_dir()
+    # CLAUDE_CONFIG_DIR / --target scoped (same property install/uninstall
+    # already resolve on), NOT a fixed ~/.claude -- so the hook is
+    # registered/removed in the profile actually in scope, and the success
+    # message can name it (never a silent "success" about the wrong path).
+    from scripts.install.install_utils import PathUtils
+
+    claude_dir = PathUtils.get_claude_config_dir()
 
     if action == "on":
-        write_attribution_preference(config_dir, enabled=True)
-        # ADR-CA-007: the settings.json credit write surface is retired. The
-        # activation-gated PreToolUse commit-attribution hook is the SOLE
-        # attribution mechanism, so enabling registers it (and only it).
-        # Ensure ~/.claude exists so the hook has a home, then register it
-        # idempotently. Contained so a registration fault never fails the
-        # toggle (belt-and-suspenders).
-        claude_dir = Path.home() / ".claude"
-        registered = False
+        from scripts.install.host_attribution import HostAttributionPolicy
+
         try:
-            claude_dir.mkdir(parents=True, exist_ok=True)
-            registered = register_attribution_hook(enabled=True)
+            config_dir = _require_mutating_config_dir()
+        except ValueError as error:
+            return _refuse_mutating_location(error)
+        write_attribution_preference(config_dir, enabled=True)
+        # ADR-CA-007: the activation-gated PreToolUse hook (universal pre-tool-use
+        # adapter) is the SOLE attribution mechanism, observing attribution.enabled
+        # at invocation time. Clean any legacy independent entry. Fail-open.
+        try:
+            cleanup_legacy_attribution_hook(claude_dir=claude_dir)
         except Exception:
             pass
-        if registered:
-            print(
-                "Attribution enabled. New Claude commits will carry the nWave "
-                "credit via the commit-attribution hook. Restart Claude (don't "
-                "/resume older sessions) for this to take effect."
-            )
-        else:
-            print(
-                "Attribution enabled, but the commit-attribution hook could not "
-                "be registered (Claude Code config absent or user-modified)."
-            )
+        message = (
+            "Attribution enabled. New Claude commits will carry the nWave "
+            "credit via the universal handler (observes the preference at "
+            "commit time)."
+        )
+        if target is not None:
+            message += f" (target: {claude_dir})"
+        print(message)
+        policy = HostAttributionPolicy.from_install_record(config_dir)
+        for mechanism in policy.mechanisms_in(Path.cwd()):
+            print(mechanism.install(config_dir).report())
         return 0
 
     if action == "off":
+        try:
+            config_dir = _require_mutating_config_dir()
+        except ValueError as error:
+            return _refuse_mutating_location(error)
         write_attribution_preference(config_dir, enabled=False)
         # ADR-CA-007 DDD-3: clean any legacy nWave-managed settings credit,
         # preserving a user-modified value. Route through the claude_dir seam
         # explicitly so the sandbox injection holds (fail-open: never raises).
-        migrate_legacy_settings_attribution(
-            config_dir, claude_dir=Path.home() / ".claude"
-        )
-        # ADR-CA-006: disabling removes ONLY the commit-attribution hook entry,
-        # leaving the DES guards intact. Contained so it never breaks the toggle.
+        migrate_legacy_settings_attribution(config_dir, claude_dir=claude_dir)
+        # DDD-3: remove the stale independent attribution PreToolUse entry.
+        # Contained so it never breaks the toggle.
         try:
-            unregister_attribution_hook()
+            cleanup_legacy_attribution_hook(claude_dir=claude_dir)
         except Exception:
             pass
         # Root cause C: 'off' is the remediation affordance, so it must also
@@ -449,27 +768,36 @@ def _handle_attribution(args: list[str]) -> int:
             migrate_legacy_hook(config_dir=config_dir)
         except Exception:
             pass
-        print(
-            "Attribution disabled. New Claude sessions will not carry the nWave "
-            "credit line. Restart Claude (don't /resume older sessions) for this "
-            "to take effect."
+        message = (
+            "Attribution disabled. New Claude commits will not carry the nWave "
+            "credit (the universal handler observes the preference at commit time)."
         )
+        if target is not None:
+            message += f" (target: {claude_dir})"
+        print(message)
         return 0
 
     if action == "status":
-        # ADR-CA-007: the EFFECTIVE attribution scope is the preference
-        # (attribution.enabled) AND this repo's resolved activation. Report
-        # BOTH so a user can tell on+active from on+inactive. Reuse the
-        # canonical resolve_activation policy over the marker + global mode —
-        # never re-derive it here (DDD discipline, mirrors the doctor check).
-        preference = read_attribution_preference(config_dir)
-        if preference is True:
-            print("Attribution is currently on.")
-            active = _repo_attribution_active()
-            scope = "active" if active else "inactive"
-            print(f"Attribution is {scope} for this repo.")
-        else:
+        from nwave_ai.platform.activation import resolve_activation
+        from nwave_ai.platform.config import NWaveConfig
+
+        try:
+            config = NWaveConfig(cwd=Path.cwd())
+            effective, sources = config.effective_config_with_sources()
+            active = resolve_activation(config.enabled_for_repo, config.activation_mode)
+        except Exception:
+            # A diagnostic cannot claim credit when the config cannot be read.
             print("Attribution is currently off.")
+            print("Attribution is inactive for this repo.")
+            return 0
+
+        print(
+            f"Attribution is currently {'on' if effective['attribution'] else 'off'}."
+        )
+        print(f"Preference source: {sources['attribution']}.")
+        print(
+            f"Attribution is {'active' if active and effective['attribution'] else 'inactive'} for this repo."
+        )
         return 0
 
     print(f"Unknown attribution action: {action}", file=sys.stderr)
@@ -477,43 +805,187 @@ def _handle_attribution(args: list[str]) -> int:
     return 1
 
 
-def _repo_attribution_active() -> bool:
-    """Resolve THIS repo's activation, failing to INACTIVE on a read error.
+class _SilentLogger:
+    """Logger handed to plugin verifiers: the doctor prints its own report."""
 
-    Reuses the canonical ``resolve_activation`` policy over the two scalars the
-    ``DESConfig`` reader exposes (marker ``enabled_for_repo`` + global
-    ``activation.mode``) — the policy is NOT re-derived here (mirrors the
-    activation-aware doctor check).
+    def info(self, _msg: str) -> None:
+        pass
 
-    On a config-read exception we fail to INACTIVE (return False), matching the
-    activation gate's fail-to-inactive-under-opt-in semantics: a diagnostic must
-    never be more optimistic than the enforcement gate.
+    def error(self, _msg: str) -> None:
+        pass
+
+    def warn(self, _msg: str) -> None:
+        pass
+
+
+def _verifying_plugins(host: str) -> list:
+    """The installation plugins whose ``verify()`` speaks for a native host."""
+    if host == "omp":
+        from scripts.install.plugins.omp_agents_plugin import OmpAgentsPlugin
+        from scripts.install.plugins.omp_commands_plugin import OmpCommandsPlugin
+        from scripts.install.plugins.omp_skills_plugin import OmpSkillsPlugin
+
+        return [OmpSkillsPlugin(), OmpAgentsPlugin(), OmpCommandsPlugin()]
+    if host == "opencode":
+        from scripts.install.plugins.opencode_agents_plugin import (
+            OpenCodeAgentsPlugin,
+        )
+        from scripts.install.plugins.opencode_commands_plugin import (
+            OpenCodeCommandsPlugin,
+        )
+        from scripts.install.plugins.opencode_skills_plugin import (
+            OpenCodeSkillsPlugin,
+        )
+
+        return [
+            OpenCodeSkillsPlugin(),
+            OpenCodeAgentsPlugin(),
+            OpenCodeCommandsPlugin(),
+        ]
+    if host == "copilot":
+        from scripts.install.plugins.nwave_hooks_plugin import HooksPlugin
+
+        return [HooksPlugin()]
+    return []
+
+
+@dataclass(frozen=True)
+class _NativeHost:
+    """A native host nWave installs into, checked once its config directory exists.
+
+    ``config_dir`` is resolved by the same function the host's installer plugins
+    write through, so a relocated host (``CURSOR_HOME``, ``COPILOT_HOME``,
+    ``OPENCODE_CONFIG_DIR``, ``PI_CONFIG_DIR`` ...) is found where it was installed.
     """
-    try:
-        from des.adapters.driven.config.des_config import DESConfig
-        from des.domain.activation_policy import resolve_activation
 
-        config = DESConfig(cwd=Path.cwd())
-        return resolve_activation(config.enabled_for_repo, config.activation_mode)
-    except Exception:
+    name: str
+    config_dir: Path
+
+    @property
+    def is_present(self) -> bool:
+        return self.config_dir.exists()
+
+    def verify(self, claude_dir: Path) -> list:
+        """Run this host's verifiers and return their ``PluginResult`` list."""
+        from scripts.install import verify_nwave
+
+        if self.name in verify_nwave._NATIVE_PLATFORMS:
+            return verify_nwave.verify_native_platform(
+                self.name, claude_dir, _SilentLogger()
+            )
+        context = verify_nwave._make_verify_context(
+            claude_dir, self.name, _SilentLogger()
+        )
+        return [plugin.verify(context) for plugin in _verifying_plugins(self.name)]
+
+
+def _present_native_hosts() -> list[_NativeHost]:
+    """Native hosts whose configuration directory exists, in report order."""
+    try:
+        from nwave_ai.upgrade_shell import copilot_config_dir, cursor_config_dir
+        from scripts.install.plugins.opencode_common import opencode_config_dir
+        from scripts.shared.install_paths import (
+            codex_config_dir,
+            devin_config_dir,
+            omp_agent_dir,
+        )
+    except ImportError:
+        return []
+
+    hosts = (
+        _NativeHost("codex", codex_config_dir()),
+        _NativeHost("cursor", cursor_config_dir(Path.home())),
+        _NativeHost("devin", devin_config_dir()),
+        _NativeHost("omp", omp_agent_dir()),
+        _NativeHost("opencode", opencode_config_dir()),
+        _NativeHost("copilot", copilot_config_dir(Path.home())),
+    )
+    return [host for host in hosts if host.is_present]
+
+
+def _report_native_platform_status(hosts: list[_NativeHost], claude_dir: Path) -> bool:
+    """Verify and report every present native host (Codex, Cursor, Devin, OMP,
+    OpenCode, Copilot).
+
+    Human mode only: the JSON contract stays stable -- use
+    verify_nwave.py --platform all --json for machine-readable native checks.
+
+    Returns True when any native platform check fails, False otherwise.
+    """
+    if not hosts:
         return False
+    try:
+        from scripts.install.verify_nwave import format_native_results
+    except ImportError:
+        return False
+
+    any_failed = False
+    print()
+    print("Native platforms detected:")
+    for host in hosts:
+        try:
+            results = host.verify(claude_dir)
+            if not all(r.success for r in results):
+                any_failed = True
+            print(format_native_results(host.name, results))
+        except Exception as exc:  # best-effort, must not crash doctor
+            print(f"  ⚠️  {host.name}: verification error — {exc}")
+            any_failed = True
+    return any_failed
+
+
+#: Checks whose subject is the Claude Code profile (settings.json, shims,
+#: framework directories). A native-only installation
+#: never creates those files, so demanding them would fail a healthy install.
+_CLAUDE_CODE_CHECKS = frozenset(
+    check.name
+    for check in (
+        HooksRegisteredCheck,
+        HookPythonPathCheck,
+        FrameworkFilesCheck,
+    )
+)
 
 
 def _handle_doctor(args: list[str]) -> int:
-    """Handle 'doctor [--json] [--fix] [--help]' subcommand."""
+    """Handle 'doctor [--json] [--fix] [--target <path>] [--help]' subcommand.
+
+    Flags handled here:
+        --target <path>    diagnose <path> instead of ~/.claude/ (sets
+                           CLAUDE_CONFIG_DIR for this process; see ADR-001).
+                           Mirrors install/uninstall (_handle_install /
+                           _handle_uninstall) so a multi-profile setup is
+                           diagnosed on the profile actually named, not
+                           always the default -- otherwise doctor silently
+                           reports on the WRONG installation.
+    """
+    target, args, error = _extract_target_flag(args)
+    if error is not None:
+        print(f"nwave-ai: {error}", file=sys.stderr)
+        return 2
+    if target is not None:
+        os.environ["CLAUDE_CONFIG_DIR"] = str(target)
+
     json_output = False
     fix = False
 
     for arg in args:
         if arg in ("--help", "-h"):
-            print("Usage: nwave-ai doctor [--json] [--fix]")
+            print("Usage: nwave-ai doctor [--json] [--fix] [--target <path>]")
             print()
             print("Run diagnostic checks on the nWave installation.")
             print()
             print("Options:")
-            print("  --json    Emit JSON output instead of human-readable text.")
-            print("  --fix     Attempt to fix detected issues (not yet implemented).")
-            print("  --help    Show this message and exit.")
+            print("  --json          Emit JSON output instead of human-readable text.")
+            print(
+                "  --fix           Attempt to fix detected issues (not yet "
+                "implemented)."
+            )
+            print(
+                "  --target <path> Diagnose <path> instead of ~/.claude/ "
+                "(sets CLAUDE_CONFIG_DIR)."
+            )
+            print("  --help          Show this message and exit.")
             return 0
         elif arg == "--json":
             json_output = True
@@ -532,165 +1004,30 @@ def _handle_doctor(args: list[str]) -> int:
         return 2
 
     context = DoctorContext.from_defaults()
-    results = run_doctor(context)
+    native_hosts = _present_native_hosts()
+    # Claude Code files are demanded only of a Claude Code installation. With
+    # no Claude profile on disk and a native host installed, they belong to a
+    # host that was never installed; with nothing installed at all the doctor
+    # keeps reporting everything missing.
+    claude_code_installed = context.claude_dir.is_dir() or not native_hosts
+    results = [
+        result
+        for result in run_doctor(context)
+        if claude_code_installed or result.check_name not in _CLAUDE_CODE_CHECKS
+    ]
 
     if json_output:
         print(render_json(results))
     else:
         print(render_human(results))
 
-    if any(not r.passed for r in results):
+    native_failed = not json_output and _report_native_platform_status(
+        native_hosts, context.claude_dir
+    )
+
+    if any(not r.passed for r in results) or native_failed:
         return 1
     return 0
-
-
-def _handle_sync(args: list[str]) -> int:
-    """Handle the `nwave-ai sync` subcommand (DDD-4).
-
-    Mirrors each feature worktree's `docs/feature/<id>/feature-delta.md` to
-    `<master>/.nwave/in-flight/<id>.md`, removing stale entries. On-demand
-    only — no post-commit hook (vendor-neutrality rule).
-    """
-    for arg in args:
-        if arg in ("--help", "-h"):
-            print("Usage: nwave-ai sync")
-            print()
-            print(
-                "Mirror in-flight feature-delta.md files from feature/* "
-                "worktrees into <master>/.nwave/in-flight/."
-            )
-            print()
-            print("Run from any path inside the master worktree.")
-            return 0
-        print(f"Unknown option for sync: {arg}", file=sys.stderr)
-        print("Run 'nwave-ai sync --help' for usage.", file=sys.stderr)
-        return 2
-
-    from nwave_ai.sync import main as sync_main
-
-    return sync_main()
-
-
-def _handle_extract_gherkin(args: list[str]) -> int:
-    """Handle 'extract-gherkin <path>' subcommand (US-06)."""
-    from nwave_ai.feature_delta.cli import extract_gherkin_command
-
-    if not args or args[0] in ("--help", "-h"):
-        print("Usage: nwave-ai extract-gherkin <path>")
-        print()
-        print("Extract embedded Gherkin blocks from a feature-delta.md file.")
-        print()
-        print("Output begins with 'Feature: <feature-id>' followed by all")
-        print("```gherkin ... ``` blocks concatenated in document order.")
-        print()
-        print("Exit codes:")
-        print("  0   Extraction successful — output written to stdout")
-        print("  1   No gherkin blocks found in the file")
-        print("  65  Input error (file not found, unreadable)")
-        return 0
-
-    return extract_gherkin_command(args[0])
-
-
-def _handle_migrate_feature(args: list[str]) -> int:
-    """Handle 'migrate-feature <directory>' subcommand (US-08)."""
-    from nwave_ai.feature_delta.cli import migrate_feature_command
-
-    if not args or args[0] in ("--help", "-h"):
-        print("Usage: nwave-ai migrate-feature <directory>")
-        print()
-        print("Migrate .feature files to embedded gherkin blocks in feature-delta.md.")
-        print()
-        print("Each .feature file is embedded as a fenced ```gherkin block.")
-        print("A byte-identical round-trip check is performed before any file")
-        print(
-            "is modified. On success, originals are renamed to .feature.pre-migration."
-        )
-        print()
-        print("Re-running on an already-migrated directory is a no-op (exit 0).")
-        print()
-        print("Exit codes:")
-        print("  0   Migration succeeded (or already migrated — no-op)")
-        print("  1   Round-trip check failed or input error")
-        return 0
-
-    return migrate_feature_command(args[0])
-
-
-def _handle_validate_feature_delta(args: list[str]) -> int:
-    """Handle 'validate-feature-delta <path> [--warn-only|--enforce] [--maturity-manifest <path>]'."""
-    from nwave_ai.feature_delta.cli import validate_feature_delta_command
-
-    if not args or args[0] in ("--help", "-h"):
-        print("Usage: nwave-ai validate-feature-delta <path> [--warn-only | --enforce]")
-        print()
-        print("Validate a feature-delta.md file for cross-wave drift.")
-        print()
-        print("Options:")
-        print("  --warn-only            (default) Exit 0 even when violations found.")
-        print("                         Violations are reported with [WARN] prefix.")
-        print("                         Switch criterion: 30 days post-ship OR >=3")
-        print("                         features migrated voluntarily (see CHANGELOG).")
-        print(
-            "  --enforce              Exit 1 when violations found. Refused (exit 78)"
-        )
-        print("                         when maturity manifest marks any rule pending.")
-        print(
-            "  --maturity-manifest    Path to rule maturity manifest (overrides default)."
-        )
-        print()
-        print("Exit codes:")
-        print("  0   No violations (or warn-only mode — violations non-blocking)")
-        print("  1   Violations found (enforce mode only)")
-        print("  65  Input error (file not found, empty, unreadable)")
-        print("  78  Misconfiguration (--enforce with pending rules in manifest)")
-        return 0
-
-    # Parse path + flags from args list.
-    mode = "warn-only"
-    fmt = "human"
-    maturity_manifest_path: Path | None = None
-    extra_rules: set[str] = set()
-    cleaned: list[str] = []
-    i = 0
-    while i < len(args):
-        token = args[i]
-        if token == "--warn-only":
-            mode = "warn-only"
-        elif token == "--enforce":
-            mode = "enforce"
-        elif token.startswith("--format="):
-            fmt = token[len("--format=") :]
-        elif token == "--format" and i + 1 < len(args):
-            fmt = args[i + 1]
-            i += 1
-        elif token == "--maturity-manifest" and i + 1 < len(args):
-            maturity_manifest_path = Path(args[i + 1])
-            i += 1
-        elif token == "--rule" and i + 1 < len(args):
-            extra_rules.add(args[i + 1].upper())
-            i += 1
-        elif token.startswith("--rule="):
-            extra_rules.add(token[len("--rule=") :].upper())
-        else:
-            cleaned.append(token)
-        i += 1
-
-    if not cleaned:
-        print(
-            "Usage: nwave-ai validate-feature-delta <path> [--warn-only | --enforce] [--format=json]",
-            file=sys.stderr,
-        )
-        return 2
-
-    enabled_rules = frozenset(extra_rules) if extra_rules else None
-    return validate_feature_delta_command(
-        cleaned[0],
-        mode=mode,
-        fmt=fmt,
-        maturity_manifest_path=maturity_manifest_path,
-        enabled_rules=enabled_rules,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -726,10 +1063,9 @@ def _resolve_installer() -> tuple[list[str], str] | None:
     """Pick a Python package installer for `nwave-ai plugin install`.
 
     Delegates toolchain identity to the shared
-    ``des...package_manager_detector.detect_pm`` so the CLI and the
-    ``/nw-update`` self-update flow agree on which manager owns nwave-ai
-    (including honoring the ``NWAVE_INSTALLER`` override). When the detector
-    cannot identify the owner, falls back to a uv-first PATH scan.
+    ``nwave_ai.platform.package_manager.detect_pm`` (including honoring the
+    ``NWAVE_INSTALLER`` override). When the detector cannot identify the owner,
+    falls back to a uv-first PATH scan.
 
     Returns:
         ``(cmd_prefix, tool_name)`` where ``cmd_prefix`` is the argv prefix
@@ -737,7 +1073,7 @@ def _resolve_installer() -> tuple[list[str], str] | None:
     """
     import shutil
 
-    from des.adapters.driven.package_managers.package_manager_detector import (
+    from nwave_ai.platform.package_manager import (
         detect_pm,
     )
 
@@ -846,31 +1182,209 @@ def _handle_plugin(args: list[str]) -> int:
     return 0
 
 
-def _print_usage() -> int:
-    ver = _get_version()
-    print(f"nwave-ai {ver}")
+_MODEL_USAGE = (
+    "Usage: nwave-ai model set --provider {codex,claude} --model MODEL "
+    "[--role ROLE [--competence COMPETENCE]] [--project]"
+)
+
+
+def _handle_model(args: list[str]) -> int:
+    """Publish one complete provider/model declaration through ``ConfigWriter``."""
+    if not args or args[0] in {"--help", "-h", "help"}:
+        print(_MODEL_USAGE)
+        print()
+        print("Without --project the global default is updated.")
+        print("With --role, update that role instead of the tier default.")
+        return 0 if args else 1
+    if args[0] != "set":
+        print(_MODEL_USAGE, file=sys.stderr)
+        return 2
+    if len(args) == 2 and args[1] in {"--help", "-h", "help"}:
+        print(_MODEL_USAGE)
+        print()
+        print("Without --project the global default is updated.")
+        print("With --role, update that role instead of the tier default.")
+        return 0
+
+    provider: str | None = None
+    model: str | None = None
+    role: str | None = None
+    competence: str | None = None
+    project = False
+    index = 1
+    while index < len(args):
+        option = args[index]
+        if option == "--project":
+            if project:
+                print(_MODEL_USAGE, file=sys.stderr)
+                return 2
+            project = True
+            index += 1
+            continue
+        if option in {"--provider", "--model", "--role", "--competence"}:
+            if index + 1 >= len(args):
+                print(_MODEL_USAGE, file=sys.stderr)
+                return 2
+            value = args[index + 1]
+            if option == "--provider" and provider is None:
+                provider = value
+            elif option == "--model" and model is None:
+                model = value
+            elif option == "--role" and role is None:
+                role = value
+            elif option == "--competence" and competence is None:
+                competence = value
+            else:
+                print(_MODEL_USAGE, file=sys.stderr)
+                return 2
+            index += 2
+            continue
+        print(_MODEL_USAGE, file=sys.stderr)
+        return 2
+
+    if competence is not None and role is None:
+        print(
+            "WHAT: --competence requires --role. HOW: " + _MODEL_USAGE,
+            file=sys.stderr,
+        )
+        return 2
+
+    if (
+        provider not in {"codex", "claude"}
+        or not isinstance(model, str)
+        or not model.strip()
+    ):
+        print(
+            "WHAT: model selection requires provider codex|claude and a non-empty model. "
+            f"HOW: {_MODEL_USAGE}",
+            file=sys.stderr,
+        )
+        return 2
+    if role is not None and not role.strip():
+        print("WHAT: --role must be non-empty. HOW: " + _MODEL_USAGE, file=sys.stderr)
+        return 2
+    role_key = role
+    if role is not None and competence is not None:
+        from nwave_ai.platform.roles import qualify_role_id
+
+        try:
+            role_key = qualify_role_id(role, competence)
+        except ValueError as error:
+            print(
+                f"WHAT: --competence is invalid. WHY: {error}. HOW: {_MODEL_USAGE}",
+                file=sys.stderr,
+            )
+            return 2
+    if role is not None:
+        # A role key is not free-form configuration: a typo would otherwise
+        # persist an override no invocation can ever select. Resolve it before
+        # importing or calling the mutating writer, so refusal preserves both
+        # unified config bytes exactly.
+        from nwave_ai.platform.capability import (
+            ClaimRegister,
+            resolve_declared_capability,
+        )
+
+        capability = resolve_declared_capability(role, repo_root=Path.cwd())
+        if capability.register is ClaimRegister.UNKNOWN or capability.spec_path is None:
+            print(
+                "WHAT: --role must name one readable published agent specification. "
+                f"HOW: correct {role!r} and retry.\n{_MODEL_USAGE}",
+                file=sys.stderr,
+            )
+            return 2
+
+    try:
+        config_dir = _require_mutating_config_dir()
+    except ValueError as error:
+        return _refuse_mutating_location(error)
+
+    # Import only when this mutating command is selected.  Version/help remain
+    # usable in a minimal installed runtime before the bundled DES layer loads.
+    from nwave_ai.platform.config_writer import (
+        ConfigMigrationError,
+        ConfigWriter,
+    )
+
+    pair = {"provider": provider, "model": model}
+    # Share the same NWAVE_AGENTS_HOME-aware global authority that NWaveConfig
+    # reads. A bare Path.home() here would write a second global tier when an
+    # operator deliberately redirected the nWave home.
+    writer = ConfigWriter(home_dir=config_dir.parent, repo_root=Path.cwd())
+
+    def mutate(document: dict[str, object]) -> None:
+        current = document.get("model_runtime")
+        runtime = dict(current) if isinstance(current, dict) else {}
+        if role is None:
+            runtime["default"] = pair
+        else:
+            roles = runtime.get("roles")
+            role_map = dict(roles) if isinstance(roles, dict) else {}
+            role_map[role_key] = pair
+            runtime["roles"] = role_map
+        document["model_runtime"] = runtime
+
+    try:
+        if project:
+            writer.update_repo(mutate)
+            target = writer.repo_path
+        else:
+            writer.update_global(mutate)
+            target = writer.global_path
+    except ConfigMigrationError as error:
+        print(
+            f"WHAT: model selection was not written. WHY: {error}. "
+            "HOW: repair the unified config and retry.",
+            file=sys.stderr,
+        )
+        return 1
+    scope = f"role {role_key}" if role_key is not None else "default"
+    print(f"Model runtime {scope} set to {provider}/{model} in {target}.")
+    return 0
+
+
+def _print_usage(version: str) -> int:
+    print(f"nwave-ai {version}")
     print()
     print("Usage: nwave-ai <command> [options]")
     print()
     print("Commands:")
-    print("  install        Install nWave framework to ~/.claude/")
-    print("  uninstall      Remove nWave framework from ~/.claude/")
+    print("  install        Install nWave framework to supported tool configs")
+    print("  uninstall      Remove nWave framework from supported tool configs")
     print("  doctor         Run diagnostics on the nWave installation")
-    print(
-        "  sync           Mirror in-flight feature-delta files to "
-        "<master>/.nwave/in-flight/"
-    )
     print("  attribution    Toggle commit attribution (on/off/status)")
+    print("  model          Select the provider and model for nWave roles")
     print("  outcomes       Register / check shipped outcomes (Tier-1 collision)")
     print("  plugin         Manage tool plugins (install/uninstall/list)")
-    print("  project        Enable or disable nWave activation for this project")
+    print("  project        Enable, disable, or configure nWave for this project")
     print("  mode           Set the global activation mode (all/opt-in)")
-    print("  status         Show global mode and this project's resolved state")
+    print(
+        "  status         Show this project's effective configuration and host assets"
+    )
     print("  completion     Print a shell-completion script (bash/zsh)")
+    print("  update --check Discover the latest stable public release")
+    print("  update consent <check|install> <on|off> Set separate startup permissions")
+    print("        install on requires --confirm-old-sessions-closed the first time;")
+    print(
+        "        sessions started before the activity registry rest on that confirmation"
+    )
+    print(
+        "  update sessions [close KEY --confirm-closed] List or close registered sessions"
+    )
+    print("  update --recover --yes --confirm-stopped Resume verified incomplete sync")
+    print(
+        "  migrate-artifacts [--dry-run|--apply] --root PATH  Migrate legacy artifacts"
+    )
+    print("  update consent controlled-launch on --confirm-controlled-launch | off")
+    print(
+        "  run HOST -- ARGS  Controlled startup for claude-code, codex, opencode, copilot"
+    )
     print("  version        Show nwave-ai version")
     print()
     print("Install options:")
-    print("  --platform <tool>  Target agentic tool: claude-code, codex, opencode")
+    from scripts.install.install_nwave import _explicit_platform_names
+
+    print(f"  --platform <tool>  Target agentic tool: {_explicit_platform_names()}")
     print("  --dry-run       Preview without making changes")
     print("  --backup-only   Create backup only")
     print("  --restore       Restore from backup")
@@ -889,18 +1403,200 @@ def _print_usage() -> int:
 # ---------------------------------------------------------------------------
 
 
-def _handle_project(args: list[str]) -> int:
-    """Handle 'project enable|disable' — write the marker + fix gitignore."""
-    if not args or args[0] not in ("enable", "disable"):
-        print("Usage: nwave-ai project <enable|disable>", file=sys.stderr)
-        return 1
-    from des.application.auto_marking_service import AutoMarkingService
+# Hosts synced on every `project enable|disable` — one parameterized path
+# (`_sync_guidance_section_for_host`) called once per host, never a
+# per-host branch/copy of the sync logic.
+_GUIDANCE_HOSTS = ("claude", "codex")
 
+
+def _sync_guidance_section_for_host(
+    host: str, action: str, project_root: Path, *, assume_yes: bool
+) -> None:
+    """Inject (enable) or remove (disable) the managed beta section for `host`.
+
+    Modifying the user's project guidance file is a durable, user-facing change,
+    so `enable` asks for consent first (Ale 2026-06-30: "ci vuole la richiesta
+    all'utente"). `--yes` (or any non-interactive context with `--yes`) bypasses
+    the prompt; a non-interactive context WITHOUT `--yes` skips injection and
+    prints how to add it. Removal of our own marker-bounded block on `disable`
+    needs no prompt. Fail-open throughout: a section fault never breaks the
+    activation toggle.
+    """
+    from scripts.install.project_claude_section import (
+        HOSTS,
+        inject_managed_section,
+        load_section_content,
+        remove_managed_section,
+    )
+
+    target_md = project_root / HOSTS[host].filename
+
+    if action == "disable":
+        try:
+            outcome = remove_managed_section(target_md)
+        except OSError as exc:
+            print(f"  (could not update {target_md}: {exc})", file=sys.stderr)
+            return
+        if outcome == "removed-file":
+            print(
+                f"Removed the nWave beta section (and the now-empty {target_md.name})."
+            )
+        elif outcome == "removed-section":
+            print(f"Removed the nWave beta section from {target_md.name}.")
+        return
+
+    # action == "enable"
+    try:
+        content = load_section_content(_get_project_root(), host=host)
+        # Templates live with the installed distribution, while the generated
+        # region's configuration belongs to the caller's project.  Reproject
+        # the loaded template against that caller root so an install invoked
+        # from a project never publishes the distribution checkout's config.
+        from nwave_ai.platform.regions import project_asset
+
+        content = project_asset(target_md, content, project_root).projected_text
+    except OSError:
+        # Template missing (unusual) — never block the toggle on it.
+        return
+
+    if assume_yes:
+        consent = True
+    elif sys.stdin.isatty():
+        answer = input(
+            f"Add the nWave beta-feedback guidance section to ./{target_md.name}? "
+            "(removable later with `nwave-ai project disable`) [Y/n] "
+        )
+        consent = answer.strip().lower() in ("", "y", "yes")
+    else:
+        consent = False
+
+    if not consent:
+        print(
+            f"Skipped the {target_md.name} beta section. Add it anytime with "
+            "`nwave-ai project enable --yes` from this project."
+        )
+        return
+
+    try:
+        outcome = inject_managed_section(target_md, content)
+    except OSError as exc:
+        print(f"  (could not update {target_md}: {exc})", file=sys.stderr)
+        return
+    verb = {"created": "Created", "appended": "Added", "updated": "Refreshed"}[outcome]
+    print(f"{verb} the nWave beta section in {target_md.name}.")
+
+
+def _sync_project_claude_section(
+    action: str, project_root: Path, *, assume_yes: bool
+) -> None:
+    """Sync the managed beta section into every supported host's guidance file."""
+    for host in _GUIDANCE_HOSTS:
+        _sync_guidance_section_for_host(
+            host, action, project_root, assume_yes=assume_yes
+        )
+
+
+_PROJECT_USAGE = (
+    "Usage: nwave-ai project <enable|disable> [--yes]\n"
+    "       nwave-ai project set <enabled|verbosity|attribution> <value> [--yes]\n"
+    "       nwave-ai project feature-document <feature-id> <discuss|design|distill|devops> <path>\n"
+    "           (one feature's document destination, under docs/feature/<feature-id>/)\n"
+    "       nwave-ai project feature-template <discuss|design|distill|devops> <template-with-{feature}>\n"
+    "           (project-wide default for every feature; project keys documents.<wave> stay project-only)"
+)
+
+
+def _project_set_value(field: str, raw_value: str) -> bool | str | None:
+    """Parse the closed public type surface for a project override."""
+    if field == "enabled":
+        return {"true": True, "false": False}.get(raw_value)
+    if field == "verbosity" and raw_value in ("terse", "standard", "verbose"):
+        return raw_value
+    if field == "attribution":
+        return {"on": True, "off": False}.get(raw_value)
+    return None
+
+
+def _handle_project(args: list[str]) -> int:
+    """Handle project activation and typed repository configuration overrides.
+
+    On `enable`, also offers to inject the managed beta-feedback section into each
+    supported host's guidance file (CLAUDE.md, AGENTS.md; consent-gated per host,
+    `--yes` bypasses). On `disable`, removes it from all of them.
+
+    Fail-closed argument boundary: `--help`/`-h` anywhere in ``args`` prints
+    usage and returns 0 without touching the filesystem, and anything left
+    over besides the action and `--yes` (unknown option, extra positional)
+    is rejected with usage + nonzero -- both checked BEFORE any write, so a
+    malformed or informational invocation can never mutate the project.
+    """
+    if any(a in ("--help", "-h") for a in args):
+        print(_PROJECT_USAGE)
+        return 0
+    assume_yes = "--yes" in args
+    positional = [a for a in args if a != "--yes"]
+    if args.count("--yes") > 1:
+        print(_PROJECT_USAGE, file=sys.stderr)
+        return 1
+
+    if positional[:1] in (["feature-document"], ["feature-template"]):
+        expected = 4 if positional[0] == "feature-document" else 3
+        if len(positional) != expected:
+            print(_PROJECT_USAGE, file=sys.stderr)
+            return 1
+        try:
+            _require_mutating_config_dir()
+            from nwave_ai.platform.config_writer import ConfigWriter
+
+            writer = ConfigWriter(
+                home_dir=_require_mutating_config_dir().parent, repo_root=Path.cwd()
+            )
+            if positional[0] == "feature-document":
+                writer.set_feature_document(*positional[1:])
+            else:
+                writer.set_feature_template(*positional[1:])
+        except Exception as exc:
+            print(
+                "WHAT: feature document configuration was not written. "
+                f"WHY: {exc}. HOW: use a safe path under the feature directory "
+                "(or a template containing {feature}) and retry.",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"nWave feature configuration set: {' '.join(positional[1:])}.")
+        return 0
+
+    if positional[:1] == ["set"]:
+        if len(positional) != 3:
+            print(_PROJECT_USAGE, file=sys.stderr)
+            return 1
+        field, raw_value = positional[1:]
+        value = _project_set_value(field, raw_value)
+        if value is None:
+            print(_PROJECT_USAGE, file=sys.stderr)
+            return 1
+        project_root = Path.cwd()
+        if not _write_project_override(project_root, field=field, value=value):
+            return 1
+        print(f"nWave project override set: {field}={raw_value}.")
+        # The configuration commit is the success boundary.  Rendered guidance
+        # is refreshed only afterwards, through its existing merged projection.
+        _sync_project_claude_section("enable", project_root, assume_yes=assume_yes)
+        return 0
+
+    if len(positional) != 1 or positional[0] not in ("enable", "disable"):
+        print(_PROJECT_USAGE, file=sys.stderr)
+        return 1
+    from nwave_ai.platform.gitignore import ProjectGitignoreService
+
+    action = positional[0]
     project_root = Path.cwd()
-    _write_marker(project_root, enabled=args[0] == "enable")
-    AutoMarkingService().fix_gitignore(project_root=project_root)
-    state = "enabled" if args[0] == "enable" else "disabled (sticky opt-out)"
+    if not _write_marker(project_root, enabled=action == "enable"):
+        return 1
+    ProjectGitignoreService().fix_gitignore(project_root=project_root)
+    state = "enabled" if action == "enable" else "disabled (sticky opt-out)"
     print(f"nWave activation for this project: {state}.")
+    _sync_project_claude_section(action, project_root, assume_yes=assume_yes)
     return 0
 
 
@@ -909,29 +1605,49 @@ def _handle_mode(args: list[str]) -> int:
     if not args or args[0] not in ("all", "opt-in"):
         print("Usage: nwave-ai mode <all|opt-in>", file=sys.stderr)
         return 1
-    config_dir = _get_config_dir()
-    config = read_global_config(config_dir)
-    activation = config.get("activation", {})
-    if not isinstance(activation, dict):
-        activation = {}
-    activation["mode"] = args[0]
-    config["activation"] = activation
-    write_global_config(config_dir, config)
+    try:
+        config_dir = _require_mutating_config_dir()
+    except ValueError as error:
+        return _refuse_mutating_location(error)
+    from nwave_ai.platform.config_writer import (
+        ConfigMigrationError,
+        ConfigWriter,
+    )
+
+    def set_mode(document: dict) -> None:
+        activation = document.get("activation")
+        activation = dict(activation) if isinstance(activation, dict) else {}
+        activation["mode"] = args[0]
+        document["activation"] = activation
+
+    try:
+        ConfigWriter(home_dir=config_dir.parent, repo_root=Path.cwd()).update_global(
+            set_mode
+        )
+    except ConfigMigrationError as error:
+        print(
+            f"WHAT: activation mode was not written. WHY: {error}. "
+            "HOW: repair the named configuration file and retry.",
+            file=sys.stderr,
+        )
+        return 1
     print(f"Global nWave activation mode set to '{args[0]}'.")
     return 0
 
 
 def _handle_status(args: list[str]) -> int:
-    """Handle 'status' — print global mode + resolved state (read-only)."""
-    from des.adapters.driven.config.des_config import DESConfig
-    from des.domain.activation_policy import resolve_activation
+    """Show the selected project's effective settings without writes or network."""
+    from nwave_ai.status import render_status
 
-    config = DESConfig(cwd=Path.cwd())
-    mode = config.activation_mode
-    active = resolve_activation(config.enabled_for_repo, mode)
-    state = "active" if active else "inactive"
-    print(f"Global activation mode: {mode}")
-    print(f"This project is {state}.")
+    try:
+        report = render_status(Path.cwd())
+    except ValueError as exc:
+        print(
+            f"WHAT: status unavailable. WHY: {exc}. HOW: fix the selected home override.",
+            file=sys.stderr,
+        )
+        return 1
+    print(report)
     return 0
 
 
@@ -956,14 +1672,77 @@ def _handle_completion(args: list[str]) -> int:
     return 0
 
 
-def _write_marker(project_root: Path, *, enabled: bool) -> None:
-    """Write the version-controlled activation marker .nwave/local-config.json."""
-    marker = project_root / ".nwave" / "local-config.json"
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(
-        json.dumps({"enabled_for_repo": enabled}, indent=2) + "\n",
-        encoding="utf-8",
-    )
+def _observe_project_activation(project_root: Path) -> bool:
+    """Read the canonical project declaration through the activation policy."""
+    from nwave_ai.platform.activation import resolve_activation
+    from nwave_ai.platform.config import NWaveConfig
+
+    config = NWaveConfig(cwd=project_root)
+    return resolve_activation(config.enabled_for_repo, config.activation_mode)
+
+
+def _write_marker(project_root: Path, *, enabled: bool) -> bool:
+    """Atomically publish the canonical project activation declaration."""
+    try:
+        home_dir = _require_mutating_config_dir().parent
+    except ValueError as error:
+        _refuse_mutating_location(error)
+        return False
+    try:
+        from nwave_ai.platform.config_writer import ConfigWriter
+
+        writer = ConfigWriter(home_dir=home_dir, repo_root=project_root)
+        writer.update_repo(lambda document: document.update(enabled=enabled))
+    except Exception as exc:
+        print(
+            "WHAT: project activation could not publish its canonical configuration. "
+            f"WHY: {exc}. HOW: repair the .nwave directory and retry.",
+            file=sys.stderr,
+        )
+        return False
+
+    try:
+        observed = _observe_project_activation(project_root)
+    except Exception as exc:
+        print(
+            "WHAT: project activation could not verify its canonical configuration. "
+            f"WHY: {exc}. HOW: repair the .nwave configuration and retry.",
+            file=sys.stderr,
+        )
+        return False
+    if observed != enabled:
+        print(
+            "WHAT: project activation state did not match the requested state. "
+            f"WHY: observed {observed!r} after publication. "
+            "HOW: resolve concurrent changes to .nwave/config.json and retry.",
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
+def _write_project_override(
+    project_root: Path, *, field: str, value: bool | str
+) -> bool:
+    """Publish one typed project override through the sole repository writer."""
+    try:
+        home_dir = _require_mutating_config_dir().parent
+    except ValueError as error:
+        _refuse_mutating_location(error)
+        return False
+    try:
+        from nwave_ai.platform.config_writer import ConfigWriter
+
+        writer = ConfigWriter(home_dir=home_dir, repo_root=project_root)
+        writer.set_repo_override(field, value)
+    except Exception as exc:
+        print(
+            "WHAT: project configuration could not publish its typed override. "
+            f"WHY: {exc}. HOW: repair the .nwave configuration and retry.",
+            file=sys.stderr,
+        )
+        return False
+    return True
 
 
 _ACTIVATION_HANDLERS = {
@@ -996,10 +1775,18 @@ def main_with_argv(argv: list[str]) -> int:
 def main() -> int:
     """CLI entry point for nwave-ai."""
     if len(sys.argv) < 2 or sys.argv[1] in ("--help", "-h", "help"):
-        return _print_usage()
+        try:
+            version = nwave_ai.__version__
+        except VersionResolutionError as exc:
+            return _refuse_version_resolution(exc)
+        return _print_usage(version)
 
     if sys.argv[1] in ("--version", "-V"):
-        print(f"nwave-ai {_get_version()}")
+        try:
+            version = nwave_ai.__version__
+        except VersionResolutionError as exc:
+            return _refuse_version_resolution(exc)
+        print(f"nwave-ai {version}")
         return 0
 
     command = sys.argv[1]
@@ -1012,24 +1799,30 @@ def main() -> int:
         return _handle_attribution(sys.argv[2:])
     elif command == "doctor":
         return _handle_doctor(sys.argv[2:])
-    elif command == "sync":
-        return _handle_sync(sys.argv[2:])
-    elif command == "validate-feature-delta":
-        return _handle_validate_feature_delta(sys.argv[2:])
-    elif command == "extract-gherkin":
-        return _handle_extract_gherkin(sys.argv[2:])
-    elif command == "migrate-feature":
-        return _handle_migrate_feature(sys.argv[2:])
+    elif command == "update":
+        return _handle_update(sys.argv[2:])
+    elif command == "migrate-artifacts":
+        from nwave_ai.update.migrate_artifacts import main as migrate_main
+
+        return migrate_main(sys.argv[2:])
+    elif command == "run":
+        return _handle_run(sys.argv[2:])
     elif command == "outcomes":
         from nwave_ai.outcomes.cli import handle_outcomes
 
         return handle_outcomes(sys.argv[2:])
     elif command == "plugin":
         return _handle_plugin(sys.argv[2:])
+    elif command == "model":
+        return _handle_model(sys.argv[2:])
     elif command in ("project", "mode", "status", "completion"):
         return main_with_argv(sys.argv[1:])
     elif command == "version":
-        print(f"nwave-ai {_get_version()}")
+        try:
+            version = nwave_ai.__version__
+        except VersionResolutionError as exc:
+            return _refuse_version_resolution(exc)
+        print(f"nwave-ai {version}")
         return 0
     else:
         print(f"Unknown command: {command}", file=sys.stderr)

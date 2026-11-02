@@ -1,3 +1,0 @@
-# Add language-specific protocol verbs here per docs/guides/i18n-extension.md
-# One pattern per line; lines starting with # are comments.
-# This file is loaded by the validator E5 rule; missing/empty = E5 disabled for this language.

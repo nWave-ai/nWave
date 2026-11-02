@@ -17,7 +17,7 @@ cat > pyproject.toml << 'EOF'
 [project]
 name = "md-converter"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

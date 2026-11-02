@@ -14,34 +14,27 @@ Four practical use cases demonstrating nWave's core workflows. Each includes the
 
 **What happens:**
 
-1. **Roadmap creation** — the solution architect agent analyzes the feature, decomposes it into ordered steps (e.g., `01-01 Add reset token generation`, `01-02 Add email sending adapter`, `02-01 Wire reset endpoint`), and produces a `roadmap.json` with acceptance criteria per step.
+1. **Design** — the architect names the observable values, owned targets and
+   verification obligations. The host passes the accepted payload unchanged to
+   `nwdes design apply`.
 
-2. **Roadmap review** — a reviewer agent validates step sizing, dependency ordering, and acceptance criteria quality. Rejects if steps are too large or criteria reference private internals.
+2. **Acceptance** — the acceptance designer supplies the executable oracle.
+   The host applies it with `nwdes acceptance apply` and observes RED before
+   implementation.
 
-3. **TDD execution** — for each step, a software crafter agent runs the 5-phase TDD cycle:
-   - **PREPARE** — loads methodology skills, sets up test fixtures
-   - **RED_ACCEPTANCE** — writes a failing acceptance test that exercises the full path (driving port → domain → driven port)
-   - **RED_UNIT** — writes failing unit tests through driving ports, respecting the test budget (`2 × distinct behaviors`)
-   - **GREEN** — implements minimal code to pass all tests
-   - **COMMIT** — stages and commits with conventional commit message and `Step-ID` trailer
+3. **Implementation** — the crafter changes the declared mutable targets.
+   The host runs the slice's verification commands and retains their results.
+   nwdes is a deterministic builder, not a phase-enforcement engine.
 
-4. **DES enforcement** — every Task invocation is monitored by the Deterministic Execution System. It validates DES markers are present, logs each TDD phase with UTC timestamps, and blocks commits with incomplete phases.
-
-5. **Refactoring** — after all steps, an L1-L4 progressive refactoring pass cleans up the modified files.
-
-6. **Adversarial review** — a reviewer agent checks the implementation for Testing Theater patterns (tautological tests, mock-dominated tests, assertion-free tests, etc.) and flags issues.
-
-7. **Integrity verification** — DES verifies all steps have complete 5-phase audit trails.
+4. **Independent assessment** — reviewers and the examiner assess the actual
+   evidence. A rendered document or a successful apply does not establish that
+   the delivered behavior is correct.
 
 **Expected output:**
 
-```
-docs/feature/password-reset-email-verification/
-  roadmap.json           # Step decomposition with acceptance criteria
-  execution-log.json     # DES audit trail (all phases, timestamps, outcomes)
-```
-
-Plus: committed, tested code with conventional commit messages per step, all tests green, reviewer approval logged.
+The feature's handoff, rendered briefs, oracle and execution receipts accompany
+the implementation. Use `nwdes document` for reading views; use the host's
+recorded command results, independent review and examination for delivery evidence.
 
 ---
 

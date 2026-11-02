@@ -1,6 +1,6 @@
 # Outcomes CLI Reference
 
-Reference for `nwave-ai outcomes register | check | check-delta`. For learning the workflow, see the **[Your First Outcome tutorial](../guides/outcomes-first-outcome/README.md)**. For triaging a collision, see the **[How-to resolve a collision](../guides/howto-resolve-outcomes-collision.md)**.
+Reference for `nwave-ai outcomes register | check`. For learning the workflow, see the **[Your First Outcome tutorial](../guides/outcomes-first-outcome/README.md)**. For triaging a collision, see the **[How-to resolve a collision](../guides/howto-resolve-outcomes-collision.md)**.
 
 ## Synopsis
 
@@ -17,7 +17,6 @@ nwave-ai outcomes [--registry PATH] check --input-shape SHAPE \
                                           --output-shape SHAPE \
                                           [--keywords CSV]
 
-nwave-ai outcomes [--registry PATH] check-delta DELTA_PATH
 ```
 
 ## Global options
@@ -26,7 +25,7 @@ nwave-ai outcomes [--registry PATH] check-delta DELTA_PATH
 |--------------|------------------------------------------|--------------------------------------|
 | `--registry` | `docs/product/outcomes/registry.yaml`    | Path to the registry YAML file.      |
 
-If the registry path does not exist, `register` and `check` create an empty skeleton (`schema_version: "0.1"`, `outcomes: []`) before proceeding. `check-delta` does the same.
+If the registry path does not exist, `register` and `check` create an empty skeleton (`schema_version: "0.1"`, `outcomes: []`) before proceeding.
 
 ## Verdict matrix
 
@@ -75,7 +74,10 @@ nwave-ai outcomes register --id OUT-ID --kind KIND \
 | Code | Condition                                                            |
 |------|----------------------------------------------------------------------|
 | 0    | Outcome registered successfully.                                     |
-| 2    | Duplicate `--id` (already in registry), or invalid Outcome (schema). |
+| 2    | Refused after checking: duplicate `--id`, or the Outcome fails the schema. |
+| 3    | Refused *without* checking: the packaged JSON Schema could not be read. Nothing was written. Reinstall `nwave-ai`. |
+
+`2` and `3` are distinct on purpose. `2` means the outcome was validated and rejected — fix the outcome. `3` means validation could not run at all (a damaged install, whose schema resource is missing or corrupt) — fix the install. An unvalidated outcome is never written and never reported as registered.
 
 ### Output
 
@@ -100,9 +102,9 @@ nwave-ai outcomes register \
   --input-shape FeatureDeltaModel \
   --output-shape "tuple[ValidationViolation, ...]" \
   --summary "Validate invocation_limits field shape" \
-  --feature unified-feature-delta \
+  --feature outcomes-registry \
   --keywords "invocation,limits,validate,field,shape" \
-  --artifact nwave_ai/feature_delta/domain/rules/e6_invocation_limits.py
+  --artifact nwave_ai/outcomes/application/collision_detector.py
 ```
 
 Idempotency: registration is **not** idempotent on re-run. Calling `register` twice with the same `--id` exits 2.
@@ -197,73 +199,9 @@ nwave-ai outcomes check \
 
 ---
 
-## `nwave-ai outcomes check-delta`
-
-Aggregate scan: parse `OUT-<id>` references from a `feature-delta.md` and run a self-excluding collision check on each.
-
-### Synopsis
-
-```
-nwave-ai outcomes check-delta DELTA_PATH
-```
-
-### Positional arguments
-
-| Argument     | Required | Type | Description                              |
-|--------------|----------|------|------------------------------------------|
-| `delta_path` | yes      | path | Path to the `feature-delta.md` file.     |
-
-### Exit codes
-
-| Code | Condition                                                  |
-|------|------------------------------------------------------------|
-| 0    | Zero collisions across all referenced OUT-ids.             |
-| 1    | One or more referenced OUT-ids collide with another entry. |
-| 2    | `delta_path` does not exist.                               |
-
-### Output
-
-**stdout** aggregate report (always):
-
-```
-3 outcomes checked, 1 collision found across 1 outcome
-  COLLISION: OUT-E3
-```
-
-**stdout** warning when an OUT-id is referenced in the delta but missing from the registry:
-
-```
-WARNING: OUT-E99 referenced in delta but not in registry
-```
-
-**stderr** on missing delta file:
-
-```
-ERROR: feature-delta not found: <path>
-```
-
-### How OUT-ids are extracted
-
-The CLI scans `delta_path` text for the regex `\bOUT-[A-Z0-9-]+\b` and processes each unique match in document order. There is no semantic parsing of section headings; if your delta references `OUT-E3` in prose, it is checked.
-
-### Self-exclusion
-
-When the CLI checks `OUT-E3`, it excludes `OUT-E3` itself from the snapshot. Otherwise every registered outcome would trivially collide with itself.
-
-### Example
-
-```bash
-nwave-ai outcomes check-delta docs/feature/my-feature/feature-delta.md
-# → exit 1
-# → 3 outcomes checked, 1 collision found across 1 outcome
-# →   COLLISION: OUT-E3
-```
-
----
-
 ## Registry schema
 
-The registry file is YAML matching the packaged JSON Schema at `nwave_ai/outcomes/schema.json` (draft-07). Each entry is one element of the top-level `outcomes:` list.
+The registry file is YAML matching the JSON Schema at `nwave_ai/outcomes/schema.json` (draft-07). Each entry is one element of the top-level `outcomes:` list. The schema is a *package resource*: it ships inside `nwave_ai` and is loaded via `importlib.resources`, so it is present in every install (a schema living under `docs/` would be stripped from every distribution channel).
 
 ### Top-level structure
 
@@ -338,7 +276,6 @@ Threshold: ≥ 0.4 → Tier-2 fires.
 |-------------------------------------------------|-------------------------------------------------------------|--------------------------------------------------|
 | `ERROR: duplicate id: OUT-X`                    | `register --id OUT-X` and `OUT-X` already in registry.      | Pick a different id, or use the existing entry.  |
 | `ERROR: <validation message>`                   | Outcome fails schema validation (e.g. malformed id, kind).  | Fix the offending field.                         |
-| `ERROR: feature-delta not found: <path>`        | `check-delta` given a path that does not exist.             | Pass a real `feature-delta.md` path.             |
 | `WARNING: OUT-X referenced in delta but not in registry` | Delta references an OUT-id you have not registered. | Register it, or remove the reference.            |
 
 ## Related documentation
@@ -346,5 +283,5 @@ Threshold: ≥ 0.4 → Tier-2 fires.
 - **[Your First Outcome](../guides/outcomes-first-outcome/README.md)** — tutorial for new authors.
 - **[How to resolve a collision](../guides/howto-resolve-outcomes-collision.md)** — triage flagged candidates.
 - **[Why an outcomes registry?](../product/outcomes/README.md)** — design rationale and locked decisions.
-- **JSON Schema** — `nwave_ai/outcomes/schema.json`.
+- **JSON Schema** — `nwave_ai/outcomes/schema.json` (a packaged resource, shipped inside the wheel).
 - **Seeded registry** — `docs/product/outcomes/registry.yaml`.

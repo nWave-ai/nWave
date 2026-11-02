@@ -1,6 +1,6 @@
 ---
 name: nw-user-story-mapping
-description: User story mapping for backlog management and outcome-based prioritization. Load during Phase 2.5 (User Story Mapping) to produce story-map.md and prioritization.md.
+description: User story mapping knowledge for exploring journeys, release boundaries, activity gaps, and outcome-based prioritization.
 user-invocable: false
 disable-model-invocation: true
 ---
@@ -8,6 +8,8 @@ disable-model-invocation: true
 # User Story Mapping
 
 Create story maps that organize user stories spatially by activity and priority, then slice releases by outcome impact. Reference: Jeff Patton, "User Story Mapping" (2014). Integrates outcome-based prioritization from Gothelf/Seiden and riskiest-assumption-first from Maurya.
+
+**Output scope**: supply journey steps and human-supplied emotion; mark emotion not supplied when unknown. Describe visible release increments and distinguish proposed, confirmed and open judgments. Name an owner for open questions. The templates below are conceptual reading aids, not a request to author a separate story-map file.
 
 ## Story Map Anatomy
 
@@ -50,6 +52,8 @@ Draw a horizontal line that captures exactly one task from each activity -- the 
 ### Step 6: Slice into releases by outcome
 Group remaining tasks into horizontal bands. Each band targets a specific outcome KPI. Name each release by the outcome it achieves, not the features it contains.
 
+**Value-outcome naming (epic · feature · slice).** The naming rule extends to every level — epic-name, feature-name, slice-name. Each name MUST express the value-outcome (what the user GETS), never the mechanism. A good name conveys the value without reading the body; it is a compression of that item's Value statement / outcome KPI. Self-check before finalizing any name: *"Does this name say the VALUE/outcome, or the MECHANISM?"* — if mechanism, RENAME. Avoid as the primary descriptor: `refactor`, `migration`, `port`, `gate`, `schema`, `wiring`, `shared-surfaces`, `evolution`, `infrastructure`, `-aware`, `-handler` (these are HOW, not the value). Example: `atdd-pure-shared-surfaces` → `F-SUSTAINABLE-TEST-SUITE`; `F-RUNNER-RESOLUTION-TARGET-AWARE` → `F-TESTS-RUN-IN-THE-PROJECTS-OWN-RUNNER`.
+
 ## Outcome-Based Prioritization
 
 Prioritize releases by outcome impact, not feature completeness. Each release slice targets a specific measurable behavior change.
@@ -59,7 +63,7 @@ Prioritize releases by outcome impact, not feature completeness. Each release sl
 **Value** (outcome impact) x **Urgency** (time-sensitivity) / **Effort** (complexity) = **Priority Score**
 
 Where (1-5 scale):
-- **Value** (1-5) = outcome impact. 5 = moves north-star KPI significantly. 1 = marginal improvement. In Phase 2.5, estimate from discovery insights; refine in Phase 4 after outcome-kpis.md exists.
+- **Value** (1-5) = outcome impact. 5 = moves north-star KPI significantly. 1 = marginal improvement. In Phase 2.5, estimate from discovery insights; refine once outcome KPI facts are confirmed.
 - **Urgency** (1-5) = time-sensitivity. 5 = time-critical or derisks fatal assumption. 1 = evergreen, no deadline.
 - **Effort** (1-5) = complexity. 5 = many tasks, cross-cutting, unknowns. 1 = single task, well-understood.
 - **Tie-breaking**: Walking Skeleton > Riskiest Assumption > Highest Value.
@@ -145,4 +149,5 @@ Release Slice -> Output (features built)
 | Fat walking skeleton | Too many stories crammed into the skeleton. Defeats the purpose. | Skeleton = exactly the minimum to make the flow work. Move extras to Release 1. |
 | Effort-based priority | Ordering by "easy first" instead of outcome impact. Delivers low-value features early. | Prioritize by Value x Urgency / Effort. Easy-but-low-value stories go to later releases. |
 | Orphan stories | Stories with no outcome link. No measurable behavior change targeted. | Every story traces to an outcome KPI. If it cannot, question its value. |
+| Mechanism-named item | Epic/feature/slice/release named after the mechanism (`refactor`, `migration`, `port`, `gate`, `-aware`, `-handler`) instead of the value. Children never converge to a coherent outcome. | Rename to the value-outcome via the Step 6 self-check. |
 | Activity gaps | Some activities have no tasks in a release slice. Breaks end-to-end coherence. | Walking skeleton covers all activities. Later releases may skip activities only if those are already sufficient. |

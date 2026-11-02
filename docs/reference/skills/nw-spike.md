@@ -1,5 +1,7 @@
 # nw-spike
 
-Runs a timeboxed PROBE to validate one core assumption, then optionally PROMOTES the probe into a walking skeleton — the first e2e thin slice of the feature, committed and demo-able. Use after DISCUSS when the feature involves a new mechanism, performance requirement, or external integration.
+A bounded probe of one product, visual-experience or technical uncertainty; returns evidence to its owner without starting a wave or promoting code automatically.
+
+**Used by:** [nw-product-owner](../agents/nw-product-owner.md), [nw-product-owner-reviewer](../agents/nw-product-owner-reviewer.md)
 
 **Source:** [SKILL.md on GitHub](https://github.com/nWave-ai/nWave/blob/main/nWave/skills/nw-spike/SKILL.md)

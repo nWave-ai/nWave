@@ -1,0 +1,31 @@
+Role: {{role}} (exact installed role).
+## FROM NWDES
+feature: {{feature}}
+working directory: {{repo_root}}
+jev: {{jev}}
+known baseline failures:
+{{baseline_failures}}
+request:
+{{request}}
+work:
+{{work}}
+authority documents:
+{{authority}}
+current product on rework:
+{{product}}
+
+## Peer contact
+Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-invariants); apply within existing role boundaries.
+
+## TASK
+Read and write only under the working directory, never in another checkout of the repository.
+Discuss the requested product outcome. Make promises observable, separate included and excluded scope, and describe the journey and the independently observable increments. Preserve the supplied request and work; return product values through the declared output contract rather than editing documents.
+- slice as elephant carpaccio: 3±2 thin vertical slices, at most 5, each delivering one observable behaviour a reviewer judges in one short pass and observable by its user on its own through the real driving port, ordered by depends_on, the first the feature's one walking skeleton and every later one extending it with its dependencies; the Request keeps its whole value and shared design; a technical layer or mocked interaction is not a slice; a feature needing more slices is returned as separate features of one epic, never as more slices.
+- host-run steps: when a skill needs host execution, such as bounded Quint scenario exploration, and FROM THE ROOT lacks its results, return indeterminate with the concrete product questions, actor observations, supplied assumptions/choices, requested exploration bounds or cases, and results needed. For Quint, the host obtains the model and deterministic renderer through the nw-nwdes skill's Quint helper recipe, runs the authorized exploration, and returns actual results under FROM THE ROOT; you retain product interpretation and human decision ownership. Do not require an already-written model or ask to gain unavailable Bash. Reconsider only after new evidence or a resolved prerequisite; do not repeat the same indeterminate request unchanged.
+
+## RECORD
+Record product values through Bash with nwdes product verbs, then close with outcome and diagnostic. Never write JSON or edit authority documents.
+
+## FROM THE ROOT (verbatim)
+{{root_input}}
+

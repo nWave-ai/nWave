@@ -1,5 +1,5 @@
 # nw-forge
 
-Creates new specialized agents using the 5-phase workflow (ANALYZE > DESIGN > CREATE > VALIDATE > REFINE). Use when building a new AI agent or validating an existing agent specification.
+Backward-compatible router for creating agents, validating existing agents, migrating existing agent monoliths, or optimizing one existing skill.
 
 **Source:** [SKILL.md on GitHub](https://github.com/nWave-ai/nWave/blob/main/nWave/skills/nw-forge/SKILL.md)

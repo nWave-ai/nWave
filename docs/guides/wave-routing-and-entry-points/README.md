@@ -2,6 +2,8 @@
 
 nWave is not a linear pipeline — it's a graph. You don't always start at DISCOVER. You start where your knowledge gap is.
 
+A wave exists to answer a question the Request and the current recorded authority leave open. It is never a file you must produce first. When the Request already states the outcome, the root records the clear product facts itself with `nwdes product` verbs; no product owner turn, Quint model, journey or story file is a prerequisite.
+
 ---
 
 ## The Wave Graph
@@ -10,106 +12,113 @@ nWave is not a linear pipeline — it's a graph. You don't always start at DISCO
 ┌─────────────┐
 │  DISCOVER   │  Problem validation
 └──────┬──────┘
-       │ (if needed)
+       │ (only if the problem is in doubt)
        ▼
 ┌─────────────┐
 │  DIVERGE    │  Option evaluation
 └──────┬──────┘
-       │ (if needed)
+       │ (only if approaches compete)
        ▼
 ┌─────────────┐
-│  DISCUSS    │  User stories
+│  DISCUSS    │  Product decisions
 └──────┬──────┘
-       │ (if needed)
+       │ (only if a product decision is open)
        ▼
 ┌─────────────────────────────┐
 │  DESIGN                     │  Architecture
-│  (3 specialist architects)  │
+│  (specialist architects)    │
 └──────┬──────────────────────┘
-       │ (if needed)
+       │ (only if a technical boundary or decision is open)
        ▼
 ┌─────────────┐
-│  DEVOPS     │  Infrastructure
+│  DEVOPS     │  Platform constraints
 └──────┬──────┘
-       │ (if needed)
+       │ (only if a platform constraint is open)
        ▼
-   DISTILL ←──┴──┘  Acceptance tests (always)
+   DISTILL          Public oracle
        │
        ▼
-   DELIVER          Implementation (always)
+   DELIVER          Implementation
 ```
 
-**The invariant**: Every feature ends with DISTILL → DELIVER. No exceptions.
+**The gated-route obligation**: a Request delivered through the gated route (`/nw-deliver`, or `/nw-bugfix` for a defect) always compiles its public oracle (DISTILL) and then implements it (DELIVER). That pair belongs to the route, not to every piece of work. When you explicitly select one wave command or a direct task (a discovery, a design consultation, a spike), only the wave you chose runs.
 
-**DESIGN wave routing**: `/nw-design` routes to three specialist architects based on your design scope:
-- **System-level** (Titan) — distributed patterns, scalability, caching, load balancing
-- **Domain-level** (Hera) — DDD, bounded contexts, event modeling, ES/CQRS
-- **Application-level** — component boundaries, hexagonal architecture, tech stack, C4
+**DESIGN wave routing**: `/nw-design` picks the specialist architect from the unresolved gap, not from habit:
+- **System-level** (`nw-system-designer`) — distributed patterns, scalability, caching, load balancing
+- **Domain-level** (`nw-ddd-architect`) — DDD, bounded contexts, event modeling, ES/CQRS
+- **Application-level** (`nw-solution-architect`) — component boundaries, hexagonal architecture, reuse, tech stack
+- **Platform-level** (`nw-platform-architect`) — deployment, environment, observability, recovery
 
-All three can work interactively ("guide me" mode) or autonomously ("propose" mode). All three write to the shared `docs/product/architecture/brief.md` in their own sections.
+Each architect records its decisions through `nwdes design` verbs and closes with an outcome and diagnostic. nwdes writes the handoff and renders the architecture brief; no architect edits a shared brief or the handoff by hand.
 
 ---
 
 ## Entry Point Matrix
 
-Choose your starting point based on what you already know.
+Choose your starting point from the question that is still unanswered.
 
-| Work Type | Entry | Waves | Example |
-|-----------|-------|-------|---------|
-| **New product** | DISCOVER | All 7 | "Build a payment processor" — no context exists |
-| **Brownfield feature** | DIVERGE | DIVERGE → DISCUSS → DESIGN → DEVOPS → DISTILL → DELIVER | "Add rate limiting to API" — multiple approaches exist |
-| **Feature on known journey** | DISCUSS | DISCUSS → DESIGN → DEVOPS → DISTILL → DELIVER | "Add 2FA to login" — login journey already defined |
-| **Technical story** | DESIGN | DESIGN → DISTILL → DELIVER | "Refactor auth module" — scope and approach are clear |
-| **Refactoring** | DESIGN | DESIGN → DISTILL → DELIVER | "Extract shared logic" — behavior preserved, structure changes |
-| **Bug fix (cause known)** | DISTILL | DISTILL → DELIVER | "Auth token expires too early" — fix is obvious |
-| **Bug fix (cause unknown)** | DISCOVER | DISCOVER → DISTILL → DELIVER | "Auth randomly fails — root cause TBD" |
-| **Infrastructure** | DEVOPS | DEVOPS → DISTILL → DELIVER | "Add Redis caching layer" |
+| Work Type | Open question | Entry | Waves that can follow, each only while its question is open | Example |
+|-----------|---------------|-------|-------------------------------------------------------------|---------|
+| **New product** | Is the problem real? | DISCOVER | DIVERGE, DISCUSS, DESIGN, DEVOPS, then DISTILL → DELIVER | "Build a payment processor" — nothing is validated |
+| **Brownfield feature, competing approaches** | Which approach? | DIVERGE | DISCUSS, DESIGN, DEVOPS, then DISTILL → DELIVER | "Add rate limiting to API" — several approaches exist |
+| **Feature with an open product decision** | Which scope or trade-off? | DISCUSS | DESIGN, DEVOPS, then DISTILL → DELIVER | "Add notifications" — which events users can mute is undecided |
+| **Feature with a stated outcome** | Which component boundary or decision? | DESIGN, or DISTILL when authority already settles it | DEVOPS, then DISTILL → DELIVER | "Add 2FA to login" — the Request states the outcome; the root records it |
+| **Technical story / refactoring** | Where do boundaries move? | DESIGN, or DISTILL when scope and approach are clear | DISTILL → DELIVER | "Extract shared logic" — behavior preserved, structure changes |
+| **Bug fix (cause known)** | None | DISTILL | DELIVER | "Auth token expires too early" — fix is obvious |
+| **Bug fix (cause unknown)** | What is the cause? | DISCOVER | DISTILL → DELIVER | "Auth randomly fails — root cause TBD" |
+| **Infrastructure** | Which deployment, environment or recovery constraint? | DEVOPS | DISTILL → DELIVER | "Add Redis caching layer" |
+
+DISTILL → DELIVER in the last column is the gated-route obligation described above.
 
 ---
 
-## Skip Validation Checklists
+## Skip Questions
 
-Each wave can be skipped **only if all items in its checklist are true**.
+Run a wave only while its question is open. Each wave can be skipped **when every answer below is true**. Answer from the Request and the recorded authority you can read; the absence of a file, a status or a timestamp never forces a wave to run.
 
 ### DISCOVER — Skip if ALL true:
 
-- [ ] `docs/product/jobs.yaml` exists and contains a job matching this feature's problem space
-- [ ] The matching job has `status: validated` (not `hypothesized`)
-- [ ] The matching job has `validated_by` referencing a real DISCOVER feature-id or `founder-input`
+- [ ] The problem is not in doubt: the Request states it, or recorded product facts already validate it
+- [ ] No assumption about users or demand needs testing before work starts
 
-**Example**: You're adding a "remember me" checkbox to the login feature. Login is already a validated job in `jobs.yaml`. Skip DISCOVER. Start at DIVERGE or DISCUSS.
+Recorded product facts, for example a validated job in `docs/product/jobs.yaml`, are one way to know this. Having no such job does not make DISCOVER mandatory.
+
+**Example**: You're adding a "remember me" checkbox to the login feature. Nobody doubts that users need to stay signed in. Skip DISCOVER. Start at DIVERGE, DISCUSS or DESIGN, whichever question is open.
 
 ### DIVERGE — Skip if ALL true:
 
-- [ ] Feature has a clear direction (backlog item specifies the approach)
+- [ ] The direction is clear: the Request or the backlog item names the approach, or it is self-evident (bugfix, refactoring)
 - [ ] No competing solution approaches need evaluation
-- [ ] `recommendation.md` already exists for this feature, or direction is self-evident (bugfix, refactoring)
 
-**Example**: Bugfix with clear root cause ("Use bcrypt instead of MD5 for password hashing"). The direction is self-evident. Skip DIVERGE. Start at DISCUSS.
+**Example**: Bugfix with clear root cause ("Use bcrypt instead of MD5 for password hashing"). The direction is self-evident. Skip DIVERGE.
 
 ### DISCUSS — Skip if ALL true:
 
-- [ ] `docs/product/journeys/{name}.yaml` exists and covers the behavior this feature changes
-- [ ] The journey's `changelog` shows an update within the last 6 months (not stale)
-- [ ] Existing user-stories already cover this feature's scope
+- [ ] The Request states the outcome: who benefits and what they can observe
+- [ ] No genuine ambiguity, scope question or trade-off needs a product owner
+- [ ] The root can record the clear product facts (promises and slices) directly with `nwdes product` verbs
 
-**Example**: Adding a "forgot password" link to the login page. The login journey is current, and "user recovers forgotten password" is already a story. Skip DISCUSS. Start at DESIGN.
+No product owner turn, Quint model, journey file or user-story file is required before skipping. Run DISCUSS only when a real product question remains, and give the product owner that question and the public product evidence.
+
+**Example**: Adding a "forgot password" link to the login page. The Request states the outcome and nothing about scope is in question. The root records the promise. Skip DISCUSS. Start at DESIGN or DISTILL.
 
 ### DESIGN — Skip if ALL true:
 
-- [ ] `docs/product/architecture/brief.md` exists and covers the components this feature touches
-- [ ] No new component boundaries need to be drawn
+- [ ] Current design authority already covers the components this feature touches
+- [ ] No new component boundary needs to be drawn
 - [ ] No new architectural decision is required (no ADR candidate)
-- [ ] The "For Acceptance Designer" section lists the driving port this feature will use
+- [ ] The driving port this feature will use is already identifiable
 
-**Example**: Changing the password complexity requirement from 8 to 12 characters. No components change. No new decision. Skip DESIGN. Start at DISTILL.
+**Example**: Changing the password complexity requirement from 8 to 12 characters. No components change. No new decision. Skip the DESIGN consultation. Start at DISTILL.
 
 ### DEVOPS — Skip if ALL true:
 
-- [ ] `docs/product/kpi-contracts.yaml` exists and has a contract for this feature's observable behavior
-- [ ] No new infrastructure or deployment changes needed
+- [ ] No deployment, environment, recovery or observability constraint affects this Request
+- [ ] Any such constraint that exists is already stated in current authority
 
-**Example**: Adding a new dashboard metric to the monitoring journey. KPI contracts already cover this behavior. Skip DEVOPS. Start at DISTILL.
+No platform delta means no DEVOPS. An absent KPI contract file never makes DEVOPS necessary. Run it only for a real constraint; the platform architect records it through `nwdes design` verbs, or hands plain advice to the coordinating solution architect.
+
+**Example**: Adding a field to an existing report. Nothing about deployment, environment, recovery or observability changes. Skip DEVOPS. Start at DISTILL.
 
 ---
 
@@ -118,37 +127,41 @@ Each wave can be skipped **only if all items in its checklist are true**.
 Start here. Follow your answers down.
 
 ```
-Do you have a validated problem statement?
-├─ NO  → Run DISCOVER first
-├─ YES → Are there multiple solution approaches you need to evaluate?
+Is the problem in doubt?
+├─ YES → Run DISCOVER first
+├─ NO  → Do competing solution approaches need evaluation?
         ├─ YES → Run DIVERGE next
-        ├─ NO  → Is there a journey (user story map) for this area?
-                ├─ NOT CURRENT → Run DISCUSS next
-                ├─ CURRENT   → Is the architecture defined for the components you'll touch?
-                              ├─ NOT DEFINED → Run DESIGN next
-                              ├─ DEFINED    → Does infrastructure/monitoring need changes?
-                                            ├─ YES → Run DEVOPS next
-                                            ├─ NO  → Start at DISTILL
+        ├─ NO  → Is a product ambiguity, scope question or trade-off still open?
+                ├─ YES → Run DISCUSS next
+                ├─ NO  → (the root records the stated outcome)
+                        Is a technical boundary or architectural decision still open?
+                        ├─ YES → Run DESIGN next
+                        ├─ NO  → Does a deployment, environment, recovery or observability
+                                 constraint affect this Request and remain unstated?
+                                ├─ YES → Run DEVOPS next
+                                ├─ NO  → Start at DISTILL
 ```
+
+On the gated route, DISTILL → DELIVER follows.
 
 ---
 
-## Using `/nw-continue`
+## Resuming a Started Feature
 
-If you've started a feature and want to resume, use `/nw-continue`:
+nwdes keeps no workflow state and no next-step cursor, and there is no resume command. To pick up a feature after an interruption, read its recorded state yourself, read-only:
 
+```bash
+git worktree list
+# open lanes/<feature>/docs/feature/<feature>/handoff.json and its rendered briefs
 ```
-/nw-continue feature-id
-```
 
-This command:
-1. Reads all your prior wave artifacts
-2. Detects which waves have completed
-3. Recommends the next wave to run
-4. Skips any waves that meet their skip validation checklist
-5. Starts you at the right place
+Then:
+1. Read the prior wave artifacts and the handoff (the [nw-nwdes skill](../../reference/skills/nw-nwdes.md) explains its records).
+2. Detect which waves have completed, using the completion rules in [Wave Directory Structure](../wave-directory-structure/).
+3. Ask the skip questions above for the waves that remain, answering from the Request and recorded authority.
+4. Start the wave command for the first wave whose question is still open. Its role records results through its own `nwdes` verbs; never edit the handoff or recorded authority by hand. When only the closing pair remains, run `/nw-distill`, then `/nw-deliver`.
 
-Example: You ran DISCUSS and DESIGN. The tool suggests starting at DEVOPS (or skipping straight to DISTILL if infrastructure is already settled).
+Example: You ran DISCUSS and DESIGN. Start at DEVOPS only if a platform constraint is open; otherwise go straight to DISTILL.
 
 ---
 
@@ -156,6 +169,6 @@ Example: You ran DISCUSS and DESIGN. The tool suggests starting at DEVOPS (or sk
 
 If you skip a wave and later discover you should have run it, you can go back. Re-run the skipped wave. It will read your prior artifacts and adjust as needed.
 
-**Example**: You skipped DIVERGE on a "clear direction," but DISCUSS reveals three competing approaches. Run DIVERGE — it reads your DISCUSS work and produces options grounded in your requirements.
+**Example**: You skipped DIVERGE on a "clear direction," but a product question reveals three competing approaches. Run DIVERGE — it reads your recorded product work and produces options grounded in your requirements.
 
-The waves are flexible. The invariant is fixed: **DISTILL → DELIVER is always at the end**.
+The waves are flexible. The gated route's obligation is fixed: **DISTILL → DELIVER closes every gated Request**.

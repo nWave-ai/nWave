@@ -2,7 +2,7 @@
 
 **Time**: ~15 minutes (7 steps)
 **Platform**: macOS or Linux (Windows: use WSL)
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorials 1-3](../TUTORIALS.md) completed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorials 1-3](../TUTORIALS.md) completed
 **What this is**: An interactive walkthrough of `/nw-discover` -- nWave's product discovery command. You will validate a product idea before writing any code.
 
 ---

@@ -33,9 +33,11 @@ Does the agent specify only what diverges from Claude defaults?
 
 **Severity**: Medium -- redundant instructions waste tokens, cause overtriggering.
 
-## Dimension 4: Safety Implementation
+## Dimension 4: Safety Implementation by Construction (GDP-0)
 
-**Check**: Tools restricted via frontmatter `tools` field | maxTurns set | No prose-based security layers (use hooks) | No embedded enterprise safety frameworks | permissionMode set for risky actions
+Which producer could make the unsafe action unrepresentable — did the spec construct it away, or reach for a check?
+
+**Check**: Tools restricted via frontmatter `tools` field | maxTurns set | permissionMode set for risky actions | provider-enforced structured outcome used only for ephemeral semantic IPC | terminal prose never parsed as control input | durable handovers/documents produced by existing CLI/software from authority and observable effects | any hook present only as last resort with a recorded reason | No embedded enterprise safety frameworks
 
 **Severity**: High -- prose safety is ineffective and token-wasteful.
 
@@ -53,13 +55,13 @@ Does the agent specify only what diverges from Claude defaults?
 
 ## Dimension 7: Skill Loading Effectiveness
 
-Does the agent ensure skills are actually loaded during execution?
+Does each skill reach the role exactly once, at the right time?
 
-**Check**: Skill Loading Strategy table present for agents with 3+ skills | Every frontmatter skill has matching `Load:` directive in workflow | Skills path documented (`~/.claude/skills/nw-{skill-name}/SKILL.md`) | Phase-gated loading (not "load everything at start")
+**Check**: Apply the source-aware Skill addressing procedure in `nw-agent-creation-workflow` to the actual candidate surface | Every frontmatter skill exists, is always needed and is not reloaded by the body | Each conditional skill has a precise reachable trigger in the single generated index | No handwritten loading section or duplicate directive.
 
-**Severity**: High — orphan skills (declared but never loaded) mean sub-agents operate without domain knowledge. The `skills:` frontmatter field is declarative only; Claude Code does not auto-load skill files.
+**Severity**: High — a missing declared asset, intended conditional knowledge with no reachable trigger, a repeated preload, or a duplicate index. An installed project's missing build-time registry is a source-capability limit, not an orphan finding. The absence of a duplicate body Load directive for a frontmatter skill is correct.
 
-**Gold standard**: `nw-product-owner.md` — Skill Loading Strategy table mapping phases to skills with triggers + explicit `Load:` directives in each workflow phase.
+**Evidence**: Review the exact candidate under review and name its source, staged-build, or installed-artifact location. Do not attribute a finding from an unrelated or stale distribution artifact to that candidate.
 
 ## Dimension 8: Token Efficiency
 
@@ -78,29 +80,14 @@ Is the agent definition compressed without losing semantic content?
 
 **Severity**: High if agent addresses secondary concern while larger problem exists.
 
-## Review Output Format
+## Review Result Boundary
 
-```yaml
-review:
-  agent: "{agent-name}"
-  dimensions:
-    template_compliance: {pass|fail}
-    size_and_focus: {pass|fail}
-    divergence_quality: {pass|fail}
-    safety_implementation: {pass|fail}
-    language_and_tone: {pass|fail}
-    examples_quality: {pass|fail}
-    skill_loading: {pass|fail|n/a}
-    token_efficiency: {pass|fail}
-    priority_validation: {pass|fail}
-  issues:
-    - dimension: "{dimension}"
-      severity: "{high|medium|low}"
-      finding: "{description}"
-      recommendation: "{fix}"
-  verdict: "{approved|revisions_needed}"
-```
+Evaluate every dimension and cite concrete findings in diagnostic prose. In a
+managed invocation, the caller may request a provider-enforced ephemeral
+semantic outcome; it must not ask the model to print YAML, JSON, headings or a
+verdict grammar. Findings remain semantic review evidence. Any durable review
+projection is materialized by existing CLI/software, never by the reviewer.
 
 ## Failure Conditions
 
-Review blocked (verdict: revisions_needed) if: any high-severity dimension fails | 3+ medium-severity fail | Agent exceeds 400 lines without Skills extraction | Zero examples provided | Agent with 3+ skills missing Skill Loading Strategy table
+Review is not acceptable if: any high-severity dimension fails | 3+ medium-severity fail | Agent exceeds 400 lines without Skills extraction | Zero examples provided

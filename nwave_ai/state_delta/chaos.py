@@ -78,7 +78,7 @@ def chaos_env_perturbation(
     Example::
 
         with chaos_env_perturbation({"PATH": "/broken", "HOME": None}):
-            DESPlugin()._install_des_shims(context)  # runs under corrupted env
+            HooksPlugin().install(context)  # runs under corrupted env
     """
     originals: dict[str, str | None] = {}
     for key in env_overrides:
@@ -132,7 +132,7 @@ def chaos_filesystem_truncation(
 
         settings = claude_dir / "settings.json"
         with chaos_filesystem_truncation([settings]):
-            DESPlugin()._install_des_shims(context)
+            HooksPlugin().install(context)
     """
     paths = list(file_paths)
     saved: dict[Path, bytes | None] = {}
@@ -332,7 +332,7 @@ def enumerate_perturbations_strategy(
         ))
         def test_install_robust_to_chaos(perturbation):
             with perturbation():
-                DESPlugin()._install_des_shims(context)
+                HooksPlugin().install(context)
             ...
     """
     # Lazy import — hypothesis is loaded only when this function is CALLED.

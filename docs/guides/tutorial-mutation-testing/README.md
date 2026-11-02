@@ -2,7 +2,7 @@
 
 **Time**: ~12 minutes (6 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorial 1](../tutorial-first-delivery/) completed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 1](../tutorial-first-delivery/) completed
 **What this is**: A hands-on walkthrough of `/nw-mutation-test` -- nWave's mutation testing command. You will build a calculator with tests that have 100% code coverage but miss real bugs, then use mutation testing to expose the gaps.
 
 ---

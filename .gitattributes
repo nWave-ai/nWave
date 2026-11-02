@@ -1,5 +1,0 @@
-# Enforce Unix line endings for Python files
-*.py text eol=lf
-
-# Let Git handle other text files automatically
-* text=auto

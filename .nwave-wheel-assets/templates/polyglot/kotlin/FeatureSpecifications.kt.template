@@ -1,0 +1,92 @@
+// {Feature}Specifications.kt — step-method module backing the scenarios.
+//
+// Responsibilities:
+//   - Construct the SUT through the PRODUCTION composition root (`ProductionApp`).
+//     Swap only external / non-deterministic ports with fakes (clock, RNG, paid
+//     APIs).
+//   - Capture the universe via `app.captureUniverse(...)`.
+//   - Assert via `StateDelta.assert` from `common/StateDelta.kt`.
+//
+// No domain language leaks into the production-app wiring; no production-app
+// details leak into the scenarios. Step methods are `object FeatureSpecifications`
+// members so they read with `Feature.given_*`-style call sites without
+// constructor noise per scenario.
+
+import nwave.polyglot.statedelta.StateDelta
+import nwave.polyglot.statedelta.arrayAppended
+import nwave.polyglot.statedelta.unchanged
+
+object FeatureSpecifications {
+
+    // Universe for the signup feature — port-exposed observables only:
+    //   - registry.users : list of registered user records (driven-port state)
+    //   - audit.events   : append-only audit trail (driven-port state)
+    // Do NOT add internal fields here; refactoring would break the test.
+    private val SIGNUP_UNIVERSE: Set<String> = setOf("registry.users", "audit.events")
+
+    private var app: ProductionApp? = null
+    private var stateBefore: Map<String, Any?> = emptyMap()
+
+    /** Called from FeatureScenarios.beforeEach — must run before every scenario. */
+    fun setup() {
+        app = ProductionApp()
+        stateBefore = requireApp().captureUniverse(SIGNUP_UNIVERSE)
+    }
+
+    private fun requireApp(): ProductionApp =
+        app ?: error("ProductionApp not initialised — call setup() in beforeEach")
+
+    // -----------------------------------------------------------------------
+    // Step methods — Given / When / Then
+    // -----------------------------------------------------------------------
+
+    fun given_aFreshSignupRegistry() {
+        // Precondition only — the fresh registry is established by
+        // ProductionApp's constructor. Re-capture the baseline so subsequent
+        // Whens delta against *this* moment, not setup().
+        stateBefore = requireApp().captureUniverse(SIGNUP_UNIVERSE)
+    }
+
+    fun `when_userSignsUpWithEmail`(email: String) {
+        requireApp().signup(email)
+    }
+
+    fun then_userIsAddedToRegistryAndAuditedOnce(email: String) {
+        val stateAfter = requireApp().captureUniverse(SIGNUP_UNIVERSE)
+        StateDelta.assert(
+            before = stateBefore,
+            after = stateAfter,
+            universe = SIGNUP_UNIVERSE,
+            expected = mapOf(
+                "registry.users" to arrayAppended(mapOf("email" to email)),
+                "audit.events" to arrayAppended(mapOf("type" to "UserSignedUp", "email" to email)),
+            ),
+        )
+    }
+
+    fun `when_userAttemptsDuplicateSignup`(email: String) {
+        // Re-baseline before the duplicate attempt so the state-delta assertion
+        // measures the change *caused by the duplicate*, not the original signup.
+        stateBefore = requireApp().captureUniverse(SIGNUP_UNIVERSE)
+        try {
+            requireApp().signup(email)
+        } catch (_: DuplicateSignupError) {
+            // Expected rejection — swallowed here; then_ asserts the rejection's
+            // observable consequence (zero state delta).
+        }
+    }
+
+    fun then_secondSignupIsRejectedAndStateIsUnchanged() {
+        val stateAfter = requireApp().captureUniverse(SIGNUP_UNIVERSE)
+        // Both slots must be unchanged — the duplicate must produce zero delta.
+        StateDelta.assert(
+            before = stateBefore,
+            after = stateAfter,
+            universe = SIGNUP_UNIVERSE,
+            expected = mapOf(
+                "registry.users" to unchanged(),
+                "audit.events" to unchanged(),
+            ),
+        )
+    }
+}

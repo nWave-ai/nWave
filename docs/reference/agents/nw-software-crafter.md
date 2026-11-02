@@ -1,37 +1,21 @@
 # nw-software-crafter
 
-DELIVER wave - SLIM scope (implementation + refactor expert). Crafter implements production code to satisfy ATs authored by acceptance-designer (DISTILL). Does NOT author tests. Follows the 3-phase RED -> GREEN -> COMMIT cycle (ADR-025).
+Implements the object-oriented or procedural change for one ready ordered batch.
 
-**Wave:** DELIVER
-**Model:** inherit
-**Max turns:** 0
-**Tools:** Read, Write, Edit, Bash, Glob, Grep, Task
+**Wave:** Other
+**Model:** claude-opus-5
+**Max turns:** 40
+**Tools:** Read, Write, Edit, Glob, Bash, SendMessage
 
 ## Commands
 
-- [`/nw-bugfix`](../commands/index.md)
-- [`/nw-deliver`](../commands/index.md)
-- [`/nw-design`](../commands/index.md)
-- [`/nw-distill`](../commands/index.md)
-- [`/nw-execute`](../commands/index.md)
-- [`/nw-finalize`](../commands/index.md)
 - [`/nw-mikado`](../commands/index.md)
-- [`/nw-mutation-test`](../commands/index.md)
 - [`/nw-refactor`](../commands/index.md)
-- [`/nw-review`](../commands/index.md)
-- [`/nw-roadmap`](../commands/index.md)
 - [`/nw-spike`](../commands/index.md)
 
-## Skills
+## Preloaded skills
 
-- [nw-collaboration-and-handoffs](../skills/nw-collaboration-and-handoffs.md) — Cross-agent collaboration protocols, workflow handoff patterns, and commit message formats for TDD/Mikado/refactoring workflows
-- [nw-hexagonal-testing](../skills/nw-hexagonal-testing.md) — 5-layer agent output validation, I/O contract specification, vertical slice development, and test doubles policy with per-layer examples
-- [nw-legacy-refactoring-ddd](../skills/nw-legacy-refactoring-ddd.md) — DDD-guided legacy refactoring patterns -- strangler fig, bubble context, ACL migration, 14 tactical/strategic/infrastructure patterns, and incremental monolith-to-microservices methodology
-- [nw-mikado-method](../skills/nw-mikado-method.md) — Enhanced Mikado Method for complex architectural refactoring - systematic dependency discovery, tree-based planning, and bottom-up execution
-- [nw-mutation-test](../skills/nw-mutation-test.md) — Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%).
-- [nw-production-safety](../skills/nw-production-safety.md) — Agent safety boundaries - input validation, output filtering, scope constraints, and document creation policy
-- [nw-progressive-refactoring](../skills/nw-progressive-refactoring.md) — Progressive L1-L6 refactoring hierarchy, 22 code smell taxonomy, atomic transformations, test code smells, and Fowler refactoring catalog
-- [nw-quality-framework](../skills/nw-quality-framework.md) — Quality gates - 11 commit readiness gates, build/test protocol, validation checkpoints, and quality metrics
-- [nw-refactor](../skills/nw-refactor.md) — Applies the Refactoring Priority Premise (RPP) levels L1-L6 for systematic code refactoring. Use when improving code quality through structured refactoring passes.
-- [nw-sc-review-dimensions](../skills/nw-sc-review-dimensions.md) — Reviewer critique dimensions for peer review - implementation bias detection, test quality validation, completeness checks, and priority validation
-- [nw-tdd-methodology](../skills/nw-tdd-methodology.md) — Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
+- [nw-certainty-by-construction](../skills/nw-certainty-by-construction.md) — Turn a stable layer claim (domain, application, adapter, or infrastructure) into a construction boundary so the invalid state cannot be built, and state honestly what remains unguarded. Use when a requirement says an invalid state or transition must not occur, when values need a canonical form, or when a rewrite/cache/optimisation must preserve meaning. Complements nw-fp-domain-modeling, which shows the encodings; this decides whether to encode, how strong the claim really is, and what obligation is left over.
+- [nw-code-craftsmanship](../skills/nw-code-craftsmanship.md) — Universal OO/FP craftsmanship foundation — domain-language naming, small cohesive units, semantic DRY/SSOT, reuse-before-new, one owner per rule/config/fact, prefactoring before new behavior, ports/adapters for testability. Consult before writing or reviewing any unit of code, either paradigm.
+- [nw-type-level-design](../skills/nw-type-level-design.md) — Design or review evidence-preserving APIs that model invalid states, state transitions, capabilities, and trusted construction proportionately to the target language.
+- [nw-typesafe-system-one](../skills/nw-typesafe-system-one.md) — Use Jev System One for every supported, authorized semantic judgment when available: relevance selection, handoff preflight, evidence mapping, finding clustering, and confidence-gated escalation.

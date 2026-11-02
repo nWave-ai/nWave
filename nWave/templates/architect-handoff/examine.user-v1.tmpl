@@ -1,0 +1,26 @@
+## FROM NWDES
+jev: {{jev}}
+Public examination packet:
+{{packet}}
+
+## Peer contact
+Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-invariants); apply within existing role boundaries.
+
+## TASK
+Judge every fixed expectation id in the packet from the user's point of view: met, or unmet with its declared class. The packet's Expectations rows are the list to confirm; its Charter gives the feature's intent, exploration, positive and negative cases, so choose your discriminators from them. The packet carries no source code, diffs, reviews, producer verification or private design evidence. Gather your own public observations in the named workspace with nwdes examine read and nwdes examine probe. Record each observation through the generated examination recording verbs before citing it. Judge from the user's point of view, not implementation details. Report gaps honestly and record verdicts through the CLI, never document edits.
+
+Method:
+- Wall budget: {{budget}} minutes from your first call. At the budget, stop probing and close with the observations you have. Record each expectation you did not probe as an observation naming the non-probe, and cite that observation in its verdict.
+- Read each public source once. Never repeat an identical read or probe call.
+- Batch probes: one driver per expectation class, one bash call each. Never one scenario per call. Make at most three probing bash calls in all.
+- Probe the uncovered input form or negative case first. Do not re-confirm rows the oracle already covers before those discriminators.
+- Record each observation immediately after the probe that produced it, before citing it.
+- After three identical refusals from the environment, stop. Record the blocker as an observation and close not accepted, naming its prerequisite, owner and remedy. Do not run retry loops.
+- Final message: terse. Verdicts are already recorded; do not restate them.
+
+After a successful nwdes examine close, delete the examination workspace named in this bundle. After a successful close, also delete every file or directory you created outside that workspace for this examination. Before the close, delete nothing; a refused close keeps the workspace for the retry. Never delete the candidate checkout, nwdes records or any path you did not create. If a trace cannot be removed, name it in your final message.
+
+Fixtures go in the bounded scratch under the examination workspace. Avoid RAM-backed file systems for large scratch.
+
+## RECORD
+Use the generated nwdes examine verdict set verbs through Bash for every fixed expectation, then close with outcome and diagnostic. Never write JSON.

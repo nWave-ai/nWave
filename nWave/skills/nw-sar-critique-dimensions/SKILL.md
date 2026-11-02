@@ -8,6 +8,17 @@ disable-model-invocation: true
 
 # Architecture Quality Critique Dimensions
 
+Use current authorized scope and genuine exclusions/amendments with provenance.
+This rubric does not add universal DESIGN review. Reuse/SSOT and full native
+impact closure are owned by `nw-design`/`nw-code-craftsmanship`; assess both
+architecture/contract test applicability and observable prefactoring selections
+against the generated grammar, not incidental tool or file conventions. Apply
+`nw-typesafe-system-one`'s role-owned decision/agreement/boundary dimensions
+with local verified reasons; scores never offset a blocker or turn designed
+guarantees into observed evidence.
+
+Load `nw-cross-cutting-invariants` and apply `flow:findings-go-to-the-owner-directly` when exchanging findings or questions between roles.
+
 ## Dimension 1: Architectural Bias Detection
 
 ### Technology Preference Bias
@@ -25,15 +36,25 @@ Pattern: unproven tech (<6 months, small community) for production. Detection: c
 ADR lacks business problem, technical constraints, or quality attribute requirements. Future maintainers cannot validate. Severity: HIGH.
 
 ### Missing Alternatives Analysis
-No alternatives (min 2 required). Each must be evaluated against requirements with rejection rationale. Severity: HIGH.
+Consider relevant alternatives, including adequate existing authority; reject with requirement-grounded reasons. A fixed number of alternatives or a comparison-table format is not a quality requirement. Severity: HIGH only for an actual missing consequential choice.
 
 ### Missing Consequences
 Omits positive/negative consequences and trade-offs. Quality attribute impact not analyzed. Severity: MEDIUM.
 
+### Delivery Ownership Drift
+Pattern: an architecture assigns a builder the choice or revision of SML, waves,
+feature/bugfix routing, upstream rework, retry, stop/resume, or invocation.
+Detection: distinguish nwdes's handoff/document construction from the LLM's
+orchestration; confirm required independent review, EXAMINE and quality
+obligations remain. Severity: CRITICAL.
+
 ## Dimension 3: Completeness Validation
 
+### Requested Scope Not Covered
+Pattern: a required shared contract or dependency is unresolved, or a partial design is reported as covering the requested feature. Detection: compare the requested value graph with the shared contracts/dependencies/observation and the claimed coverage; cite the actual missing decision. An undesigned slice delta is open scope, not itself a defect. A single slice is not the whole feature. Do not demand speculative local implementation detail or accept adequate existing authority as missing. Severity: CRITICAL.
+
 ### Missing Quality Attributes
-Architecture doesn't address required attributes. Verify: performance (latency, throughput) | scalability | security (auth, data protection) | maintainability (modularity, testability) | reliability (fault tolerance, recovery) | observability (logging, monitoring, alerting). Severity: CRITICAL.
+Architecture fails a quality attribute actually promised by current authority. Examine the relevant security, reliability, performance, maintainability or observability contract; do not invent a universal attribute checklist. Severity: CRITICAL for a concrete required gap.
 
 ### Missing Performance Architecture
 Performance requirements exist but no optimization strategy (caching, indexing, rate limiting, CDN). Severity: CRITICAL.
@@ -55,6 +76,7 @@ Validate roadmap addresses largest bottleneck.
 
 **Q1**: Largest bottleneck? (timing data must confirm primary problem)
 **Q2**: Simpler alternatives considered? (rejected alternatives required)
+**Simple-design dimension** — apply `design:simplest-design-that-delivers` in `nw-cross-cutting-invariants`.
 **Q3**: Constraint prioritization correct? (quantified by impact, constraint-free first)
 **Q4**: Data-justified? (key decision with quantitative data)
 

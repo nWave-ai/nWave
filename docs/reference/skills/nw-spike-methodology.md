@@ -1,5 +1,5 @@
 # nw-spike-methodology
 
-Teaches agents how to run a timeboxed spike - throwaway code that validates one assumption before DESIGN
+Guides a bounded, decision-relevant probe for a product, visual or technical uncertainty without creating wave authority
 
 **Source:** [SKILL.md on GitHub](https://github.com/nWave-ai/nWave/blob/main/nWave/skills/nw-spike-methodology/SKILL.md)

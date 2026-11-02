@@ -124,7 +124,7 @@ Read architecture files from your features (`docs/feature/{id}/design/architectu
 - Adapters are replaceable — all external deps in adapters/
 ```
 
-Add decision references: if your features have ADRs, copy them to `docs/product/architecture/adr-001.md`, `adr-002.md`, etc.
+Add decision references: if your features have ADRs, copy them to `docs/product/architecture/<ADR-NNN>-<title>.md`, `<ADR-NNN+1>-<title>.md`, etc.
 
 ### Step 5: Extract KPI contracts
 
@@ -245,9 +245,9 @@ A: Git handles conflicts at merge time. The `changelog:` section in YAML helps r
 
 A: DISTILL proceeds with a warning: "KPI contracts missing — acceptance tests cover behavior only, not observability." The feature is still shippable.
 
-**Q: When does `/nw-continue` detect that SSOT exists?**
+**Q: How do waves detect that SSOT exists?**
 
-A: When `docs/product/` directory is present. If it exists, waves use the new model (read SSOT first). If it doesn't, waves use the old model (fallback to `docs/feature/{id}/`).
+A: When the `docs/product/` directory is present. If it exists, waves use the new model (read SSOT first). If it doesn't, waves use the old model (fallback to `docs/feature/{id}/`).
 
 ---
 

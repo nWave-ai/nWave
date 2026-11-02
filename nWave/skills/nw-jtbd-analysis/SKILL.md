@@ -27,7 +27,9 @@ When [situation/trigger], I want to [motivation/action], so I can [expected outc
 
 ---
 
-## Job Types — Extract All Three
+## Job Types — Explore Where Evidenced
+
+Use supplied evidence for each job type. Label proposals and open questions explicitly; emotional and social claims require the human's own account, never inferred feelings or confirmed choices.
 
 | Type | Question | Example |
 |------|----------|---------|
@@ -107,9 +109,12 @@ Where Importance and Satisfaction are surveyed 1-10.
 
 | Score | Interpretation |
 |-------|---------------|
-| > 12 | Under-served — high opportunity |
-| 10-12 | Appropriately served — maintain |
-| < 10 | Over-served — do not invest |
+| 15-20 | Extremely under-served — highest opportunity |
+| >12 and <15 | Under-served — high opportunity |
+| 10-12 inclusive | Appropriately served — maintain |
+| <10 | Over-served — do not invest |
+
+These are the canonical bands in `nw-jtbd-opportunity-scoring`; DISCOVER's >8 eligibility threshold is a different decision, not a served-status classification.
 
 **Output format per opportunity**:
 ```

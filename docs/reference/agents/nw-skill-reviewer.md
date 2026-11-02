@@ -4,10 +4,11 @@ Use to review SKILL.md quality during DISTILL/DELIVER verification when delivera
 
 **Wave:** Other
 **Model:** haiku
-**Max turns:** 20
-**Tools:** Read, Glob, Grep
+**Max turns:** 40
+**Tools:** Read, Glob, Grep, Bash, Write, SendMessage
 
-## Skills
+## Preloaded skills
 
 - [nw-ab-critique-dimensions](../skills/nw-ab-critique-dimensions.md) — Review dimensions for validating agent quality - template compliance, safety, testing, and priority validation
 - [nw-agent-creation-workflow](../skills/nw-agent-creation-workflow.md) — Detailed 5-phase workflow for creating agents - from requirements analysis through validation and iterative refinement
+- [nw-typesafe-system-one](../skills/nw-typesafe-system-one.md) — Use Jev System One for every supported, authorized semantic judgment when available: relevance selection, handoff preflight, evidence mapping, finding clustering, and confidence-gated escalation.

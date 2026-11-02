@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nWave Framework Validation Schemas",
+  "description": "Mechanical identity, description, reviewer-isolation, and cross-reference checks.",
+  "$defs": {
+    "agent_frontmatter": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "tools": {"type": "string"},
+        "skills": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "skill_frontmatter": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"}
+      }
+    },
+    "command_frontmatter": {
+      "type": "object",
+      "required": ["description"],
+      "properties": {"description": {"type": "string"}}
+    }
+  },
+  "validation_rules": {
+    "agent_rules": [
+      {"id": "A01", "name": "frontmatter_present"},
+      {"id": "A02", "name": "name_matches_filename"},
+      {"id": "A04", "name": "description_present"},
+      {"id": "A12", "name": "reviewer_no_write_tools"}
+    ],
+    "skill_rules": [
+      {"id": "S01", "name": "frontmatter_present"},
+      {"id": "S02", "name": "name_matches_identity"},
+      {"id": "S04", "name": "description_present"}
+    ],
+    "command_rules": [
+      {"id": "C01", "name": "frontmatter_present"},
+      {"id": "C02", "name": "description_present"},
+      {"id": "C12", "name": "kebab_case_filename"}
+    ],
+    "cross_reference_rules": [
+      {"id": "X02", "name": "declared_skill_exists"}
+    ]
+  }
+}

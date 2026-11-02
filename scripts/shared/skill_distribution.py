@@ -54,6 +54,7 @@ SCRIPTS_FAMILY_KEY = "installed_scripts"
 UTILITIES_FAMILY_KEY = "installed_utilities"
 TEMPLATES_FAMILY_KEY = "installed_templates"
 SKILLS_FAMILY_KEY = "installed_skills"
+DATA_FAMILY_KEY = "installed_data"
 
 
 class FamilyRecord(NamedTuple):
@@ -125,6 +126,7 @@ def filter_public_skills(
     public_agents: set[str],
     ownership_map: dict[str, set[str]],
     command_skills: set[str] | None = None,
+    private_skills: set[str] | None = None,
 ) -> list[SkillEntry]:
     """Filter entries to only public skills using ownership_map.
 
@@ -133,7 +135,7 @@ def filter_public_skills(
     When public_agents is empty, returns all entries (backward compatibility).
     """
     kept, _ = filter_public_skills_with_reasons(
-        entries, public_agents, ownership_map, command_skills
+        entries, public_agents, ownership_map, command_skills, private_skills
     )
     return kept
 
@@ -143,6 +145,7 @@ def filter_public_skills_with_reasons(
     public_agents: set[str],
     ownership_map: dict[str, set[str]],
     command_skills: set[str] | None = None,
+    private_skills: set[str] | None = None,
 ) -> tuple[list[SkillEntry], list[tuple[str, str]]]:
     """Filter entries + return parallel list of (excluded_name, reason).
 
@@ -165,7 +168,13 @@ def filter_public_skills_with_reasons(
     kept: list[SkillEntry] = []
     excluded: list[tuple[str, str]] = []
     for entry in entries:
-        if is_public_skill(entry.name, public_agents, ownership_map, command_skills):
+        if is_public_skill(
+            entry.name,
+            public_agents,
+            ownership_map,
+            command_skills,
+            private_skills,
+        ):
             kept.append(entry)
             continue
         excluded.append((entry.name, _exclusion_reason(entry.name, ownership_map)))
@@ -193,7 +202,8 @@ def copy_skills_to_target(
     from target_dir before copying. Non-nw-* directories (user custom
     skills) are preserved.
 
-    For NEW_FLAT entries (source_path is a directory), copies the full directory.
+    For NEW_FLAT entries (source_path is a directory), copies source files but
+    excludes generated Python bytecode and cache directories.
     For OLD_HIERARCHICAL entries (source_path is a file), copies the file into
     a directory named after the skill.
 
@@ -221,7 +231,12 @@ def copy_skills_to_target(
     for entry in entries:
         destination = target_dir / entry.name
         if entry.source_path.is_dir():
-            shutil.copytree(entry.source_path, destination, dirs_exist_ok=True)
+            shutil.copytree(
+                entry.source_path,
+                destination,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
         else:
             destination.mkdir(parents=True, exist_ok=True)
             shutil.copy2(entry.source_path, destination / entry.source_path.name)
@@ -330,6 +345,114 @@ def write_family_record(
     manifest[key] = sorted(installed_names)
     manifest["version"] = "1.0"
     _write_document(target_dir, manifest)
+
+
+class FamilyRemovalEvidence(NamedTuple):
+    """Outcome of an uninstall pass over one family's record.
+
+    ``status`` distinguishes a completed removal from a manifest that could
+    not be trusted: ``"missing_manifest"`` (no manifest — nothing was ever
+    installer-owned here) and ``"invalid_manifest"`` (unparsable/malformed
+    document) never guess ownership, so callers must not delete on either.
+    ``"blocked"`` means at least one recorded member could not be removed
+    (unsafe name or filesystem error); it stays in the manifest for retry.
+    """
+
+    status: str
+    removed: frozenset[str]
+    already_absent: frozenset[str]
+    blocked: frozenset[str]
+
+
+def _is_safe_member_name(name: str) -> bool:
+    """One safe basename: no traversal, no separators, no drive escape."""
+    if not name or name in (".", ".."):
+        return False
+    return not any(char in name for char in ("/", "\\", ":"))
+
+
+def remove_family_record(target_dir: Path, *, key: str) -> FamilyRemovalEvidence:
+    """Remove one family's installer-owned members and retire its manifest key.
+
+    Every recorded member is prevalidated as a safe basename BEFORE any
+    mutation: one unsafe name blocks the whole family (nothing is touched).
+    Symlinks are inspected (and unlinked) before following into file/dir
+    removal, so a dangling or outside-pointing link only loses the link
+    itself, never its target. A listed-but-missing member is
+    ``already_absent``; names that fail removal stay recorded as
+    ``blocked`` for retry. Sibling family keys and unknown manifest keys
+    are preserved verbatim; the manifest file is deleted only once no
+    family list remains in it. A missing or corrupt manifest is reported
+    as such and never mutated.
+    """
+    manifest_path = target_dir / _MANIFEST_FILENAME
+    if not manifest_path.exists():
+        return FamilyRemovalEvidence(
+            "missing_manifest", frozenset(), frozenset(), frozenset()
+        )
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return FamilyRemovalEvidence(
+            "invalid_manifest", frozenset(), frozenset(), frozenset()
+        )
+    if not isinstance(manifest, dict):
+        return FamilyRemovalEvidence(
+            "invalid_manifest", frozenset(), frozenset(), frozenset()
+        )
+
+    members = manifest.get(key, [])
+    if not isinstance(members, list) or not all(
+        isinstance(member, str) for member in members
+    ):
+        return FamilyRemovalEvidence(
+            "invalid_manifest", frozenset(), frozenset(), frozenset()
+        )
+    if not members:
+        if key in manifest:
+            manifest.pop(key, None)
+            if _list_values(manifest):
+                _write_document(target_dir, manifest)
+            else:
+                manifest_path.unlink()
+        return FamilyRemovalEvidence("complete", frozenset(), frozenset(), frozenset())
+
+    if any(not _is_safe_member_name(member) for member in members):
+        return FamilyRemovalEvidence(
+            "blocked", frozenset(), frozenset(), frozenset(members)
+        )
+
+    removed: set[str] = set()
+    already_absent: set[str] = set()
+    blocked: set[str] = set()
+    for member in members:
+        path = target_dir / member
+        if not path.is_symlink() and not path.exists():
+            already_absent.add(member)
+            continue
+        try:
+            if path.is_symlink() or not path.is_dir():
+                path.unlink()
+            else:
+                shutil.rmtree(path)
+            removed.add(member)
+        except OSError:
+            blocked.add(member)
+
+    if blocked:
+        manifest[key] = sorted(blocked)
+    else:
+        manifest.pop(key, None)
+
+    if _list_values(manifest):
+        _write_document(target_dir, manifest)
+    else:
+        manifest_path.unlink()
+
+    status = "blocked" if blocked else "complete"
+    return FamilyRemovalEvidence(
+        status, frozenset(removed), frozenset(already_absent), frozenset(blocked)
+    )
 
 
 def sweep_retired_assets(

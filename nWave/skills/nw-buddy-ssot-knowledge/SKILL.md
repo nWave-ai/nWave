@@ -21,11 +21,12 @@ Each concept below has one authoritative file. Read that file first. Treat every
 - **Caches**: `VERSION` file, README badges, docs footer, release notes.
 - **Rule**: quote `pyproject.toml`. If asked about a cache that disagrees, report the discrepancy.
 
-### Planned work
+### Planned work (roadmap, not execution state)
 
-- **Authoritative**: `BACKLOG.md` at the repo root.
+- **Authoritative**: `BACKLOG.md` at the repo root, for work not yet started.
 - **Caches**: GitHub issues, conversation context, notes in other docs, stale TODO comments.
-- **Rule**: work that isn't in `BACKLOG.md` is not planned. Don't invent items. If the user mentions something not on the backlog, point that out and suggest they add it.
+- **Rule**: for roadmap-planning questions, work that isn't in `BACKLOG.md` is not planned. Don't invent items. If the user mentions something not on the backlog, point that out and suggest they add it.
+- **Boundary**: `BACKLOG.md` never answers current status, progress or "what's next?" for work already in flight. Those come from the Request-derived execution facts read through the resident software (`nw-buddy-project-reading`); a Request absent from `BACKLOG.md` can still be in progress. Report BACKLOG roadmap items separately.
 
 ### Architecture intent
 

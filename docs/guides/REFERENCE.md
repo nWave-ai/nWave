@@ -1,14 +1,44 @@
 # Reference
 
-Structural and conceptual reference material for understanding nWave internals.
+Lookup-ready material: precise specs, tables, and indexes. These pages
+assume you know what you are looking for.
 
-| Guide | Description | Level |
-|-------|-------------|-------|
-| [Jobs To Be Done Guide](./jobs-to-be-done-guide/) | Choose the right nWave workflow for your task (ODI framework) | Intermediate |
-| [Wave Routing and Entry Points](./wave-routing-and-entry-points/) | Decision matrix for choosing the right wave to start in | Intermediate |
-| [Wave Directory Structure](./wave-directory-structure/) | How nWave organizes artifacts across the seven-wave pipeline | Intermediate |
-| [Understanding the SSOT Model](./understanding-ssot-model/) | Why nWave's documentation structure changed and how to navigate it | Intermediate |
-| [DES Audit Trail Guide](./des-audit-trail-guide/) | Deterministic Execution System immutable audit trail | Advanced |
-| [Plugin Use Cases](./plugin-use-cases/) | Four practical use cases with prompts and expected output | Beginner |
-| [What's New in v3.19](./whats-new-v319/) | Release notes: per-project activation (opt-in gate) and the documented `nwave-ai` CLI | All |
-| [What's New in v3.5](./whats-new-v35/) | Release notes: DIVERGE wave, SSOT model, three DESIGN architects, /nw-buddy | All |
+## The nwdes command
+
+| Look up | Page |
+|---|---|
+| Verb groups (feature, slice, work, rework, product, design, acceptance, expectations, charter, examine, craft, review, document, delta, prompt, packet, lane, commit, measure) | [nwdes reference](./nwdes/reference/index.md) |
+| Role recording verbs and their fields | [Role recording](./nwdes/reference/index.md#role-recording) |
+| Configuration tiers and keys (`~/.nwave/config.json`, `.nwave/config.json`) | [Configuration](./nwdes/reference/index.md#configuration) |
+| Refusal names and standard results | [Standard results](./nwdes/reference/index.md#standard-results) |
+| Lane actions, options and refusals | [lane](./nwdes/reference/lane.md) |
+| Commit message fields and ownership rules | [commit](./nwdes/reference/commit.md) |
+
+## Hosts and install
+
+| Look up | Page |
+|---|---|
+| What each host receives, and what verifies it | [Vendor support](./vendor-support.md) |
+| `nwave-ai` CLI commands (install, uninstall, doctor, status, project, attribution, model, ...) | [CLI reference](../reference/cli.md) |
+| Global and project configuration keys | [Global config reference](../reference/global-config.md) |
+| Outcomes CLI (`nwave-ai outcomes ...`) | [Outcomes CLI reference](../reference/outcomes-cli.md) |
+
+## Agents, skills, commands
+
+| Look up | Page |
+|---|---|
+| Every installed agent | [Agents index](../reference/agents/index.md) |
+| Every installed skill | [Skills index](../reference/skills/index.md) |
+| Every `/nw-*` command | [Commands index](../reference/commands/index.md) |
+| Templates | [Templates index](../reference/templates/index.md) |
+
+## Terms and formats
+
+| Look up | Page |
+|---|---|
+| Term definitions (handoff, oracle, EXAMINE, ...) | [Glossary](./glossary.md) |
+| Feature directory layout in your repository (handoff, briefs, run records) | [nwdes reference](./nwdes/reference/index.md) |
+| 3.x feature directory layouts (legacy multi-file, lean L7) | [Feature format reference](../reference/feature-format.md) (3.x-era) |
+
+For task procedures see [How-To Guides](./HOW-TO.md); for concepts and
+rationale see [Explanation](./EXPLANATION.md).

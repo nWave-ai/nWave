@@ -49,7 +49,7 @@ architectural_approach:
         design_constraints:
           - "No dependencies on external frameworks"
           - "Pure business logic without infrastructure concerns"
-          - "Testable through unit tests with minimal mocking"
+          - "Testable through its ports without infrastructure"
         stakeholder_communication: "Focus on business capabilities and value"
 
       ports_layer:
@@ -539,7 +539,7 @@ design_wave_quality_gates:
         - gate: "Business Logic Isolation"
           validation: "Business logic independent of external frameworks"
           measurement: "Business layer can be tested without external dependencies"
-          automation: "Unit test execution without infrastructure"
+          automation: "Acceptance tests through the ports without infrastructure"
 
         - gate: "Interface Segregation"
           validation: "Interfaces designed for specific business needs"

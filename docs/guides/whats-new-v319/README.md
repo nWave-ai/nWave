@@ -1,10 +1,12 @@
 # What's New in nWave v3.19
 
+> **Historical note.** This page records v3.19.0. Silent auto-adoption of an unmarked repository was retired in August 2026; run `nwave-ai project enable` explicitly. The current delivery route uses nwdes, without a workflow ledger or enforcement gates. See [Activating nWave in a Project](../activating-nwave-per-project.md) for current configuration.
+
 ## Per-Project Activation (Opt-In Gate)
 
-nWave's DES hooks install **globally** into `~/.claude/settings.json`, so before v3.19 they fired in every repository you opened — including ones that had never used nWave. v3.19 makes them **opt-in per project**: in a repo that has not activated nWave, every gated hook silently exits 0 (allow). You cannot tell nWave is installed.
-
-**What it does**: A pure, deterministic policy decides per repo whether DES hooks run, from two inputs:
+v3.19 introduced per-project activation for globally installed assets. Current
+activation is explicit; package installation alone does not enable a repository.
+The historical policy used two inputs:
 
 - A tracked marker file `.nwave/local-config.json` (`{"enabled_for_repo": true}` or `false`).
 - A global default `activation.mode` in `~/.nwave/global-config.json` — `opt-in` (default; unmarked repos are inactive) or `all` (unmarked repos are active).
@@ -29,7 +31,7 @@ See [Activating nWave in a Project](../activating-nwave-per-project.md) for the 
 
 The user-facing `nwave-ai` command surface now lives in one reference page.
 
-**What it does**: A single lookup for `install`, `uninstall`, `doctor`, `status`, `project`, `mode`, `attribution`, `completion`, and `version` — every flag, exit code, and output string. It also documents that `nwave-ai install` consumes `--platform` / `--target` / `--yes` / `--density-only` itself and **forwards the rest** (`--dry-run`, `--backup-only`, `--restore`) to the underlying installer.
+**At v3.19**: The CLI reference covered `install`, `uninstall`, `doctor`, `status`, `project`, `mode`, `attribution`, `completion`, and `version`, including the then-available `--density-only` flag. That flag is retired; use the current [CLI Reference](../../reference/cli.md) for supported options and output.
 
 **When to use**: Looking up a flag or exit code, or scripting `nwave-ai` in CI.
 

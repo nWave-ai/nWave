@@ -1,19 +1,23 @@
-"""`nwave-ai outcomes` subcommand entry — register / check / check-delta.
+"""`nwave-ai outcomes` subcommand entry — register / check.
 
 Driving adapter: argparse-based CLI. Translates argv into application
-service calls (RegistryService.register, CollisionDetector.check,
-RegistryService.collision_check_for_id) and maps results to exit codes
-per feature-delta DESIGN:
+service calls (RegistryService.register, CollisionDetector.check) and maps
+results to exit codes:
 
-    register:    0 success, 2 duplicate id
+    register:    0 success
+                 2 refused — checked and rejected (invalid, or duplicate id)
+                 3 refused — could NOT check (schema resource unavailable)
     check:       0 no collisions, 1 collision detected
-    check-delta: 0 zero collisions across delta, 1 if any collision
+2 and 3 are kept apart deliberately: "I checked it and said no" and "I never
+managed to check it" are different events for whoever is reading the exit code,
+and only one of them is fixed by reinstalling. Every other unexpected failure is
+reported as `ERROR: <Type>: <message>` on stderr with exit 2 — a raw traceback
+is never a user-facing outcome (see `handle_outcomes`).
 """
 
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path
 
@@ -27,17 +31,18 @@ from nwave_ai.outcomes.application.registry_service import (
     InvalidOutcomeError,
     RegistryService,
     SchemaUnavailableError,
-    UnknownOutcomeIdError,
 )
 from nwave_ai.outcomes.domain.outcome import InputShape, Outcome, OutputShape
 
 
-_OUT_ID_PATTERN = re.compile(r"\bOUT-[A-Z0-9-]+\b")
-
+# Exit codes. 2 = refused after checking; 3 = refused because checking was
+# impossible. Kept distinct so a damaged install cannot look like bad input.
+_EXIT_REFUSED = 2
 _EXIT_SCHEMA_UNAVAILABLE = 3
+
 _REINSTALL_HINT = (
-    "HOW: reinstall nwave-ai (for example, `uv tool install --force nwave-ai`); "
-    "the schema ships inside the package."
+    "HOW: reinstall nwave-ai (e.g. `pipx reinstall nwave-ai`, or "
+    "`uv tool install --force nwave-ai`) - the schema ships inside the package."
 )
 
 
@@ -74,22 +79,28 @@ def handle_outcomes(argv: list[str]) -> int:
     chk.add_argument("--output-shape", required=True)
     chk.add_argument("--keywords", default="")
 
-    chd = sub.add_parser(
-        "check-delta",
-        help="Aggregate scan: parse OUT-ids from a feature-delta.md and check each",
-    )
-    chd.add_argument("delta_path", type=Path)
-
     args = parser.parse_args(argv)
-    registry_path = _ensure_registry(args.registry)
 
+    # Everything downstream of argv parsing runs inside the guard, so no failure
+    # mode reaches the user as a raw traceback: not the schema resource, and not
+    # the several other unguarded throw sites either (registry mkdir/write ->
+    # PermissionError, malformed registry YAML -> YAMLError, a row missing `id`
+    # -> KeyError). `Exception`, not
+    # `BaseException`: argparse's SystemExit must still pass through.
+    try:
+        registry_path = _ensure_registry(args.registry)
+        return _dispatch(args, registry_path)
+    except Exception as err:
+        print(f"ERROR: {type(err).__name__}: {err}", file=sys.stderr)
+        return _EXIT_REFUSED
+
+
+def _dispatch(args: argparse.Namespace, registry_path: Path) -> int:
     if args.cmd == "register":
         return _run_register(args, registry_path)
     if args.cmd == "check":
         return _run_check(args, registry_path)
-    if args.cmd == "check-delta":
-        return _run_check_delta(args, registry_path)
-    return 2
+    return _EXIT_REFUSED
 
 
 def _ensure_registry(registry_path: Path) -> Path:
@@ -110,18 +121,29 @@ def _run_register(args: argparse.Namespace, registry_path: Path) -> int:
     try:
         service.register(outcome)
     except SchemaUnavailableError as err:
-        print(
-            f"REFUSED: cannot validate {outcome.id}; the outcome was NOT registered.",
-            file=sys.stderr,
-        )
-        print(f"WHY: {err}", file=sys.stderr)
-        print(_REINSTALL_HINT, file=sys.stderr)
-        return _EXIT_SCHEMA_UNAVAILABLE
+        return _refuse_unvalidatable(outcome.id, err)
     except (DuplicateOutcomeIdError, InvalidOutcomeError) as err:
         print(f"ERROR: {err}", file=sys.stderr)
-        return 2
+        return _EXIT_REFUSED
     print(f"REGISTERED: {outcome.id}")
     return 0
+
+
+def _refuse_unvalidatable(outcome_id: str, err: SchemaUnavailableError) -> int:
+    """Say WHAT / WHY / HOW, having written nothing, and exit 3.
+
+    The outcome could not be checked, so it was not registered. Saying so out
+    loud is the whole point: silently writing an unvalidated row, or dying in a
+    traceback, would both leave the user unable to tell a damaged install from
+    a bad outcome.
+    """
+    print(
+        f"REFUSED: cannot validate {outcome_id} - the outcome was NOT registered.",
+        file=sys.stderr,
+    )
+    print(f"WHY: {err}", file=sys.stderr)
+    print(_REINSTALL_HINT, file=sys.stderr)
+    return _EXIT_SCHEMA_UNAVAILABLE
 
 
 def _build_outcome_from_args(args: argparse.Namespace) -> Outcome:
@@ -155,66 +177,24 @@ def _run_check(args: argparse.Namespace, registry_path: Path) -> int:
     if report.verdict == "clean":
         print("NO COLLISIONS")
         return 0
-    for line in _render_collision_lines(report):
+    for line in _render_collision_lines(report, snapshot):
         print(line)
     return 1
 
 
-def _run_check_delta(args: argparse.Namespace, registry_path: Path) -> int:
-    """Aggregate scan: extract OUT-ids from a feature-delta.md, run a
-    self-excluding collision check on each, emit aggregate report.
-
-    Stdout: ``N outcomes checked, M collisions found across K outcomes``
-    Exit:   0 when zero collisions, 1 otherwise.
-    """
-    delta_path: Path = args.delta_path
-    if not delta_path.exists():
-        print(f"ERROR: feature-delta not found: {delta_path}", file=sys.stderr)
-        return 2
-
-    out_ids = _extract_out_ids(delta_path.read_text(encoding="utf-8"))
-    adapter = YamlRegistryAdapter(registry_path)
-    service = RegistryService(reader=adapter, writer=adapter)
-
-    collision_count = 0
-    colliding_ids: list[str] = []
-    for out_id in out_ids:
-        try:
-            report = service.collision_check_for_id(out_id)
-        except UnknownOutcomeIdError:
-            print(f"WARNING: {out_id} referenced in delta but not in registry")
-            continue
-        if report.verdict == "collision":
-            collision_count += 1
-            colliding_ids.append(out_id)
-
-    n_checked = len(out_ids)
-    k_with_collision = len(colliding_ids)
-    print(
-        f"{n_checked} outcomes checked, {collision_count} "
-        f"collision{'s' if collision_count != 1 else ''} found "
-        f"across {k_with_collision} outcome{'s' if k_with_collision != 1 else ''}"
-    )
-    for out_id in colliding_ids:
-        print(f"  COLLISION: {out_id}")
-    return 0 if collision_count == 0 else 1
-
-
-def _extract_out_ids(text: str) -> list[str]:
-    """Return ordered-unique OUT-ids found in text via regex scan."""
-    return _ordered_unique(_OUT_ID_PATTERN.findall(text))
-
-
-def _render_collision_lines(report) -> list[str]:
+def _render_collision_lines(report, snapshot: tuple[Outcome, ...]) -> list[str]:
     """One stdout line per matched OUT-id with verdict + tier annotation."""
     tier2_by_id = dict(report.tier2_matches)
+    tier1_ids = set(report.tier1_matches)
     label = report.verdict.upper()
-    matched_ids = _ordered_unique(
-        list(report.tier1_matches) + [out_id for out_id, _ in report.tier2_matches]
+    matched_ids = dict.fromkeys(
+        outcome.id
+        for outcome in snapshot
+        if outcome.id in tier1_ids or outcome.id in tier2_by_id
     )
     lines: list[str] = []
     for out_id in matched_ids:
-        in_tier1 = out_id in report.tier1_matches
+        in_tier1 = out_id in tier1_ids
         tier2_score = tier2_by_id.get(out_id)
         annotation = _annotate(in_tier1, tier2_score)
         lines.append(f"{label}: {out_id} ({annotation})")
@@ -227,16 +207,6 @@ def _annotate(in_tier1: bool, tier2_score: float | None) -> str:
     if in_tier1:
         return "Tier-1 only"
     return f"Tier-2 {tier2_score:.2f} only"
-
-
-def _ordered_unique(items: list[str]) -> list[str]:
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for item in items:
-        if item not in seen:
-            seen.add(item)
-            ordered.append(item)
-    return ordered
 
 
 def _split_keywords(raw: str) -> tuple[str, ...]:

@@ -5,7 +5,7 @@ Creates a small string-utils module with three functions ready to be
 documented by /nw-document. No tests, no venv — this tutorial focuses
 on documentation generation, not Python tooling.
 
-Run from outside the nwave-dev repo (e.g. ``cd $(mktemp -d)`` first).
+Run from outside the nWave repo (e.g. ``cd $(mktemp -d)`` first).
 See manual-setup.md for the same steps written as prose.
 """
 

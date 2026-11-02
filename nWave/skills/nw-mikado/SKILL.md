@@ -5,6 +5,8 @@ user-invocable: true
 argument-hint: '[refactoring-goal] - Optional: --complexity=[simple|moderate|complex] --visualization=[tree|graph]'
 ---
 
+> **Code facts** — resolve structural facts about code through `code-fact` CLI (vendor-neutral, bundled adapters: AST then TextSearch). Degrade LOUD. Never ad-hoc grep. Example: `code-fact query.callers-of SYMBOL --root ROOT`.
+
 # NW-MIKADO: Complex Refactoring with Mikado Method
 
 > **EXPERIMENTAL**: Under active development. Behavior and output format may change between versions.

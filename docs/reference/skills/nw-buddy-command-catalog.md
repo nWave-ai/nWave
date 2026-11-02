@@ -1,6 +1,6 @@
 # nw-buddy-command-catalog
 
-All /nw-* commands — what they do, when to use them, which agent they invoke. For the buddy agent to help users pick the right command.
+Current public nWave delivery commands.
 
 **Used by:** [nw-nwave-buddy](../agents/nw-nwave-buddy.md)
 

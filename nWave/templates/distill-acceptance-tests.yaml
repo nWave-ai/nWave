@@ -15,6 +15,7 @@ metadata:
   methodology_focus: "Given-When-Then Acceptance Tests with Production Service Integration"
   complexity_support: "Progressive test automation with business validation"
   integration_pattern: "Real system integration with minimal mocking approach"
+  applicability: "Illustrative reference only; nw-test-design-mandates and the canonical DISTILL constructor own native layout, dependencies, selected obligations and effective destinations. No mandatory DSL, extra framework, artifact set or approvals are introduced."
 
 # ==================================================================================
 # ACCEPTANCE TEST CREATION FRAMEWORK
@@ -289,16 +290,15 @@ test_implementation_strategy:
           ["Business value impact", "Risk reduction", "Learning opportunity"]
         deliverable: "Single selected E2E test scenario"
 
-      - step: "Implement Through Outside-In TDD"
-        description: "Complete E2E scenario using double-loop TDD approach"
+      - step: "Implement Through the Acceptance Oracle"
+        description: "Complete the E2E scenario with the acceptance test as the specification"
         process:
           [
             "Write failing E2E test",
-            "Step down to unit tests",
-            "Implement production code",
-            "Return to E2E validation",
+            "Implement production code in coherent deltas",
+            "Verify each delta once with the failing oracle tests and the unit tests that directly exercise the changed code (a few files, with -x; never a wide set)",
           ]
-        deliverable: "Working E2E test with supporting unit tests"
+        deliverable: "Working E2E test without added unit tests"
 
       - step: "Validate Production Integration"
         description: "Ensure E2E test calls production services and validates real behavior"
@@ -470,22 +470,17 @@ business_validation_framework:
 test_automation_setup:
   framework_selection_criteria:
     atdd_compatibility_requirements:
-      - requirement: "Given-When-Then Syntax Support"
-        frameworks: ["SpecFlow (.NET)", "Cucumber (Java/JS)", "Behave (Python)"]
-        evaluation: "Native support for Gherkin syntax and business language"
+      - requirement: "Native business-readable observation"
+        frameworks: ["Existing project-native runner, assertions and business helpers"]
+        evaluation: "Discover actual manifest/build/test stanzas and public production composition; Gherkin and DI containers are optional"
 
-      - requirement: "Dependency Injection Integration"
-        frameworks:
-          [
-            "SpecFlow with DI",
-            "Cucumber with Spring",
-            "Behave with DI containers",
-          ]
-        evaluation: "Seamless integration with production service DI configuration"
+      - requirement: "Broad-law generation where applicable"
+        frameworks: ["Project-native generators with shrinking/replay; matching nw-pbt guidance only on need"]
+        evaluation: "Constructive law/falsifier coverage; no compulsory Python bridge or nWave adapter enrollment"
 
-      - requirement: "Production Service Access"
-        frameworks: ["Framework supports real service integration"]
-        evaluation: "Can configure and access production services from step methods"
+      - requirement: "Real production boundary access"
+        frameworks: ["Existing native composition, library, executable or protocol driver"]
+        evaluation: "Exercise selected public contracts without reconstructing business rules inside fixtures"
 
   test_environment_configuration:
     service_integration_setup: |
@@ -648,7 +643,7 @@ distill_wave_deliverables:
     - deliverable: "Acceptance Test Suite"
       description: "Comprehensive Given-When-Then acceptance tests for all business scenarios"
       components:
-        - "Business scenario specifications in Gherkin format"
+        - "Business scenario specifications in the project's native test layout; Gherkin only when already appropriate"
         - "Step method implementations with production service integration"
         - "Test data builders and setup utilities"
         - "Test execution configuration and environment setup"

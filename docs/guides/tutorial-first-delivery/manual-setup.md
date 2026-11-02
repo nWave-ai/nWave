@@ -19,7 +19,7 @@ cat > pyproject.toml << 'EOF'
 [project]
 name = "ascii-art"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = []
 
 [tool.pytest.ini_options]

@@ -1,27 +1,30 @@
 # nw-acceptance-designer
 
-Use for DISTILL wave — designs E2E acceptance tests from user stories and architecture using Given-When-Then format. EXPANDED scope (plan v3 §3.A, 2026-05-19) — exclusive test-expertise owner; authors ATs with maximum PBT + parametrize density, runs self-completeness audit (7-category taxonomy + 15-item checklist), enforces Mandate-12 step-reuse ≥4× target informational, consults DISCUSS+DESIGN+DEVOPS upstream waves for taxonomy population (C2/C5/C6/C7). Creates executable specifications that drive Outside-In TDD development.
+Authors the public executable oracle when required.
 
-**Wave:** DISTILL
-**Model:** inherit
-**Max turns:** 0
-**Tools:** Read, Write, Edit, Bash, Glob, Grep, Task
+**Wave:** Other
+**Model:** claude-opus-5
+**Max turns:** 40
+**Tools:** Read, Write, Edit, Bash, SendMessage
 
 ## Commands
 
-- [`/nw-devops`](../commands/index.md)
 - [`/nw-distill`](../commands/index.md)
-- [`/nw-finalize`](../commands/index.md)
 
-## Skills
+## Preloaded skills
 
-- [nw-ad-critique-dimensions](../skills/nw-ad-critique-dimensions.md) — Review dimensions for acceptance test quality - happy path bias, GWT compliance, business language purity, coverage completeness, walking skeleton user-centricity, priority validation, observable behavior assertions, traceability coverage, and walking skeleton boundary proof
-- [nw-at-completeness-check](../skills/nw-at-completeness-check.md) — Canonical AT completeness gate — research-anchored 7-category taxonomy (C1-C7) + 15-item mechanical checklist. Paradigm-neutral. Drives acceptance-designer reviewer verdict deterministically.
-- [nw-bdd-methodology](../skills/nw-bdd-methodology.md) — BDD patterns for acceptance test design - Given-When-Then structure, scenario writing rules, pytest-bdd implementation, anti-patterns, and living documentation
-- [nw-distill](../skills/nw-distill.md) — Acceptance test creation methodology for the DISTILL wave. Domain knowledge for the acceptance designer agent: port-to-port principle, prior wave reading, wave-decision reconciliation, graceful degradation, and document back-propagation.
-- [nw-property-based-testing](../skills/nw-property-based-testing.md) — Property-based testing strategies, mutation testing, shrinking, and combined PBT+mutation workflow for test quality validation
-- [nw-tdd-methodology](../skills/nw-tdd-methodology.md) — Deep knowledge for Outside-In TDD - double-loop architecture, ATDD integration, port-to-port testing, walking skeletons, and test doubles policy
-- [nw-test-design-mandates](../skills/nw-test-design-mandates.md) — Design mandates for acceptance tests - hexagonal boundary, business language abstraction, user journey completeness, pure function extraction, 3 Pillars (domain language / chained narrative / production composition), and the layered ATD discipline (Universe-bound assertion, layer-dependent PBT mode, two-tier acceptance, example-based sad paths)
-- [nw-test-optimization](../skills/nw-test-optimization.md) — Methodology for minimizing test count while maximizing behavioral coverage - behavior definition, anti-pattern catalog, consolidation patterns, stopping criterion, coverage-preserving validation
+- [nw-at-completeness-check](../skills/nw-at-completeness-check.md) — Verify that one minimal oracle falsifies every declared delivery obligation without checklist ceremony or duplicate tests.
+- [nw-bdd-methodology](../skills/nw-bdd-methodology.md) — BDD patterns for acceptance test design - Given-When-Then as a language-neutral specification style, scenario writing rules, realization in the project's incumbent native scenario syntax (Python pytest-bdd binding labelled), anti-patterns, and living documentation
+- [nw-code-analysis-port](../skills/nw-code-analysis-port.md) — KNOWLEDGE — resolve code facts (who-calls-X / where-defined-or-read / call-graph / change-scope / file-atoms) through the vendor-neutral CLI `code-fact`, degrading LOUD through bundled adapters (AST, TextSearch). Trigger: any time an agent designs, writes, analyzes, or reviews code or tests and needs a structural code fact.
+- [nw-distill-prior-wave-reading](../skills/nw-distill-prior-wave-reading.md) — Reads and reconciles durable product, architecture, and platform authorities before DISTILL compiles an executable oracle.
+- [nw-product-value-slicing](../skills/nw-product-value-slicing.md) — Product-owner foundation for slicing value — elephant carpaccio thin vertical slices, one walking skeleton per feature (not per slice), feature identity from user/product authority, JTBD/domain language framing. Consult when decomposing a feature into independently observable increments.
+- [nw-property-based-testing](../skills/nw-property-based-testing.md) — Property-based testing strategies (PBT — ACTIVE, authored by the acceptance-designer during DISTILL), shrinking, PBT+TDD integration.
+- [nw-tdd-methodology-paradigm](../skills/nw-tdd-methodology-paradigm.md) — Native contract-driven unit and acceptance testing: generative broad laws, finite examples, public-state preservation and real-boundary evidence.
+- [nw-tdd-methodology-pbt-deep](../skills/nw-tdd-methodology-pbt-deep.md) — Deep property-based-testing mechanics (Hebert) - stateful PBT command-precondition anti-patterns (A13/P6), the four property-finding strategies, the two shrinking mechanisms, and targeted/search-based PBT with its hard limitations
+- [nw-tdd-methodology-port-to-port](../skills/nw-tdd-methodology-port-to-port.md) — What a test asserts on and where it enters - port-to-port discipline at all test levels, the layer-specific Universe, refactoring-resilience, and the hexagonal per-layer testing strategy
+- [nw-tdd-methodology-test-doubles](../skills/nw-tdd-methodology-test-doubles.md) — Choosing and building a test double - Meszaros taxonomy, classical-vs-mockist verification, the mock-only-at-port-boundaries policy, and the contract that every InMemory double must validate inputs like the real adapter
+- [nw-test-design-mandates](../skills/nw-test-design-mandates.md) — Design mandates for acceptance tests - hexagonal boundary, business language abstraction, user journey completeness, pure function extraction, 3 Pillars (domain language / chained narrative / production composition), and the layered ATD discipline (Universe-bound assertion, layer-dependent PBT mode, two-tier acceptance, example-based sad paths). Lean recomposing core - routes to three narrow mandate modules.
+- [nw-test-design-mandates-composition-contract](../skills/nw-test-design-mandates-composition-contract.md) — Composition-root authoring-contract mandates for acceptance tests — SSOT + Zero Duplication via Types + Services + DSL, Driving-Port-Only Boundary (Farley four-layer protocol-driver contract, fixture-theater/tautological-test anti-pattern), Contract Shape Classification (@in-memory/@real-io tag-vs-composition), and Dormant-Seam Reconciliation (AT drives the DESIGN-declared seam, not the new component). Consult while composing the AT's driving surface, structuring step/type/service code, and tagging the contract shape. Canonical definitions; SSOT for these mandates.
+- [nw-test-design-mandates-scenario-design](../skills/nw-test-design-mandates-scenario-design.md) — Scenario-design mandates for acceptance tests — Hexagonal Boundary Enforcement (drive through driving ports, never internals), Business Language Abstraction (three abstraction layers), User Journey Completeness, Pure Function Extraction Before Fixtures, Algebraic Analysis Before the Scenario (name the law, find its narrowest surface, declare every gated input, prove the scenario can fail), the 3 Pillars style backbone, and Walking Skeleton Strategy. Consult while shaping or judging a scenario's boundary, language, journey completeness, and fixture strategy. Canonical definitions; SSOT for these mandates.
 - [nw-test-organization-conventions](../skills/nw-test-organization-conventions.md) — Test directory structure patterns by architecture style, language conventions, naming rules, and fixture placement. Decision tree for selecting test organization strategy.
-- [nw-test-refactoring-catalog](../skills/nw-test-refactoring-catalog.md) — Detailed refactoring mechanics with step-by-step procedures, and test code smell catalog with detection patterns and before/after examples
+- [nw-typesafe-system-one](../skills/nw-typesafe-system-one.md) — Use Jev System One for every supported, authorized semantic judgment when available: relevance selection, handoff preflight, evidence mapping, finding clustering, and confidence-gated escalation.

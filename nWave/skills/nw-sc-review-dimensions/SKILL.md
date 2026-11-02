@@ -13,7 +13,7 @@ Persona shift: from implementer (build solutions) to independent peer reviewer (
 Focus: detect implementation bias | test quality issues | acceptance criteria coverage gaps.
 Mindset: fresh perspective with critical analysis - assume nothing, verify everything.
 
-Return complete YAML feedback to calling agent for display to user.
+Supply complete findings and a plain diagnostic judgment.
 
 ---
 
@@ -61,6 +61,14 @@ Detection: Check if mocks used inside hexagon (domain/application layers) - VIOL
 
 Severity: CRITICAL.
 
+### Test Time
+
+Pattern: a test exceeds the default budgets in a feature without a granted derogation, or exceeds its feature's derogation, or adapter fault injection exists in a feature without a granted derogation (`test:feedback-loop-budget` in `nw-cross-cutting-invariants`). Fault injection a granted derogation covers, including one the user elected to run in the default suite, is not a finding.
+
+Detection: Measure every test in the diff with native per-test timing over at least nine sequential runs and judge it on the median, two or more runs over the budget on the same test also being a finding | Compare against the design's budgets and the feature's derogation ADR, if the design cites one | Check each formal law has a fast executable projection in the default suite.
+
+Severity: CRITICAL when no granted derogation covers the overrun; reviewers never grant one.
+
 ### Shared Mutable State
 
 Pattern: tests share state causing flakiness, order dependencies, parallel execution failures.
@@ -104,6 +112,15 @@ Pattern: tests creating illusion of safety without verifying real behavior. Sing
 
 Severity: BLOCKER for zero-assertion, tautological, mock-dominated, circular, always-green, fully-mocked SUT, and assertion-free patterns. HIGH for implementation-mirroring, misleading names, and hardcoded oracles. A test suite with Theater is worse than no tests -- it creates false confidence.
 
+### Producer-Authored Tests
+
+The acceptance designer owns every test; the recorded oracle and its supports
+are legitimately part of the candidate diff. The implementation author adds no
+unit tests and never edits, weakens, skips or deletes a recorded test. A test
+path the candidate adds or changes beyond the recorded oracle is a finding of
+category `test_modification`, severity blocker; the recommendation removes it
+and moves the design quality into the production code.
+
 ---
 
 ## Dimension 3: Completeness Validation
@@ -127,54 +144,31 @@ Severity: HIGH.
 
 ---
 
-## Dimension 4: RPP Code Smell Detection
+## Dimension 4: Design Quality
 
-Refactoring Priority Premise -- cascading 6-level review. Apply RPP cascade rule: scan and report lower levels first. Do not report L3+ issues until L1-L2 are clean.
+Judge every changed unit against the method the producer applied; the skills
+are the single source, this dimension does not restate them.
 
-### RPP Cascade Rule
-1. Scan L1 first. If L1 smells found -> report only L1, stop.
-2. If L1 clean -> scan L2. If L2 smells found -> report L1 clean + L2 findings, stop.
-3. Continue ascending only when lower levels are verified clean.
-4. Exception: if `--from` and `--to` parameters specified, scan only that range.
+- **Quality axes** of `nw-code-craftsmanship`: readable, encapsulated,
+  declarative, modular, performant, maintainable, decoupled, cohesive, secure.
+  Report each violated axis with file:line and the observed evidence.
+- **Bound paradigm**:
+  - `object_oriented`: the Object Calisthenics, the Code Smells Hierarchy and
+    the Refactoring Priority Premise of `nw-code-design-oo`, strict in domain
+    and application code (adapters, DTOs and framework glue exempt). An anemic
+    domain entity, or an application transaction script that holds a domain
+    decision, is a finding of owner `design` when the DESIGN prescribed it and
+    of owner `implementation` otherwise.
+  - `functional`: the Functional Core and the refactoring order of
+    `nw-code-design-fp`; a domain decision inside effectful code, or a declared
+    law the diff breaks, is a finding.
+  - `procedural`: the universal rules of `nw-code-craftsmanship` only.
+- **Wrong state unrepresentable**: a rule the code checks at runtime that the
+  types could make impossible is a finding (`nw-certainty-by-construction`).
 
-### L1: Readability (Severity: LOW)
-| Smell | Detection Pattern |
-|-------|-------------------|
-| Dead Code | Unused imports, unreachable branches, commented-out code |
-| How-Comments | Comments explaining what code does (not why) |
-| Magic Strings/Numbers | Literal values without named constants |
-| Variable/Method Scope | Variables declared far from use, overly broad scope |
-| Lazy Class | Classes with < 3 methods or single delegation |
-| Speculative Generality | Abstractions without 3+ concrete uses |
-
-### L2: Complexity (Severity: MEDIUM)
-| Smell | Detection Pattern |
-|-------|-------------------|
-| Long Method | > 20 lines or multiple responsibilities |
-| Duplicated Code | Same structure in 2+ places (>= 3 lines) |
-| Complex Conditionals | Nested if/else > 2 levels, boolean expressions with 3+ terms |
-
-### L3: Responsibilities (Severity: HIGH)
-| Smell | Detection Pattern |
-|-------|-------------------|
-| Large Class | > 300 lines or > 10 methods |
-| Feature Envy | Method uses another object's data more than its own |
-| Inappropriate Intimacy | Classes accessing each other's internals |
-| Data Class | Only fields + getters/setters, no behavior |
-| Message Chain | a.b().c().d() chains > 2 levels |
-| Divergent Change | One class modified for unrelated reasons |
-| Shotgun Surgery | One change requires edits in 5+ files |
-
-### L4: Abstractions (Severity: HIGH)
-| Smell | Detection Pattern |
-|-------|-------------------|
-| Long Parameter List | >= 4 parameters |
-| Data Clumps | Same parameter group in 3+ method signatures |
-| Primitive Obsession | Raw strings/ints for domain concepts |
-| Middle Man | Class only delegates, no own logic |
-
-### L5-L6: Advanced (report only when L1-L4 clean)
-L5: Switch statements -> polymorphism. L6: SOLID violations (Refused Bequest, Parallel Inheritance).
+Scan every Refactoring Priority Premise level and report every finding,
+ordered by level, lowest first: a lower-level smell never hides a higher one,
+and the producer removes them in that order.
 
 ---
 
@@ -204,101 +198,54 @@ Is the key architectural decision supported by quantitative data?
 
 ---
 
-## Review Output Format
+## Review findings
 
-Every review returns YAML in this format:
+For each finding supply:
 
-```yaml
-review_id: "code_rev_{YYYYMMDD_HHMMSS}"
-reviewer: "software-crafter (review mode)"
-artifact: "{file paths reviewed}"
-iteration: {1 or 2}
+| Fact | Content |
+|---|---|
+| Location | Supplied file:line, test identity or missing-obligation locator |
+| Obligation | Violated criterion, authority fact or design rule |
+| Observation | Concrete evidence, critique dimension and severity; distinguish measured facts from uncertainty |
+| Remediation | Actionable correction for the artifact owner |
+| Owner | Oracle, design, implementation or product |
 
-strengths:
-  - "{Specific positive observation with file:line reference}"
+Include testing-theater counterexamples, test modifications and paradigm-specific
+design findings under the applicable obligation. Keep all independently actionable
+findings; one defect does not hide another. The acceptance designer owns oracle
+corrections. Preserve candidate source/oracle bytes and artifact ownership.
+Host owns models and checker execution.
+The final reviewer owns selection and sufficiency of the touched-file selected tests.
+It reuses a complete applicable native result (host, CI or the normal commit hook)
+whose source, test, argv and runtime inputs are unchanged, citing its original operator
+and run; it executes only missing or affected checks, once. Reuse never waives a check.
+Each run it executes is recorded with `nwdes review observation add` before it closes the review.
+Selection is mechanical, never memory-picked. Each run text carries actual argv,
+exit status, stdout and stderr, including empty or incomplete selection and absent
+tooling. Missing, unrun or failing required evidence is a finding.
 
-issues_identified:
-  implementation_bias:
-    - issue: "{Specific pattern detected}"
-      severity: "critical|high|medium|low"
-      location: "{file:line-range}"
-      recommendation: "{Actionable fix}"
-
-  test_quality:
-    - issue: "{Test coupling or quality issue}"
-      severity: "critical|high"
-      location: "{test_file:line}"
-      recommendation: "{Fix description}"
-
-  testing_theater:
-    - issue: "{Specific theater pattern: zero-assertion|tautological|mock-dominated|circular|always-green|fully-mocked-sut|implementation-mirroring|assertion-free|misleading-name|hardcoded-oracle}"
-      severity: "blocker|high"
-      location: "{test_file:line}"
-      evidence: "{Why this test would still pass if production code were deleted or broken}"
-      recommendation: "{Rewrite with behavioral assertion or delete}"
-
-  test_modification:
-    - issue: "{Signal: assertion-weakened|expectations-reduced|test-deleted|test-skipped|deferred-fix-comment|assertion-count-decreased}"
-      severity: "blocker"
-      location: "{test_file:line}"
-      before: "{Original assertion/test from RED phase}"
-      after: "{Modified assertion/test from GREEN phase}"
-      recommendation: "Revert test to RED-phase version, fix implementation"
-
-  escalation_verification:
-    escalation_marker_present: true|false
-    implementation_attempts: {count}
-    po_approval_referenced: true|false|not_applicable
-    status: "PASS|BLOCKER"
-
-  completeness:
-    - issue: "{Missing coverage}"
-      severity: "critical"
-      location: "Missing test for AC-{number}"
-      recommendation: "{Add test: GIVEN... WHEN... THEN...}"
-
-  code_readability:
-    - issue: "{Readability issue}"
-      severity: "low"
-      location: "{file:line}"
-      recommendation: "{Extract methods: {names}}"
-
-  rpp_smells:
-    levels_scanned: "L1-L3"
-    cascade_stopped_at: "L2"  # null if all clean
-    findings:
-      - level: "L2"
-        smell: "Long Method"
-        location: "{file:line}"
-        evidence: "42 lines, 3 responsibilities"
-        recommendation: "Extract Method: {names}"
-
-approval_status: "approved|rejected_pending_revisions|conditionally_approved"
-critical_issues_count: {number}
-high_issues_count: {number}
-medium_issues_count: {number}
-low_issues_count: {number}
-```
+Summarize the judgment, supporting observations and capability or evidence limits.
+Acceptance requires sufficient evidence; uncertainty is not a passing observation.
+Leave the assessed artifact unchanged and return plain findings.
 
 ---
 
 ## Severity Classification
 
-**Blocker** (instant rejection, no discussion): Testing Theater patterns (zero-assertion, tautological, mock-dominated, circular, always-green, fully-mocked SUT, assertion-free) | Test modification to accommodate implementation (G9 violation).
+**Blocker** (instant rejection, no discussion): Testing Theater patterns (zero-assertion, tautological, mock-dominated, circular, always-green, fully-mocked SUT, assertion-free) | Test modification to accommodate implementation (G9 violation) | A test path added or changed beyond the recorded oracle.
 
-**Critical** (must resolve before handoff): Test coupling to implementation (prevents refactoring) | Missing AC test coverage | Port-boundary violations in critical paths.
+**Critical** (must resolve before handoff): Test coupling to implementation (prevents refactoring) | Missing AC test coverage | Port-boundary violations in critical paths | Anemic domain entity or domain decision in an application transaction script (OO) | Domain decision inside effectful code (FP) | Insecure input, path or command handling.
 
 **High** (strongly recommend resolving): Shared mutable state in tests | Major over-engineering | Inadequate error scenario coverage.
 
 **Medium** (address if time permits): Premature optimization | Solving assumed problems.
 
-**Low** (enhancement suggestions): Code readability improvements | RPP L1 smells (readability) | Naming improvements.
+**Low** (enhancement suggestions): Naming improvements outside the changed units.
 
-**RPP Level -> Severity Mapping:**
-- Low: L1 smells (readability -- dead code, how-comments, magic values, scope, lazy class, speculative generality)
-- Medium: L2 smells (complexity -- long method, duplicated code, complex conditionals)
-- High: L3-L4 smells (responsibilities, abstractions)
-- Critical: unchanged (Testing Theater, port violations, missing AC coverage)
+**Design quality -> Severity Mapping:**
+- Medium: RPP L1-L2 smells (readability, complexity) in changed units
+- High: RPP L3-L6 smells, an Object Calisthenics violation in domain or application code, a violated quality axis
+- Critical: as listed above
 
 ---
 

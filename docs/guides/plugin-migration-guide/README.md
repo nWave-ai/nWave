@@ -1,12 +1,20 @@
 # Migration Guide: Custom Installer to Plugin
 
+> **Historical route.** The plugin marketplace installation below is not the
+> current installation path; the supported route is the `nwave-ai` package
+> and its installer (see the
+> [installation guide](../installation-guide/README.md)). This page is kept
+> for readers who used the marketplace plugin while it existed.
+
 ## Overview
 
-nWave supports two installation methods:
-1. **Custom installer** (`nwave-ai install`) -- installs to `~/.claude/`
-2. **Plugin** -- installs to `~/.claude/plugins/cache/nwave/`
+nWave supported two installation methods:
 
-Both can coexist. This guide documents how to migrate from the custom installer to the plugin.
+1. **Custom installer** (`nwave-ai install`) — installs to `~/.claude/`
+2. **Plugin** — installs to `~/.claude/plugins/cache/nwave/`
+
+Both could coexist. This guide documents how to migrate from the custom
+installer to the plugin.
 
 ## Prerequisites
 
@@ -37,7 +45,6 @@ Run a quick verification:
 
 Verify:
 - Agent discovery works (agents loaded from plugin)
-- DES enforcement active (hook responses visible)
 - Commands available (`/nw-` prefix works)
 
 ## Step 3: Remove Custom Installer (Optional)
@@ -45,15 +52,13 @@ Verify:
 If you want to fully migrate:
 
 ```bash
-nwave uninstall
+nwave-ai uninstall
 ```
 
 This removes:
 - `~/.claude/agents/nw/`
 - `~/.claude/commands/nw/`
 - `~/.claude/skills/nw/`
-- `~/.claude/lib/python/des/`
-- DES hooks from `~/.claude/settings.json`
 
 The plugin remains unaffected because it uses a completely separate directory tree.
 
@@ -68,8 +73,8 @@ The plugin remains unaffected because it uses a completely separate directory tr
 
 After migration, verify:
 - [ ] `/nw-deliver` executes successfully
-- [ ] DES enforcement blocks incorrect tool use during TDD phases
-- [ ] Agent definitions are discovered (23 agents visible)
+- [ ] The host runs the delivery's declared verification commands and records their results
+- [ ] Agent definitions are discovered (compare with the [agents index](../../reference/agents/index.md), not a fixed count)
 - [ ] All commands available (`/nw-design`, `/nw-discuss`, etc.)
 - [ ] Skills load on demand (check agent output references skills)
 

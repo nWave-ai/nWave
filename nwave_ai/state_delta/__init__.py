@@ -113,23 +113,23 @@ __nwave_internal__ = False
 __all__ = [
     # matcher
     "MatcherResult",
-    "Violation",
-    "assert_state_delta",
+    # chaos
+    "Perturbation",
     # predicates
     "Predicate",
+    "Violation",
     "appended_with",
+    "assert_state_delta",
+    "chaos_env_perturbation",
+    "chaos_filesystem_truncation",
+    "chaos_ordering_swap",
     "containing",
+    "enumerate_perturbations",
+    "enumerate_perturbations_strategy",
     "idempotent_after",
     "legacy_healed",
     "normalized_to",
     "prepended_with",
     "set_to",
     "unchanged",
-    # chaos
-    "Perturbation",
-    "chaos_env_perturbation",
-    "chaos_filesystem_truncation",
-    "chaos_ordering_swap",
-    "enumerate_perturbations",
-    "enumerate_perturbations_strategy",
 ]

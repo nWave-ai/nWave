@@ -1,0 +1,53 @@
+/*
+ * {Feature}Scenarios.java — domain-language acceptance scenarios.
+ *
+ * Gojko Adzic Pillars 1+2:
+ *   - Pillar 1: scenarios written in the domain language, no infrastructure noise
+ *   - Pillar 2: chained narrative — each scenario's Given may be the
+ *               composition of the previous scenario's Given + When
+ *
+ * Step methods (given_*, when_*, then_*) are STATIC METHODS on the companion
+ * class {@link {Feature}Specifications}. This file contains NO direct asserts
+ * and NO test-double wiring — those live in the specifications module.
+ *
+ * Java companion-class pattern (NOT inner classes — separate files importing
+ * static step methods). One {Feature}Scenarios.java + one {Feature}Specifications.java
+ * pair per feature.
+ *
+ * Production composition (Tier A): step methods construct the SUT through the
+ * real composition root and swap only external / non-deterministic ports with
+ * fakes. State-delta assertions go through `common/StateDelta`.
+ */
+package pilot;
+
+import static pilot.{Feature}Specifications.given_aFreshSignupRegistry;
+import static pilot.{Feature}Specifications.when_userSignsUpWithEmail;
+import static pilot.{Feature}Specifications.then_userIsAddedToRegistryAndAuditedOnce;
+import static pilot.{Feature}Specifications.when_userAttemptsDuplicateSignup;
+import static pilot.{Feature}Specifications.then_secondSignupIsRejectedAndStateIsUnchanged;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+class {Feature}Scenarios {
+
+    @Test
+    @DisplayName("User signs up with a valid email and is added to the registry")
+    void userSignsUpAndIsRegistered() throws Exception {
+        given_aFreshSignupRegistry();
+        when_userSignsUpWithEmail("alice@example.com");
+        then_userIsAddedToRegistryAndAuditedOnce("alice@example.com");
+    }
+
+    @Test
+    @DisplayName("Duplicate signup is rejected and leaves registry+audit unchanged")
+    void duplicateSignupIsRejected() throws Exception {
+        // Pillar 2: this Given is the composition of the previous scenario's
+        // Given + When — start with a registry already containing alice.
+        given_aFreshSignupRegistry();
+        when_userSignsUpWithEmail("alice@example.com");
+
+        when_userAttemptsDuplicateSignup("alice@example.com");
+        then_secondSignupIsRejectedAndStateIsUnchanged();
+    }
+}

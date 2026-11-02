@@ -43,7 +43,15 @@ class YamlRegistryAdapter:
         if not self._path.exists():
             return {"schema_version": "0.1", "outcomes": []}
         loaded = yaml.safe_load(self._path.read_text(encoding="utf-8"))
-        return loaded if isinstance(loaded, dict) else {"outcomes": []}
+        if not isinstance(loaded, dict):
+            raise ValueError(
+                f"WHAT: invalid registry file {self._path}.\n"
+                "WHY: the YAML document must be a mapping, not a sequence, scalar or null; "
+                "it cannot be treated as an empty registry without losing its contents.\n"
+                "HOW: restore a valid registry mapping from backup, or use --registry "
+                "with a new file path to start an empty registry."
+            )
+        return loaded
 
 
 def _to_outcome(raw: dict) -> Outcome:

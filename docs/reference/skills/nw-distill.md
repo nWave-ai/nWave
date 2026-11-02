@@ -1,6 +1,6 @@
 # nw-distill
 
-Acceptance test creation methodology for the DISTILL wave. Domain knowledge for the acceptance designer agent: port-to-port principle, prior wave reading, wave-decision reconciliation, graceful degradation, and document back-propagation.
+Produce an executable public oracle from durable authority.
 
 **Used by:** [nw-acceptance-designer](../agents/nw-acceptance-designer.md)
 

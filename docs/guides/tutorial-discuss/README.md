@@ -2,7 +2,7 @@
 
 **Time**: ~17 minutes (9 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorial 4](../tutorial-discovery/) completed (optionally [Tutorial 5: DIVERGE](../diverge-wave-guide/) for greenfield projects)
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 4](../tutorial-discovery/) completed (optionally [Tutorial 5: DIVERGE](../diverge-wave-guide/) for greenfield projects)
 **What this is**: An interactive walkthrough of `/nw-discuss` -- nWave's requirements and UX journey command. You will turn a validated problem into structured user stories with acceptance criteria.
 
 ---

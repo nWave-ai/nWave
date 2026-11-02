@@ -2,7 +2,7 @@
 
 **Time**: ~20 minutes (9 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorial 8](../tutorial-distill/) completed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 8](../tutorial-distill/) completed
 **What this is**: A hands-on walkthrough of `/nw-deliver` on a real multi-component feature. You will watch the delivery pipeline implement your bookmark CLI against the acceptance tests from Tutorial 8, guided by the hexagonal architecture from Tutorial 7.
 
 ---
@@ -181,9 +181,10 @@ Two things to notice while it runs:
 
 > **If the crafter seems stuck on a step for more than 3 minutes**: This is normal for complex steps. The crafter may be writing multiple unit tests before getting to GREEN. Wait for the commit message to confirm completion.
 
-### Messages you can safely ignore
+### Read reported failures
 
-Lines containing `PreToolUse` or `DES_MARKERS` are internal quality gates. They are normal operation, not errors.
+Inspect command failures and their causes. nwdes does not enforce TDD phases;
+the host must observe the declared RED and GREEN runs.
 
 *Next: you will watch the adapter layer build on top of the domain.*
 

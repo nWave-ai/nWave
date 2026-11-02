@@ -1,5 +1,12 @@
 # How to author a feature using the L7 single-file model
 
+> **Transition notice (added 2026-08-10)**: this guide is accurate for
+> repositories using the current `feature-delta.md` compatibility runtime.
+> `feature-delta.md` is being migrated away from as the target model: the
+> current v4 delivery route records features in an nwdes handoff
+> (`docs/feature/<id>/handoff.json` in your repository) instead. Do not
+> start new work by treating feature-delta as the target model.
+
 This guide teaches you how to write or migrate a feature to the lean L7 single-file model: one `feature-delta.md` per feature with schema-typed section headings.
 
 ## Prerequisites
@@ -127,7 +134,7 @@ Use `[HOW]` for steps, procedures, integration guides, and operational tasks.
 2. Run the migration script: `python scripts/migrate_to_l7.py docs/feature/my-feature`
 3. Review the generated `feature-delta.md` for accuracy
 4. Commit: `git add docs/feature/my-feature/feature-delta.md && git commit -m "..."`
-5. Verify: `python scripts/validation/validate_feature_delta.py docs/feature/my-feature/feature-delta.md`
+5. Review the headings and content against the format described here.
 ```
 
 ---
@@ -167,13 +174,10 @@ cat docs/feature/my-feature/feature-delta.md | grep "review-needed"
 
 If you see `<!-- review-needed -->` comments, sections with unclear classification are marked. Review and manually organize as needed.
 
-### Step 4: Validate
+### Step 4: Review the format
 
-```bash
-python scripts/validation/validate_feature_delta.py docs/feature/my-feature/feature-delta.md
-```
-
-Exit code `0` = valid. Exit code `1` = malformed headings (see error details).
+Check the headings against the examples in this guide. This document format
+does not have a current CLI validation gate.
 
 ### Step 5: Commit
 
@@ -246,7 +250,7 @@ mkdir -p docs/feature/my-new-feature
 
 ### Step 2: Create the file
 
-Create `docs/feature/my-new-feature/feature-delta.md` with the L7 heading pattern.
+Create `docs/feature/<feature-id>/feature-delta.md` with the L7 heading pattern.
 
 Or use the template (if available):
 
@@ -276,13 +280,9 @@ As each wave executes, add its sections under the appropriate `## Wave: ...` hea
 ... (DESIGN adds its own wave heading — never appends to DISCUSS's heading)
 ```
 
-### Step 4: Validate
+### Step 4: Review the format
 
-After each wave, validate the file:
-
-```bash
-python scripts/validation/validate_feature_delta.py docs/feature/my-new-feature/feature-delta.md
-```
+After each wave, review the headings and section content against this guide.
 
 ### Step 5: Commit
 
@@ -395,51 +395,21 @@ git merge ../feature-distill
 
 ---
 
-## Density control and section types
+## Section types and documentation preferences
 
-The density setting controls which section types are auto-produced:
+`[REF]`, `[WHY]`, and `[HOW]` identify the purpose of a section. Choose
+sections from the facts the document must retain, not from
+`documentation.density`: that retained preference does not change wave
+output. There is no shipped `--expand` CLI flag that adds a section.
 
-| Density | Auto-produced | Available via `--expand` |
-|---------|---|---|
-| `lean` | `[REF]` only | `[WHY]`, `[HOW]` (per expansion ID) |
-| `full` | `[REF]` + `[WHY]` + `[HOW]` | All (already present) |
+`documentation.expansion_prompt` affects only an assistant's optional
+explanation **after a completed wave**. It does not edit `feature-delta.md`
+or generate `[WHY]`/`[HOW]` sections. Ask the assistant directly for more
+detail; change accepted documents through their normal authoring process.
 
-**Example**: When density is `lean`, DISCUSS produces:
-
-```markdown
-## Wave: DISCUSS / [REF] Persona
-## Wave: DISCUSS / [REF] Job-to-be-done
-## Wave: DISCUSS / [REF] User stories
-```
-
-If you request `--expand jtbd-narrative`, DISCUSS adds:
-
-```markdown
-## Wave: DISCUSS / [WHY] JTBD narrative
-```
-
----
-
-## Expansion catalog: Making optional content discoverable
-
-Each wave lists available expansions in an `[REF]` section called `Expansion catalog`:
-
-```markdown
-## Wave: DISCUSS / [REF] Expansion catalog
-
-| Expansion ID | Type | One-line description |
-|---|---|---|
-| `jtbd-narrative` | [WHY] | Full Job-to-be-Done analysis with four forces |
-| `persona-narrative` | [WHY] | Extended persona (goals, frustrations, environment) |
-| `alternatives-considered` | [WHY] | Design alternatives weighed and rejected |
-| `migration-playbook` | [HOW] | Procedural notes for migrating existing surfaces |
-```
-
-**When authoring expansions**:
-
-1. Add the expansion section to `feature-delta.md` (e.g., `## Wave: DISCUSS / [WHY] JTBD narrative`)
-2. Register it in the Expansion catalog table with a one-line description
-3. Test with the validator: `python scripts/validation/validate_feature_delta.py ...`
+If an authored feature uses an `[REF] Expansion catalog`, its entries are
+references to documented optional sections, not an automatically populated
+menu or a commitment that every wave produces one.
 
 ---
 
@@ -554,5 +524,5 @@ grep "^## Wave: DISCUSS / \[REF\] Expansion catalog" -A 20 feature-delta.md
 ## Related documentation
 
 - **[Feature directory format reference](../reference/feature-format.md)** — bimodal layout details and schema
-- **[How to configure documentation density](configuring-doc-density.md)** — control lean vs full output
+- **[Legacy documentation density preferences](configuring-doc-density.md)** — diagnostic-only; do not change wave output
 - **[nWave Global Config Reference](../reference/global-config.md)** — all configuration options

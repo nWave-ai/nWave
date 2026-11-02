@@ -1,0 +1,67 @@
+Role: {{role}} (exact installed role).
+## FROM NWDES
+feature: {{feature}}
+working directory: {{repo_root}}
+jev: {{jev}}
+known baseline failures:
+{{baseline_failures}}
+request:
+{{request}}
+work:
+{{work}}
+authority documents, read these first:
+{{authority}}
+product:
+{{product}}
+ADRs:
+{{adrs|bullets}}
+current design on rework:
+{{design}}
+
+## Peer contact
+Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-invariants); apply within existing role boundaries.
+
+## TASK (template)
+Design this scope only under the working directory.
+- Read authority (DISCUSS) first: explicitly confirm/change Proposed decisions; resolve design-owned Open items or name why/owner.
+- Shared records first, then slice records; no copies. Shared decisions/constraints cite existing governed slices. Each slice owns everything its oracle/crafter needs: port, observation, oracle/support paths, commands, laws, carriers, invariants and architectural/contract obligations. Never merge/split/reorder product slices.
+Each slice is exactly its product slice's thin vertical path from driving port to observation.
+- nwdes builds ids, interned text, briefs and ADRs. Cite retained ids; omit new ids, never invent. Keep Accepted ADRs by key with unchanged bodies or replace with an Accepted supersedes declaration. Omission refuses; changed same-title bodies need explicit selectors.
+
+## ALWAYS REQUIRED
+Default: algebraic modeling/formal verification; separately assess types, construction safety and property testing. Read before design: `nw-solution-architect-formal-verification`, `nw-algebraic-design-protocol`, `nw-certainty-by-construction`, `nw-type-level-design`, `nw-property-based-testing`; use Read if Skill cannot load them. Keep read evidence external.
+- Claim-to-checker decisions: Quint state models; TLA+/TLC if Quint insufficient; Agda proofs; combine when needed.
+- Complete model/proof files: external source locators or undelivered. Models cite paths; laws cite evidence. Host retains checker, literal argv, exits, bounds/seeds, outputs, counterexamples and property-specific mutant kills. No inline models/run narration.
+- Liveness: explicit non-applicability reason, or executed evidence for PASS (else DESIGN BLOCKED). Probe backend; if Quint cannot cover temporal/fairness claims, run `quint verify <file>.qnt --init=init --step=step --temporal=<property> --backend tlc` or TLC on actual `.tla`/`.cfg`. Externally retain finite behavior-preserving slice, fairness (`weakFair(action, vars)`/`strongFair`), traces and three runs: no fairness, fairness, progress/release mutant with fairness.
+- Missing checker: stop proof; record --outcome indeterminate with nwdes design close, diagnostic naming missing tools, affected claims and platform install commands. Host offers installation or explicit human waiver; no direct human query, unauthorized install, silent downgrade, fake run or PASS. Only a recorded human waiver permits continuing; decisions retain claims/reason, still INDETERMINATE. Refusing installation is not a waiver.
+- Type claims fill exclusion/writer/harm/input/constructor/consumer/observation at the actual repository checker's strength; name representable invalid states and each observation's limits. Representation changes owe both round trips; mappings owe identity/composition. Execute against a reference encoding with generated inputs including the old counterexample; retain receipts externally.
+- Broad public properties name generator domain/bounds, shrinking and independent observation/falsifier; reuse formal invariants. Without a library, design seeded generation/shrinking.
+- Architectural checks apply wherever authority evidences a dependency, boundary or owner law the change can violate.
+- Verification reports runner-derived `observed`, `assertions_failed`, `setup_failed` as opaque data, with a support reporter/wrapper if needed. Exit alone is refused at RED, never GREEN.
+- Read/follow `nw-code-analysis-port` first (including paired-index and fallback rules).
+- Honor Jev authorization; authorized/available: read/follow `nw-typesafe-system-one` after mechanical facts. Retain questions/raw answers/confidence/evidence checks/actions and available model/tokens/duration/cost externally. Else diagnostic: `typesafe: unavailable` and capability limit. No judgments/receipts in design texts.
+
+## BUDGET
+Default budgets need no statement or measurement in a design. Timing evidence only at half a test's budget or on a derogation request: nine sequential runs, median and maximum.
+- Sequential checkers (Apalache fixed port); `timeout 180` per quint verify/TLC. Start at two processes/fewest seam-reaching steps; enlarge within budget: two, three, failures, liveness. Record stopping bounds; never repeat a timed-out bound, claim INDETERMINATE. Try mutant `quint run --invariant` first (counterexamples are valid kills with matching receipts); verify only if none.
+- Submit within 40 turns; resolve shared records by about turn 25, then slices. Batch without skipping skill reads or host-tool probes.
+
+## OUTPUT CONTRACT
+- Targets alone authorize Create/Extend; no product edits means empty targets. Reuse locators identify consulted owners, not read-only mutation targets.
+Records cite existing ids or omit new ones. Keep texts minimal and operational: no history/provenance/receipts/traces/supersession/probe narration. Keep probe facts external; only resulting meaning here. Review/EXAMINE judge semantics, not classifiers/substring gates.
+Models have no id. Match prior parent by full expanded model content, ignoring ids and normalizing absent/empty optionals, never path alone. Existing nested mutant ids survive only with unchanged content and owning list; a changed model or property statement omits old nested ids so nwdes assigns new ones. Preserve other retained record ids; never invent.
+- Cross-layer algebra (pass 6): decisions name each affected layer's states/operations/observations; testable laws occur once in laws, not decisions.
+- Closure: safety/inhabitation/public reachability/liveness, DESIGN PASS/BLOCKED (unchecked=BLOCKED), runtime OBSERVED/DESIGNED_NOT_BUILT/INDETERMINATE.
+- Residuality (pass 7): negate named assumptions; fill preserved/allowed/forbidden/residue. Name single failure points and bypasses (deserialization/reflection/casts/outside writers/foreign processes/process failure), remaining obligation/owner or unreachable reason. Walk a second independent stressor set over finished design, record findings. States include admitted/excluded/unknown and risk owners.
+- Self-falsification: current refuted laws and carrier/law-scope/boundary distinctions in typed records; attempts/results/traces externally.
+- Constraints include every authority bound, range or absence of a bound for stored/validated inputs; label narrower/wider design choices as deviations.
+- Decisions identify each carrier for decisions, effects, errors and per-process state, and its owning module.
+- Read `nw-code-design-oo` (object_oriented) or `nw-code-design-fp` (functional). Each domain decision needs a cohesive data owner (value object/entity/collection/choice), justified reuse and Extend/Create target. Domain services may own cross-aggregate policy. Crafter refuses anemic entities, application transaction scripts, single-object decisions in services/scripts or functional domain decisions in effectful code. Procedural keeps its imperative structure.
+
+## RECORD
+Record all design obligations with the generated design verbs, then close with outcome and diagnostic. Never write JSON or edit authority/ADR/handover/production/oracle documents. The host owns human questions and retries.
+Missing checker or unresolved verification/input: close --outcome indeterminate; known absent required authorization or a violated obligation: rejected. Diagnostic names prerequisite, owner and remedy; never accepted without required evidence.
+
+## FROM THE ROOT (verbatim)
+{{root_input}}
+

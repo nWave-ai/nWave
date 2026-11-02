@@ -2,11 +2,11 @@
 """Setup for Tutorial 1: Your First Delivery.
 
 Creates the tutorial-ascii-art starter project from scratch — empty
-implementation, three failing acceptance tests, a 4x4 PPM fixture, a
-venv with pytest, and an initial git commit. Self-contained: no
-network access required, no external repo dependency.
+implementation, three starter acceptance tests, a 4x4 PPM fixture, a
+venv with pytest, and an initial git commit. Installing pytest may need
+network access.
 
-Run from outside the nwave-dev repo (e.g. ``cd $(mktemp -d)`` first).
+Run from outside the nWave repo (e.g. ``cd $(mktemp -d)`` first).
 See manual-setup.md for the same steps written as prose.
 """
 
@@ -25,7 +25,7 @@ PYPROJECT_TOML = """\
 [project]
 name = "ascii-art"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = []
 
 [tool.pytest.ini_options]
@@ -46,10 +46,9 @@ docs/evolution/
 """
 
 TEST_ASCII_ART_PY = '''\
-"""Acceptance tests for image-to-ASCII converter.
+"""Starter acceptance tests for image-to-ASCII conversion.
 
-These 3 tests define the complete feature contract.
-nWave will implement the code to make them pass.
+These checks describe initial behavior; refine the contract as needed.
 """
 from pathlib import Path
 
@@ -185,13 +184,20 @@ def main() -> int:
         if sys.platform == "win32"
         else "source .venv/bin/activate"
     )
+    checkout_cli = Path(__file__).resolve().parents[3] / ".venv"
+    checkout_cli /= (
+        "Scripts/nwave-ai.exe" if sys.platform == "win32" else "bin/nwave-ai"
+    )
     print(
         f"\nSetup complete. {PROJECT_DIR} ready.\n\n"
         f"Next steps:\n"
         f"  cd {PROJECT_DIR}\n"
         f"  {activate_hint}\n"
-        f"  pytest tests/ -v             # confirm 3 tests fail (expected)\n\n"
-        f'Then open Claude Code and run /nw-deliver "Image-to-ASCII art converter using PPM format"\n'
+        f"  pytest tests/ -v             # inspect starter failures, not a valid RED gate\n"
+        f'  "{checkout_cli}" project enable\n'
+        f'  "{checkout_cli}" status      # confirm this project is active\n\n'
+        f"Then open Claude Code and ask /nw-buddy, or open Codex and ask $nw-buddy.\n"
+        f"Follow the tutorial to agree on behavior and acceptance tests before delivery.\n"
     )
     return 0
 

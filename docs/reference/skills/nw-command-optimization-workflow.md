@@ -2,6 +2,6 @@
 
 Step-by-step workflow for converting bloated command files to lean declarative definitions
 
-**Used by:** [nw-agent-builder](../agents/nw-agent-builder.md)
+**Used by:** [nw-agent-builder](../agents/nw-agent-builder.md), [nw-agent-builder-reviewer](../agents/nw-agent-builder-reviewer.md)
 
 **Source:** [SKILL.md on GitHub](https://github.com/nWave-ai/nWave/blob/main/nWave/skills/nw-command-optimization-workflow/SKILL.md)

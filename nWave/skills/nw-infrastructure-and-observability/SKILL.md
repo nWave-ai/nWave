@@ -104,6 +104,10 @@ spec:
 
 ## Observability Design
 
+### Outcome-KPI-Traced Observability (Second Way)
+
+Observability is the platform's Second Way (feedback) capability. Design it from the outcomes the feature was built to move, not from a generic monitoring template: **the second-way observability is designed around the outcome-KPI signals, not generic dashboards untraced to a KPI**. Start from the DISCUSS outcome KPIs, map each to a witnessing telemetry signal (a log event, a metric, a trace span, or a golden-signal threshold), and build the SLOs, alerts, and dashboards below around those signals. Every dashboard panel and alert should trace back to an outcome KPI; a panel that witnesses nothing in the KPI table is a candidate for removal. An outcome KPI with no witnessing signal is an instrumentation gap to close before the wave exits — never a silent omission.
+
 ### SLO Design
 **Availability SLO**: `successful_requests / total_requests * 100`
 - 99.9% = 8.76h downtime/year | 99.95% = 4.38h | 99.99% = 52.6min
@@ -150,6 +154,10 @@ Principles: high cardinality is essential | debug in production | understand unk
 **Pre-production**: DAST | API security testing | infrastructure security scanning. Tools: OWASP ZAP/Nuclei (DAST) | Checkov/tfsec/Terrascan (infrastructure).
 
 **Runtime**: Runtime security monitoring | network policy enforcement | admission control. Tools: Falco/Sysdig (runtime) | OPA Gatekeeper/Kyverno (admission).
+
+### Language-Agnostic Security-Gate Seam (per-language port, degrade-LOUD)
+
+The tools above (Bandit, gosec, npm audit, cargo-audit, Trivy, …) are language-specific; the security gate itself must not hard-wire any one of them: **the security gate resolves the target toolchain behind a per-language port and degrades LOUD as INDETERMINATE when the toolchain is unrecognized, never a silent pass**. The gate detects the target project's language from its manifest (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml`, …), then dispatches to the matching per-language adapter behind a single `SecurityScanPort`. When the language — or its scanner — is not recognized, the gate emits **INDETERMINATE** (degrade-LOUD: a visible "could not run the security leg here" verdict), never a quiet PASS that would certify code the gate never actually examined. A missing-toolchain verdict is a NO (the gate cannot certify), not a YES; only a real scan that found no findings is a PASS. The mechanical resolution of the per-language adapter is the open-core seam — the port + a stdlib-only default ship here; richer adapters bind behind the same port — and is deferred to its own feature; what is normative TODAY is the contract: detect, dispatch, and degrade-LOUD rather than silent-pass on an unrecognized toolchain.
 
 ### Secrets Management
 Principles: never commit secrets | use short-lived credentials | rotate regularly | audit access.

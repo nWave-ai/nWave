@@ -9,7 +9,9 @@ disable-model-invocation: true
 
 "Doing stuff isn't the point. Achieving stuff is." -- Jeff Gothelf
 
-Defines measurable outcome KPIs for user stories and features. Loaded during Phase 4 (Requirements Crafting) to produce `outcome-kpis.md`. Synthesizes three frameworks: customer-centric OKRs, lean metrics, and OKR methodology.
+Defines measurable outcome KPIs for user stories and features. Synthesizes three frameworks: customer-centric OKRs, lean metrics, and OKR methodology.
+
+**Output scope**: supply the actor and observable KPI result, supplied targets, baselines and measurement choices. Distinguish confirmed facts, proposals, assumptions and open questions; name an owner for open decisions. Keep unknown baselines or targets open. The template below shapes semantic facts; use it as a file layout only when authorized to author documents.
 
 ## The Outcome KPI Formula
 
@@ -156,7 +158,7 @@ Every story traces back to a Key Result. Orphan stories (no KR link) are potenti
 
 ## KPI Template
 
-Use this exact structure in `outcome-kpis.md`:
+Shape each KPI with this structure (a document layout only for an authorized author):
 
 ```markdown
 ## Feature: {feature-name}
@@ -206,7 +208,7 @@ Before finalizing KPIs, verify each one passes:
 
 ## Handoff to DEVOPS
 
-The platform-architect needs these from `outcome-kpis.md` to plan instrumentation:
+The platform-architect needs these KPI facts from the product authority to plan instrumentation:
 
 1. **Data collection requirements**: what events/behaviors to instrument, what data points to capture
 2. **Dashboard/monitoring needs**: which metrics need real-time dashboards vs. weekly reports

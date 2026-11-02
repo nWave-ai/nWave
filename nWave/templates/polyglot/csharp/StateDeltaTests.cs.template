@@ -28,11 +28,11 @@ public class StateDeltaContractTests
     public void Assert_PassesOnCleanPrependTransition()
     {
         var before = new Dictionary<string, object?> { ["PATH"] = "/usr/bin" };
-        var after = new Dictionary<string, object?> { ["PATH"] = "/des/bin:/usr/bin" };
+        var after = new Dictionary<string, object?> { ["PATH"] = "/app/bin:/usr/bin" };
         var universe = new HashSet<string> { "PATH" };
         var expected = new Dictionary<string, Predicate>
         {
-            ["PATH"] = PrependedWith("/des/bin"),
+            ["PATH"] = PrependedWith("/app/bin"),
         };
 
         // Does not throw.
@@ -47,7 +47,7 @@ public class StateDeltaContractTests
         var universe = new HashSet<string> { "PATH" };
         var expected = new Dictionary<string, Predicate>
         {
-            ["PATH"] = PrependedWith("/des/bin"),
+            ["PATH"] = PrependedWith("/app/bin"),
         };
 
         var ex = Xunit.Assert.Throws<StateDeltaException>(() =>
@@ -59,9 +59,9 @@ public class StateDeltaContractTests
         Xunit.Assert.Equal("PATH", v.Key);
         Xunit.Assert.Equal("/usr/bin", v.Old);
         Xunit.Assert.Equal("/wrong", v.New);
-        Xunit.Assert.Equal("prepended_with(/des/bin)", v.PredicateName);
+        Xunit.Assert.Equal("prepended_with(/app/bin)", v.PredicateName);
         Xunit.Assert.Contains("PATH", ex.Message);
-        Xunit.Assert.Contains("predicate_name='prepended_with(/des/bin)'", ex.Message);
+        Xunit.Assert.Contains("predicate_name='prepended_with(/app/bin)'", ex.Message);
     }
 
     [Fact]
@@ -74,13 +74,13 @@ public class StateDeltaContractTests
         };
         var after = new Dictionary<string, object?>
         {
-            ["PATH"] = "/des/bin:/u/bin",
+            ["PATH"] = "/app/bin:/u/bin",
             ["HOME"] = "/home/changed",
         };
         var universe = new HashSet<string> { "PATH", "HOME" };
         var expected = new Dictionary<string, Predicate>
         {
-            ["PATH"] = PrependedWith("/des/bin"),
+            ["PATH"] = PrependedWith("/app/bin"),
         };
 
         var ex = Xunit.Assert.Throws<StateDeltaException>(() =>
@@ -112,7 +112,7 @@ public class StateDeltaContractTests
         var universe = new HashSet<string> { "PATH", "HOME", "X" };
         var expected = new Dictionary<string, Predicate>
         {
-            ["PATH"] = PrependedWith("/des"),
+            ["PATH"] = PrependedWith("/app"),
             ["HOME"] = Unchanged(),
         };
 
@@ -136,13 +136,13 @@ public class StateDeltaContractTests
         };
         var after = new Dictionary<string, object?>
         {
-            ["PATH"] = "/des:/u",
+            ["PATH"] = "/app:/u",
             ["EXTRA"] = "x2",
         };
         var universe = new HashSet<string> { "PATH" };
         var expected = new Dictionary<string, Predicate>
         {
-            ["PATH"] = PrependedWith("/des"),
+            ["PATH"] = PrependedWith("/app"),
         };
 
         var ex = Xunit.Assert.Throws<StateDeltaException>(() =>
@@ -185,8 +185,8 @@ public class StateDeltaContractTests
     [Fact]
     public void PrependedWith_PassesOnPrefixComposition()
     {
-        Xunit.Assert.True(PrependedWith("/des/bin")("/usr/bin", "/des/bin:/usr/bin").Ok);
-        Xunit.Assert.False(PrependedWith("/des/bin")("/usr/bin", "/wrong").Ok);
+        Xunit.Assert.True(PrependedWith("/app/bin")("/usr/bin", "/app/bin:/usr/bin").Ok);
+        Xunit.Assert.False(PrependedWith("/app/bin")("/usr/bin", "/wrong").Ok);
     }
 
     [Property]
@@ -216,8 +216,8 @@ public class StateDeltaContractTests
     [Fact]
     public void Containing_ChecksSubstringOrArrayElement()
     {
-        Xunit.Assert.True(Containing("/usr/bin")("", "/des/bin:/usr/bin").Ok);
-        Xunit.Assert.False(Containing("/usr/bin")("", "/des/bin:/opt/bin").Ok);
+        Xunit.Assert.True(Containing("/usr/bin")("", "/app/bin:/usr/bin").Ok);
+        Xunit.Assert.False(Containing("/usr/bin")("", "/app/bin:/opt/bin").Ok);
         var list = new List<object?>
         {
             new Dictionary<string, object?> { ["id"] = 1 },
@@ -240,20 +240,20 @@ public class StateDeltaContractTests
     [Fact]
     public void IdempotentAfter_ChecksFirstSegment()
     {
-        Xunit.Assert.True(IdempotentAfter("DES_BIN")("anything", "DES_BIN:/usr/bin").Ok);
-        Xunit.Assert.False(IdempotentAfter("DES_BIN")("anything", "/usr/bin:/opt/bin").Ok);
+        Xunit.Assert.True(IdempotentAfter("APP_BIN")("anything", "APP_BIN:/usr/bin").Ok);
+        Xunit.Assert.False(IdempotentAfter("APP_BIN")("anything", "/usr/bin:/opt/bin").Ok);
     }
 
     [Fact]
     public void LegacyHealed_ImplementsPaperTrace()
     {
-        const string LEGACY = "DES_BIN:SYSTEM_PATH_FALLBACK";
+        const string LEGACY = "APP_BIN:SYSTEM_PATH_FALLBACK";
         var pred = LegacyHealed(
             old => old is string s && s == LEGACY,
-            next => next is string s && s != LEGACY && s.StartsWith("DES_BIN:"));
-        Xunit.Assert.True(pred(LEGACY, "DES_BIN:/usr/bin").Ok);
+            next => next is string s && s != LEGACY && s.StartsWith("APP_BIN:"));
+        Xunit.Assert.True(pred(LEGACY, "APP_BIN:/usr/bin").Ok);
         Xunit.Assert.False(pred(LEGACY, LEGACY).Ok);
-        Xunit.Assert.False(pred("/usr/bin", "DES_BIN:/usr/bin").Ok);
+        Xunit.Assert.False(pred("/usr/bin", "APP_BIN:/usr/bin").Ok);
     }
 
     [Fact]
@@ -290,13 +290,13 @@ public class StateDeltaContractTests
         };
         var after = new Dictionary<string, object?>
         {
-            ["PATH"] = "/des:/u",
+            ["PATH"] = "/app:/u",
             ["HOME"] = newHome.Get,
         };
         var universe = new HashSet<string> { "PATH", "HOME" };
         var expected = new Dictionary<string, Predicate>
         {
-            ["PATH"] = PrependedWith("/des"),
+            ["PATH"] = PrependedWith("/app"),
         };
 
         bool threw = false;
@@ -315,13 +315,13 @@ public class StateDeltaContractTests
         };
         var after = new Dictionary<string, object?>
         {
-            ["PATH"] = "/des:/u",
+            ["PATH"] = "/app:/u",
             ["HOME"] = "/h",
         };
         var universe = new HashSet<string> { "PATH", "HOME" };
         var expected = new Dictionary<string, Predicate>
         {
-            ["PATH"] = PrependedWith("/des"),
+            ["PATH"] = PrependedWith("/app"),
         };
 
         // Does not throw.

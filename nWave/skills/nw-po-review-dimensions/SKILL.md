@@ -17,17 +17,39 @@ Return complete YAML feedback to calling agent for display to user.
 
 ---
 
-## Dimension 0: Elevator Pitch Test (BLOCKING, checked first)
+## Dimension 0: Human understanding and visible value
 
-Every user story MUST contain an `### Elevator Pitch` subsection with three lines: Before / After / Decision enabled. The reviewer checks these invariants:
+Apply the existing dimensions to the assigned product authority, not to a
+mandatory story template. Require an understandable before/after, actor, public
+observation and benefit; a particular heading or three-line grammar is not evidence.
+Slices should deliver small visible increments for feedback, not frontend/backend
+packages or dormant prerequisites. Evaluate relevant risks, not a universal quota
+of error cases, NFR sections or stakeholder groups. Do not invent requirements.
 
-1. **Presence**: the section exists with all three lines. Missing → **BLOCKING**.
-2. **Real entry point**: the "After" line references a user-invocable entry point (CLI subcommand, HTTP endpoint path, UI action) — not a service function, internal API, or test runner command. Internal-only → **BLOCKING**.
-3. **Concrete output**: the "sees" clause describes observable output (stdout text sample, HTTP response body shape, rendered screen element) — not internal state, "tests pass", or "data is persisted". Internal state → **BLOCKING**.
-4. **Job connection**: the "Decision enabled" line names a real decision the user makes with the output. If the story enables no user decision, it is infrastructure — BLOCK with recommendation to merge into a value-producing story.
-5. **Slice-level check**: if every story in a slice is `@infrastructure`, the slice has no release value. **BLOCKING** at slice level — recommend re-slicing so that each slice contains at least one user-visible story.
+For PO-led DISCUSS, also examine the supplied conversation and human HTML view:
+- Check that JTBD, journey/emotional arc, Gherkin and Quint sections are visible,
+  with concise content or explicit unexpanded/not-run status. Do not demand long
+  sections, invented emotions, extra scenarios or a Quint run to fill headings.
+  Assess consequential gaps against the current decision, not section length.
+- Were consequential uncertainties explored with natural, non-leading questions?
+- Are human choices distinguished from proposals, assumptions and open questions?
+- Does the constructed document preserve the actual answers and corrections?
+- For UI changes, was proportionate visual exploration offered and the choice honored?
+- Are prototype simulations and formal-model assumptions explicit?
+- Do model-generated scenarios preserve actual trace events without invented narration?
+  When Quint was used, require: scenarios came from the actual model (raw trace and
+  model identity available, else the section is not_run); assumptions and unresolved
+  doubts are visible in the HTML view and handoff; the recorded judgment fits the mode
+  (interactive: actual human judgment or open; auto: shown as unreviewed, human
+  approval NOT required). Silence recorded as approval is a defect. Simulation is not
+  exhaustive proof; source-blind EXAMINE remains separate.
+- Can the human explain or challenge an outcome using the view? Without actual
+  human feedback this dimension is INDETERMINATE, never inferred from aesthetics.
 
-Return this dimension first in the YAML feedback. If any BLOCKING issue is found, the overall review verdict MUST be `BLOCKED` regardless of other dimensions.
+Formal checks and valid JSON do not prove intent fidelity or human comprehension.
+When no prototype or solver is relevant, their absence is not a defect. Report all
+known related findings together. Review the supplied scope; missing evidence is a
+named gap, not permission to recreate the producer workflow.
 
 ---
 
@@ -61,13 +83,13 @@ Detection: list stakeholder groups in requirements, check each group's needs rep
 Severity: HIGH.
 
 ### Missing Error Scenarios
-Required: invalid input validation | authentication/authorization failures | network timeouts | external service unavailability | data integrity violations | concurrent modification conflicts | resource exhaustion.
+Consider where relevant: invalid input, authorization, timeouts, unavailable dependencies, data integrity, concurrency and resource limits.
 Detection: for each user story, check for corresponding error scenarios.
 Severity: CRITICAL.
 
 ### Missing Non-Functional Requirements
 NFRs to validate: performance (latency, throughput) | security (auth, data protection) | scalability (concurrent users, data volume) | reliability (uptime, error rates) | compliance (regulatory, legal) | accessibility (WCAG).
-Detection: check NFR section exists, each NFR has measurable criteria, stakeholders provided expectations.
+Detection: for an applicable NFR, check observable criteria and provenance of expectations. An unrelated NFR or absent heading is not a defect.
 Severity: CRITICAL.
 
 ---
@@ -82,7 +104,7 @@ Severity: HIGH.
 
 ### Ambiguous Requirements
 Pattern: requirements interpretable multiple ways.
-Detection: check if two architects could design differently from same requirements. Look for multi-meaning words. Verify pronouns have clear antecedents.
+Detection: check if two readers could infer different observable behavior; different valid implementations alone are not ambiguity. Look for multi-meaning words. Verify pronouns have clear antecedents.
 Severity: HIGH.
 
 ---
@@ -93,7 +115,7 @@ Severity: HIGH.
 Pattern: AC not observable, measurable, or automatable.
 Bad: "System should be easy to use" | "Code should be maintainable."
 Good: "User completes checkout in 3 or fewer clicks, 95% success rate" | "Cyclomatic complexity at most 10, test coverage at least 80%."
-Detection: for each AC, ask "Can an automated test verify this?" Check if AC specifies observable behavior with measurable pass/fail.
+Detection: ask what observation would distinguish success from failure. Human usability judgments may require human evidence rather than automation.
 Severity: CRITICAL.
 
 ---

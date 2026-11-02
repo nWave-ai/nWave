@@ -1,46 +1,174 @@
 # nWave Global Config Reference
 
-**Location**: `~/.nwave/global-config.json`
+**Location**: `~/.nwave/config.json`
 
-This reference documents every configuration key available in nWave's global configuration file. Settings here apply to all features, waves, and CLI commands unless overridden at the feature level.
+This reference documents the configuration keys nWave actually reads from its
+two canonical configuration files: the global file above and the per-project
+file at `<repo>/.nwave/config.json`. Global values apply to every project
+unless a project sets its own override.
 
-## File location and initialization
+## File locations and initialization
 
-- **Path**: `~/.nwave/global-config.json`
-- **Created by**: `nwave-ai install` (first run)
-- **User-editable**: Yes, with a text editor
-- **Verification**: Run `nwave-ai doctor` to validate your config
+- **Global path**: `~/.nwave/config.json` (under `NWAVE_AGENTS_HOME` instead
+  of your home directory, when that environment variable is set to an
+  absolute path).
+- **Project path**: `<repo>/.nwave/config.json`.
+- **Created by**: A fresh install may leave both files absent. Configuration
+  writes create the relevant tier: `mode`, `model set`, or `attribution` for
+  machine settings; `project enable|disable|set` for project settings.
+- **User-editable**: Yes, with a text editor.
+- **Verification**: Run `nwave-ai doctor` to validate your config.
 
-## Top-level structure
+### Historical files (retired, migrated automatically)
+
+Older installs used three separate files: `~/.nwave/global-config.json`,
+`<repo>/.nwave/des-config.json`, and `<repo>/.nwave/local-config.json` (the
+per-project activation marker, `{"enabled_for_repo": true|false}`). The
+config writer merges the legacy files for the tier being written into its
+canonical file, backs up the original bytes next to each retired file as
+`<name>.unified-config.bak`, and deletes that retired file. A project-only
+write does not migrate the global tier. Changing `mode` migrates the global
+tier and changes only activation; documentation, attribution, model selection,
+and other explicit preferences remain intact. Conflicting or malformed input
+must be repaired before retrying. Read-only commands do not migrate files and
+never use the retired paths as runtime fallbacks.
+
+## Top-level structure (global file)
 
 ```json
 {
   "activation": { "mode": "..." },
   "rigor": { "profile": "..." },
   "documentation": { "density": "...", "expansion_prompt": "..." },
-  "audit_logging_enabled": true,
-  "audit_log_dir": "...",
-  "update_check": { "frequency": "..." }
+  "attribution": { "enabled": true, "trailer": "..." },
+  "updates": { "check": false, "install": false, "controlled_launch": false },
+  "model_runtime": { "default": { "provider": "...", "model": "..." }, "roles": {} }
 }
 ```
+
+`documentation` is optional. Fresh installs do not write it. `density` and
+`expansion_prompt` are validated, shown by `nwave-ai status` and checked by
+`nwave-ai doctor`; the current `nwdes` route has no wave-entry step that reads
+them. `density` (`lean` or `full`) does not reshape a document's sections.
+`expansion_prompt` describes optional explanation in chat after a completed
+wave and does not open a CLI menu. They are separate controls.
+
+`update_check` is retired. It does not control update checks and is removed
+on the next explicit global or project config write; read-only commands do
+not rewrite the file.
+
+Per-project overrides live in `<repo>/.nwave/config.json` instead, with a
+smaller, closed set of public keys: `enabled` (activation marker),
+`verbosity`, `attribution`, and `model_runtime` (set via `nwave-ai model set --project ...`, not via `project set`).
+`audit_logging_enabled` and `audit_log_dir` are also project-tier keys (see
+below), not global ones.
 
 ---
 
 ## Configuration keys
 
+### `updates` (object, optional, global only)
+
+`check` and `install` are independent boolean permissions, both off when
+absent. Only explicit `true` grants a permission. The retired `update_check`
+field grants neither permission.
+
+```bash
+nwave-ai update consent check on
+nwave-ai update consent install on --confirm-old-sessions-closed
+nwave-ai update consent controlled-launch on --confirm-controlled-launch
+```
+
+A check-only grant cannot install anything. Automatic installation requires
+both permissions and the separate controlled-launch commitment. Revoke any
+grant with its command and `off` (without a confirmation flag). Revoking
+`check` prevents both automatic actions; revoking `install` or
+`controlled-launch` leaves check-only behavior when checking is enabled.
+
+Before granting install permission, close all older host sessions that started
+before the activity registry was installed. The confirmation flag records your
+statement; nWave cannot independently detect those older sessions. A false
+confirmation can leave active work unprotected.
+
+The controlled-launch confirmation means that future host sessions sharing
+this package use `nwave-ai run HOST -- ARGS`. On POSIX, `HOST` can be
+`claude-code`, `codex`, `opencode`, or `copilot`. For example:
+
+```bash
+nwave-ai run codex -- --no-daemon
+nwave-ai run claude-code --
+```
+
+The wrapper records its session before starting the host. Both automatic
+release checks and installation require controlled prelaunch and idle evidence
+before the first release request. Ordinary native starts give guidance only:
+native hooks cannot provide a reliable admission boundary. An explicit
+`nwave-ai update --check` remains available outside controlled startup.
+
+The selected registry lives under `<agents_home>/.nwave/activity/`. A shared
+package lock and registry also live beside the owned virtual environment,
+outside the directory that replacement removes. They coordinate sessions using
+different configuration homes but the same package. Other sessions, unknown or
+malformed records, or unfinished local work prevent both automatic actions.
+Check-only startup needs check permission; installation also needs install
+permission, the legacy-session confirmation, and the controlled-launch
+commitment. The exclusive coordination covers discovery through completion.
+
+Direct starts, disabled hooks, and detached work are outside the controlled
+lifetime guarantee. Close that work before enabling automatic installation.
+A surviving child process leaves its session record for explicit recovery;
+the wrapper does not guess that work has ended.
+
+Use `nwave-ai update sessions` to inspect the registry. Close a session in its
+host first. If a record remains after that session has ended, remove it only
+with `nwave-ai update sessions close KEY --confirm-closed`. Records are not
+cleared from guessed process state or age.
+
+An unsupported release channel, development installation, or missing install
+provenance can refuse an update; permission is not a compatibility guarantee.
+Read the reported stage and recovery action before retrying. No broad rollback
+is implied.
+
+Interrupted replacement leaves durable stage evidence in both the selected and
+package registries. Even if the package version is now current, checks and
+ordinary updates report `update-incomplete`, not success. After stopping all
+remaining updater processes and affected sessions, use the reported environment
+and project root:
+
+```bash
+nwave-ai update --recover --yes --confirm-stopped
+```
+
+Recovery proves the pinned package version, repeats the selected-host preflight
+and synchronization, then applies the registered artifact migration. It clears
+the evidence only after all stages succeed. If the pinned package is missing or
+wrong, follow the reported package-owner restoration command first. Do not
+delete the marker to bypass recovery.
+
+`nwave-ai update --check` remains an explicit read-only check.
+`nwave-ai update --yes --root PATH` remains an explicit installation request;
+it is not a command to grant persistent automatic-update consent. It takes the
+replacement lock but does not establish global idle: close active work before
+requesting a manual installation.
+
+---
+
 ### `activation` (object, optional)
 
-Controls the default activation mode for unmarked projects (repos without an explicit per-project marker).
+Controls the default activation mode for unmarked projects (repos without an
+explicit per-project marker).
 
 #### `activation.mode` (string, optional)
 
 Valid values: `opt-in` (default) | `all`.
 
-- **`opt-in`** (default): Unmarked projects are **inactive**. Hooks silently exit 0. Only projects with `.nwave/local-config.json` set to `enabled_for_repo: true` are active.
+- **`opt-in`** (default): Unmarked projects are **inactive**. Hooks silently
+  exit 0. Only projects whose `<repo>/.nwave/config.json` has `enabled: true`
+  are active.
+- **`all`**: Unmarked projects are **active** by default. Hooks fire in every
+  repo unless that project's `<repo>/.nwave/config.json` has `enabled: false`.
 
-- **`all`**: Unmarked projects are **active** by default. Hooks fire in every repo unless explicitly disabled with `.nwave/local-config.json` set to `enabled_for_repo: false`.
-
-**Default**: `opt-in` (opt-in is the safe, non-invasive default; nWave is only active where you explicitly enable it).
+**Default**: `opt-in`.
 
 **How to set this**:
 
@@ -49,7 +177,10 @@ nwave-ai mode opt-in    # unmarked repos inactive (default)
 nwave-ai mode all       # unmarked repos active
 ```
 
-**Per-project override**: A project's `.nwave/local-config.json` marker always wins, regardless of global mode. Set `enabled_for_repo: true` or `enabled_for_repo: false` to override the mode for that project.
+**Per-project override**: `nwave-ai project enable` / `nwave-ai project
+disable` write the `enabled` field into the current repo's
+`.nwave/config.json`; that value always wins over the global mode for that
+repo.
 
 **Example**:
 ```json
@@ -66,21 +197,33 @@ nwave-ai mode all       # unmarked repos active
 
 ### `rigor` (object)
 
-Controls how much ceremony, validation, and narrative detail applies to waves and output.
-
 #### `rigor.profile` (string)
 
-Selects a preset rigor level. Valid values: `lean`, `standard`, `thorough`, `exhaustive`, `custom`.
+Valid values: `lean`, `standard`, `thorough`, `exhaustive`, `custom`. When
+set, it is the fallback source the documentation-density resolver uses for
+`documentation.density` and `documentation.expansion_prompt` **whenever those
+keys are absent** (see the cascade table below).
 
-| Profile | Wave ceremony | Output detail | Doc density | Expansion prompt | Use case |
-|---------|---|---|---|---|---|
-| `lean` | Minimal | Minimal | `lean` | `always-skip` | Solo dev, fast iteration, low token budget |
-| `standard` | Moderate | Moderate | `lean` | `ask-intelligent` | Small teams, balanced approach (default) |
-| `thorough` | High | High | `full` | `always-expand` | Regulated environments, audit trails |
-| `exhaustive` | Maximum | Maximum | `full` | `always-expand` | Mission-critical, government, DoD |
-| `custom` | (explicit per key) | (explicit per key) | (see `documentation.density` override) | (see `documentation.expansion_prompt` override) | Advanced; requires explicit config |
+**There is no `nwave-ai` command that sets `rigor.profile`.** The global
+fallback affects the wave-end explanation mode when an explicit
+`documentation.expansion_prompt` is absent; a project copy is not an override.
+The `nw-rigor` skill/command configures `model_runtime.default` or
+`model_runtime.roles.<role>` via `nwave-ai model set` instead. It never derives
+a model from a rigor level.
 
-**Default**: `standard`
+These are separate controls:
+
+- `documentation.expansion_prompt` describes optional explanation in chat.
+- `documentation.density` is a recorded reading preference (`lean` or `full`)
+  that `nwdes` does not act on.
+- `model_runtime` selects an explicit provider/model pair. Density and
+  `rigor.profile` never select a provider or model.
+- Required verification remains part of the selected delivery route. None of
+  these preferences disables its tests, reviews, or examination obligations.
+
+The names `lean` and `exhaustive` are labels, not measured guarantees of quality
+or coverage. Selecting a profile, a density or a model does not establish that
+verification passed.
 
 **Example**:
 ```json
@@ -95,23 +238,23 @@ Selects a preset rigor level. Valid values: `lean`, `standard`, `thorough`, `exh
 
 ### `documentation` (object)
 
-Controls how much narrative, examples, and optional expansions appear in wave output.
-
 #### `documentation.density` (string, optional)
 
-Specifies the default detail level for wave output. Valid values: `lean`, `full`.
+Valid values: `lean`, `full`. Fresh installs do not set it. The current delivery
+route has no wave-entry step and no completion step that reads it: `nwdes`
+renders no HTML view and prints no documentation preference. The authoritative
+documents and handoff are the Markdown that `nwdes document` renders from the
+handoff. `nwave-ai status` and `nwave-ai doctor` still validate and report the
+value.
 
-- **`lean`**: Emits only load-bearing content (`[REF]` sections in L7 format). Prose is minimal; persona narrative, JTBD analysis, and alternatives are omitted unless explicitly requested via `--expand`. **Goal**: ≤60% token cost vs legacy multi-file baseline.
+**Cascade** (first match wins):
+1. Explicit `documentation.density` in config.
+2. `rigor.profile` mapping (see table below), if `rigor.profile` is set.
+3. Hard default: `lean`.
 
-- **`full`**: Emits all available sections (`[REF]` + `[WHY]` + `[HOW]`). Prose is complete; persona narrative, JTBD analysis, alternatives, and migration guidance are inline. **Goal**: comprehensive documentation for handoff, audit, and future context recovery.
-
-**Default behavior** (if key absent):
-- If `rigor.profile` is `lean`, inherit `lean`.
-- If `rigor.profile` is `standard`, inherit `lean` (lean is the default for new installs).
-- If `rigor.profile` is `thorough` or `exhaustive`, inherit `full`.
-- If `rigor.profile` is `custom`, default to `lean` (can be overridden).
-
-**Explicit override**: Any value in `documentation.density` always wins, even if `rigor.profile` suggests a different density. This allows you to have `rigor: "exhaustive"` (high ceremony) with `density: "lean"` (minimal prose).
+A value outside `lean`/`full` is shown by `nwave-ai status` as
+`Documentation density: invalid (...)`, and `nwave-ai doctor` fails its
+documentation check for it.
 
 **Example**:
 ```json
@@ -124,207 +267,123 @@ Specifies the default detail level for wave output. Valid values: `lean`, `full`
 
 #### `documentation.expansion_prompt` (string, optional)
 
-Controls when wave-end prompts offer optional expansions (JTBD narrative, alternatives, migration playbooks, etc.). Valid values: `ask`, `ask-intelligent`, `always-skip`, `always-expand`, `smart`.
+Valid values: `ask`, `always-skip`, `always-expand`, `smart`,
+`ask-intelligent`. The current delivery route has no wave-entry step that reads
+this preference: `nwdes` reads no documentation preference and renders no
+completion offer. The value is still validated at install, shown by
+`nwave-ai status` and checked by `nwave-ai doctor`. An assistant that applies
+it does so by its own instruction, never through a CLI menu.
 
-- **`ask`**: At the end of each wave, show the broad menu of available expansions. This remains valid for existing configurations.
+| Value | Assistant response after a completed wave |
+|---|---|
+| `ask` | Offers optional detail. |
+| `always-skip` | Does not offer detail. |
+| `always-expand` | Explains pertinent detail directly, without asking. |
+| `smart` | Offers detail only if the result contains a concrete optional alternative, trade-off, risk, constraint, or deferred consequence. |
+| `ask-intelligent` | Uses the same condition as `smart` and names at most two specific relevant topics from the completed result. |
 
-- **`ask-intelligent`** (default): Show only expansions whose wave-specific trigger fired. If no trigger fires, show no menu. Fresh installs write this value.
+The offer is a chat response, not a document edit. Accepting or ignoring it
+does not change accepted documents or execute another delivery step. You may ask
+for more detail directly at any time, even with `always-skip`.
 
-- **`always-skip`**: Never prompt; skip all expansions. Equivalent to always pressing "skip all" at the menu. Useful for fully automated / CI flows where user input is not expected.
+`nwave-ai install` checks an explicit active `documentation.expansion_prompt`
+before writing installation files. An invalid value stops the install with
+accepted values in the error; correct the global value and retry. Installation
+does not ask for or write a density preference.
 
-- **`always-expand`**: Automatically include all available expansions. Equivalent to always pressing "expand all" at the menu. Useful when density is `full` or you want comprehensive documentation upfront.
 
-- **`smart`**: Compatibility mode for the earlier experimental name. It currently has the same broad-menu behavior as `ask`; use `ask-intelligent` for trigger-scoped suggestions.
-
-**Default behavior** (if key absent):
-- If `rigor.profile` is `lean`, inherit `always-skip`.
-- If `rigor.profile` is `standard` or `custom`, inherit `ask-intelligent`.
-- If `rigor.profile` is `thorough` or `exhaustive`, inherit `always-expand`.
-
-**Validation and compatibility**: All five values above remain accepted; upgrades do not rewrite one known mode into another. Any other value is rejected by density resolution and reported by `nwave-ai doctor` instead of silently falling back.
-
-**Note on interactivity**: `ask` and a triggered `ask-intelligent` suggestion require user interaction. For unattended work, set `always-skip` or choose expansions explicitly.
-
-**Example**:
-```json
-{
-  "documentation": {
-    "expansion_prompt": "ask-intelligent"
-  }
-}
-```
-
-#### `documentation.default_expansions` (array of strings, optional)
-
-Reserved for pre-selecting expansion IDs. The current resolver and wave skills do not consume this key, so setting it has no effect. Request expansions explicitly until a consumer is shipped.
+**Cascade** (independent of the density cascade above): explicit value wins;
+else the `rigor.profile` mapping; else hard default `ask-intelligent`.
 
 **Example**:
 ```json
 {
   "documentation": {
-    "default_expansions": ["jtbd-narrative", "alternatives-considered"]
+    "expansion_prompt": "ask"
   }
 }
 ```
 
 ---
 
-### `audit_logging_enabled` (boolean, optional)
+### `attribution` (object, optional)
 
-Enable or disable event logging to the audit log. Valid values: `true`, `false`.
-
-- **`true`**: Every wave, expansion choice, and tool invocation is logged to `audit_log_dir` with timestamp, feature ID, and outcome.
-- **`false`**: No events are logged.
-
-**Default**: `true` (unless telemetry is explicitly disabled globally).
-
-**Example**:
-```json
-{
-  "audit_logging_enabled": true
-}
-```
+Sets the machine attribution preference; project configuration can override
+it, and credit is added only for active repositories with a supported commit
+hook. Managed by `nwave-ai attribution <on|off|status>`; `status` reports the
+effective preference and its source. See that command's own `--help` for the
+shape written (`{"enabled": bool, "trailer": "..."}`).
 
 ---
 
-### `audit_log_dir` (string, optional)
+### `audit_logging_enabled` / `audit_log_dir` (project-tier keys)
 
-Directory where audit log files (`.jsonl` format) are written. Paths are relative to `$HOME`.
-
-- **Default**: `.nwave/audit/`
-- **Interpretation**: `~/.nwave/audit/`
-
-**Example**:
-```json
-{
-  "audit_log_dir": ".nwave/audit"
-}
-```
-
----
-
-### `update_check` (object, optional)
-
-Controls how often nWave checks for new versions.
-
-#### `update_check.frequency` (string, optional)
-
-Valid values: `daily`, `weekly`, `monthly`, `never`.
-
-- **`daily`**: Check once per day.
-- **`weekly`**: Check once per week.
-- **`monthly`**: Check once per month.
-- **`never`**: Never check (offline mode).
-
-**Default**: `weekly`
-
-**Example**:
-```json
-{
-  "update_check": {
-    "frequency": "weekly"
-  }
-}
-```
-
----
-
-## Cascade and override semantics
-
-**When a key is absent**, nWave cascades through these layers (in order):
-
-1. **Explicit config value** in `~/.nwave/global-config.json` (if present)
-2. **Rigor profile default** (if `rigor.profile` is set to a preset like `standard`)
-3. **Hardcoded fallback** (if config file is missing entirely)
-
-**Examples**:
-
-### Example 1: Lean solo developer
-
-```json
-{
-  "rigor": {
-    "profile": "lean"
-  }
-}
-```
-
-**Cascade result**:
-- `documentation.density` → `lean` (from rigor cascade)
-- `documentation.expansion_prompt` → `always-skip` (from rigor cascade)
-- `audit_logging_enabled` → `true` (hardcoded fallback)
-
-### Example 2: Regulated environment with explicit prose override
-
-```json
-{
-  "rigor": {
-    "profile": "thorough"
-  },
-  "documentation": {
-    "density": "lean"
-  }
-}
-```
-
-**Cascade result**:
-- `documentation.density` → `lean` (explicit override wins, even though rigor is `thorough`)
-- `documentation.expansion_prompt` → `always-expand` (from rigor cascade, thorough level)
-- `audit_logging_enabled` → `true` (hardcoded fallback)
+These are written to a **project's** `.nwave/config.json` (defaults
+`audit_logging_enabled: true`, `audit_log_dir: ".nwave/des/logs"` on first
+write), not to the global file. `audit_log_dir` is resolved with this
+priority: explicit caller argument > `DES_AUDIT_LOG_DIR` environment
+variable > `audit_log_dir` in the project's `.nwave/config.json` >
+`<project>/.nwave/des/logs` > `~/.claude/des/logs`.
 
 ---
 
 ## Rigor profile cascade table
 
-This table shows which `documentation.density` and `expansion_prompt` defaults apply when `rigor.profile` is set and those keys are absent from the config:
+Density/prompt inherited when `rigor.profile` is set and
+`documentation.density` / `documentation.expansion_prompt` are absent:
 
-| Profile | Inherited density | Inherited prompt | Wave detail | Typical use |
-|---------|---|---|---|---|
-| `lean` | `lean` | `always-skip` | Minimal refs only | Solo iteration |
-| `standard` | `lean` | `ask-intelligent` | Refs + trigger-scoped WHY/HOW | Balanced teams |
-| `thorough` | `full` | `always-expand` | All sections inline | Regulated, audit-required |
-| `exhaustive` | `full` | `always-expand` | All sections + all expansions | Mission-critical, DoD |
-| `custom` | `lean` (if absent) | `ask-intelligent` (if absent) | Explicit per key | Advanced |
+| Profile | Inherited density | Inherited expansion_prompt |
+|---------|---|---|
+| `lean` | `lean` | `always-skip` |
+| `standard` | `lean` | `ask-intelligent` |
+| `thorough` | `full` | `always-expand` |
+| `exhaustive` | `full` | `always-expand` |
+| `custom` | `lean` | `ask-intelligent` |
+
+If neither `documentation.density`/`expansion_prompt` nor `rigor.profile` is
+set, the hard default is `lean` + `ask-intelligent`.
 
 ---
 
-## Important warnings
-
-### Backup count = 0
-
-If your config contains:
+## `backups.max_count` (install-time key)
 
 ```json
 {
   "backups": {
-    "max_count": 0
+    "max_count": 3
   }
 }
 ```
 
-This **disables all backups**. nWave will not retain any backup copies of previous `feature-delta.md` versions. Restore functionality is disabled.
-
-**Recommendation**: Set `max_count` to at least `3` to retain recent history. Only set to `0` in CI environments where state is ephemeral.
+Read by the installer's backup pruning (`scripts/install/install_utils.py`)
+from `~/.nwave/config.json`. Caps how many `nwave-*` backup directories the
+installer retains; `0` disables retention. Unset uses the installer's
+built-in default cap of `10`.
 
 ---
 
-## Complete minimal example
+## Verifying your config
 
-```json
-{
-  "rigor": {
-    "profile": "standard"
-  },
-  "documentation": {
-    "density": "lean",
-    "expansion_prompt": "ask-intelligent"
-  },
-  "audit_logging_enabled": true,
-  "update_check": {
-    "frequency": "weekly"
-  }
-}
+```bash
+nwave-ai doctor
 ```
+
+`nwave-ai status` is read-only and reports two separate lines: the resolved
+documentation density with its provenance and the wave-end explanation
+preference with its source. Density is resolved without
+`expansion_prompt`, so an invalid explanation value does not hide the density
+line.
+
+`doctor` reports the resolved density and its provenance. It fails its
+documentation check for an invalid density, explanation
+preference, or rigor value and names the configuration file to repair.
+It does not render documents. An invalid `documentation.expansion_prompt`
+refuses `nwave-ai install`. An unknown
+`rigor.profile`, a non-object `documentation`/`rigor` section, or an unreadable
+or malformed config file is reported, never guessed into a preference.
+
+The doctor's legacy reader treats an unreadable or malformed whole file as
+absent. Its density result alone does not establish that such a file is valid.
 
 ---
 
@@ -332,16 +391,22 @@ This **disables all backups**. nWave will not retain any backup copies of previo
 
 **Q: My config file doesn't exist. What's the default?**
 
-Run `nwave-ai install` to initialize. The first-run prompt will ask for density preference and create the file.
+No file is needed to read defaults. New repositories are inactive under
+`opt-in`; attribution defaults to on and verbosity to standard when no tier
+declares a value. The density resolver defaults to `lean`; wave-end explanations default to `ask-intelligent`
+after completed waves.
+Installation does not ask for density or create a file just to store it.
+A command that writes configuration creates its relevant file.
 
 **Q: Can I edit the config manually?**
 
-Yes. Use any text editor (vim, nano, VS Code, etc.). After editing, run `nwave-ai doctor` to validate. If the JSON is malformed, doctor will report a parse error.
+Yes. Run `nwave-ai status` afterward to see effective values and their
+sources. `nwave-ai doctor` checks installation health and active documentation
+choices. An unreadable or malformed documentation configuration is reported,
+never guessed into a usable preference.
 
-**Q: What does "expansion_prompt: ask" mean if I'm running in CI?**
+**Q: Can I override density per project or per feature?**
 
-On non-interactive (no-TTY) environments, `ask` defaults to `always-skip` — no prompts are issued. Features still emit `lean` output (refs only). Expansions can only be triggered via `--expand <id>` flag or by changing `expansion_prompt` in the config.
-
-**Q: Can I override density per feature?**
-
-Not in v1. The global config applies to all features. Per-feature overrides are tracked as a future enhancement.
+Per-project overrides are limited to the closed set `nwave-ai project set`
+accepts (`enabled`, `verbosity`, `attribution`); there is no per-project or
+per-feature `documentation.density` override today.

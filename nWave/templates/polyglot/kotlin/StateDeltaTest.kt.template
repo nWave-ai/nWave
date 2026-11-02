@@ -30,9 +30,9 @@ class StateDeltaTest : StringSpec({
     "returns unit on a clean prepend transition" {
         StateDelta.assert(
             before = mapOf("PATH" to "/usr/bin"),
-            after = mapOf("PATH" to "/des/bin:/usr/bin"),
+            after = mapOf("PATH" to "/app/bin:/usr/bin"),
             universe = setOf("PATH"),
-            expected = mapOf("PATH" to prependedWith("/des/bin")),
+            expected = mapOf("PATH" to prependedWith("/app/bin")),
         )
     }
 
@@ -42,7 +42,7 @@ class StateDeltaTest : StringSpec({
                 before = mapOf("PATH" to "/usr/bin"),
                 after = mapOf("PATH" to "/wrong"),
                 universe = setOf("PATH"),
-                expected = mapOf("PATH" to prependedWith("/des/bin")),
+                expected = mapOf("PATH" to prependedWith("/app/bin")),
             )
         }
         ex.violations shouldHaveSize 1
@@ -51,18 +51,18 @@ class StateDeltaTest : StringSpec({
         v.key shouldBe "PATH"
         v.oldValue shouldBe "/usr/bin"
         v.newValue shouldBe "/wrong"
-        v.predicateName shouldBe "prepended_with(/des/bin)"
+        v.predicateName shouldBe "prepended_with(/app/bin)"
         ex.message!!.stringShouldContain("PATH")
-        ex.message!!.stringShouldContain("predicate_name='prepended_with(/des/bin)'")
+        ex.message!!.stringShouldContain("predicate_name='prepended_with(/app/bin)'")
     }
 
     "implicit-unchanged catches an undeclared change" {
         val ex = shouldThrow<StateDeltaException> {
             StateDelta.assert(
                 before = mapOf("PATH" to "/u/bin", "HOME" to "/home/u"),
-                after = mapOf("PATH" to "/des/bin:/u/bin", "HOME" to "/home/changed"),
+                after = mapOf("PATH" to "/app/bin:/u/bin", "HOME" to "/home/changed"),
                 universe = setOf("PATH", "HOME"),
-                expected = mapOf("PATH" to prependedWith("/des/bin")),
+                expected = mapOf("PATH" to prependedWith("/app/bin")),
             )
         }
         ex.violations shouldHaveSize 1
@@ -80,7 +80,7 @@ class StateDeltaTest : StringSpec({
                 after = mapOf("PATH" to "/wrong", "HOME" to "/h2", "X" to "1"),
                 universe = setOf("PATH", "HOME", "X"),
                 expected = mapOf(
-                    "PATH" to prependedWith("/des"),
+                    "PATH" to prependedWith("/app"),
                     "HOME" to unchanged(),
                 ),
             )
@@ -93,9 +93,9 @@ class StateDeltaTest : StringSpec({
         val ex = shouldThrow<StateDeltaException> {
             StateDelta.assert(
                 before = mapOf("PATH" to "/u", "EXTRA" to "x"),
-                after = mapOf("PATH" to "/des:/u", "EXTRA" to "x2"),
+                after = mapOf("PATH" to "/app:/u", "EXTRA" to "x2"),
                 universe = setOf("PATH"),
-                expected = mapOf("PATH" to prependedWith("/des")),
+                expected = mapOf("PATH" to prependedWith("/app")),
                 strict = true,
             )
         }
@@ -117,8 +117,8 @@ class StateDeltaTest : StringSpec({
     }
 
     "prependedWith(prefix, sep) passes iff next == prefix + sep + old (string)" {
-        prependedWith("/des/bin")("/usr/bin", "/des/bin:/usr/bin").ok shouldBe true
-        prependedWith("/des/bin")("/usr/bin", "/wrong").ok shouldBe false
+        prependedWith("/app/bin")("/usr/bin", "/app/bin:/usr/bin").ok shouldBe true
+        prependedWith("/app/bin")("/usr/bin", "/wrong").ok shouldBe false
         // PBT: any tail string produces a matching composition
         checkAll(Arb.string()) { tail ->
             prependedWith("PRE")(tail, "PRE:$tail").ok shouldBe true
@@ -138,8 +138,8 @@ class StateDeltaTest : StringSpec({
     }
 
     "containing(sub) checks substring (string) or list element" {
-        containing("/usr/bin")("", "/des/bin:/usr/bin").ok shouldBe true
-        containing("/usr/bin")("", "/des/bin:/opt/bin").ok shouldBe false
+        containing("/usr/bin")("", "/app/bin:/usr/bin").ok shouldBe true
+        containing("/usr/bin")("", "/app/bin:/opt/bin").ok shouldBe false
         containing(mapOf("id" to 1))(null, listOf(mapOf("id" to 1), mapOf("id" to 2))).ok shouldBe true
         containing(mapOf("id" to 9))(null, listOf(mapOf("id" to 1), mapOf("id" to 2))).ok shouldBe false
     }
@@ -153,19 +153,19 @@ class StateDeltaTest : StringSpec({
     }
 
     "idempotentAfter(prefix) checks first segment of next" {
-        idempotentAfter("DES_BIN")("anything", "DES_BIN:/usr/bin").ok shouldBe true
-        idempotentAfter("DES_BIN")("anything", "/usr/bin:/opt/bin").ok shouldBe false
+        idempotentAfter("APP_BIN")("anything", "APP_BIN:/usr/bin").ok shouldBe true
+        idempotentAfter("APP_BIN")("anything", "/usr/bin:/opt/bin").ok shouldBe false
     }
 
     "legacyHealed(det, heal) implements the 4-case paper-trace" {
-        val legacy = "DES_BIN:SYSTEM_PATH_FALLBACK"
+        val legacy = "APP_BIN:SYSTEM_PATH_FALLBACK"
         val pred = legacyHealed(
             detector = { it == legacy },
-            healedCheck = { it is String && it != legacy && it.startsWith("DES_BIN:") },
+            healedCheck = { it is String && it != legacy && it.startsWith("APP_BIN:") },
         )
-        pred(legacy, "DES_BIN:/usr/bin").ok shouldBe true
+        pred(legacy, "APP_BIN:/usr/bin").ok shouldBe true
         pred(legacy, legacy).ok shouldBe false
-        pred("/usr/bin", "DES_BIN:/usr/bin").ok shouldBe false
+        pred("/usr/bin", "APP_BIN:/usr/bin").ok shouldBe false
     }
 
     "arrayPrepended(item) matches next == [item, ...old]" {
@@ -191,9 +191,9 @@ class StateDeltaTest : StringSpec({
                 shouldThrow<StateDeltaException> {
                     StateDelta.assert(
                         before = mapOf("PATH" to "/u", "HOME" to oldHome),
-                        after = mapOf("PATH" to "/des:/u", "HOME" to newHome),
+                        after = mapOf("PATH" to "/app:/u", "HOME" to newHome),
                         universe = setOf("PATH", "HOME"),
-                        expected = mapOf("PATH" to prependedWith("/des")),
+                        expected = mapOf("PATH" to prependedWith("/app")),
                     )
                 }
             }
@@ -203,9 +203,9 @@ class StateDeltaTest : StringSpec({
     "permits mutation only on slots with matching predicates" {
         StateDelta.assert(
             before = mapOf("PATH" to "/u", "HOME" to "/h"),
-            after = mapOf("PATH" to "/des:/u", "HOME" to "/h"),
+            after = mapOf("PATH" to "/app:/u", "HOME" to "/h"),
             universe = setOf("PATH", "HOME"),
-            expected = mapOf("PATH" to prependedWith("/des")),
+            expected = mapOf("PATH" to prependedWith("/app")),
         )
     }
 })

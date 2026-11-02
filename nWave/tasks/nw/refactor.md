@@ -3,6 +3,7 @@ description: "Applies the Refactoring Priority Premise (RPP) levels L1-L6 for sy
 argument-hint: "[target-class-or-module] - Optional: --level=[1-6] --method=[extract|inline|rename|move] --scope=[method|class|module]"
 ---
 
+
 # NW-REFACTOR: Systematic Code Refactoring
 
 **Wave**: CROSS_WAVE
@@ -21,8 +22,6 @@ Applies the Refactoring Priority Premise (RPP) — 6-level hierarchy L1 Readabil
 2. **Edits applied as one coherent batch** — all planned L1-L6 transformations in a single editing session, NO interleaved test runs.
 3. **Run the test suite exactly ONCE**, at the very end, after all L1-L6 edits.
 4. **If RED after the batch**: diagnose and fix the **production** code. Do NOT modify tests to make them pass. A test that must change means either (a) the refactor altered observable behavior — revert it — or (b) the test encoded an implementation detail — flag to the user before touching it. Tests changing during a refactor is a signal, not a step.
-
-**Legacy incremental variant** (opt-in only): the `nw-progressive-refactoring` skill documents the incremental L1→test→L2→test cycle — NOT the default; use only when explicitly requested. Anchor: `feedback_refactor_batch_when_test_suite_slow_2026_05_19` (the prior "only batch when suite slow" conditional is removed).
 
 ## Context Files Required
 
@@ -47,9 +46,6 @@ Execute \*refactor for {target-class-or-module}.
 - method: extract # extract/inline/rename/move
 - mikado_planning: false # Use Mikado Method for complex refactorings
 
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes. This gives the user real-time visibility into progress.
 
 ## Success Criteria
 
@@ -64,31 +60,7 @@ The invoked agent MUST create a task list from its workflow phases at the start 
 **Handoff To**: {invoking-agent-returns-to-workflow}
 **Deliverables**: Refactored codebase with quality improvements
 
-## Examples
-
-### Example 1: Module-level readability refactor
-```
-/nw-refactor src/auth/token_manager.py --level=2 --scope=module
-```
-Crafty applies RPP L1-L2: rename ambiguous variables|extract magic numbers into constants|remove dead code (L1), then simplify conditionals|extract long methods (L2).
-
-### Example 2: SOLID-level design refactor
-```
-/nw-refactor src/billing/ --level=6 --scope=module --mikado_planning=true
-```
-Crafty uses Mikado Method for multi-class refactoring, applies dependency inversion|interface segregation across billing module.
-
-### Example 3: RPP range sweep (L1-L3)
-```
-/nw-refactor src/des/domain/ --from=1 --to=3 --scope=module
-```
-Sweeps L1 readability|L2 complexity|L3 responsibility smells. Cascade governs planning order (analyze L1 before L2 before L3); edits applied as one batch; suite run once at the end.
-
-### Example 4: Targeted single-level refactor
-```
-/nw-refactor src/des/cli/verify.py --level=3 --scope=file
-```
-Targets L3 responsibility smells only (Large Class, Feature Envy, Shotgun Surgery). Assumes L1-L2 already clean.
+Worked examples: `~/.claude/skills/nw-refactor/SKILL.md` ## Examples (verbatim copy removed here, 2026-08-09 token-hot-path cut).
 
 ## Expected Outputs
 

@@ -13,7 +13,6 @@ so uninstall() can remove only nWave skills without touching user-created ones.
 """
 
 import json
-import os
 import re
 import shutil
 from collections import Counter
@@ -24,6 +23,10 @@ from scripts.install.plugins.base import (
     InstallContext,
     PluginResult,
 )
+from scripts.install.plugins.opencode_common import (
+    opencode_config_dir,
+    remove_manifest_owned_assets,
+)
 from scripts.shared.agent_catalog import load_public_agents
 from scripts.shared.platform_contracts import OPENCODE_SKILL_FORBIDDEN_FIELDS
 from scripts.shared.skill_distribution import (
@@ -31,6 +34,7 @@ from scripts.shared.skill_distribution import (
     enumerate_skills,
     filter_public_skills,
 )
+from scripts.shared.skill_path_rewrite import rewrite_host_paths
 
 
 _MANIFEST_FILENAME = ".nwave-manifest.json"
@@ -45,9 +49,7 @@ def _opencode_skills_dir() -> Path:
     Returns:
         Path to ~/.config/opencode/skills/
     """
-    override = os.environ.get("OPENCODE_CONFIG_DIR")
-    base = Path(override) if override else Path.home() / ".config" / "opencode"
-    return base / "skills"
+    return opencode_config_dir() / "skills"
 
 
 def _find_skills_source(context: InstallContext) -> Path | None:
@@ -249,6 +251,22 @@ class OpenCodeSkillsPlugin(InstallationPlugin):
             target_dir = _opencode_skills_dir()
             target_dir.mkdir(parents=True, exist_ok=True)
 
+            # Clean-then-write: drop what the PREVIOUS manifest says we own,
+            # so a dev install's private skills cannot survive into a public
+            # one. Ownership is the manifest, never the nw- prefix, so a
+            # user-created or foreign skill directory is left untouched.
+            stale = remove_manifest_owned_assets(
+                target_dir,
+                _MANIFEST_FILENAME,
+                None,
+                manifest_key="installed_skills",
+            )
+            if stale:
+                context.logger.info(
+                    f"  \U0001f5d1\ufe0f Removed {len(stale)} previously installed "
+                    "OpenCode skill(s) before rewrite"
+                )
+
             public_agents = (
                 set()
                 if context.dev_mode
@@ -263,8 +281,19 @@ class OpenCodeSkillsPlugin(InstallationPlugin):
                 build_ownership_map(agents_dir) if agents_dir.exists() else {}
             )
 
+            # User-invocable command skills (e.g. the wave skills) are public
+            # even without an owning agent; the Claude and Codex call sites
+            # resolve them the same way.
+            from scripts.shared.agent_catalog import detect_command_skills
+
+            command_skills = (
+                set() if context.dev_mode else detect_command_skills(skills_source)
+            )
+
             entries = enumerate_skills(skills_source)
-            entries = filter_public_skills(entries, public_agents, ownership_map)
+            entries = filter_public_skills(
+                entries, public_agents, ownership_map, command_skills
+            )
 
             duplicate_names = _detect_duplicate_names(entries)
 
@@ -300,6 +329,7 @@ class OpenCodeSkillsPlugin(InstallationPlugin):
                 content = _strip_forbidden_fields(content)
                 if resolved_name != entry.name:
                     content = _rewrite_frontmatter_name(content, resolved_name)
+                content = rewrite_host_paths(content, "opencode")
                 target_file.write_text(content, encoding="utf-8")
 
                 installed_names.append(resolved_name)

@@ -1,8 +1,16 @@
 # Installation Guide
 
-Install nWave to your global Claude Code configuration. This adds 23 specialized agents (12 primary + 11 reviewers) and 22 slash commands across all your projects.
+Install the published **`nwave-ai` package**, then run its installer for
+your host. Choose the host explicitly (`claude-code`, `opencode`, `codex`,
+`cursor`, `copilot`, `omp`, `devin`), then enable nWave in the project where
+you intend to work. Installation writes host-wide files (for example
+`~/.claude/` for Claude Code, `~/.codex/` for Codex, `~/.cursor/` for
+Cursor); it does **not** opt every project in.
 
-## v2.8.0 Breaking Change: Command Format
+A local-clone route remains available for source development; see
+[Install from a source checkout](#install-from-a-source-checkout) below.
+
+## Historical: v2.8.0 command-format change
 
 Starting with v2.8.0, all nWave commands use hyphens instead of colons:
 
@@ -11,610 +19,649 @@ Starting with v2.8.0, all nWave commands use hyphens instead of colons:
 
 If you upgrade from an earlier version, run the installer again to clean up old `/nw:` commands. No data loss — only the command format changes.
 
-## Choose Your Method
+## Install the package
 
-| Scenario | Use | Why |
-|----------|-----|-----|
-| First time | **CLI** | Full-featured, recommended |
-| Team rollout | **CLI** | Same command format everywhere |
-| Contributing | **CLI** | Dev scripts, internals access |
+**Requirements:** Python 3.11 or newer, Git, and a supported coding host.
+Install the coding host separately:
+[Claude Code](https://claude.com/product/claude-code),
+[Codex CLI](https://developers.openai.com/codex/cli),
+[Cursor](https://cursor.com/), or another supported host. On Windows, use
+WSL.
 
-> **Why not Plugin?** The plugin marketplace install is currently missing DES enforcement, attribution hooks, and rigor profiles. It also uses a different command format (`/nw:deliver` vs `/nw-deliver`) due to Claude Code's plugin namespace system. We recommend CLI install for the full nWave experience. See [issue #31](https://github.com/nWave-ai/nWave/issues/31) for details.
-
-Running a different editor or CLI? This guide also covers **OpenCode** and the **Codex CLI** further down, plus the plugin marketplace.
-
-## CLI Installer (Recommended)
-
-### Prerequisites
-
-- **Python 3.10+**
-- **Claude Code** installed
-- **[uv](https://docs.astral.sh/uv/)** (recommended) or **[pipx](https://pipx.pypa.io/)** (supported, not recommended)
-
-If you need uv:
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-See [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/) for other platforms.
-
-If you prefer pipx (supported fallback):
-```bash
-pip install pipx
-pipx ensurepath
-```
-
-### One-line install
-
-```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
-```
-
-This bootstrap script picks a Python application installer, installs the
-`nwave-ai` CLI with it, then runs `nwave-ai install` (and `nwave-ai doctor`) for
-you. **uv is preferred**; **pipx is supported but not recommended**.
-
-> **Use `sh -c "$(curl ...)"`, not `curl ... | sh`.** The `sh -c` form keeps your
-> terminal on stdin so the script can prompt you. With `curl | sh`, stdin is the
-> script itself and the confirmation prompt cannot work.
-
-When it finishes, close and reopen Claude Code — the nWave agents and slash commands will appear in your command palette.
-
-> **Windows users**: Use WSL (Windows Subsystem for Linux). Install with: `wsl --install`
-
-### How the installer picks a tool
-
-By default (`--tool auto`) the script chooses without asking when it safely can,
-and only prompts when a non-recommended fallback is the sole option:
-
-| Situation | What happens |
-|-----------|--------------|
-| `uv` is installed | Use `uv` (no prompt). |
-| Only `pipx` is installed, **interactive** terminal | Warn that uv is recommended and ask to continue. **Yes** → use pipx. **No** → print uv install instructions and stop (exit 1). |
-| Only `pipx` is installed, **non-interactive** (no TTY, e.g. CI) | Stop (exit 1) and print the three fixes: install uv, re-run with `--tool pipx`, or re-run with `--yes`. Bypass by passing `--yes` / `NWAVE_ASSUME_YES=1` (use pipx) or `--tool pipx` (explicit consent). |
-| Neither is installed | Error (exit 1) with install instructions for uv (preferred) and pipx. |
-
-Forcing a tool with `--tool uv` or `--tool pipx` skips the recommendation prompt
-entirely. If the forced tool isn't installed, the script fails with that tool's
-install instructions.
-
-### Command-line flags
-
-| Flag | Description |
-|------|-------------|
-| `-t`, `--tool <auto\|uv\|pipx>` | Installer to use. Default `auto` (uv preferred). Explicit `uv`/`pipx` is treated as consent and skips the prompt. |
-| `-y`, `--yes` | Accept the pipx fallback without prompting. Useful for CI / non-interactive shells. |
-| `-h`, `--help` | Print usage and exit. |
-
-### Environment variables
-
-Environment variables are the equivalent of the flags; a flag on the command
-line overrides the matching variable.
-
-| Variable | Equivalent | Effect |
-|----------|-----------|--------|
-| `NWAVE_INSTALLER_TOOL` | `--tool` | `auto` (default), `uv`, or `pipx`. |
-| `NWAVE_ASSUME_YES` | `--yes` | Set to `1` (or `true`/`yes`) to accept the pipx fallback. |
-| `NO_COLOR` | — | Set to any value to disable colored output. |
-
-### Passing options through the one-liner
-
-With the `sh -c "$(curl ...)"` form, put script options after a `--` separator:
-
-```bash
-# Force pipx even if uv is present (explicit consent — no prompt)
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)" -- --tool pipx
-
-# Accept the pipx fallback without prompting (CI / non-interactive)
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)" -- --yes
-```
-
-The environment-variable form works too and needs no separator:
-
-```bash
-NWAVE_INSTALLER_TOOL=pipx NWAVE_ASSUME_YES=1 \
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/nWave-ai/nWave/main/scripts/install/install.sh)"
-```
-
-### Exit codes
-
-| Code | Meaning |
-|------|---------|
-| `0` | nWave installed and `nwave-ai doctor` reported no problems. Also returned when the `nwave-ai` CLI was installed but isn't on `PATH` yet — in that case `nwave-ai install` is deferred and you must run it manually after refreshing PATH (see "`nwave-ai` not found after install" below). |
-| `1` | The installer could not proceed (neither tool present, a forced tool missing, pipx-only in a non-interactive shell without `--yes`, or you declined the pipx fallback) **or** installation finished but `nwave-ai doctor` reported a problem. |
-| `2` | Usage error: unknown option, or a missing/invalid `--tool` value. |
-
-After the package installs successfully, the script's exit code is the exit code
-of `nwave-ai doctor` — so a non-zero result signals a genuine problem with the
-installation, not a transient warning (doctor reports non-blocking warnings as a
-passing check).
-
-### Manual installation (step by step)
-
-Prefer to run each step yourself instead of the bootstrap script? Pick a tool,
-install the CLI, then install nWave into Claude Code.
-
-**1. Install the `nwave-ai` CLI** with your preferred tool:
+Install the CLI with the package manager you prefer:
 
 ```bash
 uv tool install nwave-ai     # recommended
-pipx install nwave-ai        # supported
-pip install nwave-ai         # plain pip
+# or, as a fallback:
+pipx install nwave-ai
 ```
 
-Don't have pipx? Install it with `pip install pipx && pipx ensurepath`.
-
-**2. Install nWave into Claude Code:**
+Then install into your host. Preview first with `--dry-run`:
 
 ```bash
-nwave-ai install
+nwave-ai install --platform claude-code --dry-run   # preview
+nwave-ai install --platform claude-code             # install
+# OR, for Codex CLI:
+nwave-ai install --platform codex
 ```
 
-**3. Verify, then restart Claude Code:**
+`--platform` accepts exactly `auto`, `claude-code`, `opencode`, `codex`,
+`cursor`, `copilot`, `omp`, `devin`, `all`. Omitting `--platform` asks the
+installer to auto-detect hosts; if none are detected, it refuses rather than
+guessing. For scripted installation, `--yes` does not enable any project.
+Installation does not ask for or write a density preference.
+
+Restart the host after installation, then confirm the delivery command:
+
+```bash
+nwdes --help
+```
+
+Before an upgrade you can create a recovery point with
+`nwave-ai install --backup-only`, which snapshots the Claude Code and Codex
+installations. `nwave-ai install --restore` currently restores only the
+Claude Code backup (on a Codex-only install it finds nothing to restore);
+no backup or restore exists for OpenCode, Cursor, Copilot, OMP or Devin.
+See [Migrate from nWave 3.x](../migrating-from-3x.md).
+
+## Install from a source checkout
+
+Use this route only for source development. **Requirements:** Python 3.11+,
+Git, and [uv](https://docs.astral.sh/uv/) (recommended), or Python's `venv`
+and `pip`.
+
+```bash
+git clone https://github.com/nWave-ai/nWave.git nWave
+cd nWave
+uv sync
+```
+
+The explicit `nWave` directory name keeps the paths below consistent.
+Alternatively, in the checkout, use a local virtual environment instead of `uv sync`:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+```
+
+Run **one** of these from the checkout, using the host you actually use:
+
+```bash
+uv run python -m nwave_ai.cli install --platform claude-code
+# OR, for Codex CLI:
+uv run python -m nwave_ai.cli install --platform codex
+```
+
+If you used `venv`/`pip`, replace `uv run python` with `.venv/bin/python`.
+For scripted installation, `--yes` does not enable any project.
+
+For source development, select development mode explicitly:
+
+```bash
+uv run python -m nwave_ai.cli install --dev --platform claude-code
+```
+
+Use `--platform codex` for Codex, or replace `uv run python` with
+`.venv/bin/python` for the `venv`/`pip` route. Keep the checkout and repeat
+`--dev` when reinstalling. Do not replace source or development installs with
+a public-package upgrade; package replacement is refused for recorded
+development mode.
+
+An applied `--dev` installation activates `nwdes` and `nwave-ai` in
+`~/.local/bin` for this checkout's installed runtime. Keep `~/.local/bin` on
+your `PATH`; no manual relinking is needed. If the commands already run that
+runtime, installation reports each as `unchanged` and leaves the launchers alone.
+Otherwise, it reports each successfully selected launcher as `activated`.
+For clean isolated installs or tests, put the launcher directory for the same
+`HOME` used for installation on `PATH`, without borrowing operator launchers.
+Commands already active for the selected runtime elsewhere on `PATH` remain
+`unchanged`.
+
+Activation and final verification fail loudly if either command cannot run the
+checkout's runtime, including an earlier `PATH` entry shadowing it or a runtime
+installed editable from another checkout. Follow the reported WHAT/WHY/HOW
+remedy and rerun the installation. A regular file at an owned launcher path is
+never overwritten: move it aside first. Previewing with `--dry-run` does not
+activate launchers. Selection covers only `nwdes` and `nwave-ai`, and a later generation
+installation can replace the stable links without changing the dev runtime.
+
+### Verify the installed host
+
+For **Claude Code**:
 
 ```bash
 nwave-ai doctor
 ```
 
-Close and reopen Claude Code — the nWave agents and slash commands appear in your command palette.
+Doctor checks the Claude installation, including its hooks and files; if it
+reports a failing check, address that check and rerun the install and doctor.
+Quit and reopen Claude Code after every install or reinstall so it loads the
+new agents, skills, and commands.
 
-### `nwave-ai` not found after install
+For a **Codex-only** install, use the installer's final validation of Codex
+agents and shared skills, then reopen Codex. Claude-specific doctor failures
+do not diagnose a Codex-only install.
 
-If installation succeeds but the `nwave-ai` command isn't found, your tool's bin
-directory (usually `~/.local/bin`) isn't on `PATH` yet:
+For **Cursor-only**, **Copilot**, **OMP**, and **Devin** installs, use each
+installer's final validation and the per-host guides:
+[Cursor](../installing-cursor.md), [OMP](../installing-omp.md),
+[Devin](../installing-devin.md), and the
+[vendor support matrix](../vendor-support.md) for what each host receives.
+On hosts other than Claude Code, doctor may report missing Claude assets on a
+host-only install; that is not a defect of that install.
 
-```bash
-uv tool update-shell     # if you installed with uv
-pipx ensurepath          # if you installed with pipx
-```
+## Per-host guides
 
-Open a new shell, then finish with `nwave-ai install`.
+- **Codex CLI** — agents and skills; the host drives nwdes and runs the
+  declared verification commands; installation is not evidence that a
+  delivery has passed. Explicit installation:
+  `nwave-ai install --platform codex`. Details:
+  **[Installing for Codex CLI](../installing-codex.md)**.
+- **Cursor** — integration via global user hooks in `~/.cursor/hooks.json`;
+  the wiring applies across all Cursor projects on the machine. Explicit
+  installation: `nwave-ai install --platform cursor`. Details:
+  **[Installing for Cursor](../installing-cursor.md)**.
+- **OpenCode** — install OpenCode itself first, then
+  `nwave-ai install --platform opencode`. The installer writes OpenCode-native
+  skills, agents and commands.
+- **OMP, Devin** — see **[Installing for OMP](../installing-omp.md)** and
+  **[Installing for Devin CLI](../installing-devin.md)**.
 
-### `nwave-ai install` options
+### Activate your project and start
 
-These flags belong to the `nwave-ai` CLI (run after the package is installed),
-not to the bootstrap script above:
-
-| Command | Purpose |
-|---------|---------|
-| `nwave-ai install --dry-run` | Preview changes without installing |
-| `nwave-ai install --backup-only` | Backup without installing |
-| `nwave-ai install --restore` | Restore from recent backup |
-| `nwave-ai version` | Show installed version |
-
-## Installing for OpenCode
-
-nWave also works with [OpenCode](https://github.com/opencode-dev/opencode), an open-source IDE for AI pair programming. Installation needs a few extra steps to configure OpenCode's environment.
-
-**1. Install prerequisites:**
-```bash
-npm install -g opencode-ai
-uv tool install nwave-ai        # or: pipx install nwave-ai
-```
-
-**2. Configure OpenCode:**
-```bash
-mkdir -p ~/.config/opencode
-echo '{"model": "openai/gpt-4o-mini"}' > ~/.config/opencode/opencode.json
-```
-
-**3. Set your OpenAI API key:**
-```bash
-export OPENAI_API_KEY=your-key-here
-```
-
-**4. Install nWave into OpenCode:**
-```bash
-nwave-ai install
-```
-
-**Compatibility notes:**
-- About 67% of nWave features work natively on OpenCode via compatibility paths.
-- DES hooks integrate via OpenCode's `tool.execute.before` mechanism.
-- Some advanced subagent coordination may differ from Claude Code. Use the core `/nw-discuss`, `/nw-design`, `/nw-distill`, `/nw-deliver` commands for best results.
-- For full feature parity and support, Claude Code remains the primary environment.
-
-## Installing for Codex CLI
-
-nWave integrates with the [OpenAI Codex CLI](https://platform.openai.com/docs/guides/codex) via pre-tool-use hooks. Once installed, every Bash and file-edit action fires nWave's DES validation — the same enforcement that runs on Claude Code.
-
-**Prerequisites:**
-- OpenAI Codex CLI installed (`codex` binary on `PATH`) or a `~/.codex/` directory present
-- Python 3.10+
-
-**Auto-detect installation (recommended):**
-```bash
-uv tool install nwave-ai    # or, as a fallback: pipx install nwave-ai
-nwave-ai install            # auto-detects Codex + installs hooks
-```
-
-**Explicit Codex installation:**
-```bash
-nwave-ai install --platform codex
-```
-
-**What gets written:** nWave creates `~/.codex/hooks.json` with an event-keyed structure:
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "^Bash$|^apply_patch$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python -m des.adapters.drivers.hooks.claude_code_hook_adapter pre-tool-use"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-**Verify installation succeeded:**
-```bash
-cat ~/.codex/hooks.json | jq '.hooks.PreToolUse | length'
-# Expected output: 1 (or higher if you have other hook entries)
-```
-
-**Troubleshooting:**
-
-- **"Codex not detected"** — Check `which codex` and `ls ~/.codex/`. To force install before the Codex binary exists, use `--platform codex`. You'll need to install Codex separately before hooks will fire.
-- **"Hook fires but audit log empty"** — Verify `~/.claude/des-audit.jsonl` is writable and `~/.claude/lib/python/des/` exists. Run a Codex action and check the log: `tail -5 ~/.claude/des-audit.jsonl | jq .`
-- **"Codex says hook not loaded"** — Ensure `hooks.json` uses the event-keyed format above (not a legacy top-level array). Reinstall with `nwave-ai install --platform codex --force` if in doubt.
-
-For detailed setup and workflow, see **[Installing for Codex CLI](../installing-codex.md)**.
-
-## Plugin (Beta Preview — Not Feature-Complete)
-
-> **Warning**: The plugin install is missing DES enforcement, attribution hooks, rigor profiles, and uses a different command format (`/nw:deliver` instead of `/nw-deliver`). Use CLI install above for the full experience.
-
-The plugin method installs nWave directly from the Claude Code marketplace. No Python or pipx required.
-
-From Claude Code, run:
-
-```
-/plugin marketplace add nwave-ai/nwave
-/plugin install nw@nwave-marketplace
-```
-
-Restart Claude Code and type `/nw-` to see all available commands.
-
-> **The plugin method is in beta preview and NOT feature-complete.** It provides agents and skills but NOT DES enforcement, attribution, or rigor profiles. Commands use `/nw:deliver` format (not `/nw-deliver`). For the full experience, use the CLI method above.
-
-## What Gets Installed
-
-Both methods install the same components to your `~/.claude/` directory:
-
-```
-~/.claude/
-├── agents/nw/                 # 23 agents (12 primary + 11 reviewers)
-├── commands/nw/               # 22 slash commands
-├── templates/                 # Wave and DES templates
-├── skills/nw-*/               # 197 agent skill files (flat layout)
-├── scripts/                   # DES utilities
-├── lib/python/des/            # DES runtime imported by hooks
-└── settings.json              # DES hooks (5 events: PreToolUse, SessionStart, SubagentStart, SubagentStop, PostToolUse)
-```
-
-All agents and commands become available globally across all Claude Code projects.
-
-## DES Hooks
-
-Both methods register DES (Deterministic Execution System) hooks in your Claude Code settings:
-
-- Pre-task validation
-- Post-tool-use monitoring
-- Subagent timeout tracking
-- Audit logging
-
-Configure globally in `~/.claude/settings.json` or per-project via `.nwave/des-config.json`.
-
-## Activating nWave in a Project
-
-nWave hooks install globally but are **opt-in per project by default**. In an inactive project, hooks silently exit 0 — you cannot tell nWave is installed. To turn nWave on for the current project:
+In the project where you want nWave active:
 
 ```bash
+cd /path/to/your/project
 nwave-ai project enable
-```
-
-To check the activation state:
-
-```bash
 nwave-ai status
 ```
 
-Commit `.nwave/local-config.json` so teammates inherit the same nWave state. For the full mental model and resolution policy, see **[Activating nWave in a Project](../activating-nwave-per-project.md)**.
+`status` should say `This project is active.` The enable command writes
+`.nwave/config.json` with `"enabled": true` and repairs `.gitignore` to keep
+that config trackable (Git does not commit it automatically). An interactive
+enable also offers beta guidance in `CLAUDE.md` and `AGENTS.md`; in a
+non-interactive shell it skips that optional guidance. Run
+`nwave-ai project enable --yes` if you want to add it without prompts. Commit
+the configuration and ignore-rule changes **if your team should inherit
+activation**; if you want to undo it instead, run `nwave-ai project disable`
+and check `nwave-ai status` again. See the
+[per-project activation guide](../activating-nwave-per-project.md) for
+precedence and recovery.
 
----
+`status` is read-only and also reports the running CLI version, settings,
+and detected host assets. The default activation mode is opt-in.
 
-## Commit Attribution
+Restart the selected host and open it in the enabled project. In Claude Code,
+try `/nw-buddy What should I do next?`; in Codex, invoke `$nw-buddy` and ask
+the same question. These are host commands/skills, **not** shell commands.
+Then describe the user, input, and expected result of your first request.
+Existing projects can continue their current work without repeating onboarding.
 
-Installation enables commit attribution **by default**. It adds a dual
-`Co-Authored-By` trailer (Claude + nWave) to commits Claude makes, by writing a
-managed string to the `attribution.commit` key in `~/.claude/settings.json`:
+### If something goes wrong
 
-```jsonc
-"attribution": {
-  "commit": "🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nCo-Authored-By: nWave <nwave@nwave.ai>",
-  "pr": "…"
-}
-```
+- **`nwave-ai: command not found`:** the CLI is not on your `PATH`. With a
+  package install, check `uv tool list` / `pipx list` and the bin directory
+  they report; with a source checkout, call
+  `/absolute/path/to/nWave/.venv/bin/nwave-ai` directly.
+- **No coding host detected:** retry with the explicit `--platform` value
+  for your host.
+- **Doctor fails:** read the failing check; `doctor --fix` is not implemented.
+  For Claude, rerun `install --platform claude-code` and `doctor`, then
+  restart Claude Code. Other hosts are checked with their installer
+  validation, not Claude-only doctor checks.
+- **`status` still says inactive:** run `nwave-ai project enable` from the
+  intended project directory, inspect `.nwave/config.json` for a boolean
+  `"enabled": true`, and rerun `status`. If enable reports a publication or
+  verification error, repair the `.nwave/` directory or resolve concurrent
+  edits to `.nwave/config.json` and retry. `project disable` writes an explicit
+  `false`; it does not remove the file.
 
-Toggle it with the CLI (`nwave-ai` must be on your PATH — see
-[`nwave-ai` not found](#nwave-ai-not-found-after-install); from a source
-checkout use `uv run nwave-ai …` instead):
+## Historical package recovery (not the current installation path)
+
+The following procedure documents an older experimental package identity. It
+requires a **verified corrected release receipt**. Do not use its
+remote-source, package-manager, or migration commands to install nWave; use
+the package installation above. It is retained only for owners of that exact
+predecessor with an independently verified release receipt.
+
+## Recover a previous experimental package identity (archive)
+
+The prior experimental package was published as `nwave`
+`4.0.0+atddpure.2d5a26a`, while its module and command were named `nwave_ai`
+and `nwave-ai`. A corrected release uses the canonical distribution
+`nwave-ai`. This procedure is for that specific predecessor only.
+
+Wait for the corrected release receipt. Set `CORRECTED_REF` to the exact commit
+recorded there; do not substitute an unverified branch or commit.
 
 ```bash
-nwave-ai attribution status   # show current state
-nwave-ai attribution off      # remove the nWave credit (deletes the attribution key)
-nwave-ai attribution on       # re-enable it
+CORRECTED_REF='<exact corrected commit from the release receipt>'
+EXPECTED_VERSION='<exact corrected version from the release receipt>'
+CORRECTED_SOURCE="git+https://github.com/nWave-ai/nWave-experimental.git@${CORRECTED_REF}"
+ROOT='/absolute/path/to/the/project-to-migrate'
 ```
 
-> **⚠️ Changes apply to new sessions only.** Claude Code reads `attribution.commit`
-> when a session **starts**, not per commit. After toggling, **restart Claude** for
-> it to take effect — and do **not** `/resume` a conversation created before the
-> change, because a resumed session replays its original setting and will keep
-> using the old value. A commit reflects the current setting only if it comes from
-> a session created *after* the change.
+Before changing packages, select exactly one owner. Inspect `uv tool list
+--show-paths`, `pipx list --json`, and the affected virtual environment when it
+is known. Use the uv branch only when uv reports the affected app; use the pipx
+branch only when pipx reports it; use the same-venv branch only when the probe
+is run with that exact affected interpreter. If more than one record can own the
+installation, or none can, stop without changing packages.
 
-`attribution off` removes only nWave's credit. Claude Code's **own**
-co-authorship line (`🤖 Generated with Claude Code` + `Co-Authored-By: Claude`) is
-controlled separately by Claude Code's `includeCoAuthoredBy` setting, which nWave
-does not change. Set `"includeCoAuthoredBy": false` in `~/.claude/settings.json`
-to suppress that as well.
+For the selected uv or pipx predecessor, set `PREDECESSOR_TOOL` to the exact
+tool-environment key that its manager record reports: `nwave-ai` for canonical
+v3 or `nwave` for the verified obsolete predecessor. Bind only its interpreter
+before the initial probe:
 
-Attribution is **global** (it lives in `~/.claude/` and `~/.nwave/`); there is no
-per-project opt-out.
+```bash
+# uv
+PREDECESSOR_TOOL='<exact key from uv tool list --show-paths>'
+UV_TOOL_ROOT="$(uv tool dir)"
+PREDECESSOR_PYTHON="$UV_TOOL_ROOT/$PREDECESSOR_TOOL/bin/python"
+test -x "$PREDECESSOR_PYTHON" || exit 1
+```
 
-## Per-Project Configuration
+```bash
+# pipx
+PREDECESSOR_TOOL='<exact key from pipx list --json>'
+PIPX_VENVS="$(pipx environment --value PIPX_LOCAL_VENVS)"
+PREDECESSOR_PYTHON="$PIPX_VENVS/$PREDECESSOR_TOOL/bin/python"
+test -x "$PREDECESSOR_PYTHON" || exit 1
+```
 
-To customize DES behavior for a specific project, create `.nwave/des-config.json` in your project directory:
+Run the initial probe with `PREDECESSOR_PYTHON`. It must report that exact
+predecessor identity before an obsolete owner can be removed.
 
-```json
-{
-  "audit_log_enabled": true,
-  "audit_log_path": ".nwave/audit.log",
-  "validation_enabled": true,
-  "tool_monitoring_enabled": true,
-  "max_execution_time": 3600,
-  "subagent_timeout": 300
+After the corrected install, bind the canonical manager launch paths. For uv:
+
+```bash
+UV_TOOL_ROOT="$(uv tool dir)"
+UV_BIN_DIR="$(uv tool dir --bin)"
+MANAGER_PYTHON="$UV_TOOL_ROOT/nwave-ai/bin/python"
+MANAGER_NWAVE_AI_CONSOLE="$UV_BIN_DIR/nwave-ai"
+MANAGER_NWDES_CONSOLE="$UV_BIN_DIR/nwdes"
+test -x "$MANAGER_PYTHON" -a -x "$MANAGER_NWAVE_AI_CONSOLE" -a -x "$MANAGER_NWDES_CONSOLE" || exit 1
+```
+
+For pipx, bind all canonical paths from its post-install records:
+
+```bash
+PIPX_RECORD="$(mktemp)"
+pipx list --json > "$PIPX_RECORD"
+PIPX_VENVS="$(pipx environment --value PIPX_LOCAL_VENVS)"
+MANAGER_PYTHON="$PIPX_VENVS/nwave-ai/bin/python"
+manager_app() {
+  python3 -c 'import json,sys; v=json.load(open(sys.argv[1]))["venvs"]["nwave-ai"]["metadata"]["main_package"]["app_paths"]; out=[]; walk=lambda x: out.extend([x]) if isinstance(x,str) else [walk(y) for y in (x.values() if isinstance(x,dict) else x if isinstance(x,list) else [])]; walk(v); print(next(p for p in out if p.rsplit("/",1)[-1] == sys.argv[2]))' "$PIPX_RECORD" "$1"
 }
+MANAGER_NWAVE_AI_CONSOLE="$(manager_app nwave-ai)"
+MANAGER_NWDES_CONSOLE="$(manager_app nwdes)"
+test -x "$MANAGER_PYTHON" -a -x "$MANAGER_NWAVE_AI_CONSOLE" -a -x "$MANAGER_NWDES_CONSOLE" || exit 1
 ```
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `audit_log_enabled` | `true` | Enable DES execution audit trail for debugging |
-| `audit_log_path` | `".nwave/audit.log"` | Where to write audit records |
-| `validation_enabled` | `true` | Enforce TDD phase sequence; set `false` to disable DES checks |
-| `tool_monitoring_enabled` | `true` | Monitor Task invocations for unbounded loops |
-| `max_execution_time` | `3600` | Kill subagent after this many seconds (default: 1 hour) |
-| `subagent_timeout` | `300` | Kill unresponsive subagent after this many seconds (default: 5 min) |
+If any binding is absent, stop.
+The manager-bin application paths are launch paths; the sibling paths reported
+by the probe are identity evidence in the manager environment and need not be
+the same filesystem paths.
 
-Settings here override global defaults for that project only.
+Define this probe once. Its argument is the interpreter whose package and
+console ownership it observes:
+
+```bash
+probe() {
+"$1" -I - <<'PY'
+import importlib.metadata as m, importlib.util, json, os, pathlib, sys
+bin_dir = pathlib.Path(sys.executable).parent
+apps = {name: bin_dir / (name + '.exe' if os.name == 'nt' else name) for name in ('nwave-ai', 'nwdes')}
+distributions = {d.metadata['Name'].lower(): d.version for d in m.distributions()
+                 if d.metadata.get('Name', '').lower() in {'nwave', 'nwave-ai'}}
+owners = sorted(m.packages_distributions().get('nwave_ai', []))
+entry_points = {name: sorted(d.metadata['Name'] for d in m.distributions() for e in d.entry_points
+                             if e.group == 'console_scripts' and e.name == name)
+                for name in apps}
+spec = importlib.util.find_spec('nwave_ai')
+print(json.dumps({'python': sys.executable, 'distributions': distributions,
+                  'module_owners': owners, 'entry_point_owners': entry_points,
+                  'applications': {name: {'path': str(path), 'executable': path.is_file() and os.access(path, os.X_OK)} for name, path in apps.items()},
+                  'module_path': None if spec is None else spec.origin}, sort_keys=True))
+PY
+}
+probe "$PREDECESSOR_PYTHON"
+```
+
+Continue only when the probe shows one canonical `nwave-ai` owner, the verified
+obsolete `nwave` `4.0.0+atddpure.2d5a26a` owner, or the explicit same-venv pair
+of those two owners. If it shows an unknown `nwave`, a third owner, or paths
+outside the selected manager environment, stop without changing packages.
+
+### uv or pipx: previous experimental `nwave` only
+
+Remove the obsolete distribution before installing the canonical replacement:
+it shares files with the corrected package. Run the block for the one manager
+selected above.
+
+```bash
+# uv
+uv tool uninstall nwave
+uv tool install "${CORRECTED_SOURCE}"
+```
+
+```bash
+# pipx
+pipx uninstall nwave
+pipx install "${CORRECTED_SOURCE}"
+```
+
+After the manager reports the new `nwave-ai` environment, resolve
+`MANAGER_PYTHON`, `MANAGER_NWAVE_AI_CONSOLE`, and `MANAGER_NWDES_CONSOLE` again
+from the selected manager record, then run `probe "$MANAGER_PYTHON"`. It must
+show only `nwave-ai` as the module and both console-entry-point owner; both
+manager launch paths and both probe sibling paths must be executable. Then
+finish the deployed runtime and project migration:
+
+```bash
+probe "$MANAGER_PYTHON"
+test "$("$MANAGER_PYTHON" -I -c 'import importlib.metadata as m; print(m.version("nwave-ai"))')" = "$EXPECTED_VERSION" || exit 1
+test "$("$MANAGER_NWAVE_AI_CONSOLE" --version)" = "nwave-ai $EXPECTED_VERSION" || exit 1
+"$MANAGER_NWAVE_AI_CONSOLE" --version
+"$MANAGER_NWAVE_AI_CONSOLE" install --yes
+"$MANAGER_NWAVE_AI_CONSOLE" doctor --json
+```
+
+### Same virtual environment containing both `nwave-ai` and obsolete `nwave`
+
+Assign the exact interpreter from the initial mixed-state probe, then remove `nwave` first and
+force-reinstall canonical `nwave-ai` so shared files are restored:
+
+```bash
+AFFECTED_PYTHON='<exact python field from the mixed-state probe>'
+test -x "$AFFECTED_PYTHON" || exit 1
+"$AFFECTED_PYTHON" -m pip uninstall -y nwave
+"$AFFECTED_PYTHON" -m pip install --upgrade --force-reinstall "nwave-ai @ ${CORRECTED_SOURCE}"
+```
+
+Run `probe "$AFFECTED_PYTHON"`, then bind its exact sibling paths:
+
+```bash
+probe "$AFFECTED_PYTHON"
+MANAGER_PYTHON="$AFFECTED_PYTHON"
+MANAGER_NWAVE_AI_CONSOLE="$(dirname "$AFFECTED_PYTHON")/nwave-ai"
+MANAGER_NWDES_CONSOLE="$(dirname "$AFFECTED_PYTHON")/nwdes"
+test -x "$MANAGER_NWAVE_AI_CONSOLE" -a -x "$MANAGER_NWDES_CONSOLE" || exit 1
+test "$("$MANAGER_PYTHON" -I -c 'import importlib.metadata as m; print(m.version("nwave-ai"))')" = "$EXPECTED_VERSION" || exit 1
+test "$("$MANAGER_NWAVE_AI_CONSOLE" --version)" = "nwave-ai $EXPECTED_VERSION" || exit 1
+```
+
+Run the same `install` and `doctor` commands above only after the
+probe shows exactly one `nwave-ai` owner.
+
+### Canonical `nwave-ai` only
+
+For a canonical installation, reinstall through the manager that owns it, then
+repeat the post-install probe and the absolute executable commands above:
+run one manager block only.
+
+```bash
+# uv
+uv tool install --reinstall "${CORRECTED_SOURCE}"
+```
+
+```bash
+# pipx
+pipx install --force "${CORRECTED_SOURCE}"
+```
+
+The recovery order is package replacement, identity proof, runtime install,
+then doctor. It preserves the existing refusal for ambiguous metadata; it does
+not select a preferred owner automatically. Follow the migration guide for the
+separate project compatibility decision.
+
+### Historical PATH recovery (package-managed installations only)
+
+For a verified older `uv tool` or `pipx` installation, `uv tool update-shell`
+or `pipx ensurepath` can refresh the manager's bin directory. This does not
+install from a source checkout; for a local checkout, activate its `.venv`
+instead.
+
+## CLI install options
+
+Run `nwave-ai install --help` to see the installed script's options (from a
+source checkout: `uv run python -m nwave_ai.cli install --help`).
+`--platform` selects a host; `--dry-run` previews without installing;
+`--backup-only` snapshots the Claude Code and Codex installations;
+`--restore` restores the prior Claude Code backup (a Codex-only `--restore`
+currently finds nothing to restore).
+
+## Historical plugin marketplace route (unavailable)
+
+Earlier documentation described a Claude Code marketplace plugin with a
+different `/nw:` command namespace. That route is not the current
+installation. Use the CLI steps above rather than attempting a plugin
+marketplace install.
+
+## What Gets Installed
+
+The Claude target installs agents, commands, skills and templates under
+`~/.claude/` (or the selected Claude config directory). Those assets become
+visible after a restart. Other targets install their native host assets; see
+the [vendor support matrix](../vendor-support.md) for the per-host list.
+
+Delivery uses nwdes. The host invokes role prompts, and runs the declared
+verification commands. The builder does not enforce a workflow or maintain a
+completion ledger.
+
+## Configuration
+
+### Commit attribution
+
+Use `nwave-ai attribution status` to inspect the effective preference and
+its source; `nwave-ai attribution on` or `off` changes the machine preference.
+Project configuration can override it. Credit is added only for active
+repositories with a supported commit hook; nWave's preference does not
+control the host's own co-authorship settings.
+
+### Per-project settings
+
+Set the supported project overrides with the CLI:
+
+```bash
+nwave-ai project set verbosity terse
+nwave-ai project set attribution off
+nwave-ai project set enabled true
+nwave-ai status
+```
+
+`verbosity` accepts `terse`, `standard`, or `verbose`; `attribution` accepts
+`on` or `off`; `enabled` accepts `true` or `false`. These commands write
+`.nwave/config.json`, as do `project enable` and `project disable`. The
+legacy `.nwave/local-config.json` is not what current `project enable` writes.
+See the [activation guide](../activating-nwave-per-project.md)
+for precedence, team sharing, and recovery, and the
+[global configuration reference](../../reference/global-config.md) for other settings.
+
+### Completed-wave reading and explanation
+
+nwdes renders full briefs and HTML through `nwdes document`. A reading view is
+not evidence that a wave completed or that a document was approved.
+
+`documentation.expansion_prompt` separately controls optional explanation in
+chat after a completed wave. Neither preference changes required verification
+or chooses a provider/model. See the
+[documentation configuration reference](../../reference/global-config.md#documentation-object)
+for the supported values, preference provenance, and rendering limits.
 
 ## Updating
 
-**CLI method (uv, recommended):**
+### Update a package installation
+
+Upgrade the package with the manager that owns it, then rerun the installer
+for the **same selected host**:
+
 ```bash
-uv tool upgrade nwave-ai
-nwave-ai install
+uv tool upgrade nwave-ai        # or: pipx upgrade nwave-ai
+nwave-ai install --platform claude-code
+nwave-ai doctor
 ```
 
-**CLI method (pipx, fallback):**
+For Codex, use `install --platform codex` instead; its final validation is
+the Codex-specific check, whereas doctor checks Claude. Restart the host
+after installation.
+
+A package update does not migrate an in-progress v3 delivery. Finish it on
+3.22.2 or restart with `nwdes feature new`; see the
+[migration guide](../migrating-from-3x.md).
+
+For a supported stable installation with recorded host destinations and a
+verified package owner:
+
 ```bash
-pipx upgrade nwave-ai
-nwave-ai install
+nwave-ai update --check
+nwave-ai update --yes --root "$PWD"
 ```
 
-The installer automatically backs up your configuration before updating, allowing rollback if needed.
+Close active work before the explicit update: it takes the replacement lock
+but does not establish global idle. It preserves recorded host destinations
+and does not repeat project-guidance enrollment. Missing install provenance,
+development mode, or an unsupported release channel can refuse replacement;
+consent does not make those installations compatible.
 
-**Plugin method:**
+### Update a source checkout
+
+When you intentionally update your clone, resync its environment and rerun the
+installer for the **same selected host**. For example, after updating the
+checkout's source to the revision you want:
+
+```bash
+uv sync
+uv run python -m nwave_ai.cli install --platform claude-code
+uv run python -m nwave_ai.cli doctor
 ```
-/plugin marketplace update nwave-marketplace
+
+For Codex, use `install --platform codex` instead; its final validation is
+the Codex-specific check, whereas doctor checks Claude. With the `venv`/`pip`
+route, rerun `.venv/bin/python -m pip install -e .` in the checkout before
+`.venv/bin/python -m nwave_ai.cli install --platform ...`. Restart the host
+after installation.
+
+## Controlled startup and update permissions
+
+On POSIX, `nwave-ai run HOST -- ARGS` supports `claude-code`, `codex`,
+`opencode`, and `copilot`; it does not install a missing host. For example:
+
+```bash
+nwave-ai run claude-code --
+nwave-ai run codex -- --no-daemon
 ```
 
-Or enable auto-updates in Claude Code plugin settings.
+Automatic release checking and installation are separate permissions, both
+**off by default**. A check-only grant cannot install anything. For a
+compatible stable installation, grant checking explicitly:
 
-nWave checks for new versions when you open Claude Code. Control check frequency via `update_check.frequency` in `~/.nwave/des-config.json`:
+```bash
+nwave-ai update consent check on
+```
 
-| Value | Behavior |
-|-------|----------|
-| `daily` | Check once per day |
-| `weekly` | Check once per week |
-| `every_session` | Check on every session start (default) |
-| `never` | Disable update checks |
+Before granting automatic installation, close all older host sessions that
+started before the activity registry was installed. Then, only if future
+sessions sharing the package will use controlled startup, record both
+acknowledgements:
+
+```bash
+nwave-ai update consent install on --confirm-old-sessions-closed
+nwave-ai update consent controlled-launch on --confirm-controlled-launch
+```
+
+These flags record your statements; nWave cannot independently detect the
+older sessions. Automatic installation requires both check and install
+permissions plus the controlled-launch commitment. Revoke a grant with the
+same command and `off`, without a confirmation flag.
+
+The wrapper records the session before launching the host. Automatic checks
+and installation require controlled prelaunch and idle evidence before the
+first release request. Other sessions, unknown or malformed records, and
+unfinished local work block both automatic actions. Ordinary native startup
+remains available, but its update hooks are **advisory only**: native hooks
+cannot provide a reliable admission boundary. Direct starts, disabled hooks,
+and detached work are outside the controlled lifetime guarantee.
+
+Inspect records with `nwave-ai update sessions`. Close a session in its host
+first; remove a remaining record only with
+`nwave-ai update sessions close KEY --confirm-closed`. Records are not cleared
+by guessing from process state or age. An explicit `nwave-ai update --check`
+remains read-only and available outside controlled startup. A manual
+`update --yes` does not grant persistent consent.
+
+These controls do not convert source/development installs into public-index
+installations. Read the
+[update configuration reference](../../reference/global-config.md#updates-object-optional-global-only)
+before enabling either automatic action.
+
+### Interrupted-update recovery
+
+An interrupted replacement reports its stage and recovery action and retains
+durable evidence. Even if the package version is current, checks and ordinary
+updates report `update-incomplete`, not success. No broad rollback is promised.
+After stopping all remaining updater processes and affected sessions, use the
+reported environment and project root to run:
+
+```bash
+nwave-ai update --recover --yes --confirm-stopped
+```
+
+Recovery proves the **pinned package version**, repeats selected-host preflight
+and synchronization, and applies the registered artifact migration. Evidence is
+cleared only when all stages succeed. If the pinned package is missing or
+wrong, follow the reported package-owner restoration command first. Do not
+delete recovery markers or substitute an unpinned public upgrade.
 
 ## Uninstalling
 
-**CLI method (uv, recommended):**
-```bash
-nwave-ai uninstall              # Removes agents, commands, config, DES hooks from ~/.claude/
-uv tool uninstall nwave-ai     # Removes the nwave-ai Python package itself
-```
+Run `nwave-ai uninstall`; with a source checkout, activate its `.venv` first.
+It removes nWave-managed installed assets; it does not erase your project's
+`.nwave/config.json` or source files. If you only want to turn nWave off in
+one project, use `nwave-ai project disable` there instead.
 
-**CLI method (pipx, fallback):**
-```bash
-nwave-ai uninstall              # Removes agents, commands, config, DES hooks from ~/.claude/
-pipx uninstall nwave-ai        # Removes the nwave-ai Python package itself
-```
+For a package installation, remove deployed assets with
+`nwave-ai uninstall`, then remove its CLI with
+`uv tool uninstall nwave-ai` or `pipx uninstall nwave-ai`, matching its owner.
+This also leaves the project's `.nwave/` files in place.
 
-**Plugin method:**
-```
-/plugin uninstall nw
-```
+## Verification and troubleshooting
 
-Both methods remove agents, commands, and configuration from `~/.claude/`. Your project files (`.nwave/`, source code) are never touched.
+For Claude, run `nwave-ai doctor` after installation. Then restart Claude
+Code and look for `/nw-buddy` among commands. If it is absent, verify you
+installed with `--platform claude-code` and address any failing doctor
+checks; reinstall with that target if needed. `nwave-ai version` only proves
+the CLI can run, not that host assets or a project activation were installed.
 
-## Verification
+For Codex, rely on the Codex-target installer's final validation and check
+the Codex-native assets as described above; doctor does not yet diagnose
+Codex-only assets. Reopen Codex to load the installed skills. If the
+installer refuses an ownership conflict, follow its reported remedy rather
+than overwriting unowned files.
 
-### CLI method
-
-```bash
-nwave-ai version
-```
-
-Then in Claude Code, type `@` to see agents or `/nw-` to see commands.
-
-### Plugin method
-
-Restart Claude Code after installation. Type `/nw-` in the command palette — you should see all 22 commands. Type `@nw` to see agents.
-
-> If commands don't appear after plugin install, quit Claude Code completely and reopen it.
-
-## Troubleshooting
-
-### Agents Not Appearing in Claude Code
-
-If agents don't appear after installation:
-
-1. Restart Claude Code completely (quit and reopen)
-2. Verify installation completed successfully:
-
-```bash
-nwave-ai version
-```
-
-3. Check that `~/.claude/agents/nw/` exists with agent files
-4. Ensure your Claude Code version is current (update via your package manager)
-
-### Installation Failed
-
-If the installer reports errors:
-
-1. Check Python version:
-
-```bash
-python --version
-# Must be 3.10 or higher
-```
-
-2. Ensure write access to `~/.claude/`:
-
-```bash
-ls -la ~/.claude/
-```
-
-3. If you see permission errors, check file permissions:
-
-```bash
-chmod 755 ~/.claude/
-```
-
-4. Restore from backup:
-
-```bash
-nwave-ai install --restore
-```
-
-### uv Issues
-
-If `uv tool` commands fail:
-
-```bash
-# Verify uv is installed
-uv --version
-
-# Ensure the uv tool bin dir is on PATH
-uv tool update-shell      # then restart your shell
-
-# If uv is missing, reinstall it
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### pipx Issues
-
-If pipx commands fail (pipx is a supported fallback):
-
-```bash
-# Verify pipx is installed
-pipx --version
-
-# Ensure pipx is in your PATH
-which pipx
-
-# If not found, reinstall pipx
-pip install --user pipx
-```
-
-### Import Errors When Using nWave
-
-If you see import errors when running nWave commands:
-
-1. Ensure Claude Code is using the correct Python environment
-2. Reinstall nWave (uv, recommended):
-
-```bash
-uv tool uninstall nwave-ai
-uv tool install nwave-ai
-nwave-ai install
-```
-
-Or via pipx (fallback):
-
-```bash
-pipx uninstall nwave-ai
-pipx install nwave-ai
-nwave-ai install
-```
-
-3. Restart Claude Code
-
-### DES Audit Log Errors
-
-If audit logging isn't working:
-
-1. Create the `.nwave/` directory in your project:
-
-```bash
-mkdir -p .nwave
-```
-
-2. Verify `.nwave/` is writable:
-
-```bash
-touch .nwave/test.txt
-rm .nwave/test.txt
-```
-
-3. Check DES configuration in `.nwave/des-config.json` is valid JSON
-
-### Rollback After Update
-
-If an update causes problems:
-
-```bash
-nwave-ai install --restore
-```
-
-This restores your previous configuration from the most recent backup.
+For either host, `nwave-ai status` from the intended project must say
+`This project is active.` If not, run `nwave-ai project enable` there and
+follow the [activation recovery guide](../activating-nwave-per-project.md#recovery).
+If the installation fails because a destination is not writable, resolve
+its ownership or permissions and retry; do not indiscriminately `chmod`
+your entire Claude configuration. `doctor --fix` is not implemented.
 
 ## Next Steps
 
-After installation, navigate to any project and start your first workflow:
-
-```
-# For fresh features (greenfield)
-/nw-discover "feature market research"
-/nw-discuss "feature requirements"
-/nw-design
-/nw-devops
-/nw-distill "acceptance tests"
-/nw-deliver
-
-# Or for existing code (brownfield)
-/nw-deliver
-```
-
-For workflow guidance, see [Jobs To Be Done Guide](../jobs-to-be-done-guide/).
+Enable nWave in your own project, verify with `nwave-ai status`, reopen
+your selected host, and ask its buddy command/skill for the first action:
+Claude Code `/nw-buddy What should I do next?`, or Codex `$nw-buddy` with
+the same question. For workflow guidance, see
+[Jobs To Be Done Guide](../jobs-to-be-done-guide/).
 
 ## Support
 
 - **Discord Community**: [Join the nWave Discord](https://discord.gg/Cywj3uFdpd) for help with installation issues
-- **Documentation**: Complete framework documentation is available in the repository
-- **Logs**: Check `~/.claude/nwave-install.log` for installation details
-- **Version**: Run `nwave-ai version` to see your installed version
+- **Documentation**: Guides and references are in this repository.
+- **Claude installer logs**: Check `~/.claude/nwave-install.log` for errors.
+- **CLI**: Run `nwave-ai version`.
 
 ---
 
-**Ready to build?** Start with [Jobs To Be Done Guide](../jobs-to-be-done-guide/) to learn when and how to use each workflow.
+**Ready to build?** Walk the safe [First feature with nwdes](../tutorial-nwdes-first-feature/) lesson in a throwaway repository, then start real work with [Deliver a feature](../nwdes/deliver-feature.md).

@@ -6,26 +6,25 @@ from typing import TYPE_CHECKING
 
 from nwave_ai.common.check_result import CheckResult
 from nwave_ai.doctor.checks._settings import read_settings
+from nwave_ai.hooks.registration import HOOK_EVENT_TYPES
 
 
 if TYPE_CHECKING:
     from nwave_ai.doctor.context import DoctorContext
 
 
-REQUIRED_HOOK_TYPES: tuple[str, ...] = (
-    "PreToolUse",
-    "PostToolUse",
-    "SubagentStop",
-    "SessionStart",
-    "SubagentStart",
-)
+# Derived from HOOK_EVENT_TYPES (scripts/shared/hook_definitions.py) -- the SSOT
+# for which hook events DES actually registers -- rather than hand-restating the
+# set a third place. Sorted for a deterministic message/count independent of
+# frozenset iteration order.
+REQUIRED_HOOK_TYPES: tuple[str, ...] = tuple(sorted(HOOK_EVENT_TYPES))
 
 
 class HooksRegisteredCheck:
-    """Check that settings.json contains all 5 required hook type entries."""
+    """Check that settings.json contains all required hook type entries."""
 
     name: str = "hooks_registered"
-    description: str = "All 5 required hook types are registered in settings.json"
+    description: str = "All required hook types are registered in settings.json"
 
     def run(self, context: DoctorContext) -> CheckResult:
         """Return passed=True when all required hook type keys are present.

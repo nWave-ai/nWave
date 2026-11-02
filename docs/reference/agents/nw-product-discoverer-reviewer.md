@@ -4,9 +4,10 @@ Use as peer reviewer for product-discoverer outputs -- validates evidence qualit
 
 **Wave:** Other
 **Model:** haiku
-**Max turns:** 0
-**Tools:** Read, Glob, Grep, Task
+**Max turns:** 40
+**Tools:** Read, Glob, Grep, Task, Bash, Write, SendMessage
 
-## Skills
+## Preloaded skills
 
 - [nw-pdr-review-criteria](../skills/nw-pdr-review-criteria.md) — Evidence quality validation and decision gate criteria for product discovery reviews
+- [nw-typesafe-system-one](../skills/nw-typesafe-system-one.md) — Use Jev System One for every supported, authorized semantic judgment when available: relevance selection, handoff preflight, evidence mapping, finding clustering, and confidence-gated escalation.

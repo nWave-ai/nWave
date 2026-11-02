@@ -1,6 +1,6 @@
 ---
 name: nw-bdd-methodology
-description: BDD patterns for acceptance test design - Given-When-Then structure, scenario writing rules, pytest-bdd implementation, anti-patterns, and living documentation
+description: BDD patterns for acceptance test design - Given-When-Then as a language-neutral specification style, scenario writing rules, realization in the project's incumbent native scenario syntax (Python pytest-bdd binding labelled), anti-patterns, and living documentation
 user-invocable: false
 disable-model-invocation: true
 ---
@@ -17,18 +17,16 @@ The acceptance-designer creates the outer loop of Outside-In TDD. Development st
 
 **Outer loop (acceptance/BDD)**: Hours to days | User perspective, business language | Defines "done" | Scenarios describe user goals and observable outcomes, not internals | Failing outer-loop test is the starting signal for implementation
 
-**Inner loop (unit/TDD)**: Minutes | Developer perspective, technical terms | Software-crafter owns this loop
+**Ownership**: ATD authors the public oracle and required test supports. Managed crafters implement production against the approved immutable oracle and return oracle defects to ATD. Full-cycle test authoring applies only when the invocation owns it; routing belongs to `nw-tdd-methodology`.
 
 Workflow:
-1. Write failing acceptance test from user perspective (outer loop -- outside)
-2. Software-crafter drops to inner loop: unit tests to implement components (inside)
-3. Iterate inner loop until acceptance test passes
-4. Passing acceptance test proves user value delivered
-5. Repeat for next behavior
-
-Outer loop defines WHAT users need (outside). Inner loop drives HOW to build it (inside).
+1. ATD writes the failing public observation from the supplied user contract.
+2. The crafter implements production until that observation passes.
+3. Independent review and verification assess the delivery.
 
 ## Given-When-Then Structure
+
+Given/When/Then is a language-neutral specification STYLE, realized in the project's incumbent native scenario syntax (its BDD framework if it already has one) or as plain native tests named in domain language with Given/When/Then phases as comments or helper names. Gherkin/pytest-bdd are used only when the project already uses them; never introduce them or any other stack for a project that does not (see `nw-tdd-cross-language`, `nw-test-design-mandates`). The Gherkin below is illustrative notation of the structure:
 
 ```gherkin
 Scenario: [Business-focused title describing one behavior]
@@ -52,7 +50,7 @@ Scenario: [Business-focused title describing one behavior]
 ## Scenario Categorization
 
 - **Happy path**: Primary successful workflows
-- **Error path**: Invalid inputs, failures, unauthorized access (target 40%+ of scenarios)
+- **Error path**: Invalid inputs, failures, unauthorized access (aim for 40%+ while selecting scenarios; a review judges that every declared obligation has a falsifying scenario, never the error-path proportion)
 - **Edge case**: Boundary conditions, unusual but valid behavior
 - **Integration**: Cross-component/system interactions
 
@@ -80,7 +78,16 @@ Scenario Outline: Account minimum balance validation
 
 Use outlines for boundary conditions and calculation variations. Avoid when scenarios diverge structurally.
 
-## pytest-bdd Implementation
+### Unique titles (gate-affordance audit A4, 2026-07-28)
+
+Give every Scenario/Scenario Outline Example a UNIQUE title within its feature file.
+`verify-red-green` matches a RED run to its GREEN run by test id — a duplicate title
+collapses two distinct outcomes into one ambiguous id, and the gate refuses rather
+than guess which one kept failing.
+
+## Python binding — pytest-bdd (only when the project already uses pytest-bdd)
+
+Everything in this section is a labelled Python binding; for any other stack use the incumbent native equivalent (fixtures/setup helpers, step or test-case organisation by domain concept, scope-appropriate setup).
 
 ### Step Definitions with Fixture Injection
 
@@ -127,7 +134,7 @@ def app():
         app.db.drop_all()
 ```
 
-Use real services (database, message queue) with test data. Avoid mocks at acceptance level.
+Drive the real public entry; use doubles only at declared driven ports. Adapter integration exercises real infrastructure. Read `nw-distill-port-treatment-policy` when selecting the concrete real/fake mechanism under the project's infrastructure policy.
 
 ## Anti-Patterns
 

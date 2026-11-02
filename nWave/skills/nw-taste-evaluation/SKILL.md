@@ -17,7 +17,7 @@ Design taste cannot remain tacit. In the age of AI-assisted product development,
 
 ## Phase 1: DVF Filter — Primary Triage
 
-Apply IDEO's three-lens filter first. Any option failing two or more lenses is eliminated before taste scoring.
+Apply IDEO's three-lens filter first. Score each lens from 1-5 and apply the explicit DVF-total threshold below before taste scoring.
 
 | Lens | Question | Score 1-5 |
 |------|----------|-----------|

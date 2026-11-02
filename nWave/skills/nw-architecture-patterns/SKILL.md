@@ -7,6 +7,13 @@ disable-model-invocation: true
 
 # Architecture Patterns and Methodologies
 
+## Gate design invariants — WHAT/WHY/HOW and GDP-1..9 (moved)
+
+These two STANDING contracts are paradigm- and role-independent, so they live in ONE shipped
+home instead of being restated per role: `nw-cross-cutting-invariants` (clause ids
+`gate:self-explaining-what-why-how`, `gate:design-principles-gdp-1-9`). Load that skill when
+designing any gate, oracle, or error surface; cite the clause id, never re-declare the text.
+
 ## C4 Model -- Hierarchical Architecture Visualization
 
 Four levels for different audiences:
@@ -126,6 +133,14 @@ OSS criteria: last commit <6 months | regular releases | quick issue resolution 
 License preference: MIT > Apache 2.0 > BSD > MPL 2.0 > LGPL (caution) > GPL (careful) > AGPL (extreme caution). Proprietary forbidden without explicit request.
 
 Document per selection: name/version, license, GitHub URL/stats, maintenance assessment, alternatives considered.
+
+## Delivery boundary projection
+
+Keep component boundaries, unbounded input/state domains, typed failures and
+port invariants in the durable architecture brief. For one delivery, resident
+software derives only the applicable facts into its whole-Request handover.
+This preserves the design facts without a second per-feature manifest or
+validation gate.
 
 ## Contract Testing for External Integrations
 

@@ -38,6 +38,8 @@ class InstallContext:
     templates_dir: Path
     logger: Any  # Logger instance
     project_root: Path = None
+    user_project_root: Path = None
+    locations: Any = None
     framework_source: Path = None
     backup_manager: Any = None  # BackupManager instance
     installation_verifier: Any = None  # InstallationVerifier instance

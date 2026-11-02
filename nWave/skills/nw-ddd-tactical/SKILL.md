@@ -78,6 +78,7 @@ Represent something that happened in the domain. Always past tense.
 ### Event Design Guidelines
 
 - **Self-contained**: Include all data needed to understand what happened
+- **Cross-context payload**: an integration event shared with another context carries the fact's type and the meaningful ids; data only one consumer needs belongs in that consumer's query
 - **Domain language**: Business terms, not technical jargon
 - **One fact per event**: `OrderConfirmed` not `OrderStatusChanged`
 - **No behavior**: Events carry data only

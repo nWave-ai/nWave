@@ -1,138 +1,63 @@
 ---
-description: "Runs a timeboxed spike to validate one core assumption before DESIGN. Use after DISCUSS when the feature involves a new mechanism, performance requirement, or external integration."
-argument-hint: "[feature-description] - Example: \"wave-matrix -- derive feature status from pytest + filesystem\""
+description: '[DEPRECATED — use /nw-design with analysis focus instead] Runs a timeboxed spike to validate one core assumption before DESIGN. Use after DISCUSS when the feature involves a new mechanism, performance requirement, or external integration.'
+argument-hint: '[feature-description] - Example: "wave-matrix -- derive feature status from pytest + filesystem"'
 ---
 
-# NW-SPIKE: Timeboxed Assumption Validation
 
-**Wave**: SPIKE (between DISCUSS and DESIGN) | **Agent**: Attila (nw-software-crafter) | **Command**: `/nw-spike`
+# NW-SPIKE: Bounded Decision Probe
+
+**Wave**: DISCUSS/DESIGN technique, not an extra phase | **Command**: `/nw-spike`
 
 ## Overview
 
-Execute a timeboxed spike (max 1 hour) to validate a single core assumption before investing in architecture design. Produces throwaway code and permanent findings. The spike answers: does the mechanism work, does it meet the performance budget, and what did we assume wrong?
+Probe one uncertainty only when its answer can change a product or design decision. This is not a required step before DESIGN. Reuse relevant context and preserve useful evidence in the caller-owned persistent workspace; do not create a feature-wave findings document or promote probe code automatically.
 
 ## Skip Check
 
-Before running, verify the spike is needed. If ALL answers are "no", skip and proceed to DESIGN:
+Skip when existing evidence already answers the question, or the result cannot affect a decision. Honor the caller's existing delegation or stop boundary; do not introduce a permission checkpoint. When a probe is useful, read the relevant product or design context already available to the caller, including prior DISCUSS or DIVERGE results if present.
 
-1. Is there a new mechanism never tried before in this codebase?
-2. Is there a performance requirement that cannot be validated by reasoning alone?
-3. Is there an external integration with unknown behavior?
+## Probe Scope
 
-If skipping: tell the user and recommend `/nw-design` directly.
+### Decision 1: Probe Question
+State the ONE uncertainty, the evidence that could change the decision, and a bounded scope/time budget. For a visual question, identify the actor, journey and feedback question; select a sketch, wireframe or navigable prototype appropriate to the uncertainty. For a technical question, name the mechanism, integration or performance threshold that needs observation.
 
-## Prior Wave Consultation
+## Specialist Invocation
 
-1. **DISCUSS artifacts**: Read `docs/feature/{feature-id}/discuss/` (required)
-   - `user-stories.md` -- scope and acceptance criteria
-   - `wave-decisions.md` -- constraints and assumptions to test
-2. **DIVERGE artifacts**: Read `docs/feature/{feature-id}/diverge/recommendation.md` (if present)
+Keep ownership with the calling PO or architect. For visual uncertainty, consult `nw-ux-designer`; for technical uncertainty, select the applicable technical specialist. Supply the question, relevant context, scope and evidence sought. Do not route every probe to `nw-software-crafter` as a managed implementation batch.
 
-## Interactive Decision Points
-
-### Decision 1: Spike Scope
-**Question**: What is the ONE assumption you need to validate?
-**Examples**:
-1. "Can we parse pytest output reliably in <5 seconds?"
-2. "Can the CEL library evaluate 100 expressions in <1 second?"
-3. "Can we write to .git/hooks/ from a subprocess without corruption?"
-
-### Decision 2: Performance Budget
-**Question**: What is the timing constraint? (Enter "none" if mechanism validation only)
-**Examples**:
-1. "<5 seconds end-to-end"
-2. "<100ms per operation"
-3. "Handle 10K items without OOM"
-
-## Agent Invocation
-
-@nw-software-crafter
-
-**SKILL_LOADING**: Before starting, load your spike methodology skill at `~/.claude/skills/nw-spike-methodology/SKILL.md` using the Read tool.
-
-Execute spike for "{feature-description}".
-
-**Spike question**: {Decision 1 answer}
-**Performance budget**: {Decision 2 answer}
-
-**Rules**:
-- Code goes in `/tmp/spike_{feature_id}/`. Never in `src/`.
-- Max 1 hour. No tests, no types, no error handling, no abstractions.
-- One file preferred. Two files maximum.
-- Use `time.perf_counter()` for timing.
-- Print results to stdout.
-
-**After spike completes**:
-1. Write findings to `docs/feature/{feature-id}/spike/findings.md`
-2. Delete the spike code from `/tmp/`
-3. Report the binary verdict: WORKS or DOESN'T WORK
-
-## Progress Tracking
-
-The invoked agent MUST create a task list from its workflow phases at the start of execution using TaskCreate. Each phase becomes a task with the gate condition as completion criterion. Mark tasks in_progress when starting each phase and completed when the gate passes.
+**Probe rules**:
+- Keep artifacts and findings in the caller-owned persistent workspace outside production paths; do not rely on `/tmp` for valuable work or require a feature-wave authority artifact.
+- Use the project's native toolchain and implement only enough to answer the question. Clearly distinguish simulated data, mocked effects and absent integration.
+- Observe the result. Show a visual prototype to the human and distinguish actual feedback from model inference; pending feedback remains unresolved, not a binary verdict.
+- Return evidence, limitations and the remaining decision to the PO or architect. They record selected product or design values through their kind's nwdes CLI verbs using Bash, then close. The probe does not write authority or handover documents, and the host passes no envelope or copied reply to a constructor.
 
 ## Success Criteria
 
-- [ ] Exactly one assumption tested (not two, not zero)
-- [ ] Spike code lives in `/tmp/`, never in `src/`
-- [ ] Completed within 1 hour (or escalated with "BIGGER THAN EXPECTED")
-- [ ] `findings.md` written with binary verdict, timing, and edge cases
-- [ ] Spike code deleted after findings written
-- [ ] Design implications documented (what was assumed wrong)
+- [ ] One decision-relevant uncertainty probed within a bounded scope
+- [ ] Evidence and limitations retained in the caller-owned persistent workspace
+- [ ] Actual feedback distinguished from inference where human evaluation matters
+- [ ] Findings returned to the decision owner without requiring a binary verdict
 
-## Next Wave
+## Handoff and Retention
 
-**Handoff To**: nw-solution-architect (DESIGN wave)
-**Deliverables**: `docs/feature/{feature-id}/spike/findings.md`
-**Design reads findings before starting** -- spike results override any prior assumptions.
-
-## Wave Decisions Summary
-
-Before completing SPIKE, produce `docs/feature/{feature-id}/spike/wave-decisions.md`:
-
-```markdown
-# SPIKE Decisions -- {feature-id}
-
-## Assumption Tested
-- {the one question}
-
-## Verdict
-- {WORKS / DOESN'T WORK}: {one-line summary}
-
-## Design Implications
-- {what DESIGN must account for based on spike results}
-
-## Constraints Discovered
-- {any new constraints from edge cases}
-```
+Return findings and the remaining decision to the calling PO or architect. If a design implication matters, the architect records it through generated typed `nwdes design` verbs (the first add/set creates the draft) and `nwdes design close`; the probe itself authors no parallel ledger. No automatic promotion, commit or cleanup: separately selected implementation may reuse prototype code after normal design, oracle and review work. Preserve useful evidence before explicitly selected disposal; meaningful prototype changes need renewed feedback.
 
 ## Examples
 
-### Example 1: Performance spike
+### Example 1: Performance probe
 ```
-/nw-spike "wave-matrix -- derive feature status from pytest + filesystem"
+/nw-spike "Can wave-matrix derive feature status from pytest + filesystem within five seconds?"
 ```
-Spike question: "Can we collect pytest markers + parse filesystem state in <5 seconds?"
-Agent writes 50-line script in `/tmp/spike_wave_matrix/`, discovers pytest collection takes 44 seconds (budget blown). Findings document the correct approach (cache + collect-only). Code deleted. DESIGN proceeds with cache-first architecture.
+The technical specialist measures the relevant collection path, retains the command, result and limitations in the caller-owned workspace, and returns whether the timing evidence changes the design decision.
 
-### Example 2: Integration spike
+### Example 2: Integration probe
 ```
-/nw-spike "cel-policy-engine -- evaluate access control expressions"
+/nw-spike "Can cel-python evaluate 100 policy expressions in under one second?"
 ```
-Spike question: "Can cel-python evaluate 100 policy expressions in <1 second?"
-Agent installs cel-python, writes evaluation loop, measures 23ms for 100 expressions. Verdict: WORKS. Edge case: nested map access syntax differs from Go CEL. Findings inform DESIGN's expression schema.
+The specialist measures a representative evaluation and returns its timing and observed expression-syntax limitations. The architect decides whether that evidence changes the expression schema.
 
-### Example 3: Mechanism spike
+### Example 3: Visual-experience probe
 ```
-/nw-spike "git-hook-wiring -- install hooks via subprocess"
+/nw-spike "Can the target user locate the policy override in the proposed screen?"
 ```
-Spike question: "Can we write to .git/hooks/ from a Python subprocess without file corruption?"
-Agent writes hook installer, tests with concurrent access. Verdict: WORKS but needs file locking. Edge case: Windows line endings corrupt hook on WSL. Findings feed into DESIGN's cross-platform strategy.
-
-## Expected Outputs
-
-```
-docs/feature/{feature-id}/spike/
-  findings.md
-  wave-decisions.md
-```
+The PO supplies actor, journey and feedback question; the UX designer builds the smallest useful prototype. The caller presents it to the human and retains actual feedback separately from predictions. Until feedback arrives, the preference remains unresolved.

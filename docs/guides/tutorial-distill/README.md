@@ -2,7 +2,7 @@
 
 **Time**: ~12 minutes (7 steps)
 **Platform**: macOS, Linux, or Windows
-**Prerequisites**: Python 3.10+, Claude Code with nWave installed, [Tutorial 7](../tutorial-design/) completed
+**Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 7](../tutorial-design/) completed
 **What this is**: An interactive walkthrough of `/nw-distill` -- nWave's acceptance test generation command. You will turn user stories and architecture documents into executable BDD (Behavior-Driven Development) acceptance tests.
 
 ---
@@ -176,9 +176,9 @@ The peer review checks three mandates that Quinn must satisfy:
 
 You do not need to memorize these mandates. They explain why the reviewer checks what it checks.
 
-### Messages you can safely ignore
+### Read reported failures
 
-Lines containing `PreToolUse` or `DES_MARKERS` are internal quality gates. They are normal operation, not errors.
+Inspect each refusal and its cause. A successful `nwdes acceptance apply` builds the acceptance artifacts; the host still must execute the declared oracle.
 
 *Next: you will verify the test files Quinn created.*
 

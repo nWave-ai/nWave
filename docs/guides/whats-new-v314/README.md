@@ -1,5 +1,10 @@
 # What's New in nWave v3.14
 
+> **Historical release note.** The L7 `feature-delta.md` carrier, its validator,
+> enforcement recipes and `outcomes check-delta` integration described below
+> have been retired by the canonical DeliveryContract cutover. They are not
+> current authoring or CLI guidance.
+
 ## Lean Wave Documentation (L7 single-file)
 
 Each feature now lives in **one** `feature-delta.md` instead of ~26 files across per-wave subdirectories. Section headings carry the wave + content type as schema-typed labels (`## Wave: <WAVE> / [REF|WHY|HOW] <name>`).
@@ -18,7 +23,7 @@ A new CLI command — `nwave-ai validate-feature-delta <path>` — checks struct
 
 **What it does**: Catches silent cross-wave commitment erosion (DISCUSS commits to X, DESIGN downgrades to Y without flagging it). Emits JSON for CI integration. Pure stdlib, no network call, zero side effects.
 
-**When to use**: As a CI gate on every PR touching `feature-delta.md`. Pick a recipe from [Enforcement Recipes](../enforcement-recipes.md) — 12 platforms covered (GitHub Actions, GitLab, pre-commit, Bazel, Make, etc.).
+**Historical use**: this was offered as a CI gate on changes to the retired carrier.
 
 **When to skip**: Vendor-neutral by design — no hooks auto-installed. You opt in to the integration surface that fits your stack.
 
@@ -38,19 +43,13 @@ Catch duplicated rules and operations at **design time**, before code is written
 
 **When to skip**: Doc-only features, prose-only changes, or single-feature spike work.
 
-See [Why an outcomes registry?](../../product/outcomes/README.md) for rationale, [Your first outcome](../outcomes-first-outcome/) for a 6-step walkthrough, and [Outcomes CLI reference](../../reference/outcomes-cli.md) for full subcommand details.
+See [Your first outcome](../outcomes-first-outcome/) for a 6-step walkthrough and [Outcomes CLI reference](../../reference/outcomes-cli.md) for full subcommand details.
 
-## Configuring Doc Density
+## Document Reading Views
 
-Per-project `lean` vs `full` density controls how much each wave emits.
-
-**What it does**: A single `density:` key in `.nwave/des-config.json` switches all wave skills between lean output (Tier-1 only, ~30% token cost) and full output (Tier-1 + Tier-2 expansion, baseline cost). Density is read per dispatch — change it any time.
-
-**When to use**: `lean` for high-volume / fast-iteration projects; `full` when you need the rationale + implementation playbook trail (regulated environments, knowledge transfer, postmortems).
-
-**When to skip**: Default is `lean`. Switch only when you hit a discoverability or audit-trail gap.
-
-See [Configuring Doc Density](../configuring-doc-density.md).
+For the current delivery route, nwdes renders full briefs and HTML. See
+[Documentation Detail](../configuring-doc-density.md). The v3 density-driven
+rendering instructions no longer apply.
 
 ## DISTILL + DESIGN — Outcome-Aware
 
@@ -65,14 +64,13 @@ A registry collision does not auto-block — it surfaces the conflict for human 
 
 - Per-wave peer review is now optional and consolidated at the end of DISTILL (was: every wave). Reduces token cost by ~15% on uncontested features.
 - Legacy "Expected Outputs" sections excised from 6 wave skills (superseded by L7 schema-typed headings).
-- DES automation: `@pending` BDD tags migrated to `@skip` for cleaner sequencer parsing.
 
 ## Improvements in v3.14.0-rc1 (2026-05-03)
 
 Two user-observable behavior changes since the v3.14.0 base ship:
 
-- **Uninstall correctness fix** — `nwave-ai uninstall --force` previously reported success but left behind ~197 `skills/nw-*` directories, the `lib/python/des/` runtime, and 3 DES hook entries in `settings.json`. v3.14.0-rc1 removes all three correctly while preserving user-created (non-`nw-` prefixed) skills. If you uninstalled under v3.13 and noticed leftover files, see the new entry under [Troubleshooting → Installation Issues](../troubleshooting-guide/#uninstall-left-files-behind-fixed-in-v314).
-- **Pre-push hook ~50% faster on master** — the local pre-push hook chain dropped from 25-30 min to ~13 min. Two changes: (1) docs/CI/hook-only commits now skip the pytest validation entirely (3-5 min saved per commit); (2) the e2e tier on master pre-push runs only the critical-path smoke subset (4 files, ~41 tests) instead of all 20 e2e files — the full e2e suite continues to gate every PR via CI. Background: `docs/analysis/test-perf-research-2026-05-03.md`.
+- **Uninstall correctness fix** — v3.14.0-rc1 corrected residual framework assets after uninstall. For current removal guidance see [Troubleshooting](../troubleshooting-guide/#uninstall-left-files-behind).
+- **Pre-push hook ~50% faster on master** — the local pre-push hook chain dropped from 25-30 min to ~13 min. Two changes: (1) docs/CI/hook-only commits now skip the pytest validation entirely (3-5 min saved per commit); (2) the e2e tier on master pre-push runs only the critical-path smoke subset (4 files, ~41 tests) instead of all 20 e2e files — the full e2e suite continues to gate every PR via CI.
 
 ## Upgrading from v3.13
 

@@ -7,12 +7,18 @@ excluding legacy/ directory content and README.md.
 
 import shutil
 
+from nwave_ai.platform.role_render import render_installed_role
 from scripts.install.plugins.base import (
     InstallationPlugin,
     InstallContext,
     PluginResult,
 )
 from scripts.shared.agent_catalog import is_public_agent, load_public_agents
+from scripts.shared.platform_contracts import (
+    UnbalancedToolSpecifier,
+    project_claude_role_text,
+)
+from scripts.shared.settings import enable_todo_tools_env, todo_tools_receipt_path
 
 
 class AgentsPlugin(InstallationPlugin):
@@ -54,11 +60,6 @@ class AgentsPlugin(InstallationPlugin):
                     message="No agents to install (source directory not found)",
                 )
 
-            # Clean and recreate target directory to remove stale files
-            if target_agent_dir.exists():
-                shutil.rmtree(target_agent_dir)
-            target_agent_dir.mkdir(parents=True, exist_ok=True)
-
             public_agents = (
                 set()
                 if context.dev_mode
@@ -71,15 +72,52 @@ class AgentsPlugin(InstallationPlugin):
             )
             context.logger.info(f"  ⏳ From source ({source_agent_count} agents)...")
 
-            # Copy only public nw-*.md files from source root (excludes legacy/ and README.md)
-            copied_count = 0
-            installed_files = []
-            for source_file in sorted(source_agent_dir.glob("nw-*.md")):
+            # Render everything before touching the target: a failure keeps
+            # the previous install intact.
+            rendered = []
+            for source_file in sorted(all_agents):
                 if not is_public_agent(source_file.name, public_agents):
                     continue
-                shutil.copy2(source_file, target_agent_dir / source_file.name)
-                installed_files.append(str(target_agent_dir / source_file.name))
+                try:
+                    text = render_installed_role(
+                        source_file, str(context.claude_dir / "skills")
+                    )
+                    text = project_claude_role_text(text)
+                    if isinstance(text, UnbalancedToolSpecifier):
+                        raise ValueError(
+                            f"UnbalancedToolSpecifier: {text.raw}. "
+                            "Balance the parentheses in the role's tools line."
+                        )
+                except (OSError, ValueError) as error:
+                    message = (
+                        f"Cannot render role {source_file.name} from {source_file}: "
+                        f"{error}. Restore the SKILL.md or fix the role's skills declaration."
+                    )
+                    context.logger.error(f"  ❌ {message}")
+                    return PluginResult(
+                        success=False,
+                        plugin_name=self.name,
+                        message=message,
+                        errors=[message],
+                    )
+                rendered.append((source_file.name, text))
+
+            if target_agent_dir.exists():
+                shutil.rmtree(target_agent_dir)
+            target_agent_dir.mkdir(parents=True, exist_ok=True)
+
+            copied_count = 0
+            installed_files = []
+            for name, text in rendered:
+                target_file = target_agent_dir / name
+                target_file.write_text(text, encoding="utf-8")
+                installed_files.append(str(target_file))
                 copied_count += 1
+
+            enable_todo_tools_env(
+                context.claude_dir / "settings.json",
+                todo_tools_receipt_path(context.claude_dir),
+            )
 
             context.logger.info(f"  ✅ Agents installed ({copied_count} files)")
 

@@ -1,127 +1,75 @@
 ---
 name: nw-mutation-test
-description: "Runs feature-scoped mutation testing to validate test suite quality. Use after implementation to verify tests catch real bugs (kill rate >= 80%)."
+description: "Run an explicit mutation probe over a named production delta, or support the project-level nightly-delta policy. Disabled by default."
 user-invocable: true
-argument-hint: '[feature-id] - Optional: --threshold=[75|80|85] --language=[auto|python|java|javascript]'
+argument-hint: '[--delta <base>...<head> | --nightly-delta] [--threshold 80]'
 ---
 
-# NW-MUTATION-TEST: Feature-Scoped Mutation Testing
+# Mutation Test
 
-**Wave**: QUALITY_GATE
-**Agent**: Crafter (nw-software-crafter)
+Mutation testing is **disabled by default**. This skill runs only after an
+explicit on-demand invocation or when the project itself declares
+`Mutation Testing Strategy: nightly-delta`.
 
-## Overview
+It is a standalone diagnostic outer loop, not a DELIVER phase, rigor knob, completion
+gate, workflow state or substitute for semantic acceptance tests.
 
-Run mutation testing against implementation files from the current feature. Extracts targets from the execution-log.json (see Target extraction)|generates feature-scoped configs|delegates to software-crafter. Uses cosmic-ray (Python)|PIT (Java)|Stryker (JS/TS/C#).
+## Input authority
 
-## Mutation Testing Strategy
+- Explicit probe: use the named production diff.
+- Nightly delta: use production files changed since the last successful
+  mutation run.
+- Never infer targets from `docs/feature/`, feature-delta, a progress ledger,
+  filenames alone or the implementation agent's claims.
 
-Projects declare a strategy via `## Mutation Testing Strategy` in `CLAUDE.md`: `per-feature` | `nightly-delta` | `pre-release` | `disabled`.
+If the diff is empty, report `not-applicable` and stop. If a target is
+missing, outside the repository or not production code, fail loudly before
+starting a mutation tool.
 
-**Default (when unspecified): `nightly-delta`** — the recommended mode. CI runs mutmut nightly against modules changed since the last run (the delta), keeping per-feature delivery gates fast. `/nw-mutation-test` performs an explicit, on-demand feature-scoped run regardless of strategy; under `nightly-delta` the in-wave Phase 5 gate is skipped and the work is handled by the CI nightly pipeline.
+## Execution
 
-### Target extraction
+1. Detect the project's language and existing mutation runner. Do not impose a
+   Python-specific tool on another language.
+2. Prove the target's ordinary tests pass with the project's declared runner.
+3. Snapshot the user's worktree status.
+4. Create a dedicated disposable worktree or copy and run all mutations there.
+   Never mutate, reset or restore the user's worktree.
+5. Compare the user's status with the snapshot and discard only the disposable
+   target.
 
-Implementation files are selected from the `execution-log.json` (`completed_steps[].files_modified.implementation`).
+Each invocation binds the actual production delta/commit snapshot, ordinary-GREEN
+baseline, oracle/support/source identities and native build/discovery graph.
+Allocate distinct process, workspace, mutable config, build/temp/cache and result
+paths with provenance; parallel probes cannot share fixed files or cache identity.
+Tests must participate in that native graph, not a disconnected Python harness.
+The repository's nightly Python adapter supports its declared Python/mutmut 3.8
+contract only; it is not a cross-stack runner. Empty/unsupported target sets,
+driver no-ops, zero generated mutants or interrupted attempts are never PASS100.
 
-## Context Files Required
+No supported runner is an honest `indeterminate`, not a fabricated PASS.
 
-- `docs/feature/{feature-id}/deliver/execution-log.json` - Implementation file extraction
-- `scripts/mutation/generate_scoped_configs.py` - Automated config generation (if available)
+## Result
 
-## Pre-Invocation
+The requested/project threshold (default 80%) applies only to a valid attributed
+attempt with a measured nonzero denominator. Report actual generated, killed,
+survived and incomplete/unclassified counts with their population and conservation.
+Do not turn timeout, build/setup failure or untested mutants into killed outcomes,
+or omit them to inflate the denominator. Preserve invalid attempt evidence and
+partial actual counts without a passing rate.
 
-Orchestrator performs before delegating:
+- `pass`: valid complete attempt, kill rate >= threshold.
+- `fail`: valid complete attempt below threshold; name real survivors by production
+  file, line/symbol and smallest missing observable.
+- `indeterminate`: unavailable runner, failed baseline, no-op/zero mutants,
+  interruption, incomplete outcome or evidence not attributable to this delta.
+- `not-applicable`: validated delta contains no mutable production target.
 
-1. **Extract files** — Read `execution-log.json` and extract implementation files from `completed_steps[].files_modified.implementation`. Gate: file list non-empty.
-2. **Verify on disk** — Check all extracted files exist on disk. Gate: zero missing files.
-3. **Detect language** — Scan config files (pyproject.toml, pom.xml, package.json, etc.) to select tool. Gate: language identified.
-4. **Confirm tests pass** — Run `pytest -x {test_scope}` (or equivalent). Gate: exit code 0, no failures.
-5. **Ensure mutation venv** — For Python, verify `.venv-mutation/` exists with cosmic-ray installed. Gate: `cosmic-ray --version` succeeds.
+Keep the interactive report concise: verdict, numerator/denominator, per-file
+survivor count, and a bounded list of actionable survivors. Do not create a
+per-delivery markdown report or another persistent progress artifact.
 
-## Agent Invocation
-
-@nw-software-crafter
-
-Execute mutation testing for project {feature-id}.
-
-**Context to pass inline (agent has no Skill access):**
-- Project ID
-- Implementation file list (from execution-log.json)
-- Test scope path (e.g., `tests/des/`)
-- Kill rate threshold (default: 80%)
-- Language and tool selection
-
-**Configuration:**
-- threshold: 80 (percentage, minimum kill rate)
-- approach: feature-scoped (one config per component, scoped test commands)
-- config_generator: `scripts/mutation/generate_scoped_configs.py` (preferred over manual)
-
-**Output file:** `docs/feature/{feature-id}/deliver/mutation/mutation-report.md`
-
-## Examples
-
-### Example 1: Python project with config generator
-```bash
-/nw-mutation-test des-hook-enforcement tests/des/
-```
-Reads the execution-log.json, runs `generate_scoped_configs.py des-hook-enforcement`, delegates to software-crafter with per-component configs. Agent runs cosmic-ray, produces mutation-report.md.
-
-### Example 2: Python project without config generator
-```bash
-/nw-mutation-test auth-upgrade tests/auth/
-```
-Extracts files manually from the execution-log.json, creates single cosmic-ray config with `module-path = [file1, file2, ...]` and `test-command = "pytest -x tests/auth/"`, delegates to agent.
-
-### Example 3: Non-Python project
-```bash
-/nw-mutation-test payment-gateway tests/payment/
-```
-Detects `package.json`, selects Stryker, delegates with Stryker-specific instructions.
-
-## Success Criteria
-
-- [ ] Implementation files extracted from execution-log.json
-- [ ] All implementation files verified on disk
-- [ ] Mutation testing executed without errors
-- [ ] Per-file breakdown in mutation-report.md
-- [ ] Kill rate meets threshold (>= 80% PASS, 70-80% WARN, < 70% FAIL)
-- [ ] Source files restored to HEAD after mutation run (git checkout -- src/ tests/)
-
-## Post-Mutation Safety (mandatory)
-
-After EVERY mutation run (success, failure, or interruption):
-
-1. **Restore source files** — Run `git checkout -- src/ tests/`. Gate: working tree clean (no mutations remain).
-2. **Verify no corruption** — Confirm test suite still passes after restore. Gate: `pytest -x {test_scope}` exits 0.
-
-Mutation tools apply mutations directly to source files. An interrupted run can leave corrupted code (e.g. `is not None` -> `is  None`). Agent MUST execute these steps even if the run errors out.
-
-## Quality Gate
-
-Kill rate thresholds:
-
-1. **>= 80% PASS** — Proceed to next wave.
-2. **70-80% WARN** — Review surviving mutants, document findings, proceed with caution.
-3. **< 70% FAIL** — Add tests targeting surviving mutants before proceeding.
-
-Skip conditions (each requires documented justification in mutation-report.md):
-
-1. **No tool for language** — No mutation framework available for detected language.
-2. **Project opt-out** — `.mutation-config.yaml` has `skip: true` with justification.
-3. **Broken test suite** — Pre-invocation step 4 fails; fix tests before mutation testing.
-
-Note: Python projects require mutation testing. All skips need documented justification.
-
-## Next Wave
-
-**Handoff To**: Phase 8 - Finalize (orchestrator continues develop.md workflow)
-**Deliverables**: `docs/feature/{feature-id}/deliver/mutation/mutation-report.md`
-
-## Expected Outputs
-
-```
-docs/feature/{feature-id}/deliver/mutation/
-  mutation-report.md
-  cosmic-ray-*.toml                (ephemeral)
-```
+For `nightly-delta`, CI owns persistence: create or update one deduplicated
+issue containing the same bounded report and the exact comparison range. A
+later green run closes that issue. The nightly job must not expand to the
+whole repository when its baseline is missing; establish a new baseline
+explicitly instead.

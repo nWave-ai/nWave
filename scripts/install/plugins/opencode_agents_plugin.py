@@ -11,21 +11,26 @@ user-created ones.
 """
 
 import json
-import os
 from pathlib import Path
 
+from nwave_ai.platform.capability import provider_tool_name, split_declared_tools
+from nwave_ai.platform.role_render import render_installed_role
 from scripts.install.plugins.base import (
     InstallationPlugin,
     InstallContext,
     PluginResult,
 )
 from scripts.install.plugins.opencode_common import (
+    ManifestPluginConfig,
+    opencode_config_dir,
     parse_frontmatter,
+    remove_manifest_owned_assets,
     render_frontmatter,
     uninstall_with_manifest,
     verify_with_manifest,
 )
 from scripts.shared.agent_catalog import is_public_agent, load_public_agents
+from scripts.shared.skill_path_rewrite import rewrite_host_paths
 
 
 _MANIFEST_FILENAME = ".nwave-agents-manifest.json"
@@ -39,9 +44,7 @@ def _opencode_agents_dir() -> Path:
     Returns:
         Path to ~/.config/opencode/agents/
     """
-    override = os.environ.get("OPENCODE_CONFIG_DIR")
-    base = Path(override) if override else Path.home() / ".config" / "opencode"
-    return base / "agents"
+    return opencode_config_dir() / "agents"
 
 
 def _find_agents_source(context: InstallContext) -> Path | None:
@@ -75,18 +78,38 @@ def _parse_tools(tools_value: str | list) -> dict[str, str]:
     "deny", "ask"), not booleans. The legacy boolean format is ignored in
     markdown frontmatter.
 
+    A declared entry may be a permission SPECIFIER carrying its own scope
+    (``Bash(<tool>:*)``). OpenCode's mapping has no place to put a
+    scope, so a scoped grant becomes "ask" rather than "allow": the scope is
+    part of the grant, and projecting it as "allow" would hand the role the
+    whole tool it was deliberately not given. "ask" is the platform's own
+    third state, so the loss of precision surfaces at use time instead of
+    disappearing.
+
     Args:
         tools_value: Tools specification as CSV string or list
 
     Returns:
-        Dict mapping lowercase tool names to "allow"
+        Dict mapping lowercase tool names to "allow" or "ask"
     """
     if isinstance(tools_value, list):
-        tool_names = [str(tool).strip() for tool in tools_value]
+        entries = [str(tool).strip() for tool in tools_value if str(tool).strip()]
     else:
-        tool_names = [tool.strip() for tool in str(tools_value).split(",")]
+        entries = list(split_declared_tools(str(tools_value)))
 
-    return {name.lower(): "allow" for name in tool_names if name}
+    permissions: dict[str, str] = {}
+    for entry in entries:
+        name = provider_tool_name(entry).lower()
+        # Claude-only native spelling: OpenCode has no sendmessage permission,
+        # and its absence is not evidence that a native peer primitive is absent.
+        if not name or name == "sendmessage":
+            continue
+        scoped = entry != provider_tool_name(entry)
+        # An unscoped grant on the same tool wins: it is the wider declaration.
+        if scoped and permissions.get(name) == "allow":
+            continue
+        permissions[name] = "ask" if scoped else "allow"
+    return permissions
 
 
 def _transform_frontmatter(frontmatter: dict) -> dict:
@@ -121,26 +144,18 @@ def _transform_frontmatter(frontmatter: dict) -> dict:
     return result
 
 
-def _rewrite_skill_paths(body: str) -> str:
-    """Rewrite Claude Code skill paths to OpenCode paths in agent body.
-
-    Agent markdown bodies contain hardcoded ~/.claude/skills/ paths that must
-    be rewritten to ~/.config/opencode/skills/ for OpenCode compatibility.
-
-    Args:
-        body: Agent body text (everything after the frontmatter)
-
-    Returns:
-        Body with all skill path references rewritten for OpenCode
-    """
-    return body.replace("~/.claude/skills/", "~/.config/opencode/skills/")
-
-
 def _transform_agent(content: str) -> str:
     """Full transformation pipeline: parse, transform, render with body.
 
+    Pipeline:
+      1. Parse YAML frontmatter + Markdown body
+      2. Transform frontmatter (rename fields, add mode, convert tools)
+      3. Rewrite host paths
+      4. Render frontmatter + body
+
     Args:
-        content: Full source agent file content (Claude Code format)
+        content: Full source agent file content (Claude Code format), with
+            its frontmatter skills already preloaded by the role renderer
 
     Returns:
         Transformed agent file content (OpenCode format)
@@ -148,7 +163,7 @@ def _transform_agent(content: str) -> str:
     frontmatter, body = parse_frontmatter(content)
     transformed = _transform_frontmatter(frontmatter)
     rendered = render_frontmatter(transformed)
-    body = _rewrite_skill_paths(body)
+    body = rewrite_host_paths(body, "opencode")
     return rendered + body
 
 
@@ -214,6 +229,14 @@ class OpenCodeAgentsPlugin(InstallationPlugin):
             target_dir = _opencode_agents_dir()
             target_dir.mkdir(parents=True, exist_ok=True)
 
+            # Clean-then-write: the target holds ONLY what this run writes.
+            # Ownership comes from the previous manifest, never the prefix.
+            stale = remove_manifest_owned_assets(target_dir, _MANIFEST_FILENAME, ".md")
+            if stale:
+                context.logger.info(
+                    f"  Removed {len(stale)} previously installed OpenCode agents"
+                )
+
             public_agents = (
                 set()
                 if context.dev_mode
@@ -236,7 +259,9 @@ class OpenCodeAgentsPlugin(InstallationPlugin):
                 if not is_public_agent(source_file.name, public_agents):
                     continue
                 agent_name = source_file.stem
-                content = source_file.read_text(encoding="utf-8")
+                # OpenCode has no skills preload: the shared renderer inlines
+                # each frontmatter skill once, as for Claude and Codex.
+                content = render_installed_role(source_file, "~/.claude/skills")
 
                 transformed = _transform_agent(content)
 
@@ -274,21 +299,25 @@ class OpenCodeAgentsPlugin(InstallationPlugin):
         """Uninstall only nWave-installed OpenCode agents using manifest."""
         return uninstall_with_manifest(
             context=context,
-            plugin_name=self.name,
-            target_dir=_opencode_agents_dir(),
-            manifest_filename=_MANIFEST_FILENAME,
-            noun="agents",
-            installed_key="installed_agents",
+            config=ManifestPluginConfig(
+                plugin_name=self.name,
+                target_dir=_opencode_agents_dir(),
+                manifest_filename=_MANIFEST_FILENAME,
+                noun="agents",
+                installed_key="installed_agents",
+            ),
         )
 
     def verify(self, context: InstallContext) -> PluginResult:
         """Verify OpenCode agents were installed correctly."""
         return verify_with_manifest(
             context=context,
-            plugin_name=self.name,
-            target_dir=_opencode_agents_dir(),
-            manifest_filename=_MANIFEST_FILENAME,
-            noun="agents",
-            installed_key="installed_agents",
+            config=ManifestPluginConfig(
+                plugin_name=self.name,
+                target_dir=_opencode_agents_dir(),
+                manifest_filename=_MANIFEST_FILENAME,
+                noun="agents",
+                installed_key="installed_agents",
+            ),
             source_finder=_find_agents_source,
         )

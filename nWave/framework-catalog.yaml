@@ -1,8 +1,7 @@
 name: nWave
-version: 3.22.2
-description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192SPIKE\u2192DESIGN\u2192\
-  DEVOPS\u2192DISTILL\u2192DELIVER methodology with visual architecture lifecycle\
-  \ management"
+version: 4.0.0
+description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192DESIGN\u2192DEVOPS\u2192\
+  DISTILL\u2192DELIVER methodology with visual architecture lifecycle management"
 author: nWave Team
 license: MIT
 documentation_url: https://github.com/nWave-ai/nWave
@@ -11,7 +10,6 @@ wave_phases:
 - DISCOVER
 - DIVERGE
 - DISCUSS
-- SPIKE
 - DESIGN
 - DEVOPS
 - DISTILL
@@ -79,6 +77,15 @@ agents:
     public: true
     description: Outside-In TDD with functional paradigm. Pure functions, pipeline
       composition, types as documentation, property-based testing.
+  user-examiner:
+    wave: DELIVER
+    priority: 2
+    role: user_examination
+    public: true
+    description: Non-technical User-Examiner - derives public expectations before
+      craft and examines the real user surface (browser/CLI/API) at final EXAMINE,
+      verdict plus constructive beta feedback; works from the user's point of view
+      and needs no source code (Vera)
   platform-architect:
     wave: DEVOPS
     priority: 1
@@ -120,7 +127,10 @@ agents:
     priority: 3
     role: agent_development
     public: true
-    description: Create and validate new specialized agents
+    description: Use when creating new AI agents, validating agent specifications,
+      optimizing requested existing SKILL.md assets, optimizing command definitions,
+      or ensuring compliance with Claude Code best practices. Creates focused, research-validated
+      agents (200-400 lines) with Skills for domain knowledge.
   acceptance-designer-reviewer:
     wave: CROSS_WAVE
     priority: 2
@@ -222,6 +232,13 @@ agents:
     role: investigation_review
     public: true
     description: Reviews root cause analyses and failure mode investigations
+  ux-designer:
+    wave: CROSS_WAVE
+    priority: 2
+    role: visual_design
+    public: true
+    description: UX/UI support for PO-led DISCUSS, accessible journeys, existing design
+      systems and bounded visual prototypes
   nwave-buddy:
     wave: CROSS_WAVE
     priority: 1
@@ -247,7 +264,14 @@ agents:
     description: "Reviews test-optimizer outputs \u2014 hard-blocks on production\
       \ drift, coverage drop without justification, unmapped removal, missing approval\
       \ gate (Trim Review)"
+skills: {}
 commands:
+  mode-select:
+    description: Choose or change the human collaboration mode without runtime gates.
+    argument_hint: '[interactive | final human review | full delegation] [scope]'
+    agents: []
+    wave: CROSS_WAVE
+    outputs: []
   discover:
     description: Conducts evidence-based product discovery through customer interviews
       and assumption testing. Use at project start to validate problem-solution fit.
@@ -274,11 +298,9 @@ commands:
     - competitive_research
     - taste_evaluation
   discuss:
-    description: Conducts Jobs-to-be-Done analysis, UX journey design, and requirements
-      gathering through interactive discovery. Use when starting feature analysis,
-      defining user stories, or creating acceptance criteria.
-    argument_hint: '[feature-name] - Optional: --phase=[jtbd|journey|requirements]
-      --interactive=[high|moderate] --output-format=[md|yaml]'
+    description: Clarifies product intent and records jobs, journeys, outcomes and
+      visible increments through nwdes.
+    argument_hint: '[product question or outcome]'
     agents:
     - product-owner
     wave: DISCUSS
@@ -292,18 +314,22 @@ commands:
     - requirements_document
     - user_stories
   spike:
-    description: Runs a timeboxed spike to validate one core assumption before DESIGN.
-      Use after DISCUSS when the feature involves a new mechanism, performance requirement,
-      or external integration.
+    description: "[DEPRECATED \u2014 use /nw-design with analysis focus instead] Runs\
+      \ a timeboxed spike to validate one core assumption before DESIGN. Use after\
+      \ DISCUSS when the feature involves a new mechanism, performance requirement,\
+      \ or external integration."
     argument_hint: '[feature-description] - Example: "wave-matrix -- derive feature
       status from pytest + filesystem"'
     agents:
     - software-crafter
     - functional-software-crafter
-    wave: SPIKE
+    wave: CROSS_WAVE
     outputs:
     - spike_report
     - validated_assumption
+    deprecated_in_version: 3.16.0
+    deprecation_note: SPIKE is no longer a canonical wave phase. Use DESIGN with pre-design
+      spike/analysis embedded instead.
   design:
     description: Designs system architecture with C4 diagrams and technology selection.
       Use when defining component boundaries, choosing tech stacks, or creating architecture
@@ -316,10 +342,9 @@ commands:
     - architecture_document
     - architecture_diagrams
   distill:
-    description: Creates E2E acceptance tests in Given-When-Then format from requirements
-      and architecture. Use when preparing executable specifications before implementation.
-    argument_hint: '[story-id] - Optional: --test-framework=[cucumber|specflow|pytest-bdd]
-      --integration=[real-services|mocks]'
+    description: Compiles permanent architecture and value authority into an executable
+      public oracle for automatic delivery.
+    argument_hint: '[requested outcome]'
     agents:
     - acceptance-designer
     wave: DISTILL
@@ -327,18 +352,16 @@ commands:
     - acceptance_tests
     - test_scenarios
   deliver:
-    description: Orchestrates the full DELIVER wave end-to-end (roadmap > execute-all
-      > finalize). Use when all prior waves are complete and the feature is ready
-      for implementation.
-    argument_hint: '[feature-description] - Example: "Implement user authentication
-      with JWT"'
+    description: Routes one strict Request through nwdes product and design construction,
+      design facts, public oracle, craft, independent whole-diff review with public-perspective
+      examination, and integration.
+    argument_hint: '[request]'
     agents:
     - platform-architect
     wave: DELIVER
     outputs:
     - complete_feature
     - quality_gates_passed
-    - evolution_document
   document:
     description: Creates evidence-based documentation following DIVIO/Diataxis principles.
       Use when writing tutorials, how-to guides, reference docs, or explanations.
@@ -352,6 +375,15 @@ commands:
     - research_document
     - divio_documentation
     - validation_report
+  mutation_test:
+    description: Runs a standalone mutation probe, disabled by default, over a named
+      production delta or the explicit nightly production delta.
+    argument_hint: '[--delta <base>...<head> | --nightly-delta] [--threshold 80]'
+    agents:
+    - software_crafter
+    wave: DELIVER
+    outputs:
+    - mutation_report
   devops:
     description: Designs CI/CD pipelines, infrastructure, observability, and deployment
       strategy. Use when preparing platform readiness for a feature.
@@ -374,9 +406,8 @@ commands:
     - hotspot_ranking
     - churn_annotated_report
   bugfix:
-    description: "Bug fix workflow: root cause analysis \u2192 user review \u2192\
-      \ regression test + fix via TDD"
-    argument_hint: '[bug-description] - Describe the defect observed'
+    description: Routes one observed defect Request through nwdes delivery.
+    argument_hint: '[observed defect]'
     agents:
     - troubleshooter
     - software-crafter
@@ -410,70 +441,17 @@ commands:
     outputs:
     - updated_diagrams
     - visual_architecture
-  roadmap:
-    description: Creates a phased roadmap.json for a feature goal with acceptance
-      criteria and TDD steps. Use when planning implementation steps before execution.
-    argument_hint: '[agent] [goal-description] - Example: @solution-architect "Migrate
-      to microservices"'
-    outputs:
-    - roadmap_yaml
-    agents: []
   review:
-    description: Dispatches an expert reviewer agent to critique workflow artifacts.
-      Use when a roadmap, implementation, or step needs quality review before proceeding.
-    argument_hint: '[agent] [artifact-type] [artifact-path] - Example: @software-crafter
-      task "roadmap.json"'
+    description: Routes an actual artifact or candidate diff to the matching independent
+      reviewer.
+    argument_hint: '[owner] [repository-relative artifact or diff identity]'
     outputs:
     - review_report
     agents: []
-  execute:
-    description: Use when a DELIVER roadmap already exists and you need to dispatch
-      exactly one identified step through its TDD cycle. Use nw-roadmap to create
-      the plan, nw-deliver for the whole wave, and nw-continue to resume at the next
-      inferred step.
-    argument_hint: '[agent] [feature-id] [step-id] - Example: @nw-software-crafter
-      "auth-upgrade" "01-01"'
-    outputs:
-    - task_results
-    agents: []
-  finalize:
-    description: Archives a completed feature to docs/evolution/, migrates lasting
-      artifacts to permanent directories, and cleans up the temporary workspace. Use
-      after all implementation steps pass and mutation testing completes.
-    argument_hint: '[agent] [feature-id] - Example: @platform-architect "auth-upgrade"'
-    outputs:
-    - evolution_document
-    agents: []
-  new:
-    description: Guided wizard to start a new feature. Asks what you want to build,
-      recommends the right starting wave, and launches it.
-    argument_hint: '[feature-description] - Example: "Add rate limiting to the API
-      gateway"'
-    agents: []
-    wave: CROSS_WAVE
-    outputs:
-    - wave_dispatch
-  continue:
-    description: Detects current wave progress for a feature and resumes at the next
-      step. Scans docs/feature/ for artifacts.
-    argument_hint: '[feature-id] - Optional: omit to auto-detect from docs/feature/'
-    agents: []
-    wave: CROSS_WAVE
-    outputs:
-    - wave_dispatch
-  fast-forward:
-    description: Fast-forwards through remaining waves end-to-end without stopping
-      for review between waves.
-    argument_hint: '[feature-description] - Optional: --from=[discuss|design|devops|distill|deliver]'
-    agents: []
-    wave: CROSS_WAVE
-    outputs:
-    - complete_feature
   rigor:
     description: Selects a quality-vs-token-consumption profile (lean, standard, thorough,
       exhaustive, custom, inherit) and persists it globally (~/.nwave/global-config.json)
-      or per-project (.nwave/des-config.json). Use when tuning how much rigor wave
-      commands apply.
+      or per-project configuration. Use when tuning how much rigor wave commands apply.
     argument_hint: '[profile] - Optional: lean, standard, thorough, exhaustive, custom,
       inherit. Omit for interactive selection.'
     agents: []
@@ -490,25 +468,10 @@ commands:
     outputs:
     - contextual_answer
     - command_recommendation
-  update:
-    description: Queues a deferred self-update of nwave-ai. Writes a PendingUpdateFlag
-      that the SessionStart hook replays on the next Claude Code launch, so the current
-      session is not interrupted. Falls back to manual instructions when the package
-      manager cannot be detected.
-    argument_hint: '[target-version] - Optional explicit version (e.g. 1.4.2). Defaults
-      to the latest version discovered by the periodic update check.'
-    agents: []
-    wave: CROSS_WAVE
-    outputs:
-    - pending_update_flag
-    - user_confirmation
   optimize-tests:
-    description: Minimizes test count while preserving coverage. Detects byte-identical
-      pairs, parametrize-inflation, language-guarantee tests, AST-shape tests, stale
-      migration nets. Approval gate before any change.
-    argument_hint: '[scope] - Optional: a path (e.g. tests/des/unit/), a feature-id
-      (auto-resolves to tests/<id>/), or omit for full unit suite. --reviewer to chain
-      reviewer agent.'
+    description: Minimizes a test portfolio while preserving observable behavior and
+      mutation value.
+    argument_hint: '[test scope]'
     agents:
     - test-optimizer
     - test-optimizer-reviewer
@@ -516,6 +479,28 @@ commands:
     outputs:
     - optimization_plan
     - test_reduction_report
+  forge:
+    description: Creates new specialized agents using the 5-phase workflow (ANALYZE
+      > DESIGN > CREATE > VALIDATE > REFINE). Use when building a new AI agent or
+      validating an existing agent specification.
+    argument_hint: '[agent-name] - Optional: --type=[specialist|reviewer|orchestrator]
+      --pattern=[react|reflection|router]'
+    agents:
+    - agent-builder
+    wave: CROSS_WAVE
+    outputs:
+    - agent_specification
+  research:
+    description: Gathers knowledge from web and files, cross-references across multiple
+      sources, and produces cited research documents. Use when investigating technologies,
+      patterns, or decisions that need evidence backing.
+    argument_hint: '[topic] - Optional: --research_depth=[overview|detailed|comprehensive|deep-dive]
+      --skill-for=[agent-name]'
+    agents:
+    - researcher
+    wave: CROSS_WAVE
+    outputs:
+    - research_document
 quality_gates:
   knowledge_preservation:
     software-crafter: 925_lines_methodology
@@ -569,11 +554,6 @@ templates:
       description: Moderately interactive platform readiness for DEVOPS wave
       interactivity: moderate
       validation: deployment_infrastructure_design
-    deliver_simple:
-      file: templates/deliver-outside-in-tdd.yaml
-      description: Simple implementation-focused template for DELIVER wave
-      interactivity: simple
-      methodology: outside_in_tdd_systematic_refactoring
   comprehensive_template:
     complete_methodology:
       file: templates/nWave-complete-methodology.yaml
