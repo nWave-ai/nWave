@@ -17,7 +17,7 @@ Use this guide if you installed the public `nwave-ai` 3.x package. **v3.22.2 is 
 
 Upgrade the **`nwave-ai`** package with the same Python package manager and environment that installed it. Select a published release that includes nwdes. A local candidate wheel or source tag is not proof that the release is public. Do not switch a source checkout to a package-managed upgrade without a deliberate installation change.
 
-Then run `nwave-ai install` for your selected host, using its supported platform option. Preview it with `--dry-run` first if you need to inspect the installation; the dry run also surfaces Codex ownership-collision refusals safely before a real install. Restart that host and confirm that `nwdes --help` is available. On native-skill hosts, also confirm that the installed `nw-nwdes` skill teaches the new route. On hook-only hosts such as Cursor and Copilot, use `nwdes --help` and that host's installation validation instead; no native skill is installed. The [installation guide](installation-guide/) covers host setup and recovery.
+Then run `nwave-ai install` for your selected host, using its supported platform option. Preview it with `--dry-run` first if you need to inspect the installation; the dry run also surfaces Codex ownership-collision refusals safely before a real install. Restart that host and confirm that `nwdes --help` is available — the one `nwdes` command you run at setup. On native-skill hosts, also confirm that the installed `nw-nwdes` skill teaches the new route. On hook-only hosts such as Cursor and Copilot, use `nwdes --help` and that host's installation validation instead; no native skill is installed. The [installation guide](installation-guide/) covers host setup and recovery.
 
 ### What the v4 install puts on your host
 
@@ -50,6 +50,11 @@ The 3.x delivery commands are replaced by the nwdes verb set (as listed by `nwde
 - Product and design recording: `nwdes product …`, `nwdes design …` (promise, scope-in/out, decision, journey, slice, paradigm, constraint, reuse, impact, boundaries, observation, equality, constructor; drafts are nwdes-owned).
 
 Run every nwdes command from the top level of the checkout; lane actions resolve the main project worktree.
+
+These verbs are your assistant's to run, not commands you type: you run the
+`nwave-ai` install and upgrade steps and decide scope; point your assistant
+at [Deliver a feature](nwdes/deliver-feature.md) with the sentence in
+[For your assistant](README.md#for-your-assistant).
 
 ## Delivery cutover
 

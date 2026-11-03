@@ -81,6 +81,10 @@ Verify the installation:
 nwave-ai doctor
 ```
 
+The offline bundle changes nothing about who runs what: the `nwave-ai` CLI is
+yours, the `nwdes` steps are your assistant's — see
+[For your assistant](README.md#for-your-assistant).
+
 ## Verification
 
 Read the actual doctor output for the installed bundle. Check the reported

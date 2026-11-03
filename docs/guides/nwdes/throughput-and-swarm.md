@@ -5,14 +5,15 @@ Requests on one shared machine); the "auto" section at the end is a short
 **explanation** of how S/M/L sizing works. It is not a tutorial and not a
 command reference — for verb options see the [lane reference](reference/lane.md).
 
-You have more than one feature to deliver and one machine. This guide shows when
+**Audience.** This page is for the root assistant — the session you talk to — that coordinates parallel delivery on the machine: it opens lanes, admits test runs by capacity, and integrates them. The person decides which Requests are worth parallel capacity and the other scope and trade-off calls, and points the assistant at this guide — see [For your assistant](../README.md#for-your-assistant).
+
+More than one Request is ready to deliver and they share one machine. This guide shows when
 to open parallel lanes, how to admit test runs safely against shared memory, how
 work flows through lanes, and how to integrate and close each feature.
 
-Resident contracts that already govern this repository — the single-trunk-writer
-rule, the stash ban, and the scratchpad prefix rule — live in
-[CLAUDE.md](../../../CLAUDE.md), section "Swarm & the shared box"; this guide does
-not repeat them.
+Resident contracts that already govern the development repository — the
+single-trunk-writer rule, the stash ban, and the scratchpad prefix rule — are
+kept in its resident project rules; this guide does not repeat them.
 
 ## When you need lanes
 
@@ -113,8 +114,7 @@ label is a judgment to revise from evidence — it never decides the route, and
 nwdes never routes or executes by size label. The LLM suggests the fastest
 route that keeps what the Request must leave behind and says what a faster
 route gives up; the user decides genuine scope and trade-offs
-(`nWave/skills/nw-auto/SKILL.md`, § 6; [CLAUDE.md](../../../CLAUDE.md), route
-table). When values need different durable authorities, or a late refusal
+(`nWave/skills/nw-auto/SKILL.md`, § 6, and its route table). When values need different durable authorities, or a late refusal
 would throw away more than one value, split the Request. For the full
 decision procedure and lane advice, read the `nw-auto` skill; this guide only
 orients you.

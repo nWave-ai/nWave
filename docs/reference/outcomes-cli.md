@@ -282,6 +282,6 @@ Threshold: ≥ 0.4 → Tier-2 fires.
 
 - **[Your First Outcome](../guides/outcomes-first-outcome/README.md)** — tutorial for new authors.
 - **[How to resolve a collision](../guides/howto-resolve-outcomes-collision.md)** — triage flagged candidates.
-- **[Why an outcomes registry?](../product/outcomes/README.md)** — design rationale and locked decisions.
+- **Why an outcomes registry?** — see the tutorial [Your first outcome](../guides/outcomes-first-outcome/README.md).
 - **JSON Schema** — `nwave_ai/outcomes/schema.json` (a packaged resource, shipped inside the wheel).
 - **Seeded registry** — `docs/product/outcomes/registry.yaml`.

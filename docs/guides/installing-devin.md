@@ -67,11 +67,17 @@ directories. It reports the number of skills it verified; the count depends on
 the installed release, so do not treat one release's number as a stable
 expectation.
 
-The package supplies the `nwdes` command; confirm it:
+The package supplies the `nwdes` command; confirm it — the one `nwdes`
+command you run at setup:
 
 ```text
 nwdes --help
 ```
+
+Devin receives the skills only, so a fresh session finds nwdes partly on its
+own: ask your assistant about the installed `nw-` skills, or point it at
+[Deliver a feature](nwdes/deliver-feature.md) with the sentence from
+[For your assistant](README.md#for-your-assistant).
 
 On a Devin-only install, `nwave-ai doctor` may verify the native Devin skills
 and still exit 1, because its baseline checks expect Claude settings and

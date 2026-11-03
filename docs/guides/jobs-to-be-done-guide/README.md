@@ -4,6 +4,8 @@ Help choosing the right nWave workflow for your task.
 
 This guide uses the **Outcome Driven Innovation (ODI)** framework to match your job to the right sequence of waves and commands.
 
+In normal work you do not run these workflows by hand: you pick the job and ask your assistant to run it — the `/nw-*` prompts below are what you say to it, and the `nwdes` verbs it runs are the assistant's to type. See [For your assistant](../README.md#for-your-assistant).
+
 ## The 7-Wave Pipeline
 
 The framework operates as a sequential pipeline of 7 waves:
@@ -41,7 +43,7 @@ nwdes prompt --role nw-software-crafter --handoff "$H" --slice S1 --jev unauthor
 nwdes lane integrate --feature <name> --expected "$EXPECTED" --candidate "$CANDIDATE"  # Close the lane
 ```
 
-This gives you hands-on understanding of each responsibility. Use `/nw-deliver` to have the host coordinate the route when the pattern feels natural.
+This gives you hands-on understanding of each responsibility, which is this mode's only purpose. In normal work, ask your assistant to run the route (see [For your assistant](../README.md#for-your-assistant)); use `/nw-deliver` to have the host coordinate it when the pattern feels natural.
 
 **Cross-wave commands** (can be used anytime): `research`, `diagram`, `root-why`, `document`, `refactor`, `mikado`
 

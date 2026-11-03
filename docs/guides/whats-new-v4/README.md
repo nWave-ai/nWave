@@ -25,6 +25,10 @@ The split of work is now explicit:
   and decides what happens next.
 - **Humans** decide genuine scope and trade-offs.
 
+In practice this makes `nwdes` your assistant's tool: you point your
+assistant at the guide and decide scope — see
+[For your assistant](../README.md#for-your-assistant).
+
 Work moves through one of three **routes**: **spine waves** (the `/nw-*`
 commands with their gates and independent review), **host-led nwdes steps**
 (the root drives roles with generated prompts), or **working directly** (no

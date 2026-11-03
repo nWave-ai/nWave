@@ -4,6 +4,8 @@
 **Last Updated**: 2026-10-23
 **Related**: Outside-In TDD: Scenario-to-Row Mapping Principle
 
+**Audience.** The steps are run by the root assistant — the session you talk to: it executes the `nwdes` verbs and the test runs below. The person reads along, decides scope and trade-offs, and points the assistant at this guide — the sentence to paste is in [For your assistant](../README.md#for-your-assistant).
+
 ## Goal
 
 Successfully deliver a slice through the nwdes route where each acceptance test scenario is recorded as exactly one acceptance row and observed RED, then GREEN, following Outside-In TDD discipline.

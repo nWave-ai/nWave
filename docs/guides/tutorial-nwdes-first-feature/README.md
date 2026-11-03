@@ -2,6 +2,8 @@
 
 Build a greeting command in a throwaway Git repository. You will create a handoff, declare one slice, fix an expectation, observe a failing behavior check, change the implementation, and record examination material.
 
+**This is the one lesson where a person types the `nwdes` verbs.** You type them yourself for two reasons: to see how nwdes behaves — what it builds and how it guards what it records — and to learn what your root assistant will do for you in real work. Everywhere else nwdes is the assistant's tool: you point your assistant at the guides instead of typing the verbs. The sentence to paste is in [For your assistant](../README.md#for-your-assistant).
+
 You need Python 3.11 or newer, Git, and an installed `nwdes` on your command path. No test library is needed. Use an empty temporary directory, not your real project. Each `Recorded output` block below comes from an executed run of that step; the role-recording steps, whose values here are fixtures, describe their effect instead of printing output.
 
 **This lesson uses fixed role-output examples.** They teach the CLI boundary without a model call. They are explicitly marked as tutorial fixtures. They do not replace independent roles or prove a real delivery has passed review. For real work, use [Deliver a feature](../nwdes/deliver-feature.md).
@@ -287,4 +289,4 @@ The delta prints nothing because both inputs are the same handoff. Open the acce
 
 You have practiced the command flow and observed the greeting through a real subprocess. Nothing was installed into your real host configuration, and no feature work was committed or integrated — the two commits in this lesson are scaffolding, not a delivered feature. You can remove the throwaway directory with your file manager when you no longer need it.
 
-For real work, continue with [Deliver a feature](../nwdes/deliver-feature.md), [Fix a bug](../nwdes/fix-bug.md), and [Use lanes](../nwdes/use-lanes.md). Look up flags in the [reference](../nwdes/reference/index.md).
+For real work, hand these verbs to your assistant — the sentence to paste is in [For your assistant](../README.md#for-your-assistant) — and continue with [Deliver a feature](../nwdes/deliver-feature.md), [Fix a bug](../nwdes/fix-bug.md), and [Use lanes](../nwdes/use-lanes.md). Look up flags in the [reference](../nwdes/reference/index.md).

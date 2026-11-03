@@ -4,6 +4,10 @@ Task-oriented, step-by-step procedures. Each guide solves one specific
 problem and assumes you know the basics ([tutorials](./TUTORIALS.md) teach
 them).
 
+The `nwdes` how-tos below are written for your assistant to run — see
+[For your assistant](./README.md#for-your-assistant) for the sentence to
+paste and who runs what.
+
 ## Deliver and fix
 
 | Guide | Description | Level |

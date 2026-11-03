@@ -32,4 +32,5 @@ defined once; longer explanations live on the linked pages.
 | **verification command** | The command a slice declares; the host runs it to observe RED and GREEN. nwdes never runs it. |
 
 See also [Understanding nwdes](./understanding-nwdes/) for how the pieces
-fit together.
+fit together, and [For your assistant](./README.md#for-your-assistant) for
+who runs what.

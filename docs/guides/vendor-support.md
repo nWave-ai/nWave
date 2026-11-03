@@ -50,9 +50,11 @@ use that host's installer validation instead.
 
 - **Cursor, Copilot (hook integration only):** no agents and no native
   skills are installed, so the specialist `/nw-*` role experience does not
-  run there. You can still use the `nwdes` CLI from your shell and read the
-  published guides; the hooks wire the host to nWave, they do not give the
-  host nWave's role agents.
+  run there and your assistant cannot load the `nw-nwdes` skill. Point it at
+  the [Deliver a feature](nwdes/deliver-feature.md) guide with the sentence
+  from [For your assistant](README.md#for-your-assistant); the `nwdes` CLI
+  from your shell stays as a fallback. The hooks wire the host to nWave,
+  they do not give the host nWave's role agents.
 - **Devin (skills-only):** the skills install as methodology guidance for
   Devin's sessions. There is no hook API on Devin and no agent surface, so
   nothing enforces or drives delivery automatically.

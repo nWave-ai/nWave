@@ -51,7 +51,8 @@ installer to auto-detect hosts; if none are detected, it refuses rather than
 guessing. For scripted installation, `--yes` does not enable any project.
 Installation does not ask for or write a density preference.
 
-Restart the host after installation, then confirm the delivery command:
+Restart the host after installation, then confirm the delivery command — the
+one `nwdes` command you run at setup:
 
 ```bash
 nwdes --help
@@ -664,4 +665,9 @@ the same question. For workflow guidance, see
 
 ---
 
-**Ready to build?** Walk the safe [First feature with nwdes](../tutorial-nwdes-first-feature/) lesson in a throwaway repository, then start real work with [Deliver a feature](../nwdes/deliver-feature.md).
+**Ready to build?** The `nwdes` steps are your assistant's to run: paste it
+the sentence from [For your assistant](../README.md#for-your-assistant). To
+see the command flow once by hand, walk the safe
+[First feature with nwdes](../tutorial-nwdes-first-feature/) lesson in a
+throwaway repository, then start real work with
+[Deliver a feature](../nwdes/deliver-feature.md).

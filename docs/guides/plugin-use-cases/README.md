@@ -1,6 +1,6 @@
 # nWave Plugin — Use Cases
 
-Four practical use cases demonstrating nWave's core workflows. Each includes the prompt, what happens step by step, and expected output.
+Four practical use cases demonstrating nWave's core workflows. Each includes the prompt, what happens step by step, and expected output. The prompts are what you say to your assistant; it loads the skills and runs the `nwdes` route — see [For your assistant](../README.md#for-your-assistant).
 
 ---
 
@@ -15,19 +15,21 @@ Four practical use cases demonstrating nWave's core workflows. Each includes the
 **What happens:**
 
 1. **Design** — the architect names the observable values, owned targets and
-   verification obligations. The host passes the accepted payload unchanged to
-   `nwdes design apply`.
+   verification obligations, and records them through its `nwdes design` verbs
+   (draft, then `nwdes design close`); nwdes assigns the identities and
+   renders the briefs itself.
 
-2. **Acceptance** — the acceptance designer supplies the executable oracle.
-   The host applies it with `nwdes acceptance apply` and observes RED before
-   implementation.
+2. **Acceptance** — the acceptance designer supplies the executable oracle: it
+   records one row per scenario with `nwdes acceptance row add` and publishes
+   with `nwdes acceptance close`. The host runs the slice's declared commands
+   and observes RED before implementation.
 
 3. **Implementation** — the crafter changes the declared mutable targets.
    The host runs the slice's verification commands and retains their results.
    nwdes is a deterministic builder, not a phase-enforcement engine.
 
 4. **Independent assessment** — reviewers and the examiner assess the actual
-   evidence. A rendered document or a successful apply does not establish that
+   evidence. A rendered document or a successful close does not establish that
    the delivered behavior is correct.
 
 **Expected output:**

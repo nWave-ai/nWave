@@ -1,5 +1,7 @@
 # Fix a bug with nwdes
 
+**Audience.** The steps below are the operating procedure of the root assistant — the session you talk to. The assistant runs every `nwdes` command and orchestrates the roles; the person reads along, makes the scope and trade-off decisions the route asks for, and points the assistant at this guide — the sentence to paste is in [For your assistant](../README.md#for-your-assistant).
+
 Use this guide for a reported defect whose expected public behaviour is known. Start in the main worktree with an installed coding host, the project's environment active, the intended existing trunk configured under `lanes.trunk`, and the original pre-fix revision available. The examples use a Python search component at `src/search.py`; substitute the actual defect, promise, owned target and declared verification command.
 
 A single bugfix may use the current clean checkout without a lane. The roles run there and the orchestrator (the root assistant you are talking to) commits the GREEN candidate; skip lane open, compose and integrate, and review and examine the same committed candidate. No lane-free flag is needed. The steps below show the optional lane route.
@@ -12,7 +14,7 @@ Give each role the complete bundle from `nwdes prompt`. Every bundle states the 
 
 The orchestrator decides when and how to commit, normally one plain `git commit` of a GREEN slice with hooks on; the optional [`nwdes commit`](reference/commit.md) commits a role's owned files, including its run record. nwdes imposes no commit after a close, so several authority closes may stand uncommitted at once. Keep the index empty before the commit. The root keeps lane open, compose and integrate. Plain Git commits remain available to humans and outside nwdes deliveries.
 
-Run every nwdes command from the top level of the checkout. Roots default to cwd and the repository root; lane verbs resolve the main worktree. The first add, set or remove creates the scoped draft. Use `open --from-current` to revise current authority; close without a draft validates empty values.
+Run every nwdes command from the top level of the checkout. Roots default to cwd and the repository root; lane verbs resolve the main worktree. The first add, set or remove creates the scoped draft. Use `open --from-current` to revise current authority; close without a draft validates empty values. nwdes builds every draft, identity and serialized record itself and refuses an incomplete or malformed record before that record is written, so each step behaves deterministically: the wrong state is hard to write, never repaired afterwards.
 
 ## Steps
 

@@ -72,7 +72,9 @@ nwdes --help
 
 Use your configured root when `PI_CONFIG_DIR` is set. Restart OMP so the new
 agents, skills and commands load and the extension takes effect, then open
-the nwdes skill in a project. OMP installs no host hooks: the extension's
+the nwdes skill in a project — or paste the sentence from
+[For your assistant](README.md#for-your-assistant) to start a delivery. OMP
+installs no host hooks: the extension's
 tool-call events differ from Claude Code hooks. Installation and file
 presence do not prove delivery correctness: the host must run the slice's
 declared verification commands and retain the results.

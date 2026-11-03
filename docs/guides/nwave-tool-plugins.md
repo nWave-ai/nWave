@@ -218,8 +218,8 @@ nWave just shells out to it.
 
 ## Discoverability
 
-Once published, list your plugin in the [nWave marketplace](../marketplace/)
-so users can find it. (Marketplace registration TBD as more plugins ship.)
+Once published, tell the nWave maintainers (open an issue on the repository)
+so users can find it. (A plugin listing is not yet available.)
 
 ## Honest limitations of the current design
 

@@ -1,9 +1,11 @@
 # Understanding nwdes
 
 This page explains what the `nwdes` command is, what it deliberately does
-not do, and how its design keeps records honest. For step-by-step delivery,
-read [Deliver a feature](../nwdes/deliver-feature.md); for every verb and
-option, read the [nwdes reference](../nwdes/reference/index.md).
+not do, and how its design keeps records honest. `nwdes` is the assistant's
+tool; how you point your assistant at it is in
+[For your assistant](../README.md#for-your-assistant). For step-by-step
+delivery, read [Deliver a feature](../nwdes/deliver-feature.md); for every
+verb and option, read the [nwdes reference](../nwdes/reference/index.md).
 
 ## A tool, not a runner
 
@@ -36,7 +38,12 @@ command output.
 
 ## Correctness by construction
 
-Records stay honest because the tool makes wrong states hard to produce:
+nwdes behaves deterministically because it gets its shape from construction,
+not from enforcement. The tool builds each step itself — the handoff, role
+prompts, output schemas, the kind verbs roles record with, the lane verbs —
+and an LLM only supplies typed values into that form. The wrong state is not
+hunted down afterwards; it cannot be written in the first place. Records stay
+honest because the tool makes wrong states hard to produce:
 
 - **Roles type values, they do not write JSON.** Each role calls its kind's
   verbs (`nwdes product promise add`, `nwdes review finding add`, `nwdes
@@ -55,6 +62,18 @@ Records stay honest because the tool makes wrong states hard to produce:
 - **Dangerous operations report every problem before acting.** `nwdes lane
   integrate` lists all admission problems in one pass before it changes
   anything, and never force-pushes or deletes undeclared files.
+
+The predecessor delivery runtime pushed the session into shape from the
+outside, with hooks and run-time checks of its own; those are gone with it.
+v4 moved the guarantees into the form: nwdes makes no model calls and
+enforces no gates — the host runs the models and the verification commands,
+the root assistant decides the next step, and humans decide scope. The hooks
+nWave still installs today carry attribution, session notices and a write
+guard, not delivery gates.
+
+Determinism by construction is a property of the tool, not a duty on the
+reader: your assistant gets it by running nwdes instead of hand-writing
+delivery records.
 
 ## Three routes, one choice
 

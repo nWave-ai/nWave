@@ -1,6 +1,8 @@
 # Use feature lanes
 
-Use one lane per feature to isolate changes and integrate them without rewriting trunk. You need Git 2.38 or newer, a committed project, and the intended trunk checked out in the main worktree.
+**Audience.** The lane operations below are run by the root assistant — the session you talk to; it executes every `nwdes` verb and keeps the lane lifecycle. The person reads along, decides which work justifies a lane, and points the assistant at this guide — the sentence to paste is in [For your assistant](../README.md#for-your-assistant).
+
+Use one lane per feature to isolate changes and integrate them without rewriting trunk. The prerequisites are Git 2.38 or newer, a committed project, and the intended trunk checked out in the main worktree.
 
 An isolated checkout or single bugfix may run without a lane: work and commit in the current clean checkout and retain the same verification, review and examination obligations. There is no lane-free flag.
 

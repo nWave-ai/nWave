@@ -44,7 +44,8 @@ run its CLI again.
 ### Codex global install checklist
 
 Check the installer's final validation of Codex agents and shared skills, then
-restart Codex. From the same environment, check the delivery command:
+restart Codex. From the same environment, check the delivery command — the
+one `nwdes` command you run at setup:
 
 ```bash
 nwdes --help

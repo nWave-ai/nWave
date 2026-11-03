@@ -57,5 +57,5 @@ Reinstall the agreed version into the affected host and restart it. Do not
 manually edit installed skills: a later install can replace them.
 
 A package update does not convert an in-progress v3 delivery. Finish it on
-3.22.2 or restart with `nwdes feature new`. See the
-[migration guide](migrating-from-3x.md).
+3.22.2 or restart it with `nwdes feature new` (your assistant runs that
+command). See the [migration guide](migrating-from-3x.md).

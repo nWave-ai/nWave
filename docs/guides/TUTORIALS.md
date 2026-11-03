@@ -3,6 +3,10 @@
 Tutorials teach by doing: a guided, hands-on lesson with a visible result.
 Pick by the job you want to learn.
 
+The `nwdes` steps these lessons walk are your assistant's to run in real
+work; tutorial 1 is the one you type by hand — see
+[For your assistant](./README.md#for-your-assistant).
+
 > **Currency note (v4).** The tutorials under "The wave tutorials" and
 > "Standalone lessons" were written for the 3.x workflow. The `/nw-*`
 > commands they teach still exist, but 3.x delivery internals (per-wave

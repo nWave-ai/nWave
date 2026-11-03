@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.32.4", "pip>=24"]
+requires = ["hatchling==1.32.4", "pip>=24"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -33,7 +33,7 @@ path = "scripts/release/offline_wheelhouse_hook.py"
 
 [project]
 name = "nwave-ai"
-version = "4.0.0"
+version = "4.0.1"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -122,7 +122,7 @@ dev = [
     "detect-secrets>=1.4.0",
     # Git & release
     "pre-commit>=4.6.2",
-    "commitizen>=4.19.2",
+    "commitizen>=4.19.3",
     # Explicit security floors for transitive dependencies prevent a future
     # lock re-resolution from selecting vulnerable releases. These are dev
     # tooling dependencies, not additional product runtime requirements.
@@ -439,7 +439,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "3.21.0"
+version = "4.0.1"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",
