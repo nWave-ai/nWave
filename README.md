@@ -2,6 +2,8 @@
 
 nWave supplies specialist roles and a host-led delivery workflow for software teams. Its `nwdes` command builds one canonical handoff per feature — the single JSON record of the feature's facts — and renders briefs, role prompts, output schemas, and review packets from it. Your coding host (Claude Code, Codex, OpenCode, OMP, Cursor, Copilot, or Devin) invokes the roles and runs the models; the root assistant — the session you talk to — runs verification and decides what happens next. You decide scope and trade-offs.
 
+> Coming from 3.x? nWave 4 is a major release and a breaking change from 3.x. The old delivery runtime is removed, the 3.x delivery commands are replaced by the nwdes verbs, and Python 3.11 or newer is required. There is no converter for 3.x roadmaps or execution logs. Read the migration guide before you upgrade: https://github.com/nWave-ai/nWave/blob/main/docs/guides/migrating-from-3x.md.
+
 New to the vocabulary? Each term below is defined at first use; the [glossary](https://github.com/nWave-ai/nWave/tree/main/docs/guides/glossary.md) collects them in one place.
 
 ## What is new in v4
