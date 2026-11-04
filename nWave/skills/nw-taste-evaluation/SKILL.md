@@ -122,10 +122,12 @@ Assemble all scores into a weighted matrix.
 
 Produce top 3 options from the scoring matrix.
 
+Carry each option's handle and `name_origin` from `options-raw.md` into the scoring table unchanged — handles are internal cross-references and carry no scoring weight.
+
 For each of the top 3, provide:
 
 ```
-### Option [Name] — Score [X.XX]
+### Option [handle] — Score [X.XX] — name_origin: [user-words | coined]
 
 **Why it scores well**: What taste principles it satisfies strongly
 **Core trade-off**: What it sacrifices (every option trades something)
@@ -133,7 +135,7 @@ For each of the top 3, provide:
 **Hire criteria**: Under what circumstances would a user choose this?
 ```
 
-**Recommendation**: Identify the top option with a one-paragraph rationale grounded in the scoring — not preference. If the top option has a critical weakness, flag it explicitly.
+**Recommendation**: Identify the top option with a one-paragraph rationale grounded in the scoring — not preference. If the top option has a critical weakness, flag it explicitly. Phrase the recommendation by mechanism in the requester's vocabulary; a coined handle stays in the scoring table.
 
 ---
 
@@ -163,6 +165,6 @@ Produce `docs/feature/{feature-id}/diverge/taste-evaluation.md` and `recommendat
 1. Top 3 options with pro/con/risk/hire-criteria
 2. Recommended option with rationale
 3. Dissenting case (which option the scoring almost chose instead, and why)
-4. Decision for DISCUSS wave: "Proceed with [option], assuming [key risk] is acceptable"
+4. Decision for DISCUSS wave: "Proceed with [the mechanism in the requester's vocabulary — never a coined handle unless marked as new], assuming [key risk] is acceptable"
 
 **Gate**: Recommendation must be derivable from the scoring matrix. Any mismatch between scores and recommendation must be explicitly justified with weight adjustment.

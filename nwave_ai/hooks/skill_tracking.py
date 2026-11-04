@@ -16,6 +16,7 @@ from typing import Any
 from nwave_ai.hooks.run_context import SystemTimeProvider, TimeProvider
 from nwave_ai.platform.config import NWaveConfig
 from nwave_ai.platform.gitignore import ensure_nwave_gitignore
+from nwave_ai.platform.project_root import anchor_to_project_root
 
 
 @dataclass(frozen=True)
@@ -60,15 +61,15 @@ class SkillTrackingPort(ABC):
 class JsonlSkillTracker(SkillTrackingPort):
     """Appends skill load events to a JSONL file. Fail-silent: all I/O errors are swallowed.
 
-    Output: .nwave/skill-loading-log.jsonl (one JSON object per line).
+    Output: <project root>/.nwave/skill-loading-log.jsonl (one JSON object per line).
     """
 
     DEFAULT_LOG_FILE = ".nwave/skill-loading-log.jsonl"
 
     def __init__(self, log_path: str | Path | None = None) -> None:
-        """Initialize with optional log file path (default: .nwave/skill-loading-log.jsonl in cwd)."""
+        """Initialize with optional log file path (default: project-root log file)."""
         if log_path is None:
-            self._log_path = Path.cwd() / self.DEFAULT_LOG_FILE
+            self._log_path = anchor_to_project_root(Path.cwd()) / self.DEFAULT_LOG_FILE
         else:
             self._log_path = Path(log_path)
 

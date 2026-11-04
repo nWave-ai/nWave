@@ -86,16 +86,15 @@ The agent will ask:
 
 ## What DIVERGE Produces
 
-### Feature delta (in `docs/features/{feature-id}/`)
+### Working output for this delivery
 
 ```
 recommendation.md         Top 3 options + rationale + dissent
-wave-decisions.md        DIVERGE decisions appended
 ```
 
-The **recommendation.md** is your main output — read this to understand which option won and why.
+The **recommendation.md** is your main output — read this to understand which option won and why. It and its supporting artifacts are working files while this delivery is open, not durable authority. DIVERGE records no `wave-decisions.md` and no other per-wave ledger; per-wave records were removed in v4 ([What's new in v4](../whats-new-v4/)).
 
-### Internal artifacts (in `docs/features/{feature-id}/diverge/`)
+### Internal artifacts (working files)
 
 ```
 job-analysis.md          Validated job + outcome statements
@@ -105,7 +104,7 @@ taste-evaluation.md     Scoring matrix, locked weights
 review.yaml             Peer review result
 ```
 
-These are archived for history and review.
+These support the recommendation while this delivery is open.
 
 ### SSOT update (in `docs/product/`)
 

@@ -8,6 +8,12 @@ Keep this page to read old logs, ADRs and audit records; never follow it to
 configure or run a delivery. Use `nwdes --help` and the
 [nwdes command reference](../guides/nwdes/reference/index.md) instead.
 
+The records this page mentions are gone in v4. Delivery state lives in the nwdes
+handoff (`docs/feature/ID/handoff.json`) with its run records. `roadmap.json` and
+`execution-log.json` were removed with no converter, and the installed hooks block
+every direct write to `execution-log.json`. See
+[Migrate from nWave 3.x](../guides/migrating-from-3x.md).
+
 Task prompts dispatched through the retired DES orchestrator embedded HTML-comment
 markers that carried execution context. Hooks (`pre_tool_use`,
 `subagent_stop`, `deliver_progress`) parsed them via

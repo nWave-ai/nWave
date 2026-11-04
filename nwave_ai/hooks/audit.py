@@ -19,6 +19,10 @@ from typing import Any
 from nwave_ai.hooks.run_context import resolve_run_context
 from nwave_ai.platform.gitignore import ensure_nwave_gitignore
 from nwave_ai.platform.locations import resolve_nwave_root
+from nwave_ai.platform.project_root import (
+    anchor_to_project_root,
+    is_refused_project_root,
+)
 
 
 @dataclass(frozen=True)
@@ -162,19 +166,14 @@ class AuditLogPathResolver:
         if config_dir:
             return config_dir
 
-        # Priority 4: Project-local
-        home = Path.home()
-        if effective_cwd != home and str(effective_cwd) not in (
-            "/",
-            "/usr",
-            "/bin",
-            "/etc",
-            "/var",
-            "/tmp",
-        ):
-            return effective_cwd / ".nwave" / "des" / "logs"
+        # Priority 4: Project-local, anchored at the project root so a session
+        # that moves into a subfolder keeps writing one log
+        project_root = anchor_to_project_root(effective_cwd)
+        if not is_refused_project_root(project_root):
+            return project_root / ".nwave" / "des" / "logs"
 
         # Priority 5: Global fallback
+        home = Path.home()
         return home / ".claude" / "des" / "logs"
 
     @staticmethod
@@ -214,7 +213,7 @@ class JsonlAuditLogWriter(AuditLogWriter):
         Log directory priority (highest to lowest):
         1. Explicit log_dir parameter
         2. DES_AUDIT_LOG_DIR environment variable
-        3. Project-local .nwave/des/logs/ (default)
+        3. Project-local .nwave/des/logs/ under the project root (default)
         4. Global ~/.claude/des/logs/ (fallback)
 
         Args:

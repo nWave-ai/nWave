@@ -149,6 +149,7 @@ RECIPES = (
             _path("work"),
             _derived("product", "current_product"),
             _derived("authority", "authority/po"),
+            _derived("asks"),
             *_TAIL,
         ),
         "discuss",
@@ -163,13 +164,14 @@ RECIPES = (
             _path("product"),
             _path("adrs", "design.adrs"),
             _derived("design", "current_design"),
+            _derived("asks"),
             *_TAIL,
         ),
     ),
     _recipe(
         "oracle.atd-v4",
         ("nw-acceptance-designer",),
-        (*_ATD, _derived("examine_rework"), *_TAIL),
+        (*_ATD, _derived("examine_rework"), _derived("asks"), *_TAIL),
     ),
     replace(
         _recipe(
@@ -238,6 +240,7 @@ RECIPES = (
             _path("promises", "product.promises"),
             _path("expectations"),
             _input("root_input"),
+            _derived("asks"),
         ),
         "expectations",
     ),
@@ -555,6 +558,7 @@ class _Inspection:
     previous: model.HandoffInput | None
     template: str | model.UnavailableInput | None
     provided: frozenset[str]
+    policy: object
     problems: tuple[Defect, ...] = ()
     recipe_id: str | None = None
 
@@ -565,6 +569,7 @@ class PreparedPrompt:
     handoff: model.Handoff
     inputs: Inputs
     template: str
+    policy: object
 
     def build(self):
         return _render_ready(self)
@@ -849,7 +854,11 @@ def _prepare(inspection):
         return refusal
     return Built(
         PreparedPrompt(
-            selected.value, previous.result.value, inputs, inspection.template
+            selected.value,
+            previous.result.value,
+            inputs,
+            inspection.template,
+            inspection.policy,
         )
     )
 
@@ -895,7 +904,7 @@ def _diff(flags, raw):
         )
 
 
-def prepare_prompt(flags, previous, diff, template):
+def prepare_prompt(flags, previous, diff, template, policy):
     refusal = examination_admission(flags)
     if refusal:
         return checked(None, refusal)
@@ -933,12 +942,13 @@ def prepare_prompt(flags, previous, diff, template):
             previous if inputs.handoff is not None else None,
             template,
             _provided(flags),
+            policy,
             problems,
         )
     )
 
 
-def render_prompt(recipe_id, handoff, inputs, template):
+def render_prompt(recipe_id, handoff, inputs, template, policy):
     provided = _provided(
         {
             "slice": inputs.slice,
@@ -955,6 +965,7 @@ def render_prompt(recipe_id, handoff, inputs, template):
             model.HandoffInput(Built(handoff), handoff._references),
             template,
             provided,
+            policy,
             recipe_id=recipe_id,
         )
     )
@@ -1545,7 +1556,7 @@ def _bundle_scope(handoff):
     return None
 
 
-def _verb_reference(recipe, inputs, handoff):
+def _verb_reference(recipe, inputs, handoff, policy):
     kind = recording_kind(recipe)
     revision = (
         "Revision: open --from-current only revises authority that is already published, never as the first call of a first recording (the first add/set/remove creates the draft); retain unchanged rows, remove replaced rows before adding. Reference existing ids only.\n"
@@ -1594,7 +1605,7 @@ def _verb_reference(recipe, inputs, handoff):
         revision
         + "\n".join(recording)
         + "\n\n"
-        + grammar.describe(kind, role=inputs.role)
+        + grammar.describe(kind, role=inputs.role, policy=policy)
     )
 
 
@@ -1608,6 +1619,58 @@ def _examine_rework(view):
     if handoff.work.get("rework") or _slot(work, "rework"):
         return Printed(_EXAMINE_REWORK_RULE)
     return _NONE
+
+
+def _verb(member):
+    return model.recording_verb(member)
+
+
+def _accepted(member):
+    item = model.member_spec(member)
+    if item.kind == "record":
+        values = [
+            field + " = " + " | ".join(child.members)
+            for field, child in item.members
+            if child.kind == "enum"
+        ]
+        return "; ".join(values) or "none, every field is free text"
+    if item.kind == "enum":
+        return " | ".join(item.members)
+    if item.kind == "reference":
+        prefixes = "".join(prefix + "<n> " for prefix in item.members)
+        return prefixes + "identities already recorded in this handoff"
+    return "free text"
+
+
+def _asks(view):
+    """The role's asks from the policy: each asked member's sentence, verb, accepted values,
+    shape and example, plus the code targets it owes once the handoff holds slices."""
+    policy = view.plan.policy
+    targets = model.design_targets(view.plan.handoff.design or model.EMPTY)
+    blocks = []
+    for name in policy.asks.get(view.plan.inputs.role, ()):
+        member = policy.members[name]
+        lines = [
+            member.ask.replace("{verb}", _verb(name)).replace(
+                "{not_applicable}",
+                "design not-applicable add --analysis " + name + " --reason TEXT",
+            ),
+            "Accepted values: " + _accepted(name) + ".",
+            "Shape: " + _verb(name) + " " + member.shape + ".",
+            "Example locator: " + member.example + ".",
+        ]
+        if member.minimum:
+            lines.append(
+                f"Required: at least {member.minimum} recorded; without it nwdes refuses with MissingFact naming {name}."
+            )
+        if member.cover == "target":
+            lines.extend(
+                f"Owes {name}: slice {identity}: {path}." for identity, path in targets
+            )
+        elif member.cover == "design" and targets:
+            lines.append(f"Owes {name}: the design, once.")
+        blocks.append("\n".join(lines))
+    return Printed("\n\n".join(blocks)) if blocks else _NONE
 
 
 _DERIVATIONS = MappingProxyType(
@@ -1630,6 +1693,7 @@ _DERIVATIONS = MappingProxyType(
         "acceptance_index": _acceptance_index,
         "charter_slices": _charter_slices,
         "examine_budget": _examine_budget,
+        "asks": _asks,
         "examine_rework": _examine_rework,
     }
 )
@@ -1723,5 +1787,7 @@ def _render_ready(plan):
         return bound
     text = references.expand(bound.value) if references is not None else bound.value
     return Built(
-        text.rstrip() + "\n\n" + _verb_reference(plan.recipe, plan.inputs, plan.handoff)
+        text.rstrip()
+        + "\n\n"
+        + _verb_reference(plan.recipe, plan.inputs, plan.handoff, plan.policy)
     )

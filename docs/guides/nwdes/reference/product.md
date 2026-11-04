@@ -13,6 +13,7 @@ Promise IDs resolve exactly as at close: published promises with matching words 
 Draft edits consume the inspected previous units they actually need, not a whole-handoff acceptance gate. An unrelated malformed previous work value does not suppress authoring or later independent product diagnostics; close still reports all runnable defects before publication.
 
 Product close requires every slice to cite existing promises and every Request promise to be covered by a slice. Older handoffs without slice links remain readable and round-trip unchanged; revising and closing their product requires complete coverage. No slice-size or dependency-connectivity restriction is added.
+Product close also requires a scope-out line: record it with `nwdes product scope-out add --text TEXT`. Where nothing is excluded, write a line such as `Nothing excluded because X`. A close without one refuses with MissingFact naming `product.scope_out`; handoffs published before this rule still read.
 
 Check the split before closing: does every slice contribute to this one value, or did you bundle unrelated outcomes? Do not answer yes by default. Split unrelated outcomes into a separate nwdes feature new.
 

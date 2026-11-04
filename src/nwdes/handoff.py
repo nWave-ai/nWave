@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields, replace
@@ -10,6 +11,7 @@ from enum import Enum
 from functools import cached_property, reduce
 from types import MappingProxyType
 
+from nwdes import policy as role_policy
 from nwdes import prose
 from nwdes.contracts import Built, Defect, Refused, checked
 
@@ -370,7 +372,15 @@ def enum(*values):
 
 
 def array(item, minimum=0):
-    return Spec("array", (item,), minimum=minimum)
+    return Spec(
+        "array", (item,), minimum=minimum, required_error=RequiredError.PartInvalid
+    )
+
+
+def _missing_kind(parent, child):
+    """Whether an absent required member is a MissingFact: a list reports by its own error, any other member by its record's."""
+    error = child.required_error if child.kind == "array" else parent.required_error
+    return error is RequiredError.MissingFact
 
 
 def record(
@@ -562,6 +572,13 @@ RECORDS = record(
             kind=LINE,
             locator=LINE,
             decision=enum("Changed", "Migrated", "UnchangedCompatible"),
+            reason=TEXT,
+        )
+    ),
+    not_applicable=array(
+        record(
+            ("analysis", "reason"),
+            analysis=enum("reuse", "impact", "architectural_tests", "contract_tests"),
             reason=TEXT,
         )
     ),
@@ -1089,7 +1106,7 @@ def _required_defects(spec, path, value):
             "List requires at least one element."
             if spec.index[name].kind == "array"
             else "Required value is missing.",
-            spec.index[name].kind != "array",
+            _missing_kind(spec, spec.index[name]),
         )
         for name in spec.required_fields
         if name not in value or _absent(value[name])
@@ -1130,6 +1147,352 @@ def _design_requirements(design):
         if isinstance(own, Mapping)
         for defect in _slice_requirements(identity, own)
     )
+
+
+def split_locator(locator):
+    """The posix-normalized file of a locator and its line suffix (empty when absent)."""
+    path, _, line = locator.partition(":")
+    return posixpath.normpath(path), line
+
+
+# The parts a policy may ask for by dotted path, each with the verb that records the asked item.
+# A list is passed through without being named: the rows of acceptance and expectations.
+ASKED_VERBS = MappingProxyType(
+    {
+        "product.scope_out": "product scope-out add",
+        "acceptance.covers": "acceptance row add",
+        "expectations.rows.promises": "expectations row add",
+    }
+)
+ASKED_PATHS = tuple(ASKED_VERBS)
+ASKED_KINDS = tuple(dict.fromkeys(path.split(".")[0] for path in ASKED_PATHS))
+
+
+def _holds(spec, segments):
+    """Whether the record shape holds the member path, lists passed through."""
+    if spec.kind == "array":
+        return _holds(spec.members[0], segments)
+    if not segments:
+        return True
+    return segments[0] in spec.index and _holds(spec.index[segments[0]], segments[1:])
+
+
+def _holds_path(path):
+    segments = path.split(".")
+    root = ROLE_SCHEMAS.get(segments[0])
+    return root is not None and _holds(root, segments[1:])
+
+
+def policy_shape():
+    """The members a policy may name: {member: (has a recording verb, is a list of records)}."""
+    return {
+        **{
+            name: (
+                spec.kind == "array",
+                spec.kind == "array" and spec.members[0].kind == "record",
+            )
+            for name, spec in RECORDS.members
+        },
+        **{path: (True, False) for path in ASKED_PATHS if _holds_path(path)},
+    }
+
+
+def recording_verb(member):
+    """The verb that records a policy member: its asked path's verb, else its design analysis verb."""
+    return ASKED_VERBS.get(member) or "design " + verb_name(member) + " add"
+
+
+def _spec_at(spec, segments):
+    """The spec a member path names; a record that does not hold a segment passes it over."""
+    if spec.kind == "array":
+        return _spec_at(spec.members[0], segments)
+    if not segments:
+        return spec
+    head, rest = segments[0], segments[1:]
+    if head in spec.index:
+        return _spec_at(spec.index[head], rest)
+    return _spec_at(spec, rest)
+
+
+def member_spec(name):
+    """The spec a policy member names: a design analysis in RECORDS, or an asked path's part."""
+    segments = name.split(".")
+    if len(segments) == 1:
+        return _spec_at(RECORDS, segments)
+    return _spec_at(ROLE_SCHEMAS[segments[0]], segments[1:])
+
+
+def asked_spec(spec, segments, minimum):
+    """The spec with the member at `segments` required and holding at least `minimum` items.
+
+    A list is passed through without being named, so an acceptance row is reached as
+    `covers`. A record that does not hold a segment passes it over, which reaches an
+    expectations row through its `rows` list.
+    """
+    if spec.kind == "array":
+        return replace(spec, members=(asked_spec(spec.members[0], segments, minimum),))
+    if not segments:
+        return spec
+    head, rest = segments[0], segments[1:]
+    if head not in spec.index:
+        return asked_spec(spec, rest, minimum)
+    child = spec.index[head]
+    if rest:
+        updated, required = asked_spec(child, rest, minimum), spec.required
+    else:
+        updated = (
+            replace(child, minimum=minimum, required_error=RequiredError.MissingFact)
+            if child.kind == "array"
+            else child
+        )
+        required = (
+            (*spec.required, head) if head not in spec.required else spec.required
+        )
+    return replace(
+        spec,
+        required=required,
+        members=tuple(
+            (name, updated if name == head else member) for name, member in spec.members
+        ),
+    )
+
+
+def asked_schema(kind, spec, policy):
+    """The part's spec with every member the policy asks for under `kind` required."""
+    if policy is None:
+        return spec
+    for member in policy.members.values():
+        segments = member.name.split(".")
+        if member.minimum and segments[0] == kind:
+            spec = asked_spec(spec, segments[1:], member.minimum)
+    return spec
+
+
+def parse_policy(text):
+    """The policy of policy.toml text, checked against the record shape."""
+    analyses = RECORDS.index["not_applicable"].members[0].index["analysis"].members
+    return role_policy.parse(text, policy_shape(), analyses)
+
+
+def _rows(records, analysis):
+    rows = records.get(analysis) if isinstance(records, Mapping) else None
+    return tuple(rows) if isinstance(rows, (tuple, list)) else ()
+
+
+def _not_applicable(records, analysis):
+    return tuple(
+        row
+        for row in _rows(records, "not_applicable")
+        if isinstance(row, Mapping) and row.get("analysis") == analysis
+    )
+
+
+def _code_targets(rows):
+    """Normalized paths of the targets a slice owes coverage for: prose targets owe none."""
+    return tuple(
+        posixpath.normpath(row["path"])
+        for row in (rows if isinstance(rows, (tuple, list)) else ())
+        if isinstance(row, Mapping)
+        and isinstance(row.get("path"), str)
+        and not prose.is_prose_path(row["path"])
+    )
+
+
+def _scopes(design):
+    """(path, records, slice identity or None for shared, code target paths) per record scope."""
+    if not isinstance(design, Mapping):
+        return ()
+    shared = design.get("shared")
+    slices = design.get("slices")
+    found = [("design.shared", shared, None, ())] if isinstance(shared, Mapping) else []
+    if isinstance(slices, Mapping):
+        found.extend(
+            (
+                f"design.slices.{identity}",
+                own.get("records"),
+                identity,
+                _code_targets(own.get("targets")),
+            )
+            for identity, own in slices.items()
+            if isinstance(own, Mapping)
+        )
+    return tuple(found)
+
+
+def _site(row):
+    """The (locator, symbol) a row names for the repository to resolve, or None."""
+    if not isinstance(row, Mapping) or row.get("decision") == "CreateNew":
+        return None
+    locator, symbol = row.get("locator"), row.get("symbol")
+    return (
+        (locator, symbol)
+        if isinstance(locator, str) and isinstance(symbol, str)
+        else None
+    )
+
+
+def design_targets(design):
+    """(slice identity, path) of each code target a slice owes coverage for."""
+    return tuple(
+        (identity, target)
+        for _, _, identity, targets in _scopes(design)
+        if identity is not None
+        for target in targets
+    )
+
+
+def reference_sites(data, policy):
+    """The (locator, symbol) of every row of a covering analysis, decoded from design bytes."""
+    parsed = parse_json(data, "design")
+    if isinstance(parsed, Refused) or not isinstance(parsed.value, Mapping):
+        return ()
+    payload = parsed.value.get("payload")
+    return tuple(
+        dict.fromkeys(
+            site
+            for _, records, _, _ in _scopes(payload)
+            for member in policy.covering("target")
+            for row in _rows(records, member.name)
+            if (site := _site(row)) is not None
+        )
+    )
+
+
+def verb_name(analysis):
+    """The recording verb's name of an analysis: its record's singular, spelled with hyphens."""
+    return analysis.removesuffix("s").replace("_", "-")
+
+
+def _unknown_analysis_defects(scopes, covered):
+    names = [member.name for member in covered]
+    return [
+        Defect(
+            f"PartInvalid: {path}.records.not_applicable[{index}].analysis",
+            f"{row.get('analysis')!r} is not an analysis the policy covers.",
+            "Use one of: " + ", ".join(names) + ".",
+        )
+        for path, records, _, _ in scopes
+        for index, row in enumerate(_rows(records, "not_applicable"), start=1)
+        if isinstance(row, Mapping) and row.get("analysis") not in names
+    ]
+
+
+def _blank_reason_defects(scopes):
+    return [
+        Defect(
+            f"PartInvalid: {path}.records.not_applicable[{index}].reason",
+            "A reasoned not-applicable needs a non-empty reason; this one is blank.",
+            "Write the reason: nwdes design not-applicable add --in SLICE --analysis ANALYSIS --reason TEXT.",
+        )
+        for path, records, _, _ in scopes
+        for index, row in enumerate(_rows(records, "not_applicable"), start=1)
+        if isinstance(row, Mapping)
+        and not (isinstance(row.get("reason"), str) and row["reason"].strip())
+    ]
+
+
+def _exclusivity_defects(scopes, member):
+    analysis = member.name
+    verb = verb_name(analysis)
+    return [
+        Defect(
+            f"PartInvalid: {path}.records.{analysis} holds decisions and a not-applicable",
+            "A record scope holds either decisions of an analysis or a reasoned not-applicable of it, never both.",
+            f"Remove one of them: nwdes design {verb} remove --at N, or nwdes design not-applicable remove --at N.",
+        )
+        for path, records, _, _ in scopes
+        if _rows(records, analysis) and _not_applicable(records, analysis)
+    ]
+
+
+def _shared_records(scopes):
+    return next((records for _, records, identity, _ in scopes if identity is None), {})
+
+
+def _covered_target(analysis, target, records, shared):
+    if _not_applicable(records, analysis) or _not_applicable(shared, analysis):
+        return True
+    return any(
+        split_locator(row.get("locator"))[0] == target
+        for source in (records, shared)
+        for row in _rows(source, analysis)
+        if isinstance(row, Mapping) and isinstance(row.get("locator"), str)
+    )
+
+
+def _target_coverage_defects(scopes, member):
+    analysis = member.name
+    shared = _shared_records(scopes)
+    return [
+        Defect(
+            f"MissingFact: {path} target {target} has no {analysis} decision",
+            f"Each code target of a slice needs a record of {analysis} or a reasoned not-applicable before the design closes.",
+            f"Record it with nwdes design {verb_name(analysis)} add --in {identity} {member.shape}, or nwdes design not-applicable add --in {identity} --analysis {analysis} --reason TEXT.",
+        )
+        for path, records, identity, targets in scopes
+        if identity is not None
+        for target in targets
+        if not _covered_target(analysis, target, records, shared)
+    ]
+
+
+def _design_coverage_defects(scopes, member):
+    """A design with code targets owes one record or one reasoned not-applicable of each design-level analysis."""
+    analysis = member.name
+    if not any(targets for _, _, _, targets in scopes):
+        return []
+    if any(
+        _rows(records, analysis) or _not_applicable(records, analysis)
+        for _, records, _, _ in scopes
+    ):
+        return []
+    identity = next(identity for _, _, identity, targets in scopes if targets)
+    return [
+        Defect(
+            f"MissingFact: design has no {analysis} record",
+            f"A design with code targets needs a record of {analysis} or a reasoned not-applicable before the design closes.",
+            f"Record it with nwdes design {verb_name(analysis)} add --in {identity} {member.shape}, or nwdes design not-applicable add --in {identity} --analysis {analysis} --reason TEXT.",
+        )
+    ]
+
+
+def _resolution_defects(scopes, member, resolution):
+    return [
+        Defect(
+            f"PartInvalid: {path}.records.{member.name}[{index}] names {site[0]} and {site[1]}",
+            f"The locator {site[0]} and symbol {site[1]} do not resolve: the file must exist under the repository root, the line must lie within it and the symbol must occur in it.",
+            f"Correct the locator or symbol, or remove the row with nwdes design {verb_name(member.name)} remove --at {index}.",
+        )
+        for path, records, _, _ in scopes
+        for index, row in enumerate(_rows(records, member.name), start=1)
+        if (site := _site(row)) is not None and resolution.get(site) is not True
+    ]
+
+
+def _design_obligations(design, policy, resolution):
+    """Presence and existence of the analyses the policy covers, per record scope.
+
+    A scope holds at most one of an analysis's rows or its not-applicable. Every code target of
+    a slice has a row of each target-covered analysis, paired by path, or a not-applicable of it
+    in the slice or the shared record. When any slice has a code target, each design-covered
+    analysis has a row or a not-applicable in some scope. Each named locator and symbol must
+    resolve (resolution maps the shell's answers). Every not-applicable names a covered analysis.
+    """
+    scopes = _scopes(design)
+    targeted = policy.covering("target")
+    designed = policy.covering("design")
+    defects = [
+        *_unknown_analysis_defects(scopes, (*targeted, *designed)),
+        *_blank_reason_defects(scopes),
+    ]
+    for member in (*targeted, *designed):
+        defects.extend(_exclusivity_defects(scopes, member))
+    for member in targeted:
+        defects.extend(_target_coverage_defects(scopes, member))
+        defects.extend(_resolution_defects(scopes, member, resolution))
+    for member in designed:
+        defects.extend(_design_coverage_defects(scopes, member))
+    return tuple(defects)
 
 
 def _is_prose_row(row, facts):
@@ -1562,8 +1925,7 @@ def _check(spec, value, path, canonical=False, facts=EMPTY):
                 "List requires at least one element."
                 if members[name].kind == "array"
                 else "Required value is missing.",
-                members[name].kind != "array"
-                and spec.required_error is RequiredError.MissingFact,
+                _missing_kind(spec, members[name]),
                 members[name].id_kinds,
             )
             for name in spec.required_fields
@@ -3018,7 +3380,7 @@ class InvocationRefused(Refused):
     output: RoleInput | None = None
 
 
-def inspect_output(kind, data):
+def inspect_output(kind, data, *, policy=None, resolution=EMPTY):
     parsed = parse_json(data, kind)
     if isinstance(parsed, Refused):
         return RoleInput(None, None, parsed.defects)
@@ -3076,8 +3438,15 @@ def inspect_output(kind, data):
     normalized = normalize_input(ROLE_SCHEMAS.get(kind), envelope.get("payload"), path)
     shape = (
         (
-            *_check(ROLE_CHECKS[kind], normalized.value, path),
+            *_check(
+                asked_schema(kind, ROLE_CHECKS[kind], policy), normalized.value, path
+            ),
             *(_design_requirements(normalized.value) if kind == "design" else ()),
+            *(
+                _design_obligations(normalized.value, policy, resolution)
+                if kind == "design" and policy is not None
+                else ()
+            ),
         )
         if kind in ROLE_SCHEMAS and outcome == "accepted"
         else ()

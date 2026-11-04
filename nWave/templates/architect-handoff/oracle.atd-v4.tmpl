@@ -56,6 +56,8 @@ Timing override: Default budgets need no statement or measurement in a design. T
 - Sole exception: at a DESIGN-declared architecture/contract locator, one support composition-root helper builds only DESIGN-named members; bodies call it. Never bypass public-port observation.
 - Ask what the passing main path missed (an invalid reason), then what untested obligation a DESIGN-declared locator could observe.
 - For each test, record with --still-passes-if the nearest plausible wrong behaviour it would still accept, and tighten the test when that behaviour violates its promise.
+
+{{asks}}
 - NotTested only if neither public port nor DESIGN-declared architecture/contract locator observes it. This alone is not unconstructible: author all observable cases, assign unreachable reason/owner, accept. Never invent fields/operations/fixtures/seams, widen the driving surface or replace production checks.
 - NEVER NotTested construction restrictions/error-code identities: accepted/refused inputs and emitted codes require public contract surface/injection seam + DESIGN-declared locator; absent → reject `BLOCKED-BY design` naming obligation, missing declaration, correction. No internals/invented seam.
 - No-retry/recovery/discovery: assert declared dependency interaction per invocation, never output/file equality alone. Assert excluded claims absent/preserved fields present, never labels/nullable lookups.

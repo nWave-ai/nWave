@@ -1,0 +1,70 @@
+# The role asks of the design record. nwdes reads this file once, at the composition root,
+# and checks it against the record shape (nwdes.policy.parse); a broken entry refuses every
+# command that needs it, naming each gap.
+#
+# [member.NAME] names a record member of the design shape (nwdes.handoff.RECORDS), or a part
+# item named by its path: product.scope_out, acceptance.covers, expectations.rows.promises:
+#   cover   "target": every code target of a slice needs a row or a reasoned not-applicable.
+#           "design": the design owes one row or one reasoned not-applicable, in any scope, when any slice has a code target.
+#           Empty: the member is asked but owes no coverage.
+#   ask     the sentence the role reads; {verb} is the recording verb of the member and
+#           {not_applicable} the verb that records a reasoned not-applicable.
+#   shape   the flags the recording verb takes, printed in refusals and asks.
+#   example one accepted value of the locator field.
+#   minimum a whole number of items the record must hold; 1 makes the item required.
+#
+# [role.NAME] lists the members the role is asked for, in order.
+
+[member.reuse]
+cover = "target"
+ask = "Each code target a slice creates or extends needs a reuse decision: record it with {verb}, or record a reasoned not-applicable with {not_applicable}."
+shape = "--symbol NAME --locator PATH:LINE --decision Reuse|Extend|Replace|CreateNew --reason TEXT"
+example = "src/a.py:12"
+
+[member.impact]
+cover = "target"
+ask = "Each code target a slice creates or extends needs an impact decision: record it with {verb}, or record a reasoned not-applicable with {not_applicable}."
+shape = "--kind TEXT --locator PATH:LINE --decision Changed|Migrated|UnchangedCompatible --reason TEXT"
+example = "src/a.py:12"
+
+[member.architectural_tests]
+cover = "design"
+ask = "The design needs architectural tests: record one with {verb}, or record a reasoned not-applicable with {not_applicable}."
+shape = "--obligation TEXT --oracle PATH --command COMMAND"
+example = "tests/a/test_a.py"
+
+[member.contract_tests]
+cover = "design"
+ask = "The design needs contract tests: record one with {verb}, or record a reasoned not-applicable with {not_applicable}."
+shape = "--obligation TEXT --contract LINE --producer LINE --consumer LINE --observation TEXT --oracle PATH --command COMMAND"
+example = "tests/a/test_a.py"
+
+[role.nw-solution-architect]
+asks = ["reuse", "impact", "architectural_tests", "contract_tests"]
+
+[member."product.scope_out"]
+minimum = 1
+ask = "The product needs a scope out line: record it with {verb}; a written line such as Nothing excluded because X is the not-applicable value."
+shape = "--text TEXT"
+example = "Nothing excluded because the slice is the whole feature"
+
+[member."acceptance.covers"]
+minimum = 1
+ask = "Each acceptance row needs the promises it covers: record one with {verb}."
+shape = "--covers P<n>"
+example = "P1"
+
+[member."expectations.rows.promises"]
+minimum = 1
+ask = "Each expectations row needs the promises it judges: record one with {verb}."
+shape = "--promise P<n>"
+example = "P1"
+
+[role.nw-product-owner]
+asks = ["product.scope_out"]
+
+[role.nw-acceptance-designer]
+asks = ["acceptance.covers"]
+
+[role.nw-user-examiner]
+asks = ["expectations.rows.promises"]

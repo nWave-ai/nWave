@@ -323,7 +323,12 @@ These are written to a **project's** `.nwave/config.json` (defaults
 write), not to the global file. `audit_log_dir` is resolved with this
 priority: explicit caller argument > `DES_AUDIT_LOG_DIR` environment
 variable > `audit_log_dir` in the project's `.nwave/config.json` >
-`<project>/.nwave/des/logs` > `~/.claude/des/logs`.
+`<project root>/.nwave/des/logs` > `~/.claude/des/logs`. The project root is the
+nearest ancestor of the working directory that holds a `.nwave` directory or a
+`.git` entry (a file in a worktree), then `CLAUDE_PROJECT_DIR` when it is an
+absolute path; with neither, the working directory. A session that moves into a
+subfolder keeps writing to the same log. Home and system directories never mark
+a project root.
 
 ---
 

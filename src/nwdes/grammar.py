@@ -762,7 +762,7 @@ def _role_example(kind, verb, scope=("feature", "search"), role=None):
     )
 
 
-def _role_commands(kind):
+def _role_commands(kind, policy=None):
     return tuple(
         Command(
             kind,
@@ -827,28 +827,34 @@ def _role_commands(kind):
             ),
             _role_example(kind, verb),
         )
-        for verb in drafts.role_verbs(kind)
+        for verb in drafts.role_verbs(kind, policy)
     )
 
 
-COMMANDS = (
-    *COMMANDS,
-    *(
+_FIXED_COMMANDS = COMMANDS
+
+
+def _role_records(policy=None):
+    return tuple(
         command
         for kind in drafts.KINDS
         for command in (
-            *_role_commands(kind),
+            *_role_commands(kind, policy),
             *(EXAMINATION_COMMANDS if kind == "examine" else ()),
         )
-    ),
-)
+    )
+
+
+COMMANDS = (*_FIXED_COMMANDS, *_role_records())
 
 
 def help_text(
-    verb: str | None = None, action: str | None = None
+    verb: str | None = None, action: str | None = None, policy=None
 ) -> Built[str] | Refused:
     records = tuple(
-        record for record in COMMANDS if verb is None or record.verb == verb
+        record
+        for record in (*_FIXED_COMMANDS, *_role_records(policy))
+        if verb is None or record.verb == verb
     )
     if not records:
         return refuse(
@@ -920,7 +926,7 @@ def commit_example(scope, role):
     )
 
 
-def describe(kind, handoff=None, role=None):
+def describe(kind, handoff=None, role=None, policy=None):
     """Render role verbs and their worked examples from the table the CLI parses."""
     if kind == "craft" and role is not None and role not in drafts.CRAFT_ACTOR.members:
         raise ValueError("A craft reference requires one of its two crafter roles.")
@@ -958,7 +964,7 @@ def describe(kind, handoff=None, role=None):
         )
         return text if field.required else "[" + text + "]"
 
-    verbs = drafts.role_verbs(kind)
+    verbs = drafts.role_verbs(kind, policy)
     if not verbs:
         return ""
     roots = frozenset(drafts.ROOT_NAMES)

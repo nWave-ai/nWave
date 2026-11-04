@@ -1,6 +1,12 @@
 # Feature directory format reference
 
-nWave supports two directory layouts for feature documentation: **legacy** (multi-file per wave) and **lean** (single L7 file).
+**Status: 3.x-era reference.** Both layouts below are 3.x formats. The v4
+delivery route records a feature in one nwdes handoff
+(`docs/feature/{id}/handoff.json`) with rendered briefs and run records; it
+writes neither layout. Keep this page to read and maintain existing 3.x
+features. See [Migrate from nWave 3.x](../guides/migrating-from-3x.md).
+
+nWave supported two directory layouts for feature documentation: **legacy** (multi-file per wave) and **lean** (single L7 file).
 
 ## Quick reference
 
@@ -12,7 +18,7 @@ nWave supports two directory layouts for feature documentation: **legacy** (mult
 | **Concurrent waves** | Manual conflict resolution | Git auto-resolves via wave-owned section ownership |
 | **Density control** | Not applicable | `lean` (refs only) or `full` (all sections) |
 | **Tooling** | Existing scripts, agents familiar | Heading schema checked by review; no installed validator |
-| **Status** | In-place; no migration required | Greenfield new features; opt-in migration available |
+| **Status** | Read-only history | Superseded by the v4 nwdes handoff |
 
 ---
 
@@ -102,14 +108,14 @@ The lean contract is **not** "one file ever". It is "one narrative file plus dec
 | DISTILL | `*.feature` files + `steps/**` modules | Executable Gherkin specs; pytest-bdd discovery requires per-file layout |
 | DELIVER | `roadmap.json`, `execution-log.json` | Legacy runtime files for phase tracking; the current `nwdes` route records the handoff and run records instead |
 | All waves | `slices/slice-NN-*.md` (when used) | Per-slice briefs are inherently per-file; PO reviewer enforces composition |
-| All waves | `spike/findings.md`, `spike/wave-decisions.md` | Spike isolation; promoted into feature-delta.md only on PROMOTE verdict |
+| Spikes | Findings in the caller-owned workspace | A spike keeps its artifacts and findings in the caller's persistent workspace, outside the feature directory; nothing is promoted automatically |
 | Bug fixes | `bugfix/rca.md` | RCA artifacts kept separate from feature-delta narrative |
 
 **Machine companion rule**: only files whose downstream consumer is a parser (validator, agent, runtime) qualify. Loose human-readable markdown does NOT qualify and MUST live inside `feature-delta.md` as a `## Wave: <NAME> / [REF|WHY|HOW] <Section>` block.
 
-**Validator**: `scripts/validation/validate_feature_layout.py` enforces the whitelist. This rule was motivated by an internal audit of over-testing patterns in generated feature layouts (2026-04-28).
+**Validator**: none is installed. `scripts/validation/validate_feature_layout.py` no longer exists in this repository; the heading schema is checked by review against the table above. This rule was motivated by an internal audit of over-testing patterns in generated feature layouts (2026-04-28).
 
-**SSOT integration** (separate concern): each wave back-propagates to `docs/product/` (jobs.yaml, journeys/, personas/, architecture/, kpi-contracts.yaml). See each wave skill's "SSOT updates" subsection for paths.
+**SSOT integration** (separate concern): durable product files live under `docs/product/`. `/nw-discover` bootstraps `vision.md`, `jobs.yaml` and `kpi-contracts.yaml`; `/nw-diverge` updates `jobs.yaml`.
 
 ### Section heading schema
 
@@ -214,44 +220,19 @@ When two waves write independently under their own headings, git auto-resolves t
 
 ### When to use
 
-- **New features**: All greenfield features should use lean L7.
+- **New features (3.x)**: greenfield features used lean L7; the v4 route records new features in the nwdes handoff instead.
 - **Token-conscious workflows**: Teams minimizing context bloat.
 - **Parallel wave execution**: Features running multiple waves on separate worktrees.
 - **Audit compliance**: Teams requiring clear traceability of who wrote what in which wave.
 
 ---
 
-## Migration: legacy to lean L7
+## Migration: legacy to lean L7 (retired)
 
-An opt-in migration script is available to convert existing legacy features to lean L7 format.
-
-### Automatic migration
-
-```bash
-python scripts/migrate_to_l7.py docs/feature/my-feature
-```
-
-The script:
-1. Reads files from `docs/feature/my-feature/{discover,discuss,design,devops,distill,deliver}/`
-2. Classifies each artifact (user story, decision, scenario, etc.) by heuristic rules.
-3. Writes `docs/feature/<feature-id>/feature-delta.md` with proper `## Wave: ... / [TYPE]` headings.
-4. Demotes optional expansions (JTBD narrative, persona narrative, migration playbooks) to `[WHY]/[HOW]` sections (not auto-included in lean mode).
-5. Creates a `FORMAT` file or adds frontmatter to `feature-delta.md` marking the feature as `lean`.
-6. Leaves legacy subdirectories in place for git diff inspection (not deleted automatically).
-
-**Run `python scripts/migrate_to_l7.py --help`** for full usage, including:
-- `--dry-run`: See what would be migrated without writing.
-- `--force`: Overwrite an existing `feature-delta.md`.
-- `--preserve-legacy`: Keep legacy subdirectories (default); append `--no-preserve-legacy` to delete them after migration.
-
-### Rollback
-
-If migration produces unexpected results:
-```bash
-git checkout docs/feature/my-feature/
-```
-
-This restores the directory to its last-committed state. The script leaves legacy subdirectories untouched, so you can inspect and re-run.
+The opt-in migration script (`scripts/migrate_to_l7.py`) no longer exists in
+this repository. To move 3.x feature work to the v4 route, restart it from the
+original request with `nwdes feature new`; there is no converter for the old
+files ([Migrate from nWave 3.x](../guides/migrating-from-3x.md)).
 
 ---
 

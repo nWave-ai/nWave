@@ -1,104 +1,94 @@
 # Wave Directory Structure
 
-How nWave organizes artifacts across the seven-wave methodology.
+Where nWave's artifacts live in v4, and which earlier locations were removed.
 
-## Document Model: SSOT + Delta
+## Delivery features: one feature directory
 
-nWave uses a two-tier document model:
-
-**Product SSOT** (`docs/product/`) — what the system IS now. Updated by each wave. Never duplicated per feature.
-
-```
-docs/product/
-  vision.md                 ← product vision (updated by DIVERGE)
-  jobs.yaml                 ← validated JTBD jobs (updated by DIVERGE)
-  journeys/
-    {name}.yaml             ← current journey schema (updated by DISCUSS)
-    {name}-visual.md        ← human-readable journey (updated by DISCUSS)
-  architecture/
-    brief.md                ← current architecture (updated by DESIGN)
-    adr-*.md                ← permanent decisions
-  kpi-contracts.yaml        ← measurement contracts (updated by DEVOPS)
-```
-
-**Feature Delta** (`docs/features/{id}/`) — what THIS feature changes. Max 6 files.
+Every delivery feature has one **feature directory**: `docs/feature/{id}/`. The
+`nwdes.feature.directory` setting selects the base directory (default
+`docs/feature`); nwdes appends `/<ID>`.
 
 ```
-docs/features/{id}/
-  feature-brief.md          ← generated summary for human review
-  recommendation.md         ← chosen direction (from DIVERGE)
-  user-stories.md           ← stories for this feature (from DISCUSS)
-  wave-decisions.md         ← decisions made across all waves
-  acceptance-tests.feature  ← executable specs (from DISTILL)
-  handoff.json              ← delivery facts recorded by nwdes (from DELIVER)
+docs/feature/{id}/
+  handoff.json       the one canonical record of the feature
+  brief.md           briefs rendered by nwdes document (with .html versions)
+  architecture.md
+  acceptance.md
+  runs/              run records, for example runs/craft.S1.json, runs/review.candidate.json
 ```
 
-DELIVER writes through nwdes, not a hand-authored plan: `handoff.json` lives in the directory `nwdes.feature.directory` selects (default `docs/feature/{id}/`), with the rendered `brief.md`, `architecture.md` and `acceptance.md` beside it and the craft and review run records under `runs/`.
+The handoff holds what the roles recorded: the request, promises, slices,
+design facts, expectations, acceptance rows and examination verdicts. Run
+records capture what each role closed. nwdes renders the briefs beside the
+handoff; they are the reading surface for humans. See
+[Understanding delivery artifacts](../understanding-delivery-artifacts/).
 
-See [Understanding the SSOT Model](../understanding-ssot-model/) for the full explanation.
+There is no per-wave subdirectory and no per-wave ledger inside the feature
+directory.
 
-## New Features: SSOT + Delta Model
+## Product SSOT: docs/product/
 
-New features write output to two locations:
+Durable product files live under `docs/product/` and are updated in place
+instead of copied per feature. A wave command updates them when its skill
+says so:
 
-1. **SSOT updates** in `docs/product/` — the wave updates the living product documents
-2. **Feature delta** in `docs/features/{id}/` — max 6 files describing what this feature changes
+| Command | Updates |
+|---|---|
+| `/nw-discover` | `docs/product/vision.md` and/or `docs/product/jobs.yaml` (SSOT bootstrap); a quantified KPI baseline goes to `docs/product/kpi-contracts.yaml` |
+| `/nw-diverge` | `docs/product/jobs.yaml`: the validated job, opportunity scores and a changelog entry |
 
-Waves do NOT create per-wave subdirectories. Each wave appends to feature-level files or updates the SSOT. The `wave-decisions.md` file is built incrementally — each wave adds its section.
+`/nw-diverge` writes no `wave-decisions.md` and no other per-wave ledger. Its
+`recommendation.md` and supporting analysis are working files while the
+delivery is open, not durable authority.
 
-### Which Wave Updates What
+## Removed in v4: the per-wave runtime records
 
-| Wave | Reads from SSOT | Produces delta | Updates SSOT |
-|------|----------------|----------------|--------------|
-| DISCOVER | `jobs.yaml` | (evidence brief, internal) | `jobs.yaml` |
-| DIVERGE | `jobs.yaml`, `vision.md` | `recommendation.md` | `jobs.yaml` |
-| DISCUSS | `journeys/{name}.yaml` | `user-stories.md` | `journeys/{name}.yaml` |
-| DESIGN | `architecture/brief.md` | `wave-decisions.md` | `architecture/brief.md` + ADRs |
-| DEVOPS | `kpi-contracts.yaml` | (infra spec, internal) | `kpi-contracts.yaml` |
-| DISTILL | all 3 SSOT dimensions | `acceptance-tests.feature` | — |
-| DELIVER | `acceptance-tests.feature` | code | code |
-
-## Old Features: Per-Wave Directories (Archived)
-
-Existing features created before the SSOT model use per-wave subdirectories under `docs/feature/{feature-id}/`. These are frozen archives — not updated, not migrated.
+Earlier versions wrote per-wave subdirectories under the feature directory,
+ending in a `deliver/` phase tracked by two JSON files:
 
 ```
-docs/feature/{feature-id}/          ← OLD MODEL (archived)
-├── discover/
-│   ├── problem-validation.md
-│   └── lean-canvas.md
-├── discuss/
-│   ├── journey-{name}-visual.md
-│   ├── journey-{name}.yaml
-│   ├── user-stories.md
-│   └── ...
-├── design/
-│   └── architecture-design.md
-├── devops/
-│   └── platform-architecture.md
-├── distill/
-│   └── test-scenarios.md
-└── deliver/
-    ├── roadmap.json
-    └── execution-log.json
+docs/feature/{id}/
+  discover/ ... discuss/ ... design/ ... devops/ ... distill/ ... deliver/
+  deliver/roadmap.json
+  deliver/execution-log.json
+  wave-decisions.md
 ```
 
-Agents check `docs/product/` first (SSOT). If it does not exist, they fall back to `docs/feature/{id}/` for the current feature (old model).
+v4 removed this workflow:
 
-## Cross-Feature Artifacts
+- The delivery record is the nwdes handoff and its run records.
+- `roadmap.json` and `execution-log.json` are retired. No converter exists.
+- The installed hooks block every direct write to `execution-log.json`.
+- `wave-decisions.md` is retired; no current wave writes a per-wave ledger.
+- A 3.x delivery in progress is finished on 3.22.2 or restarted from the
+  original request with `nwdes feature new`
+  ([Migrate from nWave 3.x](../migrating-from-3x.md)).
 
-Acceptance test files and cross-feature documents live outside the per-feature tree:
+Existing per-wave trees in your repository are read-only history. Read them
+for context; do not extend them and do not rebuild their records.
 
-| Location | Content | Written By |
-|----------|---------|-----------|
-| `tests/{test-type}/{feature-id}/acceptance/` | Executable test files (.feature, step definitions) | acceptance-designer (DISTILL) |
-| `docs/product/architecture/adr-*.md` | Architecture Decision Records (SSOT) | solution-architect (DESIGN) |
-| `docs/evolution/` | Historical post-completion archives; the current route writes none | — (existing files only) |
-| `CLAUDE.md` (project root) | Development paradigm, mutation testing strategy | solution-architect, platform-architect |
+## Reading progress
+
+nwdes keeps no workflow state and has no resume command. Read the artifacts
+yourself (see [Wave Routing](../wave-routing-and-entry-points/)). A DELIVER
+run is complete when every slice in `docs/feature/{id}/handoff.json` has an
+accepted craft run, the whole-candidate review and the examiner verdicts are
+accepted, and the candidate is integrated.
+
+A slice's acceptance oracle lives at the path the slice declares
+(`nwdes slice set --oracle`). nWave fixes no test directory.
+
+## Cross-feature artifacts
+
+| Location | Content | Written by |
+|---|---|---|
+| Your repository's ADR files | Architecture decision records | solution-architect, recorded through `nwdes design` verbs |
+| `docs/evolution/` | Historical post-completion archives; the current route writes none | - (existing files only) |
 
 ## Feature ID Derivation
 
-When you run `/nw-deliver` or any wave command, nWave derives a feature ID from your description:
+When you run `/nw-deliver` or any wave command, nWave derives a feature ID
+from your description:
 
 1. Strip common prefixes: "implement", "add", "create", "build"
 2. Remove English stop words: "a", "the", "to", "for", "with", "and", "in", "on", "of"
@@ -106,77 +96,8 @@ When you run `/nw-deliver` or any wave command, nWave derives a feature ID from 
 4. Limit to 5 segments maximum
 
 **Examples:**
+
 - "Add rate limiting to the API gateway" → `rate-limiting-api-gateway`
 - "OAuth2 upgrade" → `oauth2-upgrade`
 
-In the SSOT model, this ID is used as `docs/features/{id}/` for delta files.
-
-## Acceptance Test Directory Structure
-
-Executable acceptance tests live in `tests/`, not in documentation:
-
-```
-tests/
-├── acceptance/
-│   └── {feature-id}/
-│       └── {scenario-name}.feature     (Gherkin feature files)
-│       ├── step_definitions.py         (Given/When/Then implementations)
-│       ├── fixtures/
-│       └── conftest.py                 (pytest configuration for this feature)
-```
-
-The acceptance-designer (DISTILL wave) designs the tests and writes them directly to `tests/acceptance/{feature-id}/`.
-
-## Wave Detection
-
-Use these rules to detect progress when you resume a feature. nwdes keeps no workflow state and has no resume command; read the artifacts yourself (see [Wave Routing](../wave-routing-and-entry-points/)).
-
-### New model (SSOT)
-
-| Wave | Complete When |
-|------|--------------|
-| DISCOVER | `docs/product/jobs.yaml` has a validated job for this feature |
-| DIVERGE | `docs/features/{id}/recommendation.md` exists |
-| DISCUSS | `docs/features/{id}/user-stories.md` exists |
-| DESIGN | `docs/product/architecture/brief.md` updated for this feature |
-| DEVOPS | `docs/product/kpi-contracts.yaml` has contracts for this feature |
-| DISTILL | `docs/features/{id}/acceptance-tests.feature` exists AND `tests/acceptance/{id}/` has feature files |
-| DELIVER | every slice in `docs/feature/{id}/handoff.json` has an accepted craft run, the whole-candidate review and examiner verdicts are accepted, and the candidate is integrated |
-
-### Old model (archived features)
-
-| Wave | Complete When |
-|------|--------------|
-| DISCOVER | `discover/problem-validation.md` AND `discover/lean-canvas.md` exist |
-| DISCUSS | `discuss/user-stories.md` exists |
-| DESIGN | `design/architecture-design.md` exists |
-| DEVOPS | `devops/platform-architecture.md` exists |
-| DISTILL | `distill/test-scenarios.md` exists AND `tests/acceptance/{id}/` has feature files |
-| DELIVER | `deliver/execution-log.json` with all steps at COMMIT/PASS |
-
-## Wave Summary Table
-
-| Wave | Agent | SSOT Update | Feature Delta | Completion Gate |
-|------|-------|-------------|---------------|-----------------|
-| DISCOVER | product-discoverer | `jobs.yaml` | — | Validated job exists |
-| DIVERGE | nw-diverger | `jobs.yaml` | `recommendation.md` | Recommendation + peer review |
-| DISCUSS | product-owner | `journeys/{name}.yaml` | `user-stories.md` | User stories + DoR passed |
-| DESIGN | solution-architect | `architecture/brief.md` + ADRs | `wave-decisions.md` | Architecture with C4 diagrams |
-| DEVOPS | platform-architect | `kpi-contracts.yaml` | — | KPI contracts defined |
-| DISTILL | acceptance-designer | — | `acceptance-tests.feature` | Feature files + step definitions |
-| DELIVER | software-crafter | code | `handoff.json` | Slices GREEN, review and examine accepted, candidate integrated |
-
-## Handoff Chain
-
-Each wave reads SSOT first, then prior wave delta:
-
-```
-DISCOVER → DIVERGE reads jobs.yaml (validated problems + opportunities)
-DIVERGE  → DISCUSS reads recommendation.md + jobs.yaml (selected direction + job)
-DISCUSS  → DESIGN reads journeys/*.yaml + user-stories.md (experience + requirements)
-DESIGN   → DEVOPS reads architecture/brief.md + kpi-contracts.yaml (components + measurement)
-DEVOPS   → DISTILL reads all 3 SSOT dimensions (journeys + architecture + kpi-contracts)
-DISTILL  → DELIVER reads acceptance-tests.feature + handoff.json (specs + recorded design and slices)
-```
-
-After DELIVER completes and all declared checks pass, `nwdes lane integrate` fast-forwards trunk and removes the lane. The route has no separate archive step, and nothing new is written to `docs/evolution/`.
+The ID names the feature directory `docs/feature/{id}/`.

@@ -75,7 +75,7 @@ Flux loads `jtbd-analysis` skill. Extracts and elevates the job from the raw req
 Flux invokes `nw-researcher` sub-agent for evidence-grounded competitive research. Maps how existing products serve the validated job. Identifies non-obvious alternatives. Gate G2 validates real products named and evidence quality.
 
 **Phase 3 -- Brainstorming:**
-Flux loads `brainstorming` skill. Frames HMW question, applies SCAMPER lenses, generates structurally diverse options. Gate G3 validates diversity (mechanism|assumption|cost differ).
+Flux loads `brainstorming` skill. Frames HMW question, applies SCAMPER lenses, states a probability per candidate, keeps tail candidates, and names options with the requester's words where they exist (coined names marked as coined). Gate G3 validates diversity (mechanism|assumption|cost differ) plus the head-clustering read of the stated probabilities restated as one distribution over the curated six.
 
 **Phase 4 -- Taste Evaluation:**
 Flux loads `taste-evaluation` skill. Applies DVF filter, scores surviving options on 4 taste criteria with locked weights, produces weighted ranking and recommendation with dissenting case. Gate G4 validates completeness and traceability.
@@ -89,7 +89,7 @@ After Phase 4 gates pass, Flux invokes `nw-diverger-reviewer` (Prism) to validat
 - [ ] Job extracted at strategic or physical level (not tactical, not a feature description)
 - [ ] Minimum 3 ODI outcome statements produced
 - [ ] 3+ real competitors researched, at least one non-obvious alternative
-- [ ] 6 structurally diverse options generated (different mechanism, assumption, cost)
+- [ ] 6 structurally diverse options generated (different mechanism, assumption, cost; two tail candidates among the six or one differing in mechanism from every head candidate; head-clustering read documented; name_origin marked per option)
 - [ ] All surviving options scored on all 4 taste criteria with locked weights
 - [ ] Recommendation traceable to scoring matrix (no "feels right" overrides)
 - [ ] Dissenting case documented for second-place option
@@ -111,7 +111,7 @@ reads -- not a per-wave decision file. Update it directly:
 1. **Jobs SSOT**: Create or update `docs/product/jobs.yaml` with the validated job from Phase 1. Add changelog entry referencing this feature-id.
 2. If `docs/product/` does not exist, create the directory. This is the SSOT bootstrap.
 
-SSOT files use `schema_version` and `changelog` fields. See canonical schema in the design spec.
+SSOT files use `schema_version` and `changelog` fields. The public schema walkthrough is `docs/guides/migrating-to-ssot-model/`.
 
 ## Expected Outputs
 

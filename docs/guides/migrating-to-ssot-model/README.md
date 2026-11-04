@@ -2,6 +2,13 @@
 
 You're upgrading to a version of nWave that uses a new document model. This guide tells you what changed, what you need to do, and how to bootstrap your product from existing features.
 
+> **Currency note (v4).** This is a 3.x-era migration. The durable product
+> files under `docs/product/` remain current. The per-feature delta directory
+> it describes (`docs/features/{id}/`) was replaced in v4 by one feature
+> directory, `docs/feature/{id}/`, holding the nwdes handoff, its rendered
+> briefs and its run records. Do not create delta files for new work. See
+> [Migrate from nWave 3.x](../migrating-from-3x.md).
+
 ---
 
 ## What Changed

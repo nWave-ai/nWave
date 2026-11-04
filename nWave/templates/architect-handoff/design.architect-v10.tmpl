@@ -23,6 +23,7 @@ Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-inva
 
 ## TASK (template)
 Design this scope only under the working directory.
+{{asks}}
 - Read authority (DISCUSS) first: explicitly confirm/change Proposed decisions; resolve design-owned Open items or name why/owner.
 - Shared records first, then slice records; no copies. Shared decisions/constraints cite existing governed slices. Each slice owns everything its oracle/crafter needs: port, observation, oracle/support paths, commands, laws, carriers, invariants and architectural/contract obligations. Never merge/split/reorder product slices.
 Each slice is exactly its product slice's thin vertical path from driving port to observation.
@@ -56,7 +57,7 @@ Models have no id. Match prior parent by full expanded model content, ignoring i
 - Self-falsification: current refuted laws and carrier/law-scope/boundary distinctions in typed records; attempts/results/traces externally.
 - Constraints include every authority bound, range or absence of a bound for stored/validated inputs; label narrower/wider design choices as deviations.
 - Decisions identify each carrier for decisions, effects, errors and per-process state, and its owning module.
-- Read `nw-code-design-oo` (object_oriented) or `nw-code-design-fp` (functional). Each domain decision needs a cohesive data owner (value object/entity/collection/choice), justified reuse and Extend/Create target. Domain services may own cross-aggregate policy. Crafter refuses anemic entities, application transaction scripts, single-object decisions in services/scripts or functional domain decisions in effectful code. Procedural keeps its imperative structure.
+- Read `nw-code-design-oo` (object_oriented) or `nw-code-design-fp` (functional). Each domain decision needs a cohesive data owner (value object/entity/collection/choice) and an Extend/Create target. Domain services may own cross-aggregate policy. Crafter refuses anemic entities, application transaction scripts, single-object decisions in services/scripts or functional domain decisions in effectful code. Procedural keeps its imperative structure.
 
 ## RECORD
 Record all design obligations with the generated design verbs, then close with outcome and diagnostic. Never write JSON or edit authority/ADR/handover/production/oracle documents. The host owns human questions and retries.

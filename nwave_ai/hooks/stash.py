@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from nwave_ai.platform.project_root import anchor_to_project_root
+
 
 @dataclass(frozen=True)
 class BashGuardDecision:
@@ -147,7 +149,7 @@ def git_stash_allow_env_active() -> bool:
 
 def git_stash_guard_target_root() -> Path:
     override = os.environ.get(_GIT_STASH_GUARD_TARGET_ROOT_ENV, "")
-    return Path(override) if override else Path.cwd()
+    return Path(override) if override else anchor_to_project_root(Path.cwd())
 
 
 def evaluate_git_stash_command(command: str) -> BashGuardDecision | None:

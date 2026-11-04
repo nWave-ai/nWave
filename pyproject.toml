@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.32.4", "pip>=24"]
+requires = ["hatchling==1.33.0", "pip>=26.2.2"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -32,7 +32,7 @@ path = "scripts/release/offline_wheelhouse_hook.py"
 
 [project]
 name = "nwave-ai"
-version = "4.0.2"
+version = "4.1.0"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -115,21 +115,21 @@ dev = [
     "cosmic-ray>=8.7.0",
     "mutmut==3.8.1",
     # Linting & formatting
-    "mypy>=2.4.0",
+    "mypy>=2.4.1",
     "ruff==0.17.3",
     "bandit[toml]>=1.9.4",
     "detect-secrets>=1.4.0",
     # Git & release
-    "pre-commit>=4.6.2",
+    "pre-commit>=4.7.0",
     "commitizen>=4.19.3",
     # Explicit security floors for transitive dependencies prevent a future
     # lock re-resolution from selecting vulnerable releases. These are dev
     # tooling dependencies, not additional product runtime requirements.
     "gitpython>=3.1.60",
-    "aiohttp>=3.14.4",
+    "aiohttp>=3.14.5",
     "multidict>=6.9.1",
-    "certifi>=2026.10.19",
-    "filelock>=4.2.1",
+    "certifi>=2026.10.23",
+    "filelock>=4.2.6",
     # Task runner (replaces Pipfile [scripts]; run via `uv run poe <task>`)
     "poethepoet>=0.49.0",
     # Utilities
@@ -149,13 +149,13 @@ dev = [
     # deliberately uses this environment, so it must contain the declared
     # backend as well as the frontend.
     "build>=1.6.1",
-    "hatchling>=1.32.4",
+    "hatchling>=1.33.0",
     # pip — the WS-floor installable build leg shells `python -m pip wheel`.
     # uv venvs OMIT pip by default
     # (unlike the prior pipenv venv), so it MUST be declared or every
     # build-leg test fails with
     # "No module named pip". Env-parity restore after the pipenv->uv merge.
-    "pip>=26.2.0"
+    "pip>=26.2.2"
 ]
 
 [project.urls]
@@ -438,7 +438,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "4.0.2"
+version = "4.1.0"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",

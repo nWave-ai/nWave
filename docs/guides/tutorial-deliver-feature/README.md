@@ -7,6 +7,13 @@
 
 ---
 
+> **Currency note (v4).** This lesson walks the 3.x delivery workflow. In v4,
+> delivery runs through nwdes: one handoff per feature
+> (`docs/feature/{id}/handoff.json`) with rendered briefs and run records;
+> `roadmap.json` and `execution-log.json` were removed with no converter. For
+> current delivery, read [Deliver a feature](../nwdes/deliver-feature.md) and
+> [Migrate from nWave 3.x](../migrating-from-3x.md).
+
 ## Verify you're ready
 
 This tutorial reads both the design output from Tutorial 7 and the distill output from Tutorial 8. Before starting, `cd` into your tutorial project and confirm:

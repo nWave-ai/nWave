@@ -79,7 +79,7 @@ Run every nwdes command from the top level of the checkout. Roots default to cwd
 
    Record the public promises and the smallest sufficient slice plan with the [root product commands](reference/index.md#role-recording). Ask the product owner only when a product decision is needed; give it the complete bundle from `nwdes prompt`. It records with the same CLI and closes.
 
-   Record the facts, link each slice to promises it serves, then close. Missing or unknown links refuse before draft writes; close also refuses uncovered Request promises. Correct links, add a justified promise with `nwdes product promise add`, or split unrelated outcomes into a separate `nwdes feature new`.
+   Record the facts, link each slice to promises it serves, then close. Missing or unknown links refuse before draft writes; close also refuses uncovered Request promises and a missing scope-out line (`nwdes product scope-out add --text TEXT`). Correct links, add a justified promise with `nwdes product promise add`, or split unrelated outcomes into a separate `nwdes feature new`.
 
    ```sh
    nwdes product promise add --feature search --kind Outcome --text 'The search result is returned'
@@ -91,7 +91,7 @@ Run every nwdes command from the top level of the checkout. Roots default to cwd
 
 4. Record the design.
 
-   Retain the previous handoff before the architect starts. Give the architect its complete prompt bundle. It records with the design verbs and closes; the orchestrator commits its architecture, ADR and handoff files when it chooses. Run a separate design review only when the delta shows a shared decision or ADR change.
+   Retain the previous handoff before the architect starts. Give the architect its complete prompt bundle. It records with the design verbs and closes; the close refuses until each code target has a reuse and an impact decision and the design has its architectural and contract test records or reasoned not-applicables ([design reference](reference/design.md)). The orchestrator commits its architecture, ADR and handoff files when it chooses. Run a separate design review only when the delta shows a shared decision or ADR change.
 
    ```sh
    cp "$H" "$OUT/before-design.json"

@@ -96,8 +96,11 @@ Five artifact files to review:
 - Options cluster around one approach with minor variations
 - No option represents a radical simplification (SCAMPER "Eliminate")
 - No option inverts the workflow (SCAMPER "Reverse")
+- Most stated probability mass sits on options sharing one mechanism (head-clustering), or stated_probability is missing or not restated as one distribution over the curated six (summing to 1)
+- Fewer than two tail candidates (stated probability at most 0.2 within the distribution the candidate was drawn from) among the curated six, unless the single tail candidate's mechanism differs from every head candidate's
+- Any option missing name_origin (user-words or coined)
 
-**PASS signal**: Applying the 3-point diversity test to each pair of the 6 curated options before DVF filtering — they differ in mechanism, assumption and cost profile. Documented DVF eliminations may reduce the surviving set.
+**PASS signal**: Applying the 3-point diversity test to each pair of the 6 curated options before DVF filtering — they differ in mechanism, assumption and cost profile. The stated probabilities (stated estimates, not measurements), restated as one distribution over the curated six, show no head-clustering: no single mechanism family holds most of the stated mass. At least two options are tail candidates, or the one tail candidate differs in mechanism from every head candidate. Every option carries name_origin. Documented DVF eliminations may reduce the surviving set.
 
 ### Check 3.2 — Generation Discipline
 
@@ -179,9 +182,11 @@ Five artifact files to review:
 
 **Requirement**: Recommendation ends with a clear decision statement for the DISCUSS wave.
 
-**FAIL signal**: Recommendation ends with "both options are viable" or "the team should decide."
+**FAIL signals**:
+- Recommendation ends with "both options are viable" or "the team should decide."
+- Decision statement uses a coined option handle, or vocabulary the requester never used, without marking it as new
 
-**PASS signal**: Explicit decision statement: "Proceed with [option], assuming [key risk] is acceptable."
+**PASS signal**: Explicit decision statement phrased by mechanism in the requester's vocabulary: "Proceed with [the mechanism], assuming [key risk] is acceptable." A coined handle appears only in the scoring table, marked with its name_origin.
 
 ---
 

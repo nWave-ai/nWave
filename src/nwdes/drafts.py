@@ -426,6 +426,10 @@ class Row:
             required=tuple(name for name in self.spec.required if name != "id"),
         )
 
+    def asked_edit_spec(self, kind, policy):
+        """The edit spec with each member the policy asks for required: what the close enforces."""
+        return h.asked_schema(kind, self.edit_spec, policy)
+
     def required_problems(self, values):
         requirement = self.requirement
         return (
@@ -724,7 +728,7 @@ def _fields(spec, path=(), required=True, alternative=None, selected=None):
     return (RoleField(_flag(path), spec, required, alternative=alternative),)
 
 
-def role_verbs(kind):
+def role_verbs(kind, policy=None):
     if kind not in KINDS:
         return ()
     roots = (
@@ -778,7 +782,7 @@ def role_verbs(kind):
             selectors = (*selectors, RoleField("model", INTEGER, True))
         if row.key is not None:
             selectors = (*selectors, row.key)
-        declared = _fields(row.edit_spec)
+        declared = _fields(row.asked_edit_spec(kind, policy))
         groups = tuple(
             tuple(field for field in declared if field.name == name)
             for name in dict.fromkeys(field.name for field in declared)
@@ -914,7 +918,7 @@ def _problems(spec, value, path):
     return h._check(spec, value, path)
 
 
-def prepare_edit(kind, verb, values, previous=None):
+def prepare_edit(kind, verb, values, previous=None, policy=None):
     row = _row_for(kind, verb)
     if row is None:
         return refuse(
@@ -923,7 +927,7 @@ def prepare_edit(kind, verb, values, previous=None):
             "Choose a verb from nwdes " + kind + " --help.",
         )
     path = row.path
-    spec = row.edit_spec
+    spec = row.asked_edit_spec(kind, policy)
     if row.place in ("records", "model", "slice"):
         selected = values.get("in")
         if row.place == "slice" or selected:

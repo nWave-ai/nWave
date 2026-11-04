@@ -24,7 +24,9 @@ workspace read while this delivery is open, not a second authority.
    mapping of how existing products serve the job, including at least one
    non-obvious alternative.
 3. **Brainstorming** -- frame the HMW question, apply SCAMPER, generate 6
-   structurally diverse options (mechanism, assumption and cost differ).
+   structurally diverse options (mechanism, assumption and cost differ) by
+   stating a probability per candidate and sampling the tails; name each
+   option with the requester's words where they exist and mark coined names.
 4. **Taste evaluation** -- apply the DVF filter, score surviving options on
    the 4 locked-weight taste criteria, produce a traceable ranking with a
    dissenting case for the second-place option.
@@ -42,10 +44,14 @@ DIVERGE-RESULT
 verdict: PASS | NEEDS_INPUT
 job: <JOB-id, statement>
 options: <count generated, count survived>
-recommended: <option> -- <one-line rationale>
-dissent: <second-place option> -- <why it might win under different assumptions>
+recommended: <direction phrased by mechanism in the requester's vocabulary> -- <one-line rationale>
+dissent: <second-place direction phrased by mechanism> -- <why it might win under different assumptions>
 ssot: <docs/product/jobs.yaml updated>
 ```
+
+The recommended and dissent lines use the mechanism in the requester's
+vocabulary; coined handles and their name_origin stay in the scoring table
+inside taste-evaluation.md.
 
 ## Human-readable authority
 

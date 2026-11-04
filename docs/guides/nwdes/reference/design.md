@@ -4,6 +4,25 @@ The architect records with `nwdes design` verbs through the CLI and closes. See 
 
 The record holds the paradigm, shared records, slice designs, and ADR declarations. Closing replaces that part, assigns identities, and renders outputs. nwdes computes new ADR numbers; do not invent keys.
 
+A close refuses with MissingFact until each code target of a slice has a `reuse` decision and an `impact` decision, each covered by a row of its analysis or by a reasoned `not-applicable` (`nwdes design not-applicable add --in SLICE --analysis ANALYSIS --reason TEXT`). The design also needs `architectural_tests` and `contract_tests` rows, or a reasoned not-applicable of each, once any slice has a code target. Prose targets owe nothing. A record scope holds either rows of an analysis or its not-applicable, never both. A blank reason refuses with PartInvalid at the row's `records.not_applicable[N].reason` path.
+
+Recording verbs. Reuse and impact rows take `--in SLICE` or `--shared`; a row in either scope whose locator names a code target covers that target. Design-level test rows take `--shared` or `--in SLICE`; both scopes satisfy the design-level rule.
+
+| Analysis | Verb | Required flags |
+|---|---|---|
+| `reuse` | `nwdes design reuse add --shared` or `--in SLICE` | `--symbol NAME --locator PATH:LINE --decision Reuse\|Extend\|Replace\|CreateNew --reason TEXT` |
+| `impact` | `nwdes design impact add --shared` or `--in SLICE` | `--kind TEXT --locator PATH:LINE --decision Changed\|Migrated\|UnchangedCompatible --reason TEXT` |
+| `architectural_tests` | `nwdes design architectural-test add --shared` or `--in SLICE` | `--obligation TEXT --oracle PATH --command COMMAND` |
+| `contract_tests` | `nwdes design contract-test add --shared` or `--in SLICE` | `--obligation TEXT --contract LINE --producer LINE --consumer LINE --observation TEXT --oracle PATH --command COMMAND` |
+
+A reasoned not-applicable is `nwdes design not-applicable add --in SLICE --analysis ANALYSIS --reason TEXT`. `ANALYSIS` is one of `reuse`, `impact`, `architectural_tests`, `contract_tests`; any other value is refused with PartInvalid by argument parsing.
+
+A reuse row's locator and symbol must resolve: the file exists under the repository root, the line lies within it and the symbol occurs in it. Otherwise the close refuses with PartInvalid naming the row, for example `PartInvalid: design.slices.S1.records.reuse[2]`. A `CreateNew` row and an impact row are not resolved.
+
+The refusal tokens for missing decisions are `MissingFact: design.slices.<S> target <path> has no reuse decision` (or `impact`), and `MissingFact: design has no architectural_tests record` (or `contract_tests`).
+
+The asks that the role prompt prints come from `src/nwdes/policy.toml`: one `[member.NAME]` entry per asked member, and `[role.NAME]` lists each role's asks. Coverage is enforced by `_design_obligations` in `src/nwdes/handoff.py`. An ask for an analysis the record already names is a policy edit only. A new analysis name needs a shape edit in `src/nwdes/handoff.py`: a value in the `not_applicable` analysis enum and a `RECORDS` member, plus an entry in the `names` map in `src/nwdes/drafts.py` whose value is the singular hyphenated verb.
+
 Shared decisions and constraints carry an assigned D or K ID, their text and the existing slice IDs they govern. Retained rows cite their ID even when text changes; new rows omit it and receive the next never-reused ID. Unknown IDs refuse. Slice bundles include only their own records and governing shared decisions/constraints, not the whole shared design.
 
 The handoff writer uses standard JSON serialization with sorted keys, zero indentation (`indent=0`), literal Unicode and one trailing newline. Members remain line-oriented for readable diffs. Older JSON layouts remain readable and are rewritten in this standard layout on the next write; do not reformat the handoff by hand.

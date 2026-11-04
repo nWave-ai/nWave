@@ -17,6 +17,10 @@ nWave's internal reference suite compares baselines after replacing repository-r
 
 Slice recipes that bind promises print only the promises cited by that slice's public oracle. The optional charter recipe takes no slice: it covers the complete Feature and, like examiner bundles, retains the whole feature's public promises.
 
+Role asks. Each recording role's bundle prints the asks its policy names, in policy order. For each asked member the bundle prints the policy sentence with its recording verb substituted, then `Accepted values:`, `Shape:` (the verb and its flags), `Example locator:`, a `Required:` line when the member's minimum is 1 or more, and `Owes <member>:` lines: one per code target for `reuse` and `impact`, and one `the design, once` line for `architectural_tests` and `contract_tests` once a slice has a code target. The `Required:` line names the policy member, for example `acceptance.covers`; the refusal names the record path, for example `acceptance.row.covers`.
+
+The asks come from `src/nwdes/policy.toml` (see [design](design.md)). Records written before this version still read: the stored read path does not apply the policy, so an ask constrains only new role output.
+
 Simple path/locator tokens may print bare; whitespace or Markdown-significant characters retain collision-safe code spans.
 
 Native cooperation is the default for nWave roles, not an opt-in prompt mode. The caller supplies the artifact owner and current permitted peer contacts through `--root-context`. Roles use the harness's native messaging; nwdes provides no inbox, broker or transport. Communication does not transfer artifact ownership.

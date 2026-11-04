@@ -574,12 +574,64 @@ def resolve_programs(root, commands, *, path=None) -> handoff.ProgramResolution:
     )
 
 
-def _prepare_transition(args, previous, raw):
-    output = (
-        handoff.inspect_output(args.verb, raw)
-        if args.verb == "design" and raw is not None
-        else raw
+def _reference_resolves(root, locator, symbol):
+    """The shell's answer for one reuse row: its file lies under the root, its line exists, and its symbol occurs."""
+    path, line = handoff.split_locator(locator)
+    base = Path(os.path.normpath(Path(root).absolute()))
+    location = Path(os.path.normpath(base / path))
+    if not location.is_relative_to(base) or not symbol.strip():
+        return False
+    try:
+        text = location.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return False
+    return (
+        line.isdigit()
+        and 1 <= int(line) <= len(text.splitlines())
+        and re.search(r"\b" + re.escape(symbol) + r"\b", text) is not None
     )
+
+
+def _resolve_references(root, sites):
+    return {site: _reference_resolves(root, *site) for site in sites}
+
+
+def _load_policy():
+    """The composition root's one read of policy.toml, checked against the record shape."""
+    try:
+        text = (Path(__file__).resolve().parents[1] / "policy.toml").read_text("utf-8")
+    except (OSError, UnicodeError) as error:
+        return Refused(
+            (
+                Defect(
+                    "InputUnreadable: policy.toml",
+                    str(error),
+                    "Restore src/nwdes/policy.toml from the installed package.",
+                ),
+            )
+        )
+    return handoff.parse_policy(text)
+
+
+def _inspected_output(args, raw):
+    if raw is None:
+        return raw
+    if args.verb == "design":
+        return handoff.inspect_output(
+            args.verb,
+            raw,
+            policy=args.policy,
+            resolution=_resolve_references(
+                args.repo_root, handoff.reference_sites(raw, args.policy)
+            ),
+        )
+    if args.verb in handoff.ASKED_KINDS:
+        return handoff.inspect_output(args.verb, raw, policy=args.policy)
+    return raw
+
+
+def _prepare_transition(args, previous, raw):
+    output = _inspected_output(args, raw)
     commands = handoff.invocation_commands(args.invocation, previous, output)
     programs = resolve_programs(args.repo_root, commands)
     return handoff.prepare_invocation(
@@ -1041,7 +1093,7 @@ def _prompt(args):
                 _declared_jev(tiers, "global"),
             ),
         }
-    prepared = prompts.prepare_prompt(flags, previous, diff, template)
+    prepared = prompts.prepare_prompt(flags, previous, diff, template, args.policy)
     if isinstance(prepared, Refused):
         failure = _refusal(prepared.defects)
         return (
@@ -1467,6 +1519,10 @@ def main(argv=None):
     if args.verb is None:
         sys.stdout.write(grammar.help_text().value)
         return 0
+    loaded = _load_policy()
+    if isinstance(loaded, Refused):
+        return _refusal(loaded.defects)
+    args.policy = loaded.value
     if getattr(args, "examination_action", None):
         if "--slice" in args.arguments:
             return _examination_failure(
@@ -1620,6 +1676,10 @@ def _record_role(kind, name, values):
             return _refusal(review.defects)
     from types import SimpleNamespace
 
+    loaded = _load_policy()
+    if isinstance(loaded, Refused):
+        return _refusal(loaded.defects)
+
     args = SimpleNamespace(
         **{
             **{option.replace("-", "_"): None for option in grammar.SINGLE_OPTIONS},
@@ -1627,6 +1687,7 @@ def _record_role(kind, name, values):
             "verb": kind if kind in handoff.ROLE_SCHEMAS else "document",
             "action": "revise" if values.get("revise") else "apply",
             "product": False,
+            "policy": loaded.value,
         }
     )
     args.invocation = handoff.invocation(
@@ -1946,7 +2007,9 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
         if kind == "product":
             inspected = handoff.inspect_handoff(scope.handoff_bytes)
             previous = handoff._invocation_source(inspected, args.scope)
-        edit = drafts.prepare_edit(kind, name, values, previous=previous)
+        edit = drafts.prepare_edit(
+            kind, name, values, previous=previous, policy=args.policy
+        )
         if isinstance(edit, Refused):
             return _refusal(edit.defects)
         if evidence is not None:

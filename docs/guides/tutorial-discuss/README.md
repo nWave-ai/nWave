@@ -7,6 +7,12 @@
 
 ---
 
+> **Currency note (v4).** The command this lesson teaches still exists, and
+> the session it walks still applies. The per-wave files and paths it shows
+> are 3.x artifacts: v4 records delivery work in one nwdes handoff
+> (`docs/feature/{id}/handoff.json`) and no wave writes `wave-decisions.md`.
+> See [Migrate from nWave 3.x](../migrating-from-3x.md).
+
 ## Verify you're ready
 
 This tutorial builds on the discovery output from Tutorial 4. Before starting, `cd` into your tutorial project and confirm:

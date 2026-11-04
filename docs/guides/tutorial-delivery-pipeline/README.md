@@ -7,6 +7,14 @@
 
 ---
 
+> **Currency note (v4).** This lesson explores the artifacts of the 3.x
+> delivery workflow. In v4, delivery runs through nwdes: one handoff per
+> feature (`docs/feature/{id}/handoff.json`) with rendered briefs and run
+> records; `roadmap.json` and `execution-log.json` were removed with no
+> converter. For current delivery, read [Deliver a
+> feature](../nwdes/deliver-feature.md) and
+> [Migrate from nWave 3.x](../migrating-from-3x.md).
+
 ## Verify you're ready
 
 This tutorial reads artifacts produced by `/nw-deliver` in Tutorial 1 (or 2). Before starting, `cd` into the project from that tutorial and confirm the following exist (replace `<feature-id>` with your feature ID, e.g. `image-to-ascii-art`):
