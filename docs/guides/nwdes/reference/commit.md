@@ -16,13 +16,15 @@ nwdes commit --role ROLE [--feature ID | --epic ID] [--slice S<n>]
 |---|---|
 | `--role` | Required recording role from the ownership table below |
 | `--slice` | Narrow slice targets, oracles, supports and slice run records; omission selects all designed slices |
-| `--path` | Repeatable explicit owned leaf path; replaces the default selection, never adds a directory or sweeps unrelated files |
+| `--path` | Repeatable explicit leaf path; replaces the default selection, never adds a directory or sweeps unrelated files |
 | `--type` | Required: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore` or `revert` |
 | `--description` | Required subject description |
 | `--scope` | Optional conventional-commit message scope, not the delivery's feature or slice scope |
 | `--body` | Optional message body |
 
 The message is `TYPE(SCOPE): TEXT`, or `TYPE: TEXT` without a scope. A supplied body follows a blank line. Supply any repository-required trailers in the body; nwdes invents no attribution or review trailer. The repository's hooks still decide whether the message is acceptable. nwdes never passes `--no-verify` or sets author, committer or `SKIP` variables.
+
+A crafter commits a refactor alone with `--type refactor` first, then the behavior change with `--type feat`.
 
 ```sh
 nwdes commit --feature search --role nw-functional-software-crafter --slice S1 --type feat --scope search --description 'return matching results'
@@ -40,14 +42,14 @@ With `F` the configured feature directory:
 | `nw-solution-architect` | `F/architecture.md`, `F/architecture.html`, `F/handoff.json`, files under the configured ADR destination, and files under `F/design/` |
 | `nw-acceptance-designer` | Selected slices' oracle and supports, `F/acceptance.md`, `F/acceptance.html`, `F/handoff.json` |
 | `nw-user-examiner` | `F/acceptance.md`, `F/acceptance.html`, `F/handoff.json` |
-| `nw-software-crafter` | Selected slices' declared targets and `F/runs/craft.S<n>.json` |
-| `nw-functional-software-crafter` | Selected slices' declared targets and `F/runs/craft.S<n>.json` |
+| `nw-software-crafter` | Any lane file except protected paths (below), including `F/runs/craft.S<n>.json` |
+| `nw-functional-software-crafter` | Any lane file except protected paths (below), including `F/runs/craft.S<n>.json` |
 | `nw-software-crafter-reviewer` | `F/runs/review.candidate.json` and selected `F/runs/review.slice.S<n>.json` records |
 | `nw-acceptance-designer-reviewer` | Selected `F/runs/review.oracle.S<n>.json` records |
 
-The default is the tracked or untracked, nonignored changed files in this owned set, including the role's run record. `review.candidate.json` remains in its owner's set even when `--slice` narrows slice records. Legacy `review.json` and `review.S<n>.json` files have no owner.
+The default is the tracked or untracked, nonignored changed files in this owned set, including the role's run record. A crafter's default is instead every changed lane file except protected paths, which are left out silently. `review.candidate.json` remains in its owner's set even when `--slice` narrows slice records. Legacy `review.json` and `review.S<n>.json` files have no owner.
 
-An explicit list commits only those paths. Every named path must be owned by a delivery role; one unowned path refuses the whole request and lists all such paths. A path owned by another role commits when the requesting role holds its close receipt. Ownership alone does not replace the requesting role's close receipt.
+An explicit list commits only those paths. Each named path must be owned by a delivery role, or be a lane file a crafter may commit; one refused path refuses the whole request and lists all such paths. For a crafter, protected paths are refused: each designed oracle or support file the oracle review has not approved, and every file under `F` except its own craft run record. A path owned by another role commits when the requesting role holds its close receipt. Ownership alone does not replace the requesting role's close receipt.
 
 Selected paths are literal filenames, including glob characters. This does not change Git's pathspec mode in repository hooks: a hook can still select tracked files with patterns such as `*.json`.
 
@@ -73,6 +75,7 @@ When Git cannot start or the root is not a Git checkout, authority closes keep t
 | `MissingCloseReceipt` | This role and scope have no receipt; close the role's draft first. `StaleBase` is explicitly not run without that receipt. |
 | `StaleBase` | Receipt HEAD and current HEAD differ; reconcile the intervening revision and close again. |
 | `UnownedFile` | Explicit paths have no owner or are directories; name owned leaf files instead. |
+| `ProtectedFile` | A crafter named an unapproved oracle or support file, or a feature record; approve the oracle first. |
 | `NothingToCommit` | No owned file was selected. |
 | `CommitRejected` | Git or a hook refused the native commit; correct the printed reason and rerun with hooks enabled. |
 | `InputUnreadable` | Git or required files cannot be read; correct the reported condition. |

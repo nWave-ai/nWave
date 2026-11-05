@@ -171,7 +171,13 @@ RECIPES = (
     _recipe(
         "oracle.atd-v4",
         ("nw-acceptance-designer",),
-        (*_ATD, _derived("examine_rework"), _derived("asks"), *_TAIL),
+        (
+            *_ATD,
+            _derived("owed", "atd_owed"),
+            _derived("examine_rework"),
+            _derived("asks"),
+            *_TAIL,
+        ),
     ),
     replace(
         _recipe(
@@ -1054,6 +1060,7 @@ _OBLIGATION_KEYS = (
     "constraints",
     "reuse",
     "impact",
+    "agreement",
     "boundaries",
     "claims",
     "states",
@@ -1072,6 +1079,7 @@ _CRAFT_KEYS = (
     "decisions",
     "reuse",
     "impact",
+    "agreement",
     "boundaries",
     "observations",
     "equality",
@@ -1374,6 +1382,7 @@ class _View:
     plan: PreparedPrompt
     reached: model.Handoff | None
     craft: model.Handoff | None
+    owed: tuple = ()
 
 
 def _relative_path(path, root):
@@ -1437,8 +1446,12 @@ def _implementation_mode(view):
 
 def _verification(prefactoring, view):
     design = _design(view)
-    source = (design.get("prefactoring") or model.EMPTY) if prefactoring else design
-    return _printed(_COMMANDS, source.get("verification"), view.plan.handoff.facts)
+    commands = (
+        (design.get("prefactoring") or model.EMPTY).get("verification")
+        if prefactoring
+        else model.slice_verification(view.plan.handoff.design, view.plan.inputs.slice)
+    )
+    return _printed(_COMMANDS, commands, view.plan.handoff.facts)
 
 
 def _reachable_field(field, view):
@@ -1469,6 +1482,11 @@ def _obligations(view):
     )
     records = _print_parts(_OBLIGATIONS, reached, inputs.slice, reached.facts)
     items = tuple(value for value in (own.whole, records.whole) if value != "None.")
+    return Printed("\n".join(items) or "None.", items)
+
+
+def _owed(view):
+    items = tuple(key if text is None else f"{key} {text}" for key, text in view.owed)
     return Printed("\n".join(items) or "None.", items)
 
 
@@ -1669,6 +1687,9 @@ def _asks(view):
             )
         elif member.cover == "design" and targets:
             lines.append(f"Owes {name}: the design, once.")
+        elif member.cover == "slice":
+            owed = dict.fromkeys(identity for identity, _ in targets)
+            lines.extend(f"Owes {name}: slice {identity}." for identity in owed)
         blocks.append("\n".join(lines))
     return Printed("\n\n".join(blocks)) if blocks else _NONE
 
@@ -1686,6 +1707,7 @@ _DERIVATIONS = MappingProxyType(
         "reach.constraints": partial(_reachable_field, "constraints"),
         "reach.architectural_tests": partial(_reachable_field, "architectural_tests"),
         "reach.contract_tests": partial(_reachable_field, "contract_tests"),
+        "atd_owed": _owed,
         "atd_properties": partial(_properties, _PROPERTIES),
         "review_properties": partial(_properties, _REVIEW_PROPERTIES),
         "atd_obligations": _obligations,
@@ -1712,6 +1734,13 @@ _CONSUMER_PROBLEMS = _problems_of(check_consumers(model.SCHEMA_PATHS, CONSUMERS)
 
 
 def _render_ready(plan):
+    owed = (
+        model.owed_obligation_texts(
+            plan.handoff.design, plan.handoff.facts, plan.inputs.slice
+        )
+        if plan.inputs.slice is not None
+        else ()
+    )
     references = (
         documents.fact_references(plan.handoff, (plan.inputs, plan.template))
         if any(
@@ -1731,7 +1760,7 @@ def _render_ready(plan):
         if any(source.name == "craft_view" for source in plan.recipe.sources)
         else None
     )
-    view = _View(plan, reached, craft)
+    view = _View(plan, reached, craft, owed)
 
     def field(source):
         if source.kind in ("input", "role"):

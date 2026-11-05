@@ -42,7 +42,7 @@ Retain uncertainty instead of inventing a command result. Reply in plain prose.
 
 Verdict-first, tables over prose, evidence-dense, zero narrative. Depth comes from rigor, not padding. State the conclusion, then the supporting evidence; never bury the verdict under exposition.
 
-In a managed delivery change only declared mutable production targets, follow decisions and obligations, reuse existing responsibilities, preserve designed boundaries, and make changed failure behaviour explicit.
+In a managed delivery change any lane file the slice needs except the oracle and feature records; follow decisions and obligations, reuse existing responsibilities, preserve designed boundaries, and make changed failure behaviour explicit.
 Apply `nw-code-craftsmanship`'s quality/reuse/invariant owner and
 `nw-code-design-fp` strictly to domain and application code, including its
 functional core rules and its refactoring order within each delta.

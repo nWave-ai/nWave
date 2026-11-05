@@ -6,6 +6,7 @@
 # item named by its path: product.scope_out, acceptance.covers, expectations.rows.promises:
 #   cover   "target": every code target of a slice needs a row or a reasoned not-applicable.
 #           "design": the design owes one row or one reasoned not-applicable, in any scope, when any slice has a code target.
+#           "slice": every slice with a code target holds its own record of the member, or a reasoned not-applicable of it in the slice or the shared record.
 #           Empty: the member is asked but owes no coverage.
 #   ask     the sentence the role reads; {verb} is the recording verb of the member and
 #           {not_applicable} the verb that records a reasoned not-applicable.
@@ -27,6 +28,12 @@ ask = "Each code target a slice creates or extends needs an impact decision: rec
 shape = "--kind TEXT --locator PATH:LINE --decision Changed|Migrated|UnchangedCompatible --reason TEXT"
 example = "src/a.py:12"
 
+[member.agreement]
+cover = "design"
+ask = "Each shared contract the change touches needs an agreement analysis: record every producer and every consumer of it with {verb}, each with its locator, party, closed decision and reason; or record a reasoned not-applicable with {not_applicable}."
+shape = "--contract LINE --locator PATH:LINE --party Producer|Consumer --decision Migrated|UnchangedCompatible|Incompatible --reason TEXT"
+example = "src/a.py:12"
+
 [member.architectural_tests]
 cover = "design"
 ask = "The design needs architectural tests: record one with {verb}, or record a reasoned not-applicable with {not_applicable}."
@@ -39,8 +46,14 @@ ask = "The design needs contract tests: record one with {verb}, or record a reas
 shape = "--obligation TEXT --contract LINE --producer LINE --consumer LINE --observation TEXT --oracle PATH --command COMMAND"
 example = "tests/a/test_a.py"
 
+[member.prefactoring]
+cover = "slice"
+ask = "Each slice with a code target needs a prefactoring decision: record it with {verb}, or record a reasoned not-applicable with {not_applicable}."
+shape = "--move TEXT --preserved TEXT --existing-oracle PATH --verification COMMAND"
+example = "tests/a/test_a.py"
+
 [role.nw-solution-architect]
-asks = ["reuse", "impact", "architectural_tests", "contract_tests"]
+asks = ["reuse", "impact", "agreement", "architectural_tests", "contract_tests", "prefactoring"]
 
 [member."product.scope_out"]
 minimum = 1
@@ -50,7 +63,7 @@ example = "Nothing excluded because the slice is the whole feature"
 
 [member."acceptance.covers"]
 minimum = 1
-ask = "Each acceptance row needs the promises it covers: record one with {verb}."
+ask = "Each acceptance row needs the promise it covers: record one with {verb}."
 shape = "--covers P<n>"
 example = "P1"
 

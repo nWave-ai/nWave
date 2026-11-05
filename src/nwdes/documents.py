@@ -1288,6 +1288,11 @@ def _acceptance_row(row, test=None):
         )
         + " "
         + (",".join(map(escaped, row.get("covers", ()))) or "None.")
+        + (
+            " obligations " + ",".join(map(escaped, disposition["obligations"]))
+            if disposition.get("obligations")
+            else ""
+        )
         + "\n"
     )
 
@@ -1340,7 +1345,7 @@ def acceptance_index(scope, identity, rows, *, handoff_argument=None):
         + inline(document)
         + " ### "
         + identity
-        + "; read via file tool. Rows: locator/owner, covers.\n"
+        + "; read via file tool. Rows: locator/owner, covers, obligations.\n"
         + acceptance_rows(rows)
     )
 

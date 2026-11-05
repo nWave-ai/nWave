@@ -50,12 +50,25 @@ _AUTHORITY_DOCUMENTS = MappingProxyType(
 )
 
 
+_CRAFTERS = frozenset((Role.SoftwareCrafter, Role.FunctionalCrafter))
+
+
 def _selected_slices(handoff, slice_id):
     slices = (handoff.design or model.EMPTY).get("slices", model.EMPTY)
     return tuple(
         (identity, value)
         for identity, value in slices.items()
         if slice_id is None or identity == slice_id
+    )
+
+
+def _designed_paths(selected):
+    """The oracle and support paths of the given designed slices."""
+    return frozenset(
+        path
+        for _, designed in selected
+        for path in (designed.get("oracle"), *designed.get("supports", ()))
+        if path is not None
     )
 
 
@@ -74,6 +87,21 @@ def _review_records(role, selected, directory):
         directory + "/runs/" + drafts.DraftKey("review", scope.value).filename
         for scope in scopes
     )
+
+
+def _cited_model_paths(handoff):
+    """Every design model declaration's path, shared or per slice, of the handoff."""
+    return frozenset(
+        declaration["path"]
+        for records in handoff.scoped_records()
+        for declaration in records.get("models", ())
+    )
+
+
+def _architect_reserved(handoff, destinations):
+    """The design model paths and the feature formal/ subtree: owned by the architect alone."""
+    directory = destinations.handoff.rpartition("/")[0]
+    return frozenset((*_cited_model_paths(handoff), directory + "/formal/"))
 
 
 def owned_paths(
@@ -105,14 +133,10 @@ def owned_paths(
             return authority_paths | {
                 directory + "/design/",
                 destinations.adr_directory.rstrip("/") + "/",
+                *_architect_reserved(handoff, destinations),
             }
         case Role.AcceptanceDesigner:
-            return authority_paths | frozenset(
-                path
-                for _, designed in selected
-                for path in (designed.get("oracle"), *designed.get("supports", ()))
-                if path is not None
-            )
+            return authority_paths | _designed_paths(selected)
         case Role.SoftwareCrafter | Role.FunctionalCrafter:
             return frozenset(
                 (
@@ -142,6 +166,28 @@ def owns(owned: frozenset[str], path: str) -> bool:
     )
 
 
+def protected_paths(handoff, destinations, approved):
+    """What a crafter may not commit: each designed oracle or support path the oracle review has not approved, and the whole feature directory, where a crafter's own run records stay its own."""
+    directory = destinations.handoff.rpartition("/")[0]
+    return frozenset(
+        (
+            directory + "/",
+            *(_designed_paths(_selected_slices(handoff, None)) - approved),
+        )
+    )
+
+
+def _protected(path, permission):
+    return owns(permission.protected, path) and not owns(permission.owned, path)
+
+
+def _may_commit(permission, path):
+    """Whether the default selection takes this path: a crafter any unprotected lane file, any other role its owned paths."""
+    if permission.role in _CRAFTERS:
+        return local_path(path) and not _protected(path, permission)
+    return owns(permission.owned, path)
+
+
 def path_owners(handoff, destinations, paths) -> Mapping[str, frozenset[Role]]:
     """Project the complete ownership relation, never an inferred writer."""
     permissions = tuple(
@@ -162,31 +208,77 @@ class _SelectionRefused(Refused):
     candidate_paths: tuple[str, ...]
 
 
-def select_paths(
-    role: Role,
-    owned: frozenset[str],
-    owners: Mapping[str, frozenset[Role]],
-    changed: frozenset[str],
-    explicit: tuple[str, ...],
-):
+def _unowned(path):
+    return Defect(
+        f"UnownedFile: {path}",
+        f"No delivery role owns {path}.",
+        "Name only paths a delivery role owns; nwdes never stages an unowned file.",
+    )
+
+
+@dataclass(frozen=True)
+class Permission:
+    """One role's commit permission for a selection: its owned paths, who owns each path, and the paths a crafter may not commit."""
+
+    role: Role
+    owned: frozenset[str]
+    owners: Mapping[str, frozenset[Role]]
+    protected: frozenset[str]
+    cited: frozenset[str] = frozenset()
+
+
+def _owned_elsewhere(path, permission):
+    """The refusal for a design model or formal file the architect owns, naming that owner."""
+    return Defect(
+        f"UnownedFile: {path}",
+        f"{path} is a design model or formal file owned by {Role.Architect.value}, "
+        f"not {permission.role.value}.",
+        f"Ask {Role.Architect.value} to commit it, or name only paths this role owns.",
+    )
+
+
+def _path_defect(permission, path):
+    """The refusal a named path earns from this role, or None when the role may commit it."""
+    if permission.role in _CRAFTERS:
+        if owns(permission.cited, path) and not owns(permission.owned, path):
+            return Defect(
+                f"ProtectedFile: {path}",
+                f"{path} is a design model or formal file owned by {Role.Architect.value}, "
+                "not a crafter.",
+                f"Ask {Role.Architect.value} to commit it; commit the implementation without this path.",
+            )
+        if not local_path(path):
+            return _unowned(path)
+        if _protected(path, permission):
+            return Defect(
+                f"ProtectedFile: {path}",
+                f"{path} is an oracle, support or feature record a crafter may not commit; "
+                "an oracle or support file is committable only once the oracle review approved its bytes.",
+                "Commit the implementation without this path; a feature record is changed by its own role.",
+            )
+        return None
+    if owns(permission.owned, path):
+        return None
+    if owns(permission.cited, path):
+        return _owned_elsewhere(path, permission)
+    return None if permission.owners.get(path) else _unowned(path)
+
+
+def select_paths(permission, changed, explicit):
     paths = (
         tuple(dict.fromkeys(explicit))
         if explicit
-        else tuple(sorted(path for path in changed if owns(owned, path)))
+        else tuple(sorted(path for path in changed if _may_commit(permission, path)))
     )
     problems = tuple(
-        Defect(
-            f"UnownedFile: {path}",
-            f"No delivery role owns {path}.",
-            "Name only paths a delivery role owns; nwdes never stages an unowned file.",
-        )
-        for path in paths
-        if not owns(owned, path) and not owners.get(path)
+        defect
+        for defect in (_path_defect(permission, path) for path in paths)
+        if defect is not None
     )
     empty = (
         (
             Defect(
-                f"NothingToCommit: {role.value}",
+                f"NothingToCommit: {permission.role.value}",
                 "No changed owned file was selected.",
                 "Close this role's work and select its changed owned files with nwdes commit.",
             ),
@@ -414,6 +506,7 @@ class CommitObservation:
     receipts: tuple[CloseReceipt | ReceiptUnavailable, ...]
     current: model.Record
     directories: frozenset[str]
+    approved: frozenset[str]
 
 
 def _receipt_problems(request, scope, receipt, observed):
@@ -451,13 +544,15 @@ def _receipt_problems(request, scope, receipt, observed):
 def prepare_commit(request: CommitRequest, document, destinations, observed):
     role, slice_id, explicit = request.role, request.slice, request.explicit
     owned = owned_paths(role, document, destinations, slice_id)
-    selected = select_paths(
+    protected = protected_paths(document, destinations, observed.approved)
+    permission = Permission(
         role,
         owned,
         path_owners(document, destinations, (*observed.changed, *explicit)),
-        observed.changed,
-        explicit,
+        protected,
+        _architect_reserved(document, destinations),
     )
+    selected = select_paths(permission, observed.changed, explicit)
     paths = (
         selected.candidate_paths
         if isinstance(selected, _SelectionRefused)
@@ -536,7 +631,7 @@ def prepare_commit(request: CommitRequest, document, destinations, observed):
             for defect in (selected.defects if isinstance(selected, Refused) else ())
             if not (
                 defect.what == f"NothingToCommit: {role.value}"
-                and not any(owns(owned, path) for path in observed.changed)
+                and not any(_may_commit(permission, path) for path in observed.changed)
                 and isinstance(receipt, CloseReceipt)
                 and all(
                     observed.current.get(path) == value
@@ -549,7 +644,7 @@ def prepare_commit(request: CommitRequest, document, destinations, observed):
     return checked(
         paths
         if any(path in observed.changed for path in paths)
-        or any(owns(owned, path) for path in observed.changed)
+        or any(_may_commit(permission, path) for path in observed.changed)
         else (),
         problems,
     )

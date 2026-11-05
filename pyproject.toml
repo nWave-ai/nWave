@@ -32,7 +32,7 @@ path = "scripts/release/offline_wheelhouse_hook.py"
 
 [project]
 name = "nwave-ai"
-version = "4.1.0"
+version = "4.2.0"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -72,7 +72,7 @@ dependencies = [
     "pydantic>=2.14.2",
     "pydantic-settings>=2.15.0",
     "httpx>=0.27.0",
-    "platformdirs>=4.12.4",
+    "platformdirs>=4.14.3",
     "pyyaml>=6.0",
     "packaging>=26.3",
     "typing_extensions>=4.16.0",
@@ -294,7 +294,7 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:"
 ]
-fail_under = 60
+fail_under = 75
 show_missing = true
 
 [tool.mutmut]
@@ -438,7 +438,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "4.1.0"
+version = "4.2.0"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",
@@ -492,3 +492,6 @@ build            = "python scripts/build_dist.py"
 docgen           = "python scripts/docgen.py"
 install-hooks    = "pre-commit install --install-hooks --overwrite"  # all hook types via default_install_hook_types; --overwrite forces a clean install (no migration-mode chaining of a stale/foreign hook)
 verify-hooks     = "python scripts/validation/verify_hooks.py"  # fails loudly unless every default_install_hook_types hook is installed, pre-commit-managed, and not bypassed by core.hooksPath
+# Root board (dev only): `board` refreshes the Backlog.md view of the todo and serves
+# the web board.
+board            = "python scripts/dev/nwboard.py kanban"

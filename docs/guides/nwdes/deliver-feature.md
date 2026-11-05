@@ -33,13 +33,13 @@ Lanes are optional in an isolated checkout. For a lane-free delivery, the roles 
 - Owners converge through their records and direct messages.
 - Each owner edits only its own artifact with its own verbs and records only its delta with `open --from-current`.
 - A revised oracle needs independent re-approval, an artifact-quality check of that oracle alone, with its observed semantic RED before the crafter aligns production.
-- When embedded review was used, the same embedded reviewer confirms each finding against the corrected revision by reopening its own `--subject slice` record with `open --from-current`, using `finding remove` for confirmed findings and closing accepted only when every finding is confirmed.
+- When embedded review was used, the same embedded reviewer confirms each finding against the corrected revision by reopening its own `--subject slice` record with `open --from-current`, recording its own observation of that revision with `review observation add`, using `finding remove` for confirmed findings and closing accepted only when every finding is confirmed.
 - The root rebuilds only the bundles `nwdes delta` lists AFFECTED, without a full handoff pass.
 - A refuted fix or an owner disagreement leaves the finding open and escalates to the host; never record it closed.
 - Before every review (oracle, embedded, final, or design only when a shared decision or ADR changes), the reviewer runs existing tests selected by the project's mechanical selector from actual tracked and untracked touched files at the named commit. nwdes never selects or runs tests.
 - Use oracle/support files since slice base for oracle review; slice files since slice base for embedded review; assembled candidate files since feature base for final review; design files named via root-context for design review only when a shared decision or ADR changes.
 - The final reviewer owns selection and sufficiency of the touched-file selected tests. It reuses a complete applicable native result (host, CI or the normal commit hook) whose source, test, argv and runtime inputs are unchanged, citing its original operator and run; it executes only missing or affected checks, once. Reuse never waives a check. It records argv/exit status/stdout/stderr of each run it actually executes with `nwdes review observation add`; nwdes stamps each observation with the reviewed commit. Explicitly record empty selection, incomplete selection or no selector found. The root supplies no observation to a reviewer.
-- Reuse an observation only when its applicable inputs are unchanged, keeping its original commit provenance. A changed candidate requires new observations.
+- An observation is never carried into a reopened review: a reviewer that reuses an earlier run records a new observation that cites the run's original commit, argv, exit and output, and a changed candidate requires new observations.
 - Missing touched-file observations or failing selected tests are findings.
 - Never pick tests from memory or omit failing selected tests.
 

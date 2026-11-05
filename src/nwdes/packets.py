@@ -386,7 +386,7 @@ def _review_slice(handoff, intent):
             ),
             ("oracle", design.get("oracle")),
             ("supports", design.get("supports", ())),
-            ("verification", design.get("verification", ())),
+            ("verification", model.slice_verification(handoff.design, identity)),
             (
                 "public_oracle",
                 _resolved(_PUBLIC_ORACLE, design.get("public_oracle"), handoff.facts),
@@ -588,7 +588,7 @@ def render_review(packet: ReviewPacket):
     return (
         "Acceptance: "
         + documents.inline(packet.acceptance_document)
-        + "; read via file tool. Rows: locator/owner, covers.\n"
+        + "; read via file tool. Rows: locator/owner, covers, obligations.\n"
         + "## Paths\n"
         + documents.path_index(
             tuple((identity, path) for path, identity in paths.items())

@@ -596,6 +596,24 @@ def _resolve_references(root, sites):
     return {site: _reference_resolves(root, *site) for site in sites}
 
 
+def _test_resolves(root, locator):
+    """The shell's answer for one test locator a row binds: its file lies under the root and its name occurs in it as a whole word."""
+    path, separator, name = locator.partition("::")
+    base = Path(os.path.normpath(Path(root).absolute()))
+    location = Path(os.path.normpath(base / path))
+    if not separator or not name.strip() or not location.is_relative_to(base):
+        return False
+    try:
+        text = location.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return False
+    return re.search(r"\b" + re.escape(name) + r"\b", text) is not None
+
+
+def _resolve_coverage(root, locators):
+    return {locator: _test_resolves(root, locator) for locator in locators}
+
+
 def _load_policy():
     """The composition root's one read of policy.toml, checked against the record shape."""
     try:
@@ -634,8 +652,12 @@ def _prepare_transition(args, previous, raw):
     output = _inspected_output(args, raw)
     commands = handoff.invocation_commands(args.invocation, previous, output)
     programs = resolve_programs(args.repo_root, commands)
+    coverage = _resolve_coverage(
+        args.repo_root,
+        handoff.coverage_locators(args.verb, output, previous),
+    )
     return handoff.prepare_invocation(
-        args.invocation, previous, output, programs=programs
+        args.invocation, previous, output, programs=programs, resolution=coverage
     )
 
 
@@ -939,36 +961,49 @@ def _consent_tiers(args, previous):
     return tiers, defects
 
 
-def _approval_refusal(root, directory, slice_id, read_current, then):
-    """Refuse once a slice's current oracle or support bytes differ from the approved ones.
-
-    ``read_current`` returns the (path, bytes or None) pairs to compare; None when no review
-    approved the slice, so nothing is checked.
-    """
+def _approval_record(root, directory, slice_id):
+    """The slice's oracle review record: Built(None) when none is recorded, else Built(mapping)."""
     scope = drafts.review_scope("oracle", slice_id)
     if isinstance(scope, Refused):
-        return _refusal(scope.defects)
+        return scope
     record_path = str(
         Path(directory) / "runs" / drafts.DraftKey("review", scope.value).filename
     )
     raw = read_file(str(Path(root) / record_path))
     if isinstance(raw, Missing):
-        return None
+        return Built(None)
     if isinstance(raw, Unreadable):
-        return _inspection_failure((), (raw,))
+        return raw
     record = handoff.parse_json(raw, "review record")
     if isinstance(record, Refused):
-        return _refusal(record.defects)
+        return record
     if not isinstance(record.value, Mapping):
-        return _refusal(
+        return checked(
+            None,
             (
                 Defect(
                     "HandoffInvalid: " + record_path,
                     "The review record is not a JSON object.",
                     "Rerun the oracle review so its record is published again.",
                 ),
-            )
+            ),
         )
+    return Built(record.value)
+
+
+def _approval_refusal(root, directory, slice_id, read_current, then):
+    """Refuse once a slice's current oracle or support bytes differ from the approved ones.
+
+    ``read_current`` returns the (path, bytes or None) pairs to compare; None when no review
+    approved the slice, so nothing is checked.
+    """
+    record = _approval_record(root, directory, slice_id)
+    if isinstance(record, Unreadable):
+        return _inspection_failure((), (record,))
+    if isinstance(record, Refused):
+        return _refusal(record.defects)
+    if record.value is None:
+        return None
     current = read_current()
     if isinstance(current, Refused):
         return _refusal(current.defects)
@@ -979,6 +1014,43 @@ def _approval_refusal(root, directory, slice_id, read_current, then):
         then,
     )
     return _refusal(verdict.defects) if isinstance(verdict, Refused) else None
+
+
+def _approved_slice_paths(root, directory, slice_id, read_current):
+    """The slice's oracle and support paths whose current bytes its oracle review approved.
+
+    Nothing counts as approved without a recorded review, readable bytes, and bytes equal to
+    the approved ones: the comparison _approval_refusal makes.
+    """
+    record = _approval_record(root, directory, slice_id)
+    if not isinstance(record, Built) or record.value is None:
+        return frozenset()
+    recorded = record.value.get("content")
+    current = read_current()
+    if recorded is None or isinstance(current, Refused):
+        return frozenset()
+    verdict = prompts.oracle_approval(
+        slice_id, recorded, drafts.content_digest(current.value), "commit them"
+    )
+    if isinstance(verdict, Refused):
+        return frozenset()
+    return frozenset(path for path, _ in current.value)
+
+
+def _approved_oracle_paths(root, directory, ports, inspected):
+    """The oracle and support paths the oracle review approved, across every designed slice."""
+    slices = (inspected.result.value.design or {}).get("slices") or {}
+    return frozenset().union(
+        *(
+            _approved_slice_paths(
+                root,
+                directory,
+                slice_id,
+                partial(_oracle_files, ports, root, inspected, slice_id),
+            )
+            for slice_id in slices
+        )
+    )
 
 
 def _refuse_changed_oracle(args, previous):
@@ -1012,7 +1084,7 @@ def _prompt(args):
             if args.handoff
             else ""
         )
-        files = None
+        files, others = None, ()
         if selected.value.review_subject == "oracle" and args.slice is not None:
             approved = _oracle_files(
                 _document_ports(args), args.repo_root, previous, args.slice
@@ -1020,7 +1092,8 @@ def _prompt(args):
             if isinstance(approved, Refused):
                 return _refusal(approved.defects)
             files = approved.value
-        observed = _review_evidence(args.repo_root, directory, files)
+            others = _other_oracle_paths(previous, args.slice)
+        observed = _review_evidence(args.repo_root, directory, files, others)
         requested = _review_git(
             args.repo_root,
             ("rev-parse", "--verify", "--end-of-options", args.commit + "^{commit}"),
@@ -1457,6 +1530,33 @@ def _lane_rekey_inputs(args, observed):
     }
 
 
+def _review_subject(tokens):
+    """The --subject the review parser binds: its last occurrence, in either spelling."""
+    subject = None
+    for index, token in enumerate(tokens):
+        if token == "--subject" and index + 1 < len(tokens):
+            subject = tokens[index + 1]
+        elif token.startswith("--subject="):
+            subject = token.partition("=")[2]
+    return subject
+
+
+def _slice_required(arguments):
+    """True when the probed nwdes command names a slice it requires or owns."""
+    argv = list(arguments[1:] if arguments[:1] == ["--"] else arguments)
+    tokens = argv[1:]
+    if tokens[:1] == ["review"] and _review_subject(tokens) in ("oracle", "slice"):
+        return True
+    for command in grammar.COMMANDS:
+        words = command.name.split()
+        if tokens[: len(words)] == words:
+            return any(
+                argument.flag == "--slice" and argument.meaning.startswith("required;")
+                for argument in command.arguments
+            )
+    return False
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     verb = argv[0] if argv and not argv[0].startswith("-") else None
@@ -1524,7 +1624,12 @@ def main(argv=None):
         return _refusal(loaded.defects)
     args.policy = loaded.value
     if getattr(args, "examination_action", None):
-        if "--slice" in args.arguments:
+        if any(
+            token == "--slice" or token.startswith("--slice=")
+            for token in args.arguments
+        ) and not (
+            args.examination_action == "probe" and _slice_required(args.arguments)
+        ):
             return _examination_failure(
                 checked(
                     None,
@@ -1676,10 +1781,6 @@ def _record_role(kind, name, values):
             return _refusal(review.defects)
     from types import SimpleNamespace
 
-    loaded = _load_policy()
-    if isinstance(loaded, Refused):
-        return _refusal(loaded.defects)
-
     args = SimpleNamespace(
         **{
             **{option.replace("-", "_"): None for option in grammar.SINGLE_OPTIONS},
@@ -1687,7 +1788,6 @@ def _record_role(kind, name, values):
             "verb": kind if kind in handoff.ROLE_SCHEMAS else "document",
             "action": "revise" if values.get("revise") else "apply",
             "product": False,
-            "policy": loaded.value,
         }
     )
     args.invocation = handoff.invocation(
@@ -1869,7 +1969,7 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
     before = draft
     evidence = None
     if drafts.needs_review_evidence(kind, name):
-        files = None
+        files, others = None, ()
         slice_id = drafts.oracle_slice(scope.key.scope)
         if slice_id is not None:
             approved = _oracle_files(
@@ -1882,7 +1982,10 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
                 _refusal(approved.defects)
                 return 1
             files = approved.value
-        observed = _review_evidence(args.repo_root, scope.directory, files)
+            others = _other_oracle_paths(
+                handoff.inspect_handoff(scope.handoff_bytes), slice_id
+            )
+        observed = _review_evidence(args.repo_root, scope.directory, files, others)
         if isinstance(observed, Refused):
             _refusal(observed.defects)
             return 1
@@ -2057,6 +2160,19 @@ def _oracle_paths(inspected, slice_id):
     )
 
 
+def _other_oracle_paths(inspected, slice_id):
+    """Oracle and support paths of every other designed slice: work that is not under review."""
+    if inspected is None or isinstance(inspected.result, Refused):
+        return ()
+    slices = (inspected.result.value.design or {}).get("slices") or {}
+    return tuple(
+        path
+        for other in slices
+        if other != slice_id
+        for path in _oracle_paths(inspected, other).value
+    )
+
+
 def _oracle_files(ports, root, inspected, slice_id):
     """The slice's oracle and supports as (path, bytes or None) pairs read from the checkout."""
     paths = _oracle_paths(inspected, slice_id)
@@ -2113,7 +2229,7 @@ def _refuse_committed_oracles(args, ports, scope):
     return None
 
 
-def _review_evidence(root, directory, files=None):
+def _review_evidence(root, directory, files=None, others=()):
     head = _review_git(root, ("rev-parse", "--verify", "HEAD^{commit}"))
     status = _review_git(
         root, ("status", "--porcelain", "-z", "--untracked-files=all", "--no-renames")
@@ -2128,7 +2244,7 @@ def _review_evidence(root, directory, files=None):
         return checked(None, problems)
     return Built(
         drafts.review_evidence(
-            head.value.strip(), _status_entries(status.value), directory, files
+            head.value.strip(), _status_entries(status.value), directory, files, others
         )
     )
 
@@ -2680,13 +2796,16 @@ def _commit_context(args):
                 ),
             ),
         )
-    parsed = handoff.inspect_handoff(raw).result
+    inspected = handoff.inspect_handoff(raw)
+    parsed = inspected.result
     return (
-        parsed if isinstance(parsed, Refused) else Built((parsed.value, resolved.value))
+        parsed
+        if isinstance(parsed, Refused)
+        else Built((parsed.value, resolved.value, inspected))
     )
 
 
-def _commit_observation(args, document, destinations, locations):
+def _commit_observation(args, document, destinations, locations, inspected):
     head = _commit_git(args.repo_root, ("rev-parse", "--verify", "HEAD^{commit}"))
     status = _commit_git(
         args.repo_root,
@@ -2702,16 +2821,23 @@ def _commit_observation(args, document, destinations, locations):
         return checked(None, failures)
     entries = _status_entries(status.value.decode("utf-8", "surrogateescape"))
     changed = frozenset(path for code, path in entries if code != "!!")
+    approved = _approved_oracle_paths(
+        args.repo_root,
+        destinations.handoff.rpartition("/")[0],
+        _document_ports(args),
+        inspected,
+    )
+    protected = commits.protected_paths(document, destinations, approved)
     owned = commits.owned_paths(
         commits.Role(args.role), document, destinations, args.slice
     )
-    selection = commits.select_paths(
+    permission = commits.Permission(
         commits.Role(args.role),
         owned,
         commits.path_owners(document, destinations, (*changed, *args.path)),
-        changed,
-        tuple(args.path),
+        protected,
     )
+    selection = commits.select_paths(permission, changed, tuple(args.path))
     selected = (
         selection.candidate_paths if isinstance(selection, Refused) else selection.value
     )
@@ -2755,6 +2881,7 @@ def _commit_observation(args, document, destinations, locations):
                 if (Path(args.repo_root) / path).is_dir()
                 and not (Path(args.repo_root) / path).is_symlink()
             ),
+            approved,
         )
     )
 
@@ -2797,8 +2924,10 @@ def _commit(args):
         context = _commit_context(args)
         if isinstance(context, Refused):
             return _commit_failure(context)
-        document, destinations = context.value
-        observed = _commit_observation(args, document, destinations, located.value)
+        document, destinations, inspected = context.value
+        observed = _commit_observation(
+            args, document, destinations, located.value, inspected
+        )
         if isinstance(observed, Refused):
             return _commit_failure(observed)
         admitted = commits.prepare_commit(

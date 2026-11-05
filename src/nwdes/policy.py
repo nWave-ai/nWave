@@ -14,7 +14,7 @@ from functools import partial
 from nwdes.contracts import Defect, checked
 
 
-COVERS = ("target", "design")
+COVERS = ("target", "design", "slice")
 _TABLES = ("member", "role")
 _MEMBER_FIELDS = ("cover", "ask", "shape", "example", "minimum")
 _TEXT_FIELDS = ("ask", "shape", "example")
@@ -51,12 +51,16 @@ class RecordShape:
 
     members: Mapping[str, tuple[bool, bool]]
     analyses: tuple = ()
+    slice_members: tuple = ()
 
     def takes_verb(self, name):
         return self.members[name][0]
 
     def is_record_array(self, name):
         return self.members[name][1]
+
+    def is_slice_member(self, name):
+        return name in self.slice_members
 
 
 @dataclass(frozen=True)
@@ -118,7 +122,7 @@ def _cover_value_defect(entry):
     return _defect(
         entry.path + ".cover",
         f"cover {cover!r} is not one of {', '.join(COVERS)}.",
-        "Set cover to target or design, or remove it.",
+        "Set cover to target, design or slice, or remove it.",
     )
 
 
@@ -138,9 +142,23 @@ def _cover_analysis_defects(entry, shape):
     )
 
 
+def _holds_records(entry, shape):
+    if entry.table.get("cover") == "slice":
+        return shape.is_slice_member(entry.name)
+    return shape.is_record_array(entry.name)
+
+
 def _cover_record_defects(entry, shape):
-    if shape.is_record_array(entry.name):
+    if _holds_records(entry, shape):
         return ()
+    if entry.table.get("cover") == "slice":
+        return (
+            _defect(
+                entry.path + ".cover",
+                f"{entry.name!r} is not a record each slice holds once, so no slice can cover it.",
+                "Declare cover slice only on a member that a slice holds as one record.",
+            ),
+        )
     return (
         _defect(
             entry.path + ".cover",
@@ -349,11 +367,15 @@ def _checked_policy(data, shape):
     return Policy(members, roles), defects
 
 
-def parse(text: str, shape: Mapping[str, tuple[bool, bool]], analyses=()):
+def parse(
+    text: str, shape: Mapping[str, tuple[bool, bool]], analyses=(), slice_members=()
+):
     """Parse policy.toml against the shape {member: (has a verb, is a list of records)}."""
     try:
         data = tomllib.loads(text)
     except tomllib.TOMLDecodeError as error:
         return checked(None, (_not_toml_defect(error),))
-    policy, defects = _checked_policy(data, RecordShape(shape, analyses))
+    policy, defects = _checked_policy(
+        data, RecordShape(shape, analyses, tuple(slice_members))
+    )
     return checked(policy, defects)

@@ -90,9 +90,17 @@ def candidate_scope(scope):
     return isinstance(scope, _CandidateScope)
 
 
-def review_evidence(commit, status_entries, destinations, files=None):
-    """Clean-tree evidence; an oracle review judges its own files by content instead."""
-    owned = frozenset() if files is None else frozenset(path for path, _ in files)
+def review_evidence(commit, status_entries, destinations, files=None, others=()):
+    """Clean-tree evidence; an oracle review judges its own files by content instead.
+
+    The oracle and supports of the feature's other slices (others) are test files of work that
+    is not under review: they are not dirty evidence for this review and are not bound.
+    """
+    owned = (
+        frozenset()
+        if files is None
+        else frozenset(path for path, _ in files) | frozenset(others)
+    )
     return ReviewEvidence(
         commit,
         tuple(
@@ -666,6 +674,7 @@ _ALIASES = {
     "assumptions": "assumption",
     "driven_ports": "driven-port",
     "observations": "observation",
+    "obligations": "obligation",
 }
 
 
@@ -728,7 +737,24 @@ def _fields(spec, path=(), required=True, alternative=None, selected=None):
     return (RoleField(_flag(path), spec, required, alternative=alternative),)
 
 
+_VERBS_HELD: dict[tuple[str, int], tuple[object, tuple]] = {}
+
+
 def role_verbs(kind, policy=None):
+    """The verbs of one role kind under one policy, built once per distinct policy.
+
+    The tables are pure over `kind` and `policy`; the cache holds the policy itself
+    so a hit means the same object, and its id cannot be reused while held.
+    """
+    held = _VERBS_HELD.get((kind, id(policy)))
+    if held is not None and held[0] is policy:
+        return held[1]
+    built = _role_verbs(kind, policy)
+    _VERBS_HELD[(kind, id(policy))] = (policy, built)
+    return built
+
+
+def _role_verbs(kind, policy=None):
     if kind not in KINDS:
         return ()
     roots = (
@@ -1162,6 +1188,9 @@ def seed(previous, kind, slice=None, *, adr_bodies=h.EMPTY):
                 + kind
                 + " close before retrying open --from-current.",
             )
+        # A reopened review keeps its findings and no observations: each observation is bound to
+        # the commit that recorded it, and a new round records its own. Its id counter continues
+        # after the published ids, so no new id repeats a published one.
         return h.freeze(
             {
                 name: (
@@ -1174,6 +1203,8 @@ def seed(previous, kind, slice=None, *, adr_bodies=h.EMPTY):
                     )
                     + 1
                     if kind == "review" and name == "next_review_observation"
+                    else ()
+                    if kind == "review" and name == "observations"
                     else previous.get(name, rows)
                 )
                 for name, rows in empty(kind).items()

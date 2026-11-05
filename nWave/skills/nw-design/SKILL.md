@@ -114,16 +114,20 @@ Apply `design:simplest-design-that-delivers` in `nw-cross-cutting-invariants` th
    scan-scope/degradation in the semantic evidence. A failed or unsupported
    query remains unknown; label any Glob/Grep/manual fallback and its limits.
 3. **Prefactoring** — decide applicability in the current design payload.
-   For an applicable minimal preserving move, select a genuinely GREEN existing
-   oracle and executable verification recipe. Observe it before the move and
-   on the after-move-before-behavior intermediate state with unchanged oracle,
-   support and runtime identities. See `nw-code-craftsmanship`; a declaration,
-   nonexistent selector or two runs after feature implementation is not evidence.
-   A shared preserving move must be assigned to the selected value's applicable
-   `prefactoring` declaration before measurement. The host runs the selected
-   verification command before the preserving move and again on the
-   after-move-before-behavior state. Shared authority alone records no run and
-   does not waive a distinct unassigned move.
+   For a minimal preserving move, select a GREEN existing oracle and
+   verification recipe; observe it before the move and after it, before
+   behavior, with unchanged oracle, support and runtime identities
+   (`nw-code-craftsmanship`). A declaration, missing selector or runs after
+   feature implementation is not evidence. Assign a shared move to the
+   selected value's `prefactoring` declaration; shared authority records no
+   run and waives no distinct move. A code-target slice states this decision,
+   or `nwdes design not-applicable add --in SLICE --analysis prefactoring
+   --reason TEXT` (or `--shared`), never both. Any level L1 to L6 may be
+   requested; `--move` names the follow-up change it makes easier. Use
+   code-fact signals when the provider answers; else say it is unavailable
+   and name platform install commands. The host relays the offer; never ask
+   the human or install. Read smells for the declared paradigm:
+   `nw-code-design-fp`, `nw-code-design-oo`; procedural has none.
 4. **Ports and boundaries** — define driving/driven ports, dependency direction,
    ownership and failure translation. Name the native type/record and owning
    module for decisions, effects, errors and per-process state.
@@ -216,13 +220,17 @@ Apply `design:simplest-design-that-delivers` in `nw-cross-cutting-invariants` th
     agreement analysis asks the question reuse cannot: "who else must agree
     with the contract I am changing?" For every shared contract the change
     touches (a schema, a wire format, a config shape read by more than one
-    producer/consumer), name every producer and every consumer with a locator
-    and a closed decision (`MIGRATED`, `UNCHANGED_COMPATIBLE`, or
-    `INCOMPATIBLE`) and a reason. Gate: a change touching no shared contract
-    must say so explicitly; it is never inferred from silence.
+    producer/consumer), record every producer and every consumer with
+    `nwdes design agreement add --in SLICE` (or `--shared`): its locator, its
+    party (`Producer` or `Consumer`), a closed decision (`Migrated`,
+    `UnchangedCompatible`, or `Incompatible`) and a reason. Gate: a change
+    touching no shared contract records a reasoned
+    `nwdes design not-applicable add --in SLICE --analysis agreement --reason TEXT`;
+    it is never inferred from silence.
 11. **Architectural and contract test applicability** — record applicable checks
     with `architectural-test add` or `contract-test add`; record concrete
-    non-applicability reasons in design constraints. An
+    non-applicability reasons with `nwdes design not-applicable add --in SLICE
+    --analysis architectural_tests` (or `contract_tests`) and a written reason. An
     architectural check applies when authority evidences a deliberate
     dependency/boundary/owner law the change can reach; it falsifies that law
     over the whole scope the law governs, including members added later and

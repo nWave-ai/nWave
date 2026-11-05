@@ -834,8 +834,15 @@ def _role_commands(kind, policy=None):
 _FIXED_COMMANDS = COMMANDS
 
 
+_RECORDS_HELD: dict[int, tuple[object, tuple]] = {}
+
+
 def _role_records(policy=None):
-    return tuple(
+    """The role command records under one policy, built once per distinct policy."""
+    held = _RECORDS_HELD.get(id(policy))
+    if held is not None and held[0] is policy:
+        return held[1]
+    built = tuple(
         command
         for kind in drafts.KINDS
         for command in (
@@ -843,6 +850,8 @@ def _role_records(policy=None):
             *(EXAMINATION_COMMANDS if kind == "examine" else ()),
         )
     )
+    _RECORDS_HELD[id(policy)] = (policy, built)
+    return built
 
 
 COMMANDS = (*_FIXED_COMMANDS, *_role_records())

@@ -8,7 +8,7 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum
-from functools import cached_property, reduce
+from functools import cache, cached_property, reduce
 from types import MappingProxyType
 
 from nwdes import policy as role_policy
@@ -361,6 +361,8 @@ STRING = Spec("string")
 REFERENCE = Spec("reference")
 COMMAND = Spec("command")
 PROMISE_REFERENCE = Spec("reference", ("P",))
+OBLIGATION = Spec("obligation")
+_OBLIGATION_KEY = re.compile(r"[LT][1-9][0-9]*(?:/F[1-9][0-9]*)?")
 ADR_PREFIX_PATTERN = r"[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*"
 PREFIX = Spec("prefix")
 ADR_STATUS_PATTERN = r"Proposed|Accepted|Superseded by [A-Z0-9-]+"
@@ -575,10 +577,27 @@ RECORDS = record(
             reason=TEXT,
         )
     ),
+    agreement=array(
+        record(
+            ("contract", "locator", "party", "decision", "reason"),
+            contract=LINE,
+            locator=LINE,
+            party=enum("Producer", "Consumer"),
+            decision=enum("Migrated", "UnchangedCompatible", "Incompatible"),
+            reason=TEXT,
+        )
+    ),
     not_applicable=array(
         record(
             ("analysis", "reason"),
-            analysis=enum("reuse", "impact", "architectural_tests", "contract_tests"),
+            analysis=enum(
+                "reuse",
+                "impact",
+                "agreement",
+                "architectural_tests",
+                "contract_tests",
+                "prefactoring",
+            ),
             reason=TEXT,
         )
     ),
@@ -704,6 +723,10 @@ SLICE_PATCH = replace(
         for name, spec in SLICE_DESIGN.members
     ),
 )
+
+# The slice members a policy may ask for by name: each is one record a slice holds once.
+SLICE_MEMBERS = MappingProxyType({"prefactoring": PREFACTORING})
+
 ADR_ROW = record(
     ("title", "status", "context", "decision", "alternatives", "consequences"),
     prefix=PREFIX,
@@ -736,7 +759,12 @@ ACCEPTANCE_ROW = record(
     expected=TEXT,
     user_result=TEXT,
     disposition=choice(
-        Tested=record(("test",), test=LINE, still_passes_if=TEXT),
+        Tested=record(
+            ("test",),
+            test=LINE,
+            still_passes_if=TEXT,
+            obligations=array(OBLIGATION),
+        ),
         NotTested=record(("reason", "owner"), reason=TEXT, owner=LINE),
     ),
 )
@@ -1193,13 +1221,17 @@ def policy_shape():
             )
             for name, spec in RECORDS.members
         },
+        **dict.fromkeys(SLICE_MEMBERS, (True, False)),
         **{path: (True, False) for path in ASKED_PATHS if _holds_path(path)},
     }
 
 
 def recording_verb(member):
-    """The verb that records a policy member: its asked path's verb, else its design analysis verb."""
-    return ASKED_VERBS.get(member) or "design " + verb_name(member) + " add"
+    """The verb that records a policy member: its asked path's verb, its slice member's set verb, else its analysis add verb."""
+    if member in ASKED_VERBS:
+        return ASKED_VERBS[member]
+    action = "set" if member in SLICE_MEMBERS else "add"
+    return "design " + verb_name(member) + " " + action
 
 
 def _spec_at(spec, segments):
@@ -1215,7 +1247,9 @@ def _spec_at(spec, segments):
 
 
 def member_spec(name):
-    """The spec a policy member names: a design analysis in RECORDS, or an asked path's part."""
+    """The spec a policy member names: a design analysis in RECORDS, a slice member, or an asked path's part."""
+    if name in SLICE_MEMBERS:
+        return SLICE_MEMBERS[name]
     segments = name.split(".")
     if len(segments) == 1:
         return _spec_at(RECORDS, segments)
@@ -1268,10 +1302,15 @@ def asked_schema(kind, spec, policy):
     return spec
 
 
-def parse_policy(text):
-    """The policy of policy.toml text, checked against the record shape."""
+@cache
+def _parsed_policy(text):
     analyses = RECORDS.index["not_applicable"].members[0].index["analysis"].members
-    return role_policy.parse(text, policy_shape(), analyses)
+    return role_policy.parse(text, policy_shape(), analyses, tuple(SLICE_MEMBERS))
+
+
+def parse_policy(text):
+    """The policy of policy.toml text, parsed once per distinct text."""
+    return _parsed_policy(text)
 
 
 def _rows(records, analysis):
@@ -1469,20 +1508,74 @@ def _resolution_defects(scopes, member, resolution):
     ]
 
 
+def _declares(value):
+    return isinstance(value, Mapping) and bool(value)
+
+
+def _declared_slices(design, member):
+    """The identities of the slices that hold their own record of a slice member."""
+    slices = design.get("slices") if isinstance(design, Mapping) else None
+    if not isinstance(slices, Mapping):
+        return frozenset()
+    return frozenset(
+        identity
+        for identity, own in slices.items()
+        if isinstance(own, Mapping) and _declares(own.get(member.name))
+    )
+
+
+def _slice_exclusivity_defects(design, scopes, member):
+    """A slice holds its declaration of a slice member or a reasoned not-applicable of it, never both."""
+    analysis = member.name
+    declared = _declared_slices(design, member)
+    return [
+        Defect(
+            f"PartInvalid: {path}.{analysis} holds a declaration and a not-applicable",
+            f"A slice holds either its {analysis} declaration or a reasoned not-applicable of {analysis}, never both.",
+            f"Remove one of them: nwdes design not-applicable remove --at N, or nwdes design {verb_name(analysis)} remove.",
+        )
+        for path, records, identity, _ in scopes
+        if identity in declared and _not_applicable(records, analysis)
+    ]
+
+
+def _slice_coverage_defects(design, scopes, member):
+    """A slice with a code target owes one decision of a slice member: its own record or a reasoned not-applicable in the slice or the shared record."""
+    analysis = member.name
+    declared = _declared_slices(design, member)
+    shared = _shared_records(scopes)
+    return [
+        Defect(
+            f"MissingFact: {path} targets {', '.join(targets)} have no {analysis} decision",
+            f"Each slice with a code target needs a record of {analysis} or a reasoned not-applicable before the design closes.",
+            f"Record it with nwdes {recording_verb(analysis)} --in {identity} {member.shape}, or nwdes design not-applicable add --in {identity} --analysis {analysis} --reason TEXT.",
+        )
+        for path, records, identity, targets in scopes
+        if identity is not None
+        and targets
+        and identity not in declared
+        and not _not_applicable(records, analysis)
+        and not _not_applicable(shared, analysis)
+    ]
+
+
 def _design_obligations(design, policy, resolution):
     """Presence and existence of the analyses the policy covers, per record scope.
 
     A scope holds at most one of an analysis's rows or its not-applicable. Every code target of
     a slice has a row of each target-covered analysis, paired by path, or a not-applicable of it
     in the slice or the shared record. When any slice has a code target, each design-covered
-    analysis has a row or a not-applicable in some scope. Each named locator and symbol must
-    resolve (resolution maps the shell's answers). Every not-applicable names a covered analysis.
+    analysis has a row or a not-applicable in some scope, and each slice-covered member is
+    recorded once: by its slice, or by a not-applicable in the slice or the shared record; a slice
+    holds one of the two, never both. Each named locator and symbol must resolve (resolution maps
+    the shell's answers). Every not-applicable names a covered analysis.
     """
     scopes = _scopes(design)
     targeted = policy.covering("target")
     designed = policy.covering("design")
+    sliced = policy.covering("slice")
     defects = [
-        *_unknown_analysis_defects(scopes, (*targeted, *designed)),
+        *_unknown_analysis_defects(scopes, (*targeted, *designed, *sliced)),
         *_blank_reason_defects(scopes),
     ]
     for member in (*targeted, *designed):
@@ -1492,6 +1585,9 @@ def _design_obligations(design, policy, resolution):
         defects.extend(_resolution_defects(scopes, member, resolution))
     for member in designed:
         defects.extend(_design_coverage_defects(scopes, member))
+    for member in sliced:
+        defects.extend(_slice_exclusivity_defects(design, scopes, member))
+        defects.extend(_slice_coverage_defects(design, scopes, member))
     return tuple(defects)
 
 
@@ -1620,6 +1716,247 @@ def _acceptance_for_design(acceptance, design, product, facts, counters):
         else:
             rows.pop(identity, None)
     return freeze(rows), facts, counters
+
+
+_COVERAGE_TEST_LISTS = ("architectural_tests", "contract_tests")
+
+
+def _mapping(value):
+    return value if isinstance(value, Mapping) else EMPTY
+
+
+def _sequence(value):
+    return tuple(value) if isinstance(value, (tuple, list)) else ()
+
+
+def _part_of(previous, name):
+    """A stored part of the previous handoff: a Record names it, a Handoff holds it as an attribute."""
+    if previous is None:
+        return None
+    return (
+        previous.get(name)
+        if isinstance(previous, Mapping)
+        else getattr(previous, name, None)
+    )
+
+
+def _binds_obligations(row):
+    """Whether a Tested row may bind obligation keys: it names obligation slots, or covers a law or test by its bare id, the legacy binding of a retained row."""
+    disposition = _mapping(row.get("disposition"))
+    return bool(_sequence(disposition.get("obligations"))) or any(
+        isinstance(identity, str) and identity[:1] in ("L", "T")
+        for identity in _sequence(row.get("covers"))
+    )
+
+
+def coverage_locators(verb, output, previous):
+    """The test locators the coverage rule reads: those of the Tested rows that bind obligations, stored and newly produced."""
+    if verb != "acceptance":
+        return ()
+    stored = previous.part("acceptance") if isinstance(previous, HandoffInput) else None
+    row_sets = (*_mapping(stored).values(), _sequence(getattr(output, "payload", None)))
+    locators = (
+        _mapping(row.get("disposition")).get("test")
+        for rows in row_sets
+        for row in _tested_rows(rows)
+        if _binds_obligations(row)
+    )
+    return tuple(dict.fromkeys(a for a in locators if isinstance(a, str)))
+
+
+def _coverage_records(design):
+    """Each law and architectural or contract test, with its scope: the slice that records it, or None when shared."""
+    scopes = (
+        (None, _mapping(_mapping(design).get("shared"))),
+        *(
+            (identity, _mapping(_mapping(own).get("records")))
+            for identity, own in _mapping(_mapping(design).get("slices")).items()
+        ),
+    )
+    return tuple(
+        (record, scope)
+        for scope, records in scopes
+        for name in ("laws", *_COVERAGE_TEST_LISTS)
+        for record in _sequence(records.get(name))
+        if isinstance(record, Mapping) and isinstance(record.get("id"), str)
+    )
+
+
+def _tested_rows(rows):
+    return tuple(
+        row
+        for row in _sequence(rows)
+        if isinstance(row, Mapping)
+        and _mapping(row.get("disposition")).get("kind") == "Tested"
+    )
+
+
+def obligation_keys(record):
+    """The obligation keys a design record owes, derived from its id and treatment and never stored.
+
+    A finite law owes one key per case, a broad law its generative test and one per must-include
+    item, a NoTest law none, and each architectural or contract test its own key. Pure.
+    """
+    identity = record["id"]
+    if identity.startswith("T"):
+        return (identity,)
+    treatment = _mapping(record.get("treatment"))
+    if treatment.get("kind") == "Finite":
+        return tuple(
+            dict.fromkeys(
+                f"{identity}/{case}" for case in _sequence(treatment.get("cases"))
+            )
+        )
+    if treatment.get("kind") == "Broad":
+        items = _sequence(_mapping(treatment.get("generator")).get("must_include"))
+        return tuple(
+            dict.fromkeys((identity, *(f"{identity}/{item}" for item in items)))
+        )
+    return ()
+
+
+def owed_obligations(design, slice):
+    """Each obligation key the slice owes, with the scope of its record: the slice, or None when shared."""
+    return tuple(
+        (key, scope)
+        for record, scope in _coverage_records(design)
+        if scope in (None, slice)
+        for key in obligation_keys(record)
+    )
+
+
+def owed_obligation_texts(design, facts, slice):
+    """Each obligation key the slice owes, with the case text the refusal names for a record the slice owns.
+
+    A shared record's text stays in the architecture brief, so its key carries None. Pure.
+    """
+    index = {record["id"]: record for record, _ in _coverage_records(design)}
+    return tuple(
+        (key, None if scope is None else _obligation_text(index, facts, key))
+        for key, scope in owed_obligations(design, slice)
+    )
+
+
+def _bound_keys(row, index, retained):
+    """The obligation keys one acceptance row binds: its own slots and, for a retained row, every key of each bare id it covers."""
+    disposition = _mapping(row.get("disposition"))
+    if disposition.get("kind") != "Tested":
+        return ()
+    legacy = (
+        tuple(
+            key
+            for identity in _sequence(row.get("covers"))
+            if isinstance(identity, str) and identity in index
+            for key in obligation_keys(index[identity])
+        )
+        if retained
+        else ()
+    )
+    slots = tuple(
+        key for key in _sequence(disposition.get("obligations")) if isinstance(key, str)
+    )
+    return tuple(dict.fromkeys((*slots, *legacy)))
+
+
+def _retained_contents(previous, slice):
+    """The content of each stored acceptance row of the slice, with its authored text recovered.
+
+    A draft row carries text while a stored row carries fact ids, so a retained row is recognised
+    only once both are read as text.
+    """
+    facts = _part_of(previous, "facts")
+    if not isinstance(facts, Mapping):
+        return ()
+    rows = _sequence(_mapping(_part_of(previous, "acceptance")).get(slice))
+    return tuple(_content(expanded(ACCEPTANCE_ROW, row, facts)) for row in rows)
+
+
+def _binding_rows(design, acceptance, retained, slice):
+    """Each acceptance row that binds obligations, as (slice, row, keys).
+
+    A row of the slice being closed is retained when its content equals a stored row of that slice
+    (retained holds those contents), and then binds the keys of the bare ids it covers. Rows of
+    other slices are stored, so retained.
+    """
+    index = {record["id"]: record for record, _ in _coverage_records(design)}
+    kept = list(retained)
+    return tuple(
+        (identity, row, keys)
+        for identity, rows in acceptance.items()
+        for row in _sequence(rows)
+        if isinstance(row, Mapping)
+        for keys in (
+            _bound_keys(row, index, identity != slice or _content(row) in kept),
+        )
+        if keys
+    )
+
+
+def _obligation_text(index, facts, key):
+    """The case text, must-include item, statement or obligation a key names."""
+    identity, _, case = key.partition("/")
+    texts = _mapping(facts)
+    if case:
+        return texts.get(case, case)
+    record = index.get(identity, EMPTY)
+    field = "obligation" if identity.startswith("T") else "statement"
+    return texts.get(record.get(field), "")
+
+
+def _obligation_defects(design, previous, acceptance, slice, resolution):
+    """Every obligation the slice owes is bound by a Tested row.
+
+    A slice-scoped obligation is bound by a row of its own slice; a shared one by a row of any slice,
+    checked once every product slice holds acceptance rows. A NoTest law owes no key. Each owed key
+    with no binding row is listed (OpenObligation) in one pass. A broad law's generative key must be
+    bound by a row whose test resolves (resolution maps each locator to the shell's answer), as the
+    old MissingGenerativeTest required. Pure: reads only its parameters and the previous handoff.
+    """
+    facts = _part_of(previous, "facts")
+    retained = _retained_contents(previous, slice)
+    index = {record["id"]: record for record, _ in _coverage_records(design)}
+    product = _mapping(_mapping(design).get("slices"))
+    shared_checked = bool(product) and all(
+        _sequence(acceptance.get(identity)) for identity in product
+    )
+    bindings = _binding_rows(design, acceptance, retained, slice)
+    defects = []
+    for key, scope in owed_obligations(design, slice):
+        if scope is None and not shared_checked:
+            continue
+        bound = tuple(
+            binding
+            for binding in bindings
+            if key in binding[2] and (scope is None or binding[0] == slice)
+        )
+        if not bound:
+            defects.append(
+                Defect(
+                    f"OpenObligation: {key} {_obligation_text(index, facts, key)}",
+                    f"{key} is an obligation of the design that no Tested row of the acceptance part binds.",
+                    f"Record a Tested row of {slice} whose obligations list {key}, with the test that observes it.",
+                )
+            )
+        elif _generative_key(index, key) and not any(
+            resolution.get(_mapping(row.get("disposition")).get("test")) is True
+            for _, row, _ in bound
+        ):
+            defects.append(
+                Defect(
+                    f"UnresolvedTest: {key} cites {_mapping(bound[0][1].get('disposition')).get('test')}",
+                    f"{key} is a broad law and no test bound to it resolves to a generative test that exists.",
+                    f"Cite a test of the form path::name whose name occurs as a whole word in a readable file under the repository root, and record it in the Tested row binding {key}.",
+                )
+            )
+    return tuple(defects)
+
+
+def _generative_key(index, key):
+    """Whether a key is a broad law's generative-test key: a law id, not a case, of treatment Broad."""
+    return (
+        "/" not in key
+        and _mapping(_mapping(index.get(key)).get("treatment")).get("kind") == "Broad"
+    )
 
 
 def _prose_withdrawals(previous, identity, built):
@@ -1766,6 +2103,7 @@ def _check(spec, value, path, canonical=False, facts=EMPTY):
         "string",
         "reference",
         "draft_reference",
+        "obligation",
         "prefix",
     ):
         if not isinstance(value, str):
@@ -1798,6 +2136,13 @@ def _check(spec, value, path, canonical=False, facts=EMPTY):
             for prefix in spec.members
         ):
             return (_invalid(path, "Expected an assigned draft-local observation id."),)
+        if spec.kind == "obligation" and not _OBLIGATION_KEY.fullmatch(value):
+            return (
+                _invalid(
+                    path,
+                    "Expected an assigned obligation key: L<n>, L<n>/F<n> or T<n>.",
+                ),
+            )
         if spec.kind == "reference" and not (
             _IDENTITY.fullmatch(value) or (not spec.members and value == "observation")
         ):
@@ -2378,6 +2723,7 @@ def _build(spec, value, previous, facts, counters):
         "string",
         "reference",
         "draft_reference",
+        "obligation",
         "enum",
         "prefix",
         "adr_status",
@@ -3681,7 +4027,34 @@ def _acceptance_statement_problems(payload, slice):
     )
 
 
-def _output_problems(application: _RoleApplication, decoded, references, previous=None):
+def _covers_prefix_defects(payload, slice, retained, held):
+    """Covers of an added or changed acceptance row name a promise; a retained row keeps its stored covers.
+
+    A law or test the design holds is bound through the row's obligation slots, so naming one in covers
+    is refused by name. An L or T id the design does not hold is refused by the reference check alone, so
+    one fault is one block; any other non-promise prefix is refused here. Pure.
+    """
+    kept = list(retained)
+    return tuple(
+        Defect(
+            f"UnknownCoverPrefix: acceptance.{slice}[{index}].covers {identity}",
+            f"{identity} is not a P record; covers of a row the draft adds or changes name promises only.",
+            "Replace it with the P id of the promise it covers, and bind design laws and tests with --obligation KEY.",
+        )
+        for index, row in enumerate(
+            payload if isinstance(payload, (tuple, list)) else ()
+        )
+        if isinstance(row, Mapping) and _content(row) not in kept
+        for identity in _sequence(row.get("covers"))
+        if isinstance(identity, str)
+        and identity[:1] != "P"
+        and (identity[:1] not in ("L", "T") or identity in held)
+    )
+
+
+def _output_problems(
+    application: _RoleApplication, decoded, references, previous=None, resolution=EMPTY
+):
     kind, slice = application.kind, application.slice
     spec = ROLE_SCHEMAS.get(kind)
     expectation_problems = (
@@ -3706,6 +4079,33 @@ def _output_problems(application: _RoleApplication, decoded, references, previou
         *(
             _acceptance_statement_problems(payload, slice)
             if kind == "acceptance"
+            else ()
+        ),
+        *(
+            _covers_prefix_defects(
+                payload,
+                slice,
+                _retained_contents(previous, slice),
+                frozenset(
+                    record["id"]
+                    for record, _ in _coverage_records(_part_of(previous, "design"))
+                ),
+            )
+            if kind == "acceptance"
+            else ()
+        ),
+        *(
+            _obligation_defects(
+                _part_of(previous, "design"),
+                previous,
+                {
+                    **_mapping(_part_of(previous, "acceptance")),
+                    slice: payload,
+                },
+                slice,
+                resolution,
+            )
+            if kind == "acceptance" and previous is not None
             else ()
         ),
         *(_product_reference_checks(payload) if kind == "product" else ()),
@@ -3823,12 +4223,62 @@ def verification_commands(own, path):
     )
 
 
-def _design_commands(payload):
-    slices = payload.get("slices") if isinstance(payload, Mapping) else None
+def _owed_test_commands(design, identity):
+    """The commands of the architectural and contract tests a slice owes.
+
+    A slice owes the tests recorded in its own scope, and the shared ones when it has a code
+    target. Pure: reads only its parameters.
+    """
+    design = _mapping(design)
+    own = _mapping(_mapping(design.get("slices")).get(identity))
+    scopes = (
+        *(
+            (_mapping(design.get("shared")),)
+            if _code_targets(own.get("targets"))
+            else ()
+        ),
+        _mapping(own.get("records")),
+    )
     return tuple(
         command
-        for identity, own in (slices.items() if isinstance(slices, Mapping) else ())
-        for command in verification_commands(own, f"design.slices.{identity}")
+        for records in scopes
+        for name in _COVERAGE_TEST_LISTS
+        for record in _sequence(records.get(name))
+        for command in (_mapping(record).get("command"),)
+        if isinstance(command, str)
+    )
+
+
+def slice_verification(design, identity):
+    """The commands a slice's verification runs: those it states, then those of the tests it owes.
+
+    The tool computes the owed commands from the test records, so no record repeats them and a
+    verification that omits one cannot be written. A command appears once. Pure.
+    """
+    own = _mapping(_mapping(_mapping(design).get("slices")).get(identity))
+    stated = _sequence(own.get("verification"))
+    return tuple(dict.fromkeys((*stated, *_owed_test_commands(design, identity))))
+
+
+def _owed_commands(payload):
+    """Each owed test command of every slice, named by the verification that now runs it."""
+    slices = payload.get("slices") if isinstance(payload, Mapping) else None
+    return tuple(
+        (f"design.slices.{identity}.verification (owed)", command)
+        for identity in (slices if isinstance(slices, Mapping) else ())
+        for command in _owed_test_commands(payload, identity)
+    )
+
+
+def _design_commands(payload):
+    slices = payload.get("slices") if isinstance(payload, Mapping) else None
+    return (
+        *(
+            command
+            for identity, own in (slices.items() if isinstance(slices, Mapping) else ())
+            for command in verification_commands(own, f"design.slices.{identity}")
+        ),
+        *_owed_commands(payload),
     )
 
 
@@ -3877,12 +4327,13 @@ def _prepare_decoded(
     decoded,
     *,
     programs: ProgramResolution = EMPTY,
+    resolution=EMPTY,
 ):
     kind, slice = application.kind, application.slice
     payload = decoded.payload
     references = _prior_references(previous)
     problems = (
-        *_output_problems(application, decoded, references, previous),
+        *_output_problems(application, decoded, references, previous, resolution),
         *(
             _expectation_set_problems(previous, application.action)
             if kind == "expectations"
@@ -3974,6 +4425,19 @@ def id_order(identity):
     return (
         identity.rstrip("0123456789"),
         int(re.search(r"\d+$", identity)[0]),
+    )
+
+
+def _row_citations(row):
+    """The design records an acceptance row cites: its covers and the record each obligation key belongs to.
+
+    An obligation key names its record by the prefix before its slash (L12/F34 belongs to L12), so a
+    row bound through obligations is withdrawn with the law or test it binds. Pure.
+    """
+    keys = _sequence(_mapping(row.get("disposition")).get("obligations"))
+    return (
+        *_sequence(row.get("covers")),
+        *(key.partition("/")[0] for key in keys if isinstance(key, str)),
     )
 
 
@@ -4106,7 +4570,7 @@ def _withdraw_references(previous, candidate, operation):
             else tuple(
                 notice(f"acceptance.{key}[{index}]", causes, acceptance_how(key))
                 for index, row in enumerate(rows)
-                for causes in (_retired_causes(row.get("covers", ()), retired),)
+                for causes in (_retired_causes(_row_citations(row), retired),)
                 if causes
             )
         )
@@ -4115,9 +4579,7 @@ def _withdraw_references(previous, candidate, operation):
         (
             key,
             tuple(
-                row
-                for row in rows
-                if not _retired_causes(row.get("covers", ()), retired)
+                row for row in rows if not _retired_causes(_row_citations(row), retired)
             ),
         )
         for key, rows in acceptance.items()
@@ -5711,7 +6173,7 @@ def invocation_commands(call, prior, output=None):
     )
 
 
-def _invocation_transition(call, previous, output, programs):
+def _invocation_transition(call, previous, output, programs, resolution=EMPTY):
     values = call.values
     verb = call.verb
     if verb == "feature":
@@ -5732,6 +6194,7 @@ def _invocation_transition(call, previous, output, programs):
             _RoleApplication(verb, values["slice"], call.action),
             output,
             programs=programs,
+            resolution=resolution,
         )
     if verb == "work":
         return prepare_work(
@@ -5759,6 +6222,7 @@ def prepare_invocation(
     output=None,
     *,
     programs: ProgramResolution = EMPTY,
+    resolution=EMPTY,
 ):
     """Inspect all produced argv/prior units; expose construction only after refusal is empty."""
     readable = isinstance(call.roots, Built) and isinstance(call.scope, Built)
@@ -5788,7 +6252,7 @@ def prepare_invocation(
     )
     source = _invocation_source(prior, call.scope.value) if readable else None
     if source is not None or (readable and prior is None and call.verb == "feature"):
-        result = _invocation_transition(call, source, decoded, programs)
+        result = _invocation_transition(call, source, decoded, programs, resolution)
     elif (
         call.verb in ROLE_SCHEMAS
         and output is not None
