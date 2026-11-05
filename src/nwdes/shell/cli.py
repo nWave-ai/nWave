@@ -1079,38 +1079,14 @@ def _prompt(args):
         and args.commit is not None
         and not prompts._root_problems(args.repo_root)
     ):
-        directory = (
-            os.path.relpath(Path(args.handoff).absolute().parent, args.repo_root)
-            if args.handoff
-            else ""
-        )
-        files, others = None, ()
-        if selected.value.review_subject == "oracle" and args.slice is not None:
-            approved = _oracle_files(
-                _document_ports(args), args.repo_root, previous, args.slice
-            )
-            if isinstance(approved, Refused):
-                return _refusal(approved.defects)
-            files = approved.value
-            others = _other_oracle_paths(previous, args.slice)
-        observed = _review_evidence(args.repo_root, directory, files, others)
         requested = _review_git(
             args.repo_root,
             ("rev-parse", "--verify", "--end-of-options", args.commit + "^{commit}"),
         )
-        failures = tuple(
-            problem
-            for result in (observed, requested)
-            if isinstance(result, Refused)
-            for problem in result.defects
-        )
-        if failures:
-            _refusal(failures)
+        if isinstance(requested, Refused):
+            _refusal(requested.defects)
             return 1
-        admitted = prompts.review_commit(requested.value.strip(), observed.value)
-        if isinstance(admitted, Refused):
-            return _refusal(admitted.defects)
-        args.commit = admitted.value
+        args.commit = requested.value.strip()
     if (
         isinstance(selected, Built)
         and selected.value.id == "craft.impl-v4"
@@ -2860,17 +2836,9 @@ def _commit_observation(args, document, destinations, locations, inspected):
     )
     if isinstance(active, Refused):
         return active
-    author = run_git(args.repo_root, ("var", "GIT_AUTHOR_IDENT"))
-    identity = (
-        author.stdout.decode("utf-8", "surrogateescape").strip()
-        if not isinstance(author, Unreadable) and author.code == 0
-        else None
-    )
     return Built(
         commits.CommitObservation(
             revision,
-            identity,
-            failure_reason(author) if identity is None else "",
             tuple(path for code, path in entries if code[0] not in (" ", "?", "!")),
             changed,
             active.value,

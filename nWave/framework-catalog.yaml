@@ -1,5 +1,5 @@
 name: nWave
-version: 4.1.0
+version: 4.2.0
 description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192DESIGN\u2192DEVOPS\u2192\
   DISTILL\u2192DELIVER methodology with visual architecture lifecycle management"
 author: nWave Team
@@ -86,6 +86,13 @@ agents:
       craft and examines the real user surface (browser/CLI/API) at final EXAMINE,
       verdict plus constructive beta feedback; works from the user's point of view
       and needs no source code (Vera)
+  lane-orchestrator:
+    wave: DELIVER
+    priority: 2
+    role: lane_orchestration
+    public: true
+    description: Runs one nwdes lane end to end for the root, launching the installed
+      role agents with nwdes prompt output and reporting EXPECTED and CANDIDATE
   platform-architect:
     wave: DEVOPS
     priority: 1

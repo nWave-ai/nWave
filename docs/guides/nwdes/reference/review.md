@@ -28,7 +28,7 @@ nwdes issues `R1`, `R2`, and subsequent observation IDs; the reviewer never choo
 
 The counter is draft-only and is not published in the review record. A reopened review does not carry the published observations, so its draft starts with none; its counter starts after the largest R ID of the published record, or at R1 when that record holds none, so a new round's IDs never repeat a published one. Within a draft, neither `set` nor `remove` changes the counter.
 
-At recording, nwdes stamps the observation with git HEAD and cleanliness. Neither stamp is a CLI field. Only the selected feature's `.nwdes-drafts/`, its `runs/` records and git-ignored paths are exempt from evidence cleanliness; staged changes, tracked edits and other untracked files are dirty. A run recorded dirty remains stale after the tree is cleaned. Revision through `set` stamps the corrected observation anew.
+At recording, nwdes stamps the observation with git HEAD and cleanliness. Neither stamp is a CLI field. Only the selected feature's directory (its documents, `.nwdes-drafts/` and `runs/` records) and git-ignored paths are exempt from evidence cleanliness; staged changes, tracked edits and other untracked files are dirty. A run recorded dirty remains stale after the tree is cleaned. Revision through `set` stamps the corrected observation anew.
 
 ## Findings and close
 
@@ -39,7 +39,7 @@ nwdes review close --feature search --subject candidate --outcome rejected --dia
 
 Finding fields are `location`, `obligation`, `observation`, `owner`, and `remediation`. Owners are `oracle`, `design`, `implementation`, or `product`. Existing finding set/remove and open/abort verbs retain their normal semantics.
 
-A published review carries its commit, observations and their stamps, findings, outcome and diagnostic. Close refuses `ReviewUnobserved` if no observation exists. It refuses `StaleObservation` for every observation whose commit differs from HEAD, whose recording stamp was dirty, whose close is on a dirty candidate, or, in an oracle review, whose oracle content differs from the close's. The oracle and its supports are judged by content, so they need not be committed. The diagnostic names all affected R IDs together. Rerun selection and tests at the reviewed commit and record them before closing again. Nothing is published on refusal.
+A published review carries its commit, observations and their stamps, findings, outcome and diagnostic. Close refuses `ReviewUnobserved` if no observation exists. It refuses `StaleObservation` for every observation whose commit differs from HEAD, whose recording stamp was dirty, whose close is on a dirty candidate, or, in an oracle review, whose oracle content differs from the close's. The feature directory is not dirty evidence. The oracle and its supports are judged by content, so they need not be committed. The diagnostic names all affected R IDs together. Rerun selection and tests at the reviewed commit and record them before closing again. Nothing is published on refusal.
 
 A candidate close on clean HEAD also refuses `OracleChanged: S<n>` for each slice whose oracle review was published with content, when the committed oracle or support bytes at HEAD differ from the approved bytes. Identical bytes, or a slice with no oracle review record, are not checked. The refusal publishes no candidate record; rerun the oracle review on the bytes to commit, then commit them.
 
@@ -68,7 +68,7 @@ An owner reads exactly its own findings, in recorded order, with location, oblig
 
 ## Prompt admission
 
-Build reviewer bundles with `nwdes prompt ... --commit REV --diff FILE`. The bundle names the resolved full commit and touched files and tells the reviewer to gather and record its own evidence. A different HEAD or dirty candidate refuses `ReviewCommitMismatch`, naming both full SHAs and dirty paths. Unavailable git reports `InputUnreadable` naming the query.
+Build reviewer bundles with `nwdes prompt ... --commit REV --diff FILE`. The bundle names the resolved full commit and touched files and tells the reviewer to gather and record its own evidence. Unavailable git reports `InputUnreadable` naming the query.
 
 `--observation` and `--observation-file` are retired on prompt and packet, including `--name=value`; `SelfGatheredEvidence` wins before argument parsing or named input reads. Abbreviations are unknown arguments. Reviewers record their observations through review verbs instead; no packet has a host Observations section.
 

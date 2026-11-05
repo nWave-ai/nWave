@@ -26,6 +26,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from nwave_ai.hooks import lane_guard
 from nwave_ai.hooks.attribution import emit_commit_attribution_mutation
 from nwave_ai.hooks.audit import AuditEvent
 from nwave_ai.hooks.freshness import assert_fresh_or_explain
@@ -442,6 +443,23 @@ def handle_pre_write() -> int:
                     reason="execution_log_direct_write",
                 )
                 print(json.dumps({"decision": "block", "reason": block_reason}))
+                return 2
+
+            # --- Lane guard: a sub-agent never writes the root checkout while lanes are live ---
+            lane_refusal = lane_guard.root_checkout_write_refusal(
+                file_path,
+                str(hook_input.get("cwd") or ""),
+                hook_input.get("agent_type"),
+                lane_guard.live_lanes(Path(str(hook_input.get("cwd") or "."))),
+            )
+            if lane_refusal:
+                _log_pre_write_decision(
+                    hook_id=hook_id,
+                    event_type="HOOK_PRE_WRITE_BLOCKED",
+                    file_path=file_path,
+                    reason="root_checkout_write_from_sub_agent",
+                )
+                print(json.dumps({"decision": "block", "reason": lane_refusal}))
                 return 2
 
             log_hook_invoked(

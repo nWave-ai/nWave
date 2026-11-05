@@ -65,12 +65,14 @@ class ReviewEvidence:
 
 
 def evidence_dirty(status_entries, destinations):
-    prefixes = tuple(
-        destinations.rstrip("/") + "/" + name + "/"
-        for name in (".nwdes-drafts", "runs")
-    )
+    """True when a changed path outside git-ignored paths and the feature directory exists.
+
+    nwdes writes the feature directory's documents, drafts and run records itself, so they
+    never change the reviewed candidate.
+    """
+    prefix = destinations.rstrip("/") + "/"
     return any(
-        code != "!!" and not path.startswith(prefixes) for code, path in status_entries
+        code != "!!" and not path.startswith(prefix) for code, path in status_entries
     )
 
 

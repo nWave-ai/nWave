@@ -70,7 +70,6 @@ When Git cannot start or the root is not a Git checkout, authority closes keep t
 | Refusal | Cause and remedy |
 |---|---|
 | `CommitInProgress` | Another invocation holds the OS lock; let it finish, then rerun. Never remove a live lock. |
-| `IdentityMissing` | `git var GIT_AUTHOR_IDENT` cannot resolve the configured author; configure the repository's name and email. |
 | `IndexNotClean` | Paths are already staged; use the printed `git restore --staged` command without discarding working-tree changes. |
 | `MissingCloseReceipt` | This role and scope have no receipt; close the role's draft first. `StaleBase` is explicitly not run without that receipt. |
 | `StaleBase` | Receipt HEAD and current HEAD differ; reconcile the intervening revision and close again. |

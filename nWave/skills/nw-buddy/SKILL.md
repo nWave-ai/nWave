@@ -12,6 +12,7 @@ Load only the matching narrow knowledge skill:
 - `nw-buddy-command-catalog` for command choice;
 - `nw-rigor` for explicit Codex or Claude model configuration;
 - `nw-auto` for delivery authority, LLM-owned S/M/L assessment, wave choice and interaction level;
+- `nw-swarm` for running several lanes in parallel with one lane orchestrator each;
 - `nw-buddy-project-reading` for current project state; and
 - `nw-buddy-ssot-knowledge` for authority conflicts.
 

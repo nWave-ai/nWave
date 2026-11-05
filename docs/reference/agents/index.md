@@ -11,6 +11,12 @@
 | [nw-system-designer](nw-system-designer.md) | Use for DESIGN wave infrastructure-level architecture. Designs distributed systems, scalability strategies, load balancing, caching, database sharding, message queues, back-of-envelope estimation, and trade-off analysis. Complements solution-architect (application-level) with infrastructure-level depth. | 7 |
 | [nw-system-designer-reviewer](nw-system-designer-reviewer.md) | Use to review system design architecture outputs. Validates trade-off analysis, estimation accuracy, pattern applicability, SPOF detection, and scalability claims. Pairs with system-designer. | 4 |
 
+## DELIVER
+
+| Name | Description | Preloaded skills |
+| --- | --- | --- |
+| [nw-lane-orchestrator](nw-lane-orchestrator.md) | Runs one nwdes lane end to end for the root in the DELIVER wave. Launches the installed role agents, never does role work, reports to the root. | 4 |
+
 ## Other
 
 | Name | Description | Preloaded skills |
@@ -63,6 +69,7 @@
 | [nw-documentarist](nw-documentarist.md) | Other | Use for documentation quality enforcement using DIVIO/Diataxis principles. Classifies documentation type, validates against type-specific criteria, detects collapse patterns, and provides actionable improvement guidance. | 4 |
 | [nw-documentarist-reviewer](nw-documentarist-reviewer.md) | Other | Use for reviewing documentarist assessments. Validates classification accuracy, validation completeness, collapse detection, and recommendation quality using Haiku model. | 3 |
 | [nw-functional-software-crafter](nw-functional-software-crafter.md) | Other | Implements the functional change for one ready ordered batch. | 6 |
+| [nw-lane-orchestrator](nw-lane-orchestrator.md) | DELIVER | Runs one nwdes lane end to end for the root in the DELIVER wave. Launches the installed role agents, never does role work, reports to the root. | 4 |
 | [nw-nwave-buddy](nw-nwave-buddy.md) | Other | Use for any nWave question — methodology, project navigation, command help, wave status, migration, and troubleshooting. The first agent to consult when unsure about anything in nWave. | 5 |
 | [nw-platform-architect](nw-platform-architect.md) | DESIGN | Use for DESIGN wave (infrastructure design) and DEVOPS wave (deployment execution, production readiness, stakeholder sign-off). Transforms architecture into deployable infrastructure, then coordinates production delivery and outcome measurement. | 11 |
 | [nw-platform-architect-reviewer](nw-platform-architect-reviewer.md) | DESIGN | Use for review and critique tasks - Platform design, CI/CD pipeline, infrastructure, observability, deployment readiness, and production handoff review specialist. Runs on Haiku for cost efficiency. | 4 |

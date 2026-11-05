@@ -24,6 +24,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
@@ -470,13 +471,13 @@ def _should_emit_degrade(state: str) -> bool:
     suppressed; a different state (including one never seen before) always
     emits.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     path = _degrade_sentinel_path()
     try:
         record = json.loads(path.read_text(encoding="utf-8"))
         last_emitted = datetime.fromisoformat(record["last_emitted_iso"])
-        elapsed_seconds = (datetime.now(timezone.utc) - last_emitted).total_seconds()
+        elapsed_seconds = (datetime.now(UTC) - last_emitted).total_seconds()
         if record.get("state") == state and elapsed_seconds < _DEGRADE_THROTTLE_SECONDS:
             return False
     except (OSError, ValueError, KeyError, json.JSONDecodeError):
@@ -496,7 +497,7 @@ def _record_degrade_emitted(state: str) -> None:
     read-only filesystem) is reverting to pre-throttle behavior (every call
     emits again), never silence.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     path = _degrade_sentinel_path()
     try:
@@ -505,7 +506,7 @@ def _record_degrade_emitted(state: str) -> None:
             json.dumps(
                 {
                     "state": state,
-                    "last_emitted_iso": datetime.now(timezone.utc).isoformat(),
+                    "last_emitted_iso": datetime.now(UTC).isoformat(),
                 }
             ),
             encoding="utf-8",
@@ -578,11 +579,11 @@ def _persist_audit_record(verdict: FreshnessVerdict, *, audit_event_name: str) -
     writer surfaces it as a top-level field. No second sink, no hardcoded
     event-name string.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     event = AuditEvent(
         event_type=audit_event_name,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         data={
             "state": verdict.state,
             "reason": verdict.reason,

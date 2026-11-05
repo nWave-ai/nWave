@@ -3803,27 +3803,16 @@ def inspect_output(kind, data, *, policy=None, resolution=EMPTY):
 
 
 def _expectation_set_problems(previous, action):
-    """The apply/revise policy reads only the previously fixed set."""
-    existing = previous.expectations
+    """Revise needs a fixed set; apply over a fixed set replaces it."""
     return (
-        ()
-        if _unavailable(existing) is not None
-        else (
-            Defect(
-                "ExpectationsFixed: expectations",
-                "An expectation set is already fixed.",
-                "Revise the fixed set instead of applying another set.",
-            ),
-        )
-        if action == "apply" and existing is not None
-        else (
+        (
             Defect(
                 "MissingFact: expectations",
                 "No expectation set has been fixed.",
                 "Apply the first expectation set before revising it.",
             ),
         )
-        if action == "revise" and existing is None
+        if action == "revise" and previous.expectations is None
         else ()
     )
 

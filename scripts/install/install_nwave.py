@@ -2773,7 +2773,7 @@ def _run_install(args: argparse.Namespace, installer: "NWaveInstaller") -> int:
         return 0
     else:
         installer.logger.error("  ❌ Installation failed validation")
-        installer.logger.warn("  ⚠️ Restore with: python install_nwave.py --restore")
+        installer.logger.warn("  ⚠️ Restore with: nwave-ai install --restore")
         return 1
 
 

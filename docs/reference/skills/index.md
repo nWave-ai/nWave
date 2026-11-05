@@ -640,6 +640,10 @@
 
 - [nw-stress-analysis](nw-stress-analysis.md) — Advanced architecture stress analysis methodology for designing systems that survive unknown stresses. Load on its semantic trigger — external/nondeterministic dependency, recovery/retry/compensation/degradation, contagion, infrastructure/substrate uncertainty, high-uncertainty socio-technical/business boundary — or on explicit --residuality (force-on).
 
+## nw-swarm
+
+- [nw-swarm](nw-swarm.md) — How a root LLM runs several nwdes lanes in parallel with one lane orchestrator per lane, on any host. Load when more than one feature or lane is open or about to be.
+
 ## nw-taste-evaluation
 
 - [nw-taste-evaluation](nw-taste-evaluation.md) — Design taste evaluation framework — DVF primary filter, Apple/Google/Jobs design principles as explicit scoring criteria, weighted decision matrix, and option ranking for the DIVERGE wave

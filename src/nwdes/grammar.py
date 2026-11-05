@@ -693,7 +693,6 @@ COMMANDS = (
                 "CommitInProgress",
                 "another nwdes close or commit holds the nonblocking Git-directory lock",
             ),
-            ("IdentityMissing", "configured Git author identity is unavailable"),
             ("IndexNotClean", "every path already staged must be unstaged first"),
             ("MissingCloseReceipt", "the role has not closed this delivery scope"),
             ("StaleBase", "HEAD differs from the role's close receipt"),
@@ -805,10 +804,6 @@ def _role_commands(kind, policy=None):
                     DESIGN_REFUSALS
                     if kind == "design" and verb.name == "close"
                     else (
-                        (
-                            "ExpectationsFixed",
-                            "expectations are fixed; revise only with close --revise",
-                        ),
                         (
                             "UncoveredPromise",
                             "the revised set leaves a promise without an expectation",

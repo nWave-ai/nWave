@@ -33,10 +33,3 @@ The seven modules together cover the full methodology. <!-- mode-ref-ok -->
 
 - **Cycle** — 3-phase RED/GREEN/COMMIT canon. A new test must fail for the right reason before any production code is written; GREEN matches the public contract; no production code without a requiring test; after GREEN verify the new code is wired into the real driving port. Code examples follow the project's own language.
 - **Workflow shape** — double-loop TDD: an outer acceptance test through the driving port stays red while inner unit-level cycles drive the implementation green. Choose Outside-In (acceptance first, collaborators discovered) or Inside-Out (domain first) by how much of the design is known; keep the unit of behavior an observable outcome, not a function or class.
-
-<!-- SCAFFOLD-MARKER section start — DISTILL slice-02 of fix-mandate-9-v2-rollout.
-     This section is intentionally empty; A_GREEN_ATS populates the RED-phase
-     mode distinction + the distinguishing-token contract per the spike.
-     Source spec: docs/feature/fix-mandate-9-v2-rollout/spike/spike-v2.md
-     section 6. Adapter-integration RED-phase semantics now live in
-     nw-tdd-methodology-walking-skeleton. -->

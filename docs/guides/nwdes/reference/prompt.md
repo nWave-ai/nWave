@@ -58,7 +58,7 @@ Only review recipes admit a diff and require `--commit REV`. No prompt recipe ad
 
 The expectations recipe prints the current fixed public rows with IDs, complete texts and promise mappings, or `None.` before the first set. The examiner records with the expectations CLI verbs and closes. A deliberate replacement closes with `--revise`. See [expectations](expectations.md).
 
-Review bundles name the full reviewed commit and each touched path on its own line. Git resolves the requested revision; `ReviewCommitMismatch` names both full SHAs and every dirty path when HEAD differs or the lane is dirty. An oracle review bundle judges its slice's oracle and supports by content, so their uncommitted bytes are not dirty paths, and a crafter prompt for that slice refuses `OracleChanged` once those bytes differ from the approved ones. Only the selected feature's `.nwdes-drafts/`, its `runs/` records and git-ignored paths are exempt from evidence cleanliness. Unavailable git produces `InputUnreadable` naming the failed step.
+Review bundles name the full reviewed commit and each touched path on its own line. Git resolves the requested revision. An oracle review bundle judges its slice's oracle and supports by content, so their uncommitted bytes are not dirty paths, and a crafter prompt for that slice refuses `OracleChanged` once those bytes differ from the approved ones. Only the selected feature's directory (its documents, drafts and `runs/` records) and git-ignored paths are exempt from evidence cleanliness. Unavailable git produces `InputUnreadable` naming the failed step.
 
 The final reviewer owns selection and sufficiency of the touched-file selected tests at that commit. It reuses a complete applicable native result (host, CI or the normal commit hook) whose source, test, argv and runtime inputs are unchanged, citing its original operator and run; it executes only missing or affected checks, once. It records actual argv, exit, stdout and stderr of each run it executes with `nwdes review observation add --text` or `--text-file`, including empty selection, incomplete selection and no selector found. Reuse never waives a check. nwdes stamps observations; it never selects or runs tests. See [review](review.md) for stamps, close refusals and owner-addressed findings.
 
@@ -70,7 +70,7 @@ The reviewer inspects every changed test, fixture and support outside the slice 
 nwdes prompt --role nw-user-examiner --task examine --handoff docs/feature/search/handoff.json
 ```
 
-Refusals include MissingFact, HandoffInvalid, DanglingReference, InconsistentFacts, PlaceholderUnbound, FieldUnused, SelfGatheredEvidence, ReviewCommitMismatch, WorkspaceContaminated and InputUnreadable. Refusals print no bundle. Retired host flags, commit mismatches and contaminated examination workspaces exit **2**; unavailable git or temporary-directory writes exit **1**.
+Refusals include MissingFact, HandoffInvalid, DanglingReference, InconsistentFacts, PlaceholderUnbound, FieldUnused, SelfGatheredEvidence, WorkspaceContaminated and InputUnreadable. Refusals print no bundle. Retired host flags and contaminated examination workspaces exit **2**; unavailable git or temporary-directory writes exit **1**.
 
 An expectations bundle needs at least one product promise; oracle and oracle-review bundles need at least one promise cited by the slice's public oracle. Missing promises refuse with `MissingFact` before a bundle is constructed.
 

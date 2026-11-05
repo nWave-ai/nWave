@@ -499,8 +499,6 @@ class CommitRequest:
 @dataclass(frozen=True)
 class CommitObservation:
     head: str
-    identity: str | None
-    identity_reason: str
     staged: tuple[str, ...]
     changed: frozenset[str]
     receipts: tuple[CloseReceipt | ReceiptUnavailable, ...]
@@ -579,17 +577,6 @@ def prepare_commit(request: CommitRequest, document, destinations, observed):
         ),
         None,
     )
-    identity = (
-        (
-            Defect(
-                "IdentityMissing: git var GIT_AUTHOR_IDENT",
-                observed.identity_reason,
-                "Configure the repository's Git author name and email, then rerun nwdes commit.",
-            ),
-        )
-        if observed.identity is None
-        else ()
-    )
     index = (
         (
             Defect(
@@ -613,7 +600,6 @@ def prepare_commit(request: CommitRequest, document, destinations, observed):
         if path in observed.directories
     )
     problems = (
-        *identity,
         *index,
         *(
             receipt.defect

@@ -997,26 +997,6 @@ def touched_files(diff):
     )
 
 
-def review_commit(requested, evidence):
-    if evidence.commit != requested or evidence.dirty:
-        return checked(
-            None,
-            (
-                Defect(
-                    "ReviewCommitMismatch: HEAD "
-                    + evidence.commit
-                    + " requested "
-                    + requested,
-                    "Review evidence must describe the clean requested lane HEAD; dirty paths: "
-                    + (", ".join(evidence.dirty) or "none")
-                    + ".",
-                    "Commit or remove the named changes, then rebuild with --commit naming clean HEAD.",
-                ),
-            ),
-        )
-    return Built(evidence.commit)
-
-
 def oracle_approval(slice_id, recorded_content, current_content, then):
     """Refuse once the oracle or support bytes differ from those the oracle review approved.
 

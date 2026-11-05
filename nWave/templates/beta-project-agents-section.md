@@ -6,6 +6,8 @@ nWave is in **active development**.
 
 DISCUSS/DESIGN resolve only real gaps. Human authority decides genuine scope/trade-offs.
 
+Several lanes in parallel: skill `nw-swarm` (a host without skill loading reads its `SKILL.md` from the installed skills folder).
+
 {{TOOL_BATCHING_FRAGMENT}}
 
 {{QUESTION_FORMAT_FRAGMENT}}

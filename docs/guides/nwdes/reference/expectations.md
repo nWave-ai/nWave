@@ -4,7 +4,7 @@ The examiner records with the `nwdes expectations` CLI verbs and closes. See [ro
 
 | Action | Result | Specific refusal |
 |---|---|---|
-| `expectations close` | Fix the initial expectation set | ExpectationsFixed if a set already exists |
+| `expectations close` | Fix or replace the expectation set | UncoveredPromise if a promise has no expectation |
 | `expectations close --revise` | Replace a fixed set | UncoveredPromise if a promise has no expectation |
 
 Every public promise must be cited. The expectations prompt automatically includes the current fixed public rows in order, with their assigned IDs, complete text and promise mappings, or `None.` before first fixation. It includes no private implementation evidence.

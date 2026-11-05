@@ -22,6 +22,7 @@ Human authority decides genuine scope/trade-offs.
 | Reduce a noisy test suite | `/nw-optimize-tests` |
 | Explicit mutation probe | `/nw-mutation-test` |
 | Resume after an interruption | Read-only: `git worktree list`, then `lanes/<feature>/docs/feature/<feature>/handoff.json` and skill `nw-nwdes` |
+| Run several lanes in parallel | skill `nw-swarm` |
 | Fuller S/M/L evidence, splitting a Request | skill `nw-auto` |
 | Anything else — methodology, routing, "what do I do" | skill `nw-buddy` |
 
