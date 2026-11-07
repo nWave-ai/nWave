@@ -1,7 +1,9 @@
 """Public examination and review packets, constructed only after independent checks."""
 
+import errno
 import json
 import posixpath
+import re
 import shlex
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
@@ -606,11 +608,47 @@ def render_review(packet: ReviewPacket):
     )
 
 
+class ExaminationKind(Enum):
+    PYTHON_SCRIPTS = "python-scripts"
+    RUST_BINARY = "rust-binary"
+
+
+class Launch(Enum):
+    """How a probed command starts: an interpreter runs a module entry, or the declared file itself."""
+
+    INTERPRETER = "interpreter"
+    DECLARED_EXECUTABLE = "declared-executable"
+
+
+PYTHON_MANIFEST = "pyproject.toml"
+RUST_MANIFEST = "Cargo.toml"
+# in precedence order: the first committed manifest decides the declaration
+MANIFESTS = (PYTHON_MANIFEST, RUST_MANIFEST)
+RUST_BINARY_DIRECTORY = "target/release"
+RUST_BUILD = "cargo build --release"
+_RUST_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+
+
+@dataclass(frozen=True)
+class Declaration:
+    """What a candidate declares about its examination; required paths must be executables."""
+
+    kind: ExaminationKind
+    launch: Launch
+    commands: tuple[tuple[str, str], ...]
+    package_parents: tuple[str, ...] | None = None
+    required: tuple[str, ...] = ()
+    build: str = ""
+
+
 @dataclass(frozen=True)
 class PublicProjection:
     files: tuple[tuple[str, bytes], ...]
-    scripts: tuple[tuple[str, str], ...]
+    kind: ExaminationKind
+    launch: Launch
+    commands: tuple[tuple[str, str], ...]
     package_parents: tuple[str, ...] | None
+    build: str
 
 
 @dataclass(frozen=True)
@@ -633,6 +671,8 @@ class ProbePlan:
     cwd: str
     environment: tuple[tuple[str, str], ...]
     candidate: str
+    executable: str | None = None
+    remedy: str = ""
 
 
 @dataclass(frozen=True)
@@ -699,11 +739,15 @@ def workspace_contaminated(entries):
     )
 
 
-def public_projection(listing, blobs, manifest, candidate):
-    entries = public_entries(listing)
-    tainted = tuple(name for name, _ in entries if candidate.encode() in blobs[name])
-    if tainted:
-        return checked(None, (workspace_contaminated(tainted),))
+def _unreadable_python(why):
+    return Defect(
+        "InputUnreadable: pyproject.toml at HEAD",
+        why,
+        "Commit a readable build manifest declaring the candidate console scripts.",
+    )
+
+
+def _python_declaration(manifest):
     try:
         data = tomllib.loads(manifest.decode("utf-8"))
         scripts = data.get("project", {}).get("scripts", {})
@@ -717,34 +761,233 @@ def public_projection(listing, blobs, manifest, candidate):
         )
         parents = tuple(dict.fromkeys(posixpath.dirname(name) for name in packages))
     except (ValueError, UnicodeError, TypeError, AttributeError) as error:
-        return checked(
-            None,
-            (
-                Defect(
-                    "InputUnreadable: pyproject.toml at HEAD",
-                    str(error),
-                    "Commit a readable build manifest declaring the candidate console scripts.",
-                ),
-            ),
-        )
+        return checked(None, (_unreadable_python(str(error)),))
     if not isinstance(scripts, dict) or any(
         not isinstance(value, str) or ":" not in value for value in scripts.values()
     ):
         return checked(
-            None,
-            (
-                Defect(
-                    "InputUnreadable: pyproject.toml at HEAD",
-                    "Console scripts must declare MODULE:FUNCTION.",
-                    "Commit a readable build manifest declaring the candidate console scripts.",
-                ),
-            ),
+            None, (_unreadable_python("Console scripts must declare MODULE:FUNCTION."),)
         )
+    return Built(
+        Declaration(
+            ExaminationKind.PYTHON_SCRIPTS,
+            Launch.INTERPRETER,
+            tuple(scripts.items()),
+            parents or None,
+        )
+    )
+
+
+def _rust_declaration(manifest, suffix):
+    """The Rust declaration, or None when the manifest declares no usable binary."""
+    if manifest is None:
+        return None
+    try:
+        data = tomllib.loads(manifest.decode("utf-8"))
+    except (ValueError, UnicodeError):
+        return None
+    package = data.get("package")
+    if not isinstance(package, dict):
+        return None
+    metadata = package.get("metadata")
+    nwdes = metadata.get("nwdes") if isinstance(metadata, dict) else None
+    if (
+        not isinstance(nwdes, dict)
+        or nwdes.get("kind") != ExaminationKind.RUST_BINARY.value
+    ):
+        return None
+    binaries = data.get("bin")
+    entries = binaries if binaries is not None else [{"name": package.get("name")}]
+    if not isinstance(entries, list) or not all(isinstance(e, dict) for e in entries):
+        return None
+    raw = tuple(entry.get("name") for entry in entries)
+    if not all(isinstance(name, str) and _RUST_NAME.fullmatch(name) for name in raw):
+        return None
+    names = tuple(dict.fromkeys(raw))
+    # the built file carries the platform suffix; a name already given with it is taken as it is
+    files = tuple(name if name.endswith(suffix) else name + suffix for name in names)
+    targets = tuple(posixpath.join(RUST_BINARY_DIRECTORY, file) for file in files)
+    return Declaration(
+        ExaminationKind.RUST_BINARY,
+        Launch.DECLARED_EXECUTABLE,
+        tuple(zip(names, targets, strict=True)),
+        None,
+        targets,
+        RUST_BUILD,
+    )
+
+
+def _no_declaration():
+    return Defect(
+        "InputUnreadable: no examination declaration at HEAD",
+        "examining a candidate needs its kind and its public commands, and HEAD declares "
+        "neither a Python package with a readable pyproject.toml nor a Rust binary with a "
+        "readable Cargo.toml",
+        "Commit one declaration and rebuild the examine prompt: for a Python package, "
+        "pyproject.toml with a [project.scripts] table of MODULE:FUNCTION values; for a Rust "
+        'binary, Cargo.toml with [package] name and [package.metadata.nwdes] kind = "rust-binary" '
+        "(its [[bin]] names, or the package name when there is none, of letters, digits, '-' "
+        "and '_').",
+    )
+
+
+def _missing_executable(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "the declared command runs the executable at this path, and no regular executable "
+        "file is there",
+        f"Remove any file or directory at {path}, run cargo clean in the candidate checkout, then run "
+        f"{build} in the candidate checkout so that {path} is a regular executable file, then rebuild "
+        "the examine prompt. Where a Cargo target directory is configured elsewhere, run cargo clean "
+        "and the build with CARGO_TARGET_DIR set to that directory, then copy the built executable to "
+        f"{path}, creating its directories, then rebuild the examine prompt.",
+    )
+
+
+def cargo_manifest_unreadable():
+    return Defect(
+        "InputUnreadable: Cargo.toml at HEAD",
+        "HEAD commits Cargo.toml as something other than a regular file: a directory or a submodule",
+        "Commit Cargo.toml as a regular file declaring the binary with [package.metadata.nwdes] "
+        'kind = "rust-binary", then rebuild the examine prompt.',
+    )
+
+
+def _symlink_executable(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "the declared path ends in a symlink, so the examiner would run a file other than the built "
+        "executable at this path",
+        f"Remove the symlink at {path} and run {build} in the candidate checkout so that {path} is "
+        "the built executable as a regular file, then rebuild the examine prompt.",
+    )
+
+
+def _symlink_directory_executable(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "a directory on the declared path is a symlink, so the built executable would be written "
+        "and run through a link",
+        f"Remove the symlinked directory on the path to {path} (the symlink, not a real directory) "
+        f"and run {build} in the candidate checkout, which creates real directories and the built "
+        f"executable at {path}, then rebuild the examine prompt.",
+    )
+
+
+def _not_directory_executable(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "a component of the declared path is not a directory: it is a regular file where a directory is needed",
+        f"Remove the file where a directory is needed on the path to {path} and run {build} in the "
+        f"candidate checkout, which creates the directories and the built executable at {path}, "
+        "then rebuild the examine prompt.",
+    )
+
+
+def _no_access_executable(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "the declared path cannot be opened by this user: a directory on it cannot be searched by "
+        "this user",
+        f"Give the user who runs the examine prompt search permission on every directory on the "
+        f"path to {path}, then rebuild the examine prompt.",
+    )
+
+
+def _unreadable_executable(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "the system cannot open the declared path for a reason the examiner does not name",
+        f"Shorten the declared binary name if its file name is longer than the file system allows; "
+        f"otherwise fix the file-system error on the path to {path}; then place the built executable "
+        f"there as {build} leaves it and rebuild the examine prompt.",
+    )
+
+
+_EXECUTABLE_REFUSALS = {
+    "symlink": _symlink_executable,
+    "symlink_directory": _symlink_directory_executable,
+    "not_directory": _not_directory_executable,
+    "no_access": _no_access_executable,
+    "unreadable": _unreadable_executable,
+}
+
+
+def executable_defect(path, status, build):
+    """The refusal for a declared executable that cannot be run from the checkout, named by its cause."""
+    refuse = _EXECUTABLE_REFUSALS.get(status, _missing_executable)
+    return refuse(path, build)
+
+
+def executable_launch_failure(path, error, build):
+    """The refusal for a declared executable the system will not start, named by the error's cause.
+
+    error is the OSError of the launch: EACCES or EPERM is a file system that refuses execution (noexec),
+    ENOEXEC is a file that is not a program, and any other error has no remedy the examiner can name.
+    """
+    reason = error.strerror or str(error)
+    if error.errno in (errno.EACCES, errno.EPERM):
+        return Defect(
+            "InputUnreadable: " + path,
+            f"the system refuses to run the file ({reason}); the file system holding the checkout "
+            "may be mounted noexec, and rebuilding in the same checkout cannot change that",
+            "Copy the candidate checkout with cp -a CHECKOUT NEW_LOCATION to a filesystem mounted "
+            f"with exec, run {build} in the copy, then examine the copy.",
+        )
+    if error.errno == errno.ENOEXEC:
+        return Defect(
+            "InputUnreadable: " + path,
+            f"the file at {path} is not a program the system can run ({reason})",
+            f"Remove the file at {path}, then run {build} in the candidate checkout so that {path} is "
+            "the built executable, then rebuild the examine prompt.",
+        )
+    return Defect(
+        "InputUnreadable: " + path,
+        f"the system cannot start the file at {path} ({reason})",
+        "nothing to run: the examiner names no command for this error; check the file system "
+        "holding the checkout, then rebuild the examine prompt.",
+    )
+
+
+def declare(manifests, suffix=""):
+    """One declaration from the manifests committed at HEAD: a Python package, a Rust binary, or a refusal."""
+    python = manifests.get(PYTHON_MANIFEST)
+    if python is not None:
+        return _python_declaration(python)
+    rust = _rust_declaration(manifests.get(RUST_MANIFEST), suffix)
+    if rust is not None:
+        return Built(rust)
+    return checked(None, (_no_declaration(),))
+
+
+def required_paths(declared):
+    return declared.value.required if isinstance(declared, Built) else ()
+
+
+def public_projection(listing, blobs, declared, candidate, executables):
+    """executables maps each required path to its status: ok, missing or unsafe."""
+    entries = public_entries(listing)
+    tainted = tuple(name for name, _ in entries if candidate.encode() in blobs[name])
+    if tainted:
+        return checked(None, (workspace_contaminated(tainted),))
+    if isinstance(declared, Refused):
+        return declared
+    value = declared.value
+    problems = tuple(
+        executable_defect(path, executables.get(path, "missing"), value.build)
+        for path in value.required
+        if executables.get(path, "missing") != "ok"
+    )
+    if problems:
+        return checked(None, problems)
     return Built(
         PublicProjection(
             tuple((name, blobs[name]) for name, _ in entries),
-            tuple(scripts.items()),
-            parents or None,
+            value.kind,
+            value.launch,
+            value.commands,
+            value.package_parents,
+            value.build,
         )
     )
 
@@ -835,6 +1078,33 @@ def _probe_argv(executable, import_roots, entry, argv):
     )
 
 
+def _import_roots(projection, runtime):
+    if projection.package_parents:
+        return tuple(
+            posixpath.join(runtime.candidate, parent)
+            for parent in projection.package_parents
+        )
+    return (
+        *((runtime.candidate + "/src",) if runtime.has_source_directory else ()),
+        runtime.candidate,
+    )
+
+
+def _program(projection, target, argv, runtime):
+    """The argv to run and the declared file to run it from, when the launch is a declared file."""
+    if projection.launch is Launch.DECLARED_EXECUTABLE:
+        return tuple(argv), target
+    return (
+        _probe_argv(
+            runtime.executable,
+            _import_roots(projection, runtime),
+            target,
+            argv,
+        ),
+        None,
+    )
+
+
 def prepare_probe(
     projection, workspace, argv, resolved_arguments, runtime: ProbeRuntime
 ):
@@ -847,35 +1117,25 @@ def prepare_probe(
         )
         or not _under(resolved, workspace.path)
     )
-    scripts = dict(projection.scripts)
-    if not argv or argv[0] not in scripts or bad:
+    commands = dict(projection.commands)
+    if not argv or argv[0] not in commands or bad:
         return checked(
             None,
             (
                 Defect(
                     "ProbeRefused: " + (" ".join(argv) or "empty command"),
                     "Only declared console scripts with workspace-relative arguments are admitted. "
-                    "Admitted commands: " + ", ".join(scripts),
+                    "Admitted commands: " + ", ".join(commands),
                     "Use nwdes examine probe --workspace W -- COMMAND ARGS with an admitted "
                     "command and arguments resolving inside W from scratch.",
                 ),
             ),
         )
     scratch = workspace.path + "/scratch"
-    import_roots = (
-        tuple(
-            posixpath.join(runtime.candidate, parent)
-            for parent in projection.package_parents
-        )
-        if projection.package_parents
-        else (
-            *((runtime.candidate + "/src",) if runtime.has_source_directory else ()),
-            runtime.candidate,
-        )
-    )
+    program, executable = _program(projection, commands[argv[0]], argv, runtime)
     return Built(
         ProbePlan(
-            _probe_argv(runtime.executable, import_roots, scripts[argv[0]], argv),
+            program,
             scratch,
             (
                 ("PATH", runtime.environment.get("PATH", "")),
@@ -884,6 +1144,8 @@ def prepare_probe(
                 ("TMPDIR", scratch),
             ),
             runtime.candidate,
+            executable,
+            projection.build,
         )
     )
 

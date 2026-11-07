@@ -154,6 +154,6 @@ assessment. The examiner owns public evidence capture; the host owns continuatio
 Plain Bash is retained. nwdes guarantees the packet, public workspace and its
 read/probe boundaries, not confinement of the examiner process.
 
-Workspace cleanup is a standing duty of every examination. After a successful nwdes examine close, delete the examination workspace named in the bundle. After a successful close, also delete every file or directory you created outside that workspace for this examination. Before the close, delete nothing; a refused close keeps the workspace for the retry. Never delete the candidate checkout, nwdes records or any path you did not create. Name in your final message any trace you could not remove.
+Workspace cleanup is nwdes' duty, not the examiner's. After a successful nwdes examine close, nwdes removes every examination workspace that prompts of this checkout recorded, and prints each removal. Also delete every file or directory you created outside that workspace for this examination. Before the close, delete nothing; a refused close keeps the workspace for the retry. Never delete the candidate checkout, nwdes records or any path you did not create. Name in your final message any trace you could not remove.
 
 Fixtures go in the bounded scratch under the examination workspace. Avoid RAM-backed file systems for large scratch.

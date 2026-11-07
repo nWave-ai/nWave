@@ -61,6 +61,10 @@ class CommitLocations:
     def closes(self):
         return self.directory + "/closes"
 
+    @property
+    def workspaces(self):
+        return self.directory + "/workspaces"
+
     def receipt(self, role):
         return self.closes + "/" + role + ".json"
 

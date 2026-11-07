@@ -1156,7 +1156,7 @@ def _prompt(args):
             else failure
         )
     if prepared.value.recipe.id == "examine.user-v1":
-        workspace = probe.materialize(args.repo_root)
+        workspace = _examination_workspace(args.repo_root, args.handoff)
         if isinstance(workspace, Refused):
             return _examination_failure(workspace)
         prepared = Built(
@@ -1190,7 +1190,7 @@ def _packet(args):
             else failure
         )
     if prepared.value.kind is packets.PacketKind.Examine:
-        workspace = probe.materialize(args.repo_root)
+        workspace = _examination_workspace(args.repo_root, args.handoff)
         if isinstance(workspace, Refused):
             return _examination_failure(workspace)
         prepared = Built(replace(prepared.value, workspace=workspace.value))
@@ -1203,6 +1203,14 @@ def _examination_failure(result):
     return (
         1 if any(d.what.startswith("InputUnreadable:") for d in result.defects) else 2
     )
+
+
+def _examination_workspace(root, handoff):
+    """The examine prompt's workspace; its record lives in this checkout's private nwdes directory."""
+    locations = _commit_locations(root)
+    if isinstance(locations, Refused):
+        return locations
+    return probe.materialize(root, locations.value.workspaces, handoff)
 
 
 def _lane(args):
@@ -1871,6 +1879,10 @@ def _record_role_scoped(kind, name, values, context, close_session):
         return _role_effect_failure(IOFailure((str(lock),), str(error)))
     try:
         os.close(descriptor)
+        if name == "abort" and kind == "examine":
+            failure = _discard_workspace(args, destinations)
+            if failure is not None:
+                return failure
         return _record_draft(name, values, args, ports, scope)
     finally:
         try:
@@ -3059,7 +3071,7 @@ def _record_close(kind, name, values, context):
         head = _commit_git(args.repo_root, ("rev-parse", "--verify", "HEAD^{commit}"))
         if isinstance(head, Refused):
             return _commit_failure(head)
-        return _record_role_scoped(
+        result = _record_role_scoped(
             kind,
             name,
             values,
@@ -3071,6 +3083,47 @@ def _record_close(kind, name, values, context):
                 _read_inputs(context.ports, args.repo_root, context.destinations),
             ),
         )
+        if result == 0 and kind == "examine":
+            handoff = str(Path(args.repo_root) / context.destinations.handoff)
+            _retire_workspaces(args.repo_root, locations.value, handoff)
+        return result
+
+
+def _retire_workspaces(root, locations, handoff):
+    """Remove the examination workspace this scope's prompt recorded, after publication."""
+    outcomes = probe.retire(root, locations.workspaces, handoff)
+    if not outcomes:
+        print(
+            "WARNING WHAT: no examination workspace is recorded for this scope in "
+            + locations.workspaces
+            + ".\nWHY: a workspace is removed only by a close run from the worktree whose "
+            "prompt recorded it; this close found none here and removes nothing.\n"
+            "HOW: run nwdes examine close from the worktree that built the examine prompt.",
+            file=sys.stderr,
+        )
+    _report_workspaces(outcomes)
+
+
+def _report_workspaces(outcomes):
+    for outcome, path, reason in outcomes:
+        if outcome == "removed":
+            print("REMOVED", path)
+        elif outcome == "gone":
+            print("ABSENT", path, "- already removed; its record is dropped")
+        else:
+            print("KEPT", path, "-", reason)
+
+
+def _discard_workspace(args, destinations):
+    """Remove the workspace an aborted examination recorded; nothing is published by an abort."""
+    if not _git_worktree(args.repo_root):
+        return None
+    locations = _commit_locations(args.repo_root)
+    if isinstance(locations, Refused):
+        return _commit_failure(locations)
+    handoff = str(Path(args.repo_root) / destinations.handoff)
+    _report_workspaces(probe.discard(locations.value.workspaces, handoff))
+    return None
 
 
 def _write_receipt(locations, receipt, result):

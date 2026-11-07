@@ -1,5 +1,8 @@
 """Filesystem and process effects for public examination workspaces."""
 
+import errno
+import hashlib
+import json
 import os
 import shutil
 import stat
@@ -12,6 +15,9 @@ from nwdes import packets, prose
 from nwdes.contracts import Built, Defect, Refused, checked
 from nwdes.shell.git import failure_reason, run_git, scrubbed_env
 from nwdes.shell.ports import Unreadable
+
+
+WORKSPACE_PREFIX = "nwdes-examine-"
 
 
 def _git(root, arguments):
@@ -31,6 +37,148 @@ def _git(root, arguments):
     return Built(result.stdout)
 
 
+def _manifest(root, name):
+    """The committed manifest at HEAD, or None when HEAD does not commit it."""
+    listed = _git(root, ("ls-tree", "-z", "HEAD", "--", name))
+    if isinstance(listed, Refused):
+        return listed
+    if not listed.value:
+        return Built(None)
+    found = _git(root, ("cat-file", "blob", "HEAD:" + name))
+    if isinstance(found, Refused) and name == packets.RUST_MANIFEST:
+        return checked(None, (packets.cargo_manifest_unreadable(),))
+    return found
+
+
+def _path_flag():
+    """O_PATH: a reference that needs search permission on each directory, not read permission on the
+    file, so an execute-only executable is reachable. Where the platform has no O_PATH the open needs
+    read permission. Read at call time, so a platform without the flag still imports this module."""
+    return getattr(os, "O_PATH", os.O_RDONLY)
+
+
+def _no_follow():
+    return getattr(os, "O_NOFOLLOW", 0) | _path_flag()
+
+
+def _executable_suffix():
+    """The suffix a built executable carries on this platform, read at call time."""
+    return ".exe" if os.name == "nt" else ""
+
+
+def _descriptor_walk_supported():
+    """Whether a name can be opened relative to a directory descriptor without following a symlink."""
+    return hasattr(os, "O_NOFOLLOW") and os.open in os.supports_dir_fd
+
+
+_BY_ERRNO = {
+    errno.ENOENT: "missing",
+    errno.ELOOP: "symlink",
+    errno.ENOTDIR: "not_directory",
+    errno.EACCES: "no_access",
+    errno.EPERM: "no_access",
+}
+
+
+def _entry(parent, name):
+    """(status, descriptor) for one name under an open directory: no symlink is followed, and the
+    descriptor refers to the entry itself. status is ok, symlink, or the errno-derived status."""
+    try:
+        descriptor = os.open(name, _no_follow(), dir_fd=parent)
+    except OSError as error:
+        return _BY_ERRNO.get(error.errno, "unreadable"), None
+    if stat.S_ISLNK(os.fstat(descriptor).st_mode):
+        os.close(descriptor)
+        return "symlink", None
+    return "ok", descriptor
+
+
+def _open_by_descriptors(root, relative):
+    """(status, descriptor) for a declared executable, walking the path one name at a time. The
+    descriptor is the file a run executes."""
+    parts = relative.split("/")
+    try:
+        current = os.open(root, _path_flag() | getattr(os, "O_DIRECTORY", 0))
+    except OSError as error:
+        return _BY_ERRNO.get(error.errno, "unreadable"), None
+    opened = [current]
+    try:
+        for part in parts[:-1]:
+            status, child = _entry(current, part)
+            if child is None:
+                return ("symlink_directory" if status == "symlink" else status), None
+            opened.append(child)
+            if not stat.S_ISDIR(os.fstat(child).st_mode):
+                return "not_directory", None
+            current = child
+        status, descriptor = _entry(current, parts[-1])
+        if descriptor is None:
+            return status, None
+        mode = os.fstat(descriptor).st_mode
+        if stat.S_ISREG(mode) and mode & 0o111:
+            return "ok", descriptor
+        os.close(descriptor)
+        return "missing", None
+    finally:
+        for descriptor in opened:
+            os.close(descriptor)
+
+
+def _is_link(info):
+    """A symbolic link, or a Windows reparse point (a junction or another link)."""
+    reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    return stat.S_ISLNK(info.st_mode) or bool(
+        getattr(info, "st_file_attributes", 0) & reparse
+    )
+
+
+def _walk_declared(root, relative):
+    """(status, path) where no descriptor is available: each prefix of the path is lstat-ed and a
+    symbolic link or reparse point is refused. The launch is then by path, so this platform does not
+    pin the file a run executes; a replacement between the check and the launch is not detected."""
+    parts = relative.split("/")
+    info = None
+    for depth in range(1, len(parts) + 1):
+        path = os.path.join(root, *parts[:depth])
+        try:
+            info = os.lstat(path)
+        except OSError as error:
+            return _BY_ERRNO.get(error.errno, "unreadable"), None
+        if _is_link(info):
+            return ("symlink_directory" if depth < len(parts) else "symlink"), None
+        if depth < len(parts) and not stat.S_ISDIR(info.st_mode):
+            return "not_directory", None
+    if not stat.S_ISREG(info.st_mode) or (os.name != "nt" and not info.st_mode & 0o111):
+        return "missing", None
+    return "ok", path
+
+
+def _open_declared(root, relative):
+    """(status, handle) for a declared executable. The handle is a descriptor where the platform can
+    walk by descriptor, otherwise the checked path; it is None unless the status is ok.
+
+    status is ok, missing (absent, or not a regular executable), symlink, not_directory, no_access (a
+    directory on the path cannot be searched by this user) or unreadable (any other error).
+    """
+    if not _descriptor_walk_supported():
+        return _walk_declared(root, relative)
+    status, handle = _open_by_descriptors(root, relative)
+    if status == "no_access" and not hasattr(os, "O_PATH"):
+        # Without O_PATH the descriptor open needs read permission on the file, which an execute-only
+        # executable lacks. The lstat walk needs search permission only, as the system needs to run it.
+        walked, path = _walk_declared(root, relative)
+        if walked == "ok":
+            return walked, path
+    return status, handle
+
+
+def _declared_status(root, relative):
+    status, handle = _open_declared(root, relative)
+    if isinstance(handle, int):
+        os.close(handle)
+    return status
+
+
 def projection(root):
     listing = _git(
         root, ("ls-tree", "-r", "-z", "HEAD", "--", *prose.PUBLIC_PROJECTION[0])
@@ -43,13 +191,25 @@ def projection(root):
         if isinstance(content, Refused):
             return content
         files[name] = content.value
-    manifest = _git(root, ("cat-file", "blob", "HEAD:pyproject.toml"))
-    if isinstance(manifest, Refused):
-        return manifest
+    manifests = {}
+    for name in packets.MANIFESTS:
+        found = _manifest(root, name)
+        if isinstance(found, Refused):
+            return found
+        manifests[name] = found.value
+        if found.value is not None:
+            # the first committed manifest in precedence order decides; a later one is never read
+            break
     common = _git(root, ("rev-parse", "--path-format=absolute", "--git-common-dir"))
     if isinstance(common, Refused):
         return common
-    planned = packets.public_projection(listing.value, files, manifest.value, str(root))
+    declared = packets.declare(manifests, _executable_suffix())
+    executables = {
+        path: _declared_status(root, path) for path in packets.required_paths(declared)
+    }
+    planned = packets.public_projection(
+        listing.value, files, declared, str(root), executables
+    )
     if isinstance(planned, Refused):
         return planned
     return Built(
@@ -106,15 +266,39 @@ def inspect(projection, workspace, roots):
         return checked(None, (packets.workspace_contaminated((str(error),)),))
 
 
-def materialize(root):
+def _scope_key(handoff):
+    return hashlib.sha256(str(Path(handoff).resolve()).encode("utf-8")).hexdigest()
+
+
+def _scope_records(records, handoff):
+    """The record files of one examination scope: one per workspace it has left, in name order."""
+    directory = Path(records)
+    if not directory.is_dir():
+        return []
+    return sorted(directory.glob(_scope_key(handoff) + "-*.json"))
+
+
+def _record(records, handoff, workspace):
+    """Name the workspace in the checkout's private record directory, so close can find it."""
+    Path(records).mkdir(parents=True, exist_ok=True)
+    name = _scope_key(handoff) + "-" + workspace.name + ".json"
+    (Path(records) / name).write_text(
+        json.dumps({"workspace": str(workspace)}), encoding="utf-8"
+    )
+
+
+def materialize(root, records, handoff):
     root = Path(root).resolve()
     planned = projection(root)
     if isinstance(planned, Refused):
         return planned
     public, roots = planned.value
+    for outcome, path, reason in discard(records, handoff):
+        if outcome == "kept":
+            sys.stderr.write("\nKEPT " + path + " - " + reason + "\n")
     workspace = None
     try:
-        workspace = Path(tempfile.mkdtemp(prefix="nwdes-examine-"))
+        workspace = Path(tempfile.mkdtemp(prefix=WORKSPACE_PREFIX))
         (workspace / "public").mkdir()
         (workspace / "scratch").mkdir()
         for name, content in public.files:
@@ -125,6 +309,8 @@ def materialize(root):
         inspected = inspect(public, workspace, roots)
         if isinstance(inspected, Refused):
             shutil.rmtree(workspace)
+            return inspected
+        _record(records, handoff, workspace)
         return inspected
     except OSError as error:
         if workspace is not None:
@@ -139,6 +325,96 @@ def materialize(root):
                 ),
             ),
         )
+
+
+def _recorded_workspace(record):
+    try:
+        return Path(json.loads(record.read_text(encoding="utf-8"))["workspace"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _settle(record, outcome):
+    """Drop the record once its workspace is gone; a kept workspace keeps it for a later attempt."""
+    if outcome[0] != "kept":
+        record.unlink(missing_ok=True)
+    return outcome
+
+
+def _remove(record, gate):
+    """One record's outcome: removed, gone (already absent) or kept, with its reason.
+
+    gate(workspace) returns the reason to keep the workspace, or None to allow its removal.
+    """
+    workspace = _recorded_workspace(record)
+    if workspace is None:
+        return "kept", str(record), "its record cannot be read"
+    if not workspace.name.startswith(WORKSPACE_PREFIX):
+        return "kept", str(workspace), "its name is not an examination workspace name"
+    if not workspace.is_symlink() and not workspace.exists():
+        return "gone", str(workspace), "it is already absent"
+    reason = gate(workspace)
+    if reason:
+        return "kept", str(workspace), reason
+    try:
+        shutil.rmtree(workspace)
+    except OSError as error:
+        return "kept", str(workspace), str(error)
+    return "removed", str(workspace), ""
+
+
+def retire(root, records, handoff):
+    """Remove each examination workspace recorded for one scope, once its inspection is clean.
+
+    An accepted close calls this after publication. Returns one (outcome, path, reason) per
+    record of the scope, or () when the scope has none. A removed or absent workspace loses its
+    record; a kept one keeps its record so a later close names it again. Other scopes' records
+    are never read.
+    """
+    records_of_scope = _scope_records(records, handoff)
+    if not records_of_scope:
+        return ()
+    planned = projection(root)
+    if isinstance(planned, Refused):
+        reason = "; ".join(d.what for d in planned.defects)
+        return tuple(
+            _settle(record, ("kept", str(record), reason))
+            for record in records_of_scope
+        )
+    public, roots = planned.value
+
+    def gate(workspace):
+        verdict = inspect(public, workspace, roots)
+        if isinstance(verdict, Refused):
+            return "; ".join(d.what for d in verdict.defects)
+        return None
+
+    return tuple(_settle(record, _remove(record, gate)) for record in records_of_scope)
+
+
+def _own_layout(workspace):
+    """Discard gate: remove only a non-symlink workspace whose top level is exactly public and scratch."""
+    if workspace.is_symlink():
+        return "it is a symbolic link"
+    try:
+        names = sorted(entry.name for entry in workspace.iterdir())
+    except OSError as error:
+        return str(error)
+    if names != ["public", "scratch"]:
+        return "its top level is not exactly public and scratch"
+    return None
+
+
+def discard(records, handoff):
+    """Remove each workspace recorded for one scope on its re-prompt or abort, when its top level
+    is exactly public and scratch. Nothing is published by those steps, so this top-level guard is
+    the whole gate; a workspace failing it is kept with its record and reported kept. Returns one
+    (outcome, path, reason) per record of the scope, or () when the scope has none.
+    """
+    return tuple(
+        _settle(record, _remove(record, _own_layout))
+        for record in _scope_records(records, handoff)
+    )
 
 
 def _read_path(workspace, path):
@@ -228,6 +504,8 @@ def run(root, workspace, action, arguments):
     if isinstance(ready, Refused):
         return ready
     plan = ready.value
+    if plan.executable is not None:
+        return _run_declared(root, plan)
     try:
         result = subprocess.run(
             plan.argv,
@@ -247,6 +525,41 @@ def run(root, workspace, action, arguments):
                 ),
             ),
         )
+    sys.stdout.buffer.write(packets.mask_candidate(result.stdout, plan.candidate))
+    sys.stderr.buffer.write(packets.mask_candidate(result.stderr, plan.candidate))
+    return result.returncode
+
+
+def _run_declared(root, plan):
+    """Run the declared executable that was checked, passing its exit and streams through.
+
+    Where a descriptor was checked, the program is started through /dev/fd/N, the very file that was
+    checked; otherwise it is started by the checked path.
+    """
+    status, handle = _open_declared(root, plan.executable)
+    if handle is None:
+        return checked(
+            None, (packets.executable_defect(plan.executable, status, plan.remedy),)
+        )
+    by_descriptor = isinstance(handle, int)
+    try:
+        result = subprocess.run(
+            plan.argv,
+            executable=f"/dev/fd/{handle}" if by_descriptor else handle,
+            pass_fds=(handle,) if by_descriptor else (),
+            cwd=plan.cwd,
+            env=dict(plan.environment),
+            capture_output=True,
+            check=False,
+        )
+    except OSError as error:
+        return checked(
+            None,
+            (packets.executable_launch_failure(plan.executable, error, plan.remedy),),
+        )
+    finally:
+        if by_descriptor:
+            os.close(handle)
     sys.stdout.buffer.write(packets.mask_candidate(result.stdout, plan.candidate))
     sys.stderr.buffer.write(packets.mask_candidate(result.stderr, plan.candidate))
     return result.returncode

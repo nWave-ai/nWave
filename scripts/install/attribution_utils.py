@@ -39,10 +39,12 @@ def read_global_config(config_dir: Path) -> dict:
 
 
 def write_global_config(config_dir: Path, config: dict) -> None:
-    """Replace global values through the sole atomic configuration writer."""
+    """Replace config_dir/config.json through the sole atomic configuration writer."""
     from nwave_ai.platform.config_writer import ConfigWriter
 
-    writer = ConfigWriter(home_dir=config_dir.parent, repo_root=Path.cwd())
+    # update_global touches only the global tier, so the repository tier is
+    # never written here; config_dir stands in for the required repo_root.
+    writer = ConfigWriter(global_dir=config_dir, repo_root=config_dir)
 
     def replace(document: dict) -> None:
         document.clear()
@@ -302,42 +304,30 @@ def _read_shim_template() -> str:
     )
 
 
-def install_attribution_hook(
-    config_dir: Path | None = None,
-    git_dir: Path | None = None,
-    hooks_dir: Path | None = None,
-) -> Path:
+def install_attribution_hook(config_dir: Path, hooks_dir: Path) -> Path:
     """Install prepare-commit-msg hook for attribution trailer.
 
-    1. Resolve hooks directory from git config (or .git/hooks/ default)
-    2. Copy hook script to ~/.nwave/hooks/
+    1. Write into the hooks directory the caller names (no git probe)
+    2. Copy hook script to config_dir/hooks/
     3. If existing prepare-commit-msg, rename to .nwave-original
     4. Render and write shell shim as prepare-commit-msg
     5. Make executable
 
+    Writes only under the two directories the caller names: no git probe, no
+    working-directory lookup and no home-directory default. The caller resolves
+    its repository's hooks directory and passes both paths in.
+
     Never sets global core.hooksPath -- the shim is installed directly
-    into the effective hooks directory to avoid shadowing pre-commit.
+    into the caller's hooks directory to avoid shadowing pre-commit.
 
     Args:
-        config_dir: Override for ~/.nwave/ (testing).
-        git_dir: Explicit path to the .git directory. When provided, the
-            hook shim is written to ``git_dir / "hooks"`` and the git
-            config probe (``git rev-parse`` / ``git config
-            core.hooksPath``) is skipped entirely. Primarily for tests
-            that must guarantee isolation from the surrounding
-            repository.
-        hooks_dir: Explicit hooks directory to install the shim into. Takes
-            precedence over ``git_dir`` and over the probe of the process's
-            working directory.
+        config_dir: nWave bookkeeping directory, for example ~/.nwave/.
+        hooks_dir: Hooks directory that receives the shim, for example
+            <repository>/.git/hooks/.
 
     Returns:
         Path to installed hook shim.
     """
-    if config_dir is None:
-        config_dir = Path.home() / ".nwave"
-
-    if hooks_dir is None:
-        hooks_dir = git_dir / "hooks" if git_dir is not None else _resolve_hooks_dir()
     hooks_dir.mkdir(parents=True, exist_ok=True)
 
     # Copy hook script to config_dir/hooks/

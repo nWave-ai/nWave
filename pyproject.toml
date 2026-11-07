@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.33.0", "pip>=26.2.2"]
+requires = ["hatchling==1.33.0", "pip>=26.3"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -32,7 +32,7 @@ path = "scripts/release/offline_wheelhouse_hook.py"
 
 [project]
 name = "nwave-ai"
-version = "4.2.1"
+version = "4.2.2"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -70,7 +70,7 @@ dependencies = [
     "rich>=13.7.0",
     "typer>=0.27.3",
     "pydantic>=2.14.2",
-    "pydantic-settings>=2.15.0",
+    "pydantic-settings>=2.16.2",
     "httpx>=0.27.0",
     "platformdirs>=4.14.3",
     "pyyaml>=6.0",
@@ -81,11 +81,11 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
     "pytest-cov>=4.1.0",
-    "pytest-asyncio>=1.4.1",
+    "pytest-asyncio>=1.4.1.post1",
     "pytest-xdist>=3.5.0",
-    "pytest-bdd>=9.0.0",
+    "pytest-bdd>=9.0.1",
     "respx>=0.20.0",
     "jsonschema>=4.0.0"
 ]
@@ -95,21 +95,20 @@ test = [
 # Not published in package metadata (unlike the `test` extra above).
 dev = [
     # Testing
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
     "pytest-cov>=4.1.0",
-    "pytest-asyncio>=1.4.1",
+    "pytest-asyncio>=1.4.1.post1",
     "pytest-xdist>=3.5.0",
-    "pytest-bdd>=9.0.0",
-    "pytest-describe-it>=0.1.0",
+    "pytest-bdd>=9.0.1",
     "pytest-html>=4.0.0",
-    "pytest-mock>=3.16.0",
+    "pytest-mock>=3.17.0",
     "pytest-describe>=3.2.0",
     "pytest-watch>=4.2.0",
     "pytest-timeout>=2.3.1",
     "pytest-split>=0.11.0",
     "allure-pytest>=2.16.2",
     "respx>=0.20.0",
-    "hypothesis>=6.170.13",
+    "hypothesis>=6.170.14",
     "markdown-it-py>=4.2.0",
     # Mutation testing
     "cosmic-ray>=8.7.0",
@@ -127,9 +126,9 @@ dev = [
     # tooling dependencies, not additional product runtime requirements.
     "gitpython>=3.1.60",
     "aiohttp>=3.14.5",
-    "multidict>=6.9.1",
+    "multidict>=7.2.1",
     "certifi>=2026.10.23",
-    "filelock>=4.2.6",
+    "filelock>=4.2.7",
     # Task runner (replaces Pipfile [scripts]; run via `uv run poe <task>`)
     "poethepoet>=0.49.0",
     # Utilities
@@ -155,7 +154,7 @@ dev = [
     # (unlike the prior pipenv venv), so it MUST be declared or every
     # build-leg test fails with
     # "No module named pip". Env-parity restore after the pipenv->uv merge.
-    "pip>=26.2.2"
+    "pip>=26.3"
 ]
 
 [project.urls]
@@ -193,6 +192,8 @@ strict_config = true
 # and the signal-based timeout is unreliable in xdist worker processes.
 timeout = 600
 timeout_method = "thread"
+# pytest removes each test's tmp_path when the test ends, passing or failing.
+tmp_path_retention_policy = "none"
 addopts = [
     "-ra",
     "-q",
@@ -202,18 +203,21 @@ addopts = [
     # Block stale installs even after removal from the dev dependencies.
     "-p",
     "no:pspec",
+    # pytest-describe-it 0.1.0 rewrites item._nodeid in pytest_itemcollected; pytest 9.2
+    # removed that attribute, so collection crashes. No test used its markers, so it was
+    # removed from the dev dependencies. Block stale installs the same way as pspec.
+    "-p",
+    "no:describe-it",
     # Owner-requested slowest-first visibility above the 10 ms budget.
     # Full/CI runs retain this report; the touched-file commit gate disables
     # it in its own pytest plugin so passing neighbours remain silent.
     "--durations=0",
     "--durations-min=0.01",
-    # Quarantined pre-FM-1 hooks.json schema tests (top-level array root) are
-    # superseded by tests/e2e/test_codex_real_boot.py per DDD-7 (FM-4). They are
-    # kept on disk for the audit trail but MUST NOT run by default — a bare
-    # `pytest tests/` otherwise collects and fails them. Formal TLC tests run
-    # in spine-formal-verify instead of the default feedback suite.
+    # Formal TLC tests run in spine-formal-verify instead of the default feedback
+    # suite. (The former `broken_schema_v0` exclusion was dropped: no test carries
+    # that marker any more, and pytest 9.2 rejects unregistered markers in -m.)
     "-m",
-    "not broken_schema_v0 and not formal_tlc",
+    "not formal_tlc",
 ]
 markers = [
     "acceptance: Acceptance tests (BDD scenarios, may be slow)",
@@ -438,7 +442,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "4.2.1"
+version = "4.2.2"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",
@@ -490,8 +494,8 @@ validate-yaml    = "python scripts/validation/validate_yaml_files.py"
 # Build, docs & hooks (alphabetical)
 build            = "python scripts/build_dist.py"
 docgen           = "python scripts/docgen.py"
-install-hooks    = "pre-commit install --install-hooks --overwrite"  # all hook types via default_install_hook_types; --overwrite forces a clean install (no migration-mode chaining of a stale/foreign hook)
-verify-hooks     = "python scripts/validation/verify_hooks.py"  # fails loudly unless every default_install_hook_types hook is installed, pre-commit-managed, and not bypassed by core.hooksPath
+install-hooks    = "python ${POE_ROOT}/scripts/hooks/in_place_hooks.py install"  # one-time per clone: writes the in-place stubs for every default_install_hook_types type into the repository's hooks dir; idempotent; stashes nothing
+verify-hooks     = "python scripts/validation/verify_hooks.py"  # fails loudly unless every default_install_hook_types hook is an in-place stub, installed, and not bypassed by core.hooksPath
 # Root board (dev only): `board` refreshes the Backlog.md view of the todo and serves
 # the web board.
 board            = "python scripts/dev/nwboard.py kanban"

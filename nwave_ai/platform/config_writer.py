@@ -68,10 +68,18 @@ class ConfigWriter:
         },
     }
 
-    def __init__(self, *, home_dir: Path | None = None, repo_root: Path) -> None:
+    def __init__(
+        self,
+        *,
+        home_dir: Path | None = None,
+        repo_root: Path,
+        global_dir: Path | None = None,
+    ) -> None:
         self._home_dir = (home_dir or Path.home()).expanduser()
         self._repo_root = repo_root.resolve()
-        self.global_dir = self._home_dir / ".nwave"
+        self.global_dir = (
+            global_dir if global_dir is not None else self._home_dir / ".nwave"
+        )
         self.repo_dir = self._repo_root / ".nwave"
         self.global_path = self.global_dir / "config.json"
         self.repo_path = self.repo_dir / "config.json"
