@@ -11,8 +11,8 @@ from types import MappingProxyType
 
 from nwdes import documents, drafts, prompts
 from nwdes import handoff as model
-from nwdes.contracts import Built, Defect, Refused, checked
-from nwdes.destinations import Destinations, DocumentKind, local_path
+from nwdes.contracts import Built, Defect, Refused, checked, local_path
+from nwdes.destinations import Destinations, DocumentKind
 
 
 class Role(str, Enum):

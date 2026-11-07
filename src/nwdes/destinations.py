@@ -4,7 +4,15 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 
-from nwdes.contracts import Built, Defect, Refused, checked
+from nwdes.contracts import (
+    LINE_BOUNDARIES,
+    Built,
+    Defect,
+    Refused,
+    checked,
+    local_path,
+    strict_object,
+)
 
 
 class DocumentKind(str, Enum):
@@ -67,32 +75,6 @@ class CommitLocations:
 
     def receipt(self, role):
         return self.closes + "/" + role + ".json"
-
-
-LINE_BOUNDARIES = "\x00\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
-
-
-def local_path(path: str) -> bool:
-    return (
-        isinstance(path, str)
-        and bool(path)
-        and path == path.strip()
-        and not path.startswith(("/", "\\"))
-        and "\\" not in path
-        and not any(character in path for character in LINE_BOUNDARIES)
-        and all(segment not in ("", ".", "..") for segment in path.split("/"))
-    )
-
-
-class _DuplicateKey(ValueError):
-    pass
-
-
-def _object(pairs):
-    names = tuple(name for name, _ in pairs)
-    if len(set(names)) != len(names):
-        raise _DuplicateKey("Duplicate JSON key")
-    return dict(pairs)
 
 
 def _malformed(name, key, why):
@@ -178,7 +160,7 @@ def _jev_key(name, value, scoped):
 def parse_tier(kind: str, name: str, data: bytes):
     """Parse only owned keys; unrelated producers' configuration is opaque."""
     try:
-        raw = json.loads(data.decode("utf-8"), object_pairs_hook=_object)
+        raw = json.loads(data.decode("utf-8"), object_pairs_hook=strict_object)
     except (UnicodeError, ValueError) as error:
         return _tier_result(
             ConfigurationTier(kind, name, unknown=True),

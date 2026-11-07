@@ -16,8 +16,8 @@ from itertools import chain, combinations, groupby, product
 from types import MappingProxyType
 
 from nwdes import handoff as model
-from nwdes.contracts import Built, Defect, Refused, checked
-from nwdes.destinations import DocumentKind, local_path
+from nwdes.contracts import Built, Defect, Refused, checked, local_path
+from nwdes.destinations import DocumentKind
 from nwdes.destinations import resolve as resolve_destinations
 
 

@@ -37,16 +37,16 @@ def _git(root, arguments):
     return Built(result.stdout)
 
 
-def _manifest(root, name):
-    """The committed manifest at HEAD, or None when HEAD does not commit it."""
+def _committed(root, name):
+    """The committed blob at HEAD for one path, or None when HEAD does not commit it."""
     listed = _git(root, ("ls-tree", "-z", "HEAD", "--", name))
     if isinstance(listed, Refused):
         return listed
     if not listed.value:
         return Built(None)
     found = _git(root, ("cat-file", "blob", "HEAD:" + name))
-    if isinstance(found, Refused) and name == packets.RUST_MANIFEST:
-        return checked(None, (packets.cargo_manifest_unreadable(),))
+    if isinstance(found, Refused) and name == packets.DECLARATION_FILE:
+        return checked(None, (packets.declaration_unreadable(),))
     return found
 
 
@@ -59,11 +59,6 @@ def _path_flag():
 
 def _no_follow():
     return getattr(os, "O_NOFOLLOW", 0) | _path_flag()
-
-
-def _executable_suffix():
-    """The suffix a built executable carries on this platform, read at call time."""
-    return ".exe" if os.name == "nt" else ""
 
 
 def _descriptor_walk_supported():
@@ -82,10 +77,13 @@ _BY_ERRNO = {
 
 def _entry(parent, name):
     """(status, descriptor) for one name under an open directory: no symlink is followed, and the
-    descriptor refers to the entry itself. status is ok, symlink, or the errno-derived status."""
+    descriptor refers to the entry itself. Without O_PATH the open needs read permission, so an EACCES
+    there is not_readable; with O_PATH an EACCES means the directory cannot be searched (no_access)."""
     try:
         descriptor = os.open(name, _no_follow(), dir_fd=parent)
     except OSError as error:
+        if error.errno == errno.EACCES and not hasattr(os, "O_PATH"):
+            return "not_readable", None
         return _BY_ERRNO.get(error.errno, "unreadable"), None
     if stat.S_ISLNK(os.fstat(descriptor).st_mode):
         os.close(descriptor)
@@ -115,61 +113,28 @@ def _open_by_descriptors(root, relative):
         if descriptor is None:
             return status, None
         mode = os.fstat(descriptor).st_mode
-        if stat.S_ISREG(mode) and mode & 0o111:
+        if not stat.S_ISREG(mode):
+            os.close(descriptor)
+            return "missing", None
+        if mode & 0o111:
             return "ok", descriptor
         os.close(descriptor)
-        return "missing", None
+        return "not_executable", None
     finally:
         for descriptor in opened:
             os.close(descriptor)
 
 
-def _is_link(info):
-    """A symbolic link, or a Windows reparse point (a junction or another link)."""
-    reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
-    return stat.S_ISLNK(info.st_mode) or bool(
-        getattr(info, "st_file_attributes", 0) & reparse
-    )
-
-
-def _walk_declared(root, relative):
-    """(status, path) where no descriptor is available: each prefix of the path is lstat-ed and a
-    symbolic link or reparse point is refused. The launch is then by path, so this platform does not
-    pin the file a run executes; a replacement between the check and the launch is not detected."""
-    parts = relative.split("/")
-    info = None
-    for depth in range(1, len(parts) + 1):
-        path = os.path.join(root, *parts[:depth])
-        try:
-            info = os.lstat(path)
-        except OSError as error:
-            return _BY_ERRNO.get(error.errno, "unreadable"), None
-        if _is_link(info):
-            return ("symlink_directory" if depth < len(parts) else "symlink"), None
-        if depth < len(parts) and not stat.S_ISDIR(info.st_mode):
-            return "not_directory", None
-    if not stat.S_ISREG(info.st_mode) or (os.name != "nt" and not info.st_mode & 0o111):
-        return "missing", None
-    return "ok", path
-
-
 def _open_declared(root, relative):
-    """(status, handle) for a declared executable. The handle is a descriptor where the platform can
-    walk by descriptor, otherwise the checked path; it is None unless the status is ok.
+    """(status, descriptor) for a declared executable. The descriptor is the file a run starts.
 
-    status is ok, missing (absent, or not a regular executable), symlink, not_directory, no_access (a
-    directory on the path cannot be searched by this user) or unreadable (any other error).
+    A platform without descriptor-relative no-follow opens cannot pin the file it checks, so it is
+    refused with no_descriptor_walk and no handle: the examiner never checks a path by name and then
+    runs it by name. status is ok or the cause of the refusal; the handle is None unless ok.
     """
     if not _descriptor_walk_supported():
-        return _walk_declared(root, relative)
-    status, handle = _open_by_descriptors(root, relative)
-    if status == "no_access" and not hasattr(os, "O_PATH"):
-        # Without O_PATH the descriptor open needs read permission on the file, which an execute-only
-        # executable lacks. The lstat walk needs search permission only, as the system needs to run it.
-        walked, path = _walk_declared(root, relative)
-        if walked == "ok":
-            return walked, path
-    return status, handle
+        return "no_descriptor_walk", None
+    return _open_by_descriptors(root, relative)
 
 
 def _declared_status(root, relative):
@@ -193,7 +158,7 @@ def projection(root):
         files[name] = content.value
     manifests = {}
     for name in packets.MANIFESTS:
-        found = _manifest(root, name)
+        found = _committed(root, name)
         if isinstance(found, Refused):
             return found
         manifests[name] = found.value
@@ -203,7 +168,7 @@ def projection(root):
     common = _git(root, ("rev-parse", "--path-format=absolute", "--git-common-dir"))
     if isinstance(common, Refused):
         return common
-    declared = packets.declare(manifests, _executable_suffix())
+    declared = packets.declare(manifests)
     executables = {
         path: _declared_status(root, path) for path in packets.required_paths(declared)
     }
@@ -531,22 +496,18 @@ def run(root, workspace, action, arguments):
 
 
 def _run_declared(root, plan):
-    """Run the declared executable that was checked, passing its exit and streams through.
-
-    Where a descriptor was checked, the program is started through /dev/fd/N, the very file that was
-    checked; otherwise it is started by the checked path.
-    """
+    """Run the declared executable that was checked, passing its exit and streams through. The program
+    is started through /dev/fd/N, the very file the descriptor walk checked."""
     status, handle = _open_declared(root, plan.executable)
     if handle is None:
         return checked(
             None, (packets.executable_defect(plan.executable, status, plan.remedy),)
         )
-    by_descriptor = isinstance(handle, int)
     try:
         result = subprocess.run(
             plan.argv,
-            executable=f"/dev/fd/{handle}" if by_descriptor else handle,
-            pass_fds=(handle,) if by_descriptor else (),
+            executable=f"/dev/fd/{handle}",
+            pass_fds=(handle,),
             cwd=plan.cwd,
             env=dict(plan.environment),
             capture_output=True,
@@ -558,8 +519,7 @@ def _run_declared(root, plan):
             (packets.executable_launch_failure(plan.executable, error, plan.remedy),),
         )
     finally:
-        if by_descriptor:
-            os.close(handle)
+        os.close(handle)
     sys.stdout.buffer.write(packets.mask_candidate(result.stdout, plan.candidate))
     sys.stderr.buffer.write(packets.mask_candidate(result.stderr, plan.candidate))
     return result.returncode

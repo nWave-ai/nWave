@@ -103,3 +103,29 @@ def collect(
         tuple(r.value for r in results if isinstance(r, Built)),
         (d for r in results if isinstance(r, Refused) for d in r.defects),
     )
+
+
+LINE_BOUNDARIES = "\x00\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
+
+
+def local_path(path: str) -> bool:
+    return (
+        isinstance(path, str)
+        and bool(path)
+        and path == path.strip()
+        and not path.startswith(("/", "\\"))
+        and "\\" not in path
+        and not any(character in path for character in LINE_BOUNDARIES)
+        and all(segment not in ("", ".", "..") for segment in path.split("/"))
+    )
+
+
+class DuplicateKey(ValueError):
+    pass
+
+
+def strict_object(pairs):
+    names = tuple(name for name, _ in pairs)
+    if len(set(names)) != len(names):
+        raise DuplicateKey("Duplicate JSON key")
+    return dict(pairs)

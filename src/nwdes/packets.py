@@ -5,6 +5,7 @@ import json
 import posixpath
 import re
 import shlex
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -18,7 +19,7 @@ except ModuleNotFoundError:
 
 from nwdes import documents, prose
 from nwdes import handoff as model
-from nwdes.contracts import Built, Defect, Refused, checked
+from nwdes.contracts import Built, Defect, Refused, checked, strict_object
 
 
 class PacketKind(Enum):
@@ -608,11 +609,6 @@ def render_review(packet: ReviewPacket):
     )
 
 
-class ExaminationKind(Enum):
-    PYTHON_SCRIPTS = "python-scripts"
-    RUST_BINARY = "rust-binary"
-
-
 class Launch(Enum):
     """How a probed command starts: an interpreter runs a module entry, or the declared file itself."""
 
@@ -621,21 +617,29 @@ class Launch(Enum):
 
 
 PYTHON_MANIFEST = "pyproject.toml"
-RUST_MANIFEST = "Cargo.toml"
-# in precedence order: the first committed manifest decides the declaration
-MANIFESTS = (PYTHON_MANIFEST, RUST_MANIFEST)
-RUST_BINARY_DIRECTORY = "target/release"
-RUST_BUILD = "cargo build --release"
-_RUST_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+# the neutral declaration of public commands, read only when HEAD commits no pyproject.toml
+DECLARATION_FILE = ".nwave/examine.json"
+# in precedence order: the first committed source decides the declaration
+MANIFESTS = (PYTHON_MANIFEST, DECLARATION_FILE)
+_COMMAND_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+_DECLARATION_KEYS = frozenset({"commands", "build"})
+_COMMAND_KEYS = frozenset({"name", "path"})
+
+
+@dataclass(frozen=True)
+class DeclaredCommand:
+    """One public command a declaration names, with what runs for it: MODULE:FUNCTION or a path."""
+
+    name: str
+    target: str
 
 
 @dataclass(frozen=True)
 class Declaration:
     """What a candidate declares about its examination; required paths must be executables."""
 
-    kind: ExaminationKind
     launch: Launch
-    commands: tuple[tuple[str, str], ...]
+    commands: tuple[DeclaredCommand, ...]
     package_parents: tuple[str, ...] | None = None
     required: tuple[str, ...] = ()
     build: str = ""
@@ -644,9 +648,8 @@ class Declaration:
 @dataclass(frozen=True)
 class PublicProjection:
     files: tuple[tuple[str, bytes], ...]
-    kind: ExaminationKind
     launch: Launch
-    commands: tuple[tuple[str, str], ...]
+    commands: tuple[DeclaredCommand, ...]
     package_parents: tuple[str, ...] | None
     build: str
 
@@ -770,86 +773,180 @@ def _python_declaration(manifest):
         )
     return Built(
         Declaration(
-            ExaminationKind.PYTHON_SCRIPTS,
             Launch.INTERPRETER,
-            tuple(scripts.items()),
+            tuple(DeclaredCommand(name, target) for name, target in scripts.items()),
             parents or None,
         )
     )
 
 
-def _rust_declaration(manifest, suffix):
-    """The Rust declaration, or None when the manifest declares no usable binary."""
-    if manifest is None:
-        return None
+def _declaration_defect(why):
+    return Defect(
+        f"InputUnreadable: {DECLARATION_FILE} at HEAD",
+        why,
+        f"Commit {DECLARATION_FILE} as a JSON object: a commands list of objects, each with the name "
+        "of a public command and the relative path of its built executable, and optionally build with "
+        "the text that builds them; then rebuild the examine prompt.",
+    )
+
+
+def declared_path_problem(path):
+    """Why a declared path is not admitted, or None. The rule follows the host's path semantics. On POSIX
+    only '/' separates segments and only a leading '/' is absolute, so a backslash, a colon or a drive-like
+    prefix is an ordinary in-root name and is admitted. On Windows '\\' also separates segments, a leading
+    backslash is UNC or device, and a leading drive letter and colon is refused. On every host, refused: an
+    empty path; a path no UTF-8 file name can carry (an unpaired surrogate); a leading separator (absolute);
+    a NUL or control character; and a segment that is empty, '.' or '..'."""
+    if path == "":
+        return "is empty, so it names no file"
     try:
-        data = tomllib.loads(manifest.decode("utf-8"))
-    except (ValueError, UnicodeError):
-        return None
-    package = data.get("package")
-    if not isinstance(package, dict):
-        return None
-    metadata = package.get("metadata")
-    nwdes = metadata.get("nwdes") if isinstance(metadata, dict) else None
-    if (
-        not isinstance(nwdes, dict)
-        or nwdes.get("kind") != ExaminationKind.RUST_BINARY.value
+        path.encode("utf-8")
+    except UnicodeEncodeError:
+        return "is not valid UTF-8 text: it holds an unpaired surrogate, so no file name can carry it"
+    windows = sys.platform == "win32"
+    separators = "/\\" if windows else "/"
+    if path.startswith(tuple(separators)):
+        return (
+            "starts with a slash or a backslash, so it is absolute, a UNC or a device path"
+            if windows
+            else "starts with a slash, so it is absolute"
+        )
+    if windows and re.match(r"[A-Za-z]:", path):
+        return (
+            "starts with a drive letter and a colon, so it names a drive-relative file"
+        )
+    if any(ord(character) < 32 or ord(character) == 127 for character in path):
+        return "contains a NUL or control character"
+    if any(
+        segment in ("", ".", "..")
+        for segment in re.split(f"[{re.escape(separators)}]", path)
     ):
-        return None
-    binaries = data.get("bin")
-    entries = binaries if binaries is not None else [{"name": package.get("name")}]
-    if not isinstance(entries, list) or not all(isinstance(e, dict) for e in entries):
-        return None
-    raw = tuple(entry.get("name") for entry in entries)
-    if not all(isinstance(name, str) and _RUST_NAME.fullmatch(name) for name in raw):
-        return None
-    names = tuple(dict.fromkeys(raw))
-    # the built file carries the platform suffix; a name already given with it is taken as it is
-    files = tuple(name if name.endswith(suffix) else name + suffix for name in names)
-    targets = tuple(posixpath.join(RUST_BINARY_DIRECTORY, file) for file in files)
-    return Declaration(
-        ExaminationKind.RUST_BINARY,
-        Launch.DECLARED_EXECUTABLE,
-        tuple(zip(names, targets, strict=True)),
-        None,
-        targets,
-        RUST_BUILD,
+        return "has an empty, '.' or '..' segment, which can leave the candidate"
+    return None
+
+
+def _command_problem(entry, earlier):
+    """Why one command entry is not admitted, or None when its name and path are plain."""
+    if not isinstance(entry, dict) or set(entry) != _COMMAND_KEYS:
+        return "each command is an object with exactly the keys name and path"
+    name, path = entry["name"], entry["path"]
+    if not isinstance(name, str) or not _COMMAND_NAME.fullmatch(name):
+        return (
+            f"command name {name!r} is not a plain word: it starts with a letter or digit, "
+            "then holds letters, digits, '-' or '_'"
+        )
+    if name in earlier:
+        return f"command {name} is declared more than once"
+    if not isinstance(path, str):
+        return f"the path of command {name} is not a relative path inside the candidate"
+    problem = declared_path_problem(path)
+    if problem is not None:
+        return f"the path {path!r} of command {name} {problem}"
+    return None
+
+
+def _first_problem(entries):
+    names = ()
+    for entry in entries:
+        problem = _command_problem(entry, names)
+        if problem is not None:
+            return problem
+        names = (*names, entry["name"])
+    return None
+
+
+def _neutral_declaration(text):
+    """The declaration HEAD commits in DECLARATION_FILE, or its first defect."""
+    try:
+        raw = json.loads(text.decode("utf-8"), object_pairs_hook=strict_object)
+    except (ValueError, UnicodeError) as error:
+        return checked(None, (_declaration_defect(f"it is not valid JSON ({error})"),))
+    if not isinstance(raw, dict):
+        return checked(None, (_declaration_defect("it is not a JSON object"),))
+    unknown = sorted(set(raw) - _DECLARATION_KEYS)
+    if unknown:
+        return checked(
+            None,
+            (
+                _declaration_defect(
+                    "it holds keys the examiner does not read: " + ", ".join(unknown)
+                ),
+            ),
+        )
+    entries = raw.get("commands")
+    if not isinstance(entries, list) or not entries:
+        return checked(
+            None,
+            (
+                _declaration_defect(
+                    "commands must be a non-empty list of command objects"
+                ),
+            ),
+        )
+    build = raw.get("build", "")
+    if not isinstance(build, str):
+        return checked(
+            None,
+            (
+                _declaration_defect(
+                    "build must be the text that builds the executables"
+                ),
+            ),
+        )
+    problem = _first_problem(entries)
+    if problem is not None:
+        return checked(None, (_declaration_defect(problem),))
+    return Built(
+        Declaration(
+            Launch.DECLARED_EXECUTABLE,
+            tuple(DeclaredCommand(entry["name"], entry["path"]) for entry in entries),
+            None,
+            tuple(entry["path"] for entry in entries),
+            build,
+        )
     )
 
 
 def _no_declaration():
     return Defect(
         "InputUnreadable: no examination declaration at HEAD",
-        "examining a candidate needs its kind and its public commands, and HEAD declares "
-        "neither a Python package with a readable pyproject.toml nor a Rust binary with a "
-        "readable Cargo.toml",
-        "Commit one declaration and rebuild the examine prompt: for a Python package, "
-        "pyproject.toml with a [project.scripts] table of MODULE:FUNCTION values; for a Rust "
-        'binary, Cargo.toml with [package] name and [package.metadata.nwdes] kind = "rust-binary" '
-        "(its [[bin]] names, or the package name when there is none, of letters, digits, '-' "
-        "and '_').",
+        "examining a candidate needs its public commands and the built executable each one runs, "
+        "and HEAD commits no declaration of them",
+        f"Commit {DECLARATION_FILE} naming each public command and the relative path of its built "
+        "executable, then rebuild the examine prompt.",
     )
+
+
+def declaration_unreadable():
+    return Defect(
+        f"InputUnreadable: {DECLARATION_FILE} at HEAD",
+        f"HEAD commits {DECLARATION_FILE} as something other than a regular file: a directory or a submodule",
+        f"Commit {DECLARATION_FILE} as a regular JSON file naming each public command and the relative "
+        "path of its built executable, then rebuild the examine prompt.",
+    )
+
+
+def _rebuild(build, where="the candidate checkout"):
+    """How a refusal asks for the build: the candidate's declared build text, or a plain instruction."""
+    if build:
+        return f"run {build} in {where}"
+    return f"build the executable again in {where}"
 
 
 def _missing_executable(path, build):
     return Defect(
         "InputUnreadable: " + path,
-        "the declared command runs the executable at this path, and no regular executable "
-        "file is there",
-        f"Remove any file or directory at {path}, run cargo clean in the candidate checkout, then run "
-        f"{build} in the candidate checkout so that {path} is a regular executable file, then rebuild "
-        "the examine prompt. Where a Cargo target directory is configured elsewhere, run cargo clean "
-        "and the build with CARGO_TARGET_DIR set to that directory, then copy the built executable to "
-        f"{path}, creating its directories, then rebuild the examine prompt.",
+        "the declared command runs the executable at this path, and no regular executable file is there",
+        f"Remove anything at {path} that is not a regular file, then {_rebuild(build)} so that {path} "
+        "is a regular executable file, then rebuild the examine prompt.",
     )
 
 
-def cargo_manifest_unreadable():
+def _not_executable(path, build):
     return Defect(
-        "InputUnreadable: Cargo.toml at HEAD",
-        "HEAD commits Cargo.toml as something other than a regular file: a directory or a submodule",
-        "Commit Cargo.toml as a regular file declaring the binary with [package.metadata.nwdes] "
-        'kind = "rust-binary", then rebuild the examine prompt.',
+        "InputUnreadable: " + path,
+        "the declared command runs the file at this path, and that file has no execute permission",
+        f"Run chmod +x -- {shlex.quote(path)} in the candidate checkout, then rebuild the examine prompt.",
     )
 
 
@@ -858,8 +955,8 @@ def _symlink_executable(path, build):
         "InputUnreadable: " + path,
         "the declared path ends in a symlink, so the examiner would run a file other than the built "
         "executable at this path",
-        f"Remove the symlink at {path} and run {build} in the candidate checkout so that {path} is "
-        "the built executable as a regular file, then rebuild the examine prompt.",
+        f"Remove the symlink at {path} and {_rebuild(build)} so that {path} is the built executable "
+        "as a regular file, then rebuild the examine prompt.",
     )
 
 
@@ -869,8 +966,8 @@ def _symlink_directory_executable(path, build):
         "a directory on the declared path is a symlink, so the built executable would be written "
         "and run through a link",
         f"Remove the symlinked directory on the path to {path} (the symlink, not a real directory) "
-        f"and run {build} in the candidate checkout, which creates real directories and the built "
-        f"executable at {path}, then rebuild the examine prompt.",
+        f"and {_rebuild(build)}, which creates real directories and the built executable at {path}, "
+        "then rebuild the examine prompt.",
     )
 
 
@@ -878,9 +975,8 @@ def _not_directory_executable(path, build):
     return Defect(
         "InputUnreadable: " + path,
         "a component of the declared path is not a directory: it is a regular file where a directory is needed",
-        f"Remove the file where a directory is needed on the path to {path} and run {build} in the "
-        f"candidate checkout, which creates the directories and the built executable at {path}, "
-        "then rebuild the examine prompt.",
+        f"Remove the file where a directory is needed on the path to {path} and {_rebuild(build)}, which "
+        f"creates the directories and the built executable at {path}, then rebuild the examine prompt.",
     )
 
 
@@ -898,17 +994,41 @@ def _unreadable_executable(path, build):
     return Defect(
         "InputUnreadable: " + path,
         "the system cannot open the declared path for a reason the examiner does not name",
-        f"Shorten the declared binary name if its file name is longer than the file system allows; "
-        f"otherwise fix the file-system error on the path to {path}; then place the built executable "
-        f"there as {build} leaves it and rebuild the examine prompt.",
+        f"Shorten the declared file name if the file system refuses its length; otherwise fix the "
+        f"file-system error on the path to {path}; then {_rebuild(build)} so that {path} is the built "
+        "executable, then rebuild the examine prompt.",
+    )
+
+
+def _no_descriptor_walk(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "this platform cannot open each name of the declared path without following a symbolic link, "
+        "so the examiner cannot pin the file it would run",
+        "Examine the candidate on a platform with descriptor-relative no-follow opens (Linux or macOS): "
+        "run the examine prompt there, then probe and read there.",
+    )
+
+
+def _not_readable(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "this platform has no O_PATH, so the examiner opens each directory and the file on the declared "
+        "path for reading, and this user cannot read one of them",
+        f"Give the user who runs the examine prompt read permission on the file at {path} and read and "
+        "search permission on every directory on the path (chmod u+rx on each directory, chmod u+r on "
+        "the file), then rebuild the examine prompt.",
     )
 
 
 _EXECUTABLE_REFUSALS = {
+    "not_executable": _not_executable,
     "symlink": _symlink_executable,
     "symlink_directory": _symlink_directory_executable,
     "not_directory": _not_directory_executable,
     "no_access": _no_access_executable,
+    "not_readable": _not_readable,
+    "no_descriptor_walk": _no_descriptor_walk,
     "unreadable": _unreadable_executable,
 }
 
@@ -932,14 +1052,14 @@ def executable_launch_failure(path, error, build):
             f"the system refuses to run the file ({reason}); the file system holding the checkout "
             "may be mounted noexec, and rebuilding in the same checkout cannot change that",
             "Copy the candidate checkout with cp -a CHECKOUT NEW_LOCATION to a filesystem mounted "
-            f"with exec, run {build} in the copy, then examine the copy.",
+            f"with exec, {_rebuild(build, 'the copy')}, then examine the copy.",
         )
     if error.errno == errno.ENOEXEC:
         return Defect(
             "InputUnreadable: " + path,
             f"the file at {path} is not a program the system can run ({reason})",
-            f"Remove the file at {path}, then run {build} in the candidate checkout so that {path} is "
-            "the built executable, then rebuild the examine prompt.",
+            f"Remove the file at {path}, then {_rebuild(build)} so that {path} is the built executable, "
+            "then rebuild the examine prompt.",
         )
     return Defect(
         "InputUnreadable: " + path,
@@ -949,14 +1069,15 @@ def executable_launch_failure(path, error, build):
     )
 
 
-def declare(manifests, suffix=""):
-    """One declaration from the manifests committed at HEAD: a Python package, a Rust binary, or a refusal."""
+def declare(manifests):
+    """One declaration from what HEAD commits: the Python rule where pyproject.toml is committed,
+    else the neutral declaration file, else a refusal."""
     python = manifests.get(PYTHON_MANIFEST)
     if python is not None:
         return _python_declaration(python)
-    rust = _rust_declaration(manifests.get(RUST_MANIFEST), suffix)
-    if rust is not None:
-        return Built(rust)
+    declared = manifests.get(DECLARATION_FILE)
+    if declared is not None:
+        return _neutral_declaration(declared)
     return checked(None, (_no_declaration(),))
 
 
@@ -983,7 +1104,6 @@ def public_projection(listing, blobs, declared, candidate, executables):
     return Built(
         PublicProjection(
             tuple((name, blobs[name]) for name, _ in entries),
-            value.kind,
             value.launch,
             value.commands,
             value.package_parents,
@@ -1117,7 +1237,7 @@ def prepare_probe(
         )
         or not _under(resolved, workspace.path)
     )
-    commands = dict(projection.commands)
+    commands = {command.name: command.target for command in projection.commands}
     if not argv or argv[0] not in commands or bad:
         return checked(
             None,
