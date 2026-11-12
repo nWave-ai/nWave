@@ -129,7 +129,7 @@ These are the canonical bands in `nw-jtbd-opportunity-scoring`; DISCOVER's >8 el
 
 Produce `docs/feature/{feature-id}/diverge/job-analysis.md` with:
 
-1. **Raw request** — verbatim feature/problem statement received
+1. **Raw request** — pointer to the host-written `request.md` in the same folder, or a copy of its blocks with their `requester-verbatim` / `host-summary` marks unchanged; never record your own paraphrase as verbatim
 2. **Job extraction** — 5 Why chain from tactical to physical/strategic level
 3. **Job statements** — functional (required) + emotional + social (if identifiable)
 4. **Disruption check** — Is there a higher-level job this entire job is serving?

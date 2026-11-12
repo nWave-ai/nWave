@@ -17,6 +17,7 @@ import re
 import shutil
 from collections import Counter
 from pathlib import Path
+from typing import NamedTuple
 
 from scripts.install.plugins.base import (
     InstallationPlugin,
@@ -30,9 +31,11 @@ from scripts.install.plugins.opencode_common import (
 from scripts.shared.agent_catalog import load_public_agents
 from scripts.shared.platform_contracts import OPENCODE_SKILL_FORBIDDEN_FIELDS
 from scripts.shared.skill_distribution import (
+    SKILL_COPY_IGNORED,
     SkillEntry,
     enumerate_skills,
     filter_public_skills,
+    list_copy_files,
 )
 from scripts.shared.skill_path_rewrite import rewrite_host_paths
 
@@ -180,15 +183,20 @@ def _strip_forbidden_fields(content: str) -> str:
 def _write_manifest(
     target_dir: Path,
     installed_skill_names: list[str],
+    support_files: dict[str, list[str]],
 ) -> None:
-    """Write the manifest file tracking nWave-installed skills.
+    """Write the manifest tracking nWave-installed skills and their support files.
 
     Args:
         target_dir: OpenCode skills directory
         installed_skill_names: List of installed skill directory names
+        support_files: Per installed skill, its support files relative to its folder
     """
     manifest = {
         "installed_skills": sorted(installed_skill_names),
+        "support_files": {
+            name: sorted(support_files[name]) for name in sorted(support_files)
+        },
         "version": "1.0",
     }
     manifest_path = target_dir / _MANIFEST_FILENAME
@@ -208,6 +216,89 @@ def _read_manifest(target_dir: Path) -> dict | None:
     if not manifest_path.exists():
         return None
     return json.loads(manifest_path.read_text(encoding="utf-8"))
+
+
+class _PlannedSkill(NamedTuple):
+    """One skill that install writes: its source entry and its OpenCode name."""
+
+    entry: SkillEntry
+    target_name: str
+
+
+def _plan_skill_targets(
+    context: InstallContext, skills_source: Path
+) -> tuple[list[_PlannedSkill], list[str]]:
+    """Return the public skills to install with their target names, and the skipped.
+
+    Install and verify share this plan so both see the same skills and names.
+
+    Args:
+        context: InstallContext with project_root and dev_mode
+        skills_source: Directory holding the nw-* skill folders
+
+    Returns:
+        Tuple of (planned skills, skipped descriptions for invalid names)
+    """
+    public_agents = (
+        set()
+        if context.dev_mode
+        else load_public_agents(context.project_root / "nWave")
+    )
+
+    # Build ownership map for flat namespace filtering (ADR-003)
+    from scripts.shared.agent_catalog import build_ownership_map
+
+    agents_dir = context.project_root / "nWave" / "agents"
+    ownership_map = build_ownership_map(agents_dir) if agents_dir.exists() else {}
+
+    # User-invocable command skills (e.g. the wave skills) are public
+    # even without an owning agent; the Claude and Codex call sites
+    # resolve them the same way.
+    from scripts.shared.agent_catalog import detect_command_skills
+
+    command_skills = set() if context.dev_mode else detect_command_skills(skills_source)
+
+    entries = enumerate_skills(skills_source)
+    entries = filter_public_skills(
+        entries, public_agents, ownership_map, command_skills
+    )
+    duplicate_names = _detect_duplicate_names(entries)
+
+    planned: list[_PlannedSkill] = []
+    skipped: list[str] = []
+    for entry in entries:
+        # For hierarchical layout, derive agent name from parent dir
+        agent_name = entry.source_path.parent.name
+        resolved_name = _resolve_target_name(agent_name, entry.name, duplicate_names)
+        if not _validate_skill_name(resolved_name):
+            skipped.append(f"{entry.name} -> {resolved_name} (invalid OpenCode name)")
+            continue
+        planned.append(_PlannedSkill(entry, resolved_name))
+    return planned, skipped
+
+
+def _missing_support_files(
+    target_dir: Path,
+    skill_name: str,
+    inventory: dict[str, list[str]],
+) -> list[str]:
+    """Return one error per recorded support file of a skill absent from the install.
+
+    The inventory is what install wrote to the manifest; SKILL.md is checked
+    separately through the manifest's installed_skills list.
+    """
+    if skill_name not in inventory:
+        return [
+            f"{skill_name} has no support-file record in the manifest: re-run the "
+            "OpenCode installer to record it"
+        ]
+    installed_dir = target_dir / skill_name
+    return [
+        f"{skill_name}/{relative} not found: the installed skill is incomplete; "
+        "re-run the OpenCode installer to copy the whole folder"
+        for relative in inventory[skill_name]
+        if not (installed_dir / relative).is_file()
+    ]
 
 
 class OpenCodeSkillsPlugin(InstallationPlugin):
@@ -267,64 +358,33 @@ class OpenCodeSkillsPlugin(InstallationPlugin):
                     "OpenCode skill(s) before rewrite"
                 )
 
-            public_agents = (
-                set()
-                if context.dev_mode
-                else load_public_agents(context.project_root / "nWave")
-            )
-
-            # Build ownership map for flat namespace filtering (ADR-003)
-            from scripts.shared.agent_catalog import build_ownership_map
-
-            agents_dir = context.project_root / "nWave" / "agents"
-            ownership_map = (
-                build_ownership_map(agents_dir) if agents_dir.exists() else {}
-            )
-
-            # User-invocable command skills (e.g. the wave skills) are public
-            # even without an owning agent; the Claude and Codex call sites
-            # resolve them the same way.
-            from scripts.shared.agent_catalog import detect_command_skills
-
-            command_skills = (
-                set() if context.dev_mode else detect_command_skills(skills_source)
-            )
-
-            entries = enumerate_skills(skills_source)
-            entries = filter_public_skills(
-                entries, public_agents, ownership_map, command_skills
-            )
-
-            duplicate_names = _detect_duplicate_names(entries)
+            planned, skipped = _plan_skill_targets(context, skills_source)
 
             installed_names = []
             installed_files = []
-            skipped = []
+            support_files: dict[str, list[str]] = {}
 
-            for entry in entries:
-                # For hierarchical layout, derive agent name from parent dir
-                agent_name = entry.source_path.parent.name
-                resolved_name = _resolve_target_name(
-                    agent_name, entry.name, duplicate_names
-                )
-
-                if not _validate_skill_name(resolved_name):
-                    skipped.append(
-                        f"{entry.name} -> {resolved_name} (invalid OpenCode name)"
-                    )
-                    continue
+            for skill in planned:
+                entry = skill.entry
+                resolved_name = skill.target_name
 
                 skill_target_dir = target_dir / resolved_name
                 if skill_target_dir.exists():
                     shutil.rmtree(skill_target_dir)
-                skill_target_dir.mkdir(parents=True)
-
-                # Read source: for flat layout, source_path is a directory
-                target_file = skill_target_dir / "SKILL.md"
                 if entry.source_path.is_dir():
+                    # Whole folder: scripts and references travel with SKILL.md.
+                    shutil.copytree(
+                        entry.source_path,
+                        skill_target_dir,
+                        ignore=shutil.ignore_patterns(*SKILL_COPY_IGNORED),
+                    )
                     source_file = entry.source_path / "SKILL.md"
                 else:
+                    skill_target_dir.mkdir(parents=True)
                     source_file = entry.source_path
+
+                # Only SKILL.md is rewritten; support files keep their text.
+                target_file = skill_target_dir / "SKILL.md"
                 content = source_file.read_text(encoding="utf-8")
                 content = _strip_forbidden_fields(content)
                 if resolved_name != entry.name:
@@ -334,8 +394,16 @@ class OpenCodeSkillsPlugin(InstallationPlugin):
 
                 installed_names.append(resolved_name)
                 installed_files.append(target_file)
+                if entry.source_path.is_dir():
+                    support_files[resolved_name] = [
+                        relative.as_posix()
+                        for relative in list_copy_files(entry.source_path)
+                        if relative != Path("SKILL.md")
+                    ]
+                else:
+                    support_files[resolved_name] = []
 
-            _write_manifest(target_dir, installed_names)
+            _write_manifest(target_dir, installed_names, support_files)
 
             if skipped:
                 for skip_msg in skipped:
@@ -473,6 +541,19 @@ class OpenCodeSkillsPlugin(InstallationPlugin):
                 else:
                     verified_count += 1
 
+            # Support files come from the inventory recorded at install time, so the
+            # check holds even when the source tree is gone.
+            if "support_files" not in manifest:
+                missing_skills.append(
+                    "manifest has no support_files record: re-run the OpenCode "
+                    "installer to record the installed support files"
+                )
+            inventory = manifest.get("support_files", {})
+            for skill_name in installed_skills:
+                missing_skills.extend(
+                    _missing_support_files(target_dir, skill_name, inventory)
+                )
+
             if missing_skills:
                 context.logger.error(
                     f"  \u274c OpenCode skills verification failed: "
@@ -483,7 +564,7 @@ class OpenCodeSkillsPlugin(InstallationPlugin):
                     plugin_name=self.name,
                     message=(
                         f"OpenCode skills verification failed: "
-                        f"{len(missing_skills)} skills missing SKILL.md"
+                        f"{len(missing_skills)} installed file(s) missing"
                     ),
                     errors=missing_skills,
                 )

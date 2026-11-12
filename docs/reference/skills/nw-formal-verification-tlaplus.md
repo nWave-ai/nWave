@@ -1,6 +1,6 @@
 # nw-formal-verification-tlaplus
 
-TLA+ and PlusCal for specifying distributed system invariants. Decision heuristics for when formal verification adds value, key patterns, state explosion management, and alternatives comparison.
+Load when writing a Quint or TLA+/PlusCal model to get runnable syntax, check commands and state-space limits; decision rules are in nw-solution-architect-formal-verification.
 
 **Used by:** [nw-solution-architect](../agents/nw-solution-architect.md)
 

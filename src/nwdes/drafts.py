@@ -488,6 +488,8 @@ def _scalar(spec):
 
 
 def _missing_observation(values):
+    if values.get("verdict") == "not_examined":
+        return ()
     return (h.uncited_verdict(values.get("expectation")),)
 
 

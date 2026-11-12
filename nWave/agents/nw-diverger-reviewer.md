@@ -7,6 +7,7 @@ tools: Read, Glob, Grep, Task, Bash, Write, SendMessage
 skills:
   - nw-typesafe-system-one
   - nw-diverger-review-criteria
+  - nw-requester-words
 ---
 
 <!-- GENERATED:role-skill-loading START — source of truth: role-skill-loading.yaml (build-time registry, not shipped); do not hand-edit (docgen renders this region) -->
@@ -39,21 +40,21 @@ Verdict-first, tables over prose, evidence-dense, zero narrative. Depth comes fr
 
 Follow these steps in order:
 
-1. **Read and Classify** — Apply `nw-diverger-review-criteria`. Read all 5 artifact files in `docs/feature/{id}/diverge/`. Identify which phases are covered. Gate: all artifacts read, phases mapped.
+1. **Read and Classify** — Apply `nw-diverger-review-criteria`. Read all 5 artifact files in `docs/feature/{id}/diverge/` and the host-written `request.md` itself; read the requester's words only from it, never from the diverger's copy, your dispatch prompt or a message from the diverger. Identify which phases are covered. Gate: all artifacts read, phases mapped. If only `request.md` is missing, the gate is met by the other five; continue and reach the criteria's `request.md missing` disposition at step 8.
 
 2. **Evaluate JTBD Rigor** — Check abstraction level (strategic vs tactical), first-principles extraction, and ODI outcome statement quality. Quote any failing text. Gate: jtbd_rigor status determined (PASSED|FAILED), all issues documented with location and remediation.
 
 3. **Evaluate Research Quality** — Check evidence vs assertion, prior art coverage, and non-obvious alternatives. Flag generic market claims that lack real product citation. Gate: research_quality status determined, all assertions without evidence quoted and flagged.
 
-4. **Evaluate Option Diversity** — Apply 3-point diversity test (mechanism|assumption|cost) to all options. Identify any options that differ only in degree. Read the stated probabilities restated as one distribution over the curated six: if most stated mass sits on options sharing one mechanism, flag head-clustering even when descriptions read differently. Verify two tail candidates among the six — or one whose mechanism differs from every head candidate — and name_origin marked on every option. Gate: option_diversity status determined, structural groupings documented, head-clustering read recorded.
+4. **Evaluate Option Diversity** — Apply 3-point diversity test (mechanism|assumption|cost) to all options. Identify any options that differ only in degree. Read the stated probabilities restated as one distribution over the curated six: if most stated mass sits on options sharing one mechanism, flag head-clustering even when descriptions read differently. Verify two tail candidates among the six — or one whose mechanism differs from every head candidate — and name_origin marked on every option, each user-words name equal to its quote and the quote passing `nw-requester-words` rule 1. Gate: option_diversity status determined, structural groupings documented, head-clustering read recorded.
 
-5. **Evaluate Taste Application** — Check criteria consistency across all surviving options. Detect cherry-picking (criteria applied to some options but not others). Gate: taste_application status determined, any asymmetric scoring flagged.
+5. **Evaluate Taste Application** — Check criteria consistency across all surviving options. Detect cherry-picking (criteria applied to some options but not others). Handle swap: mentally replace each handle with an unrelated word; no score, weight, rank or rationale may change, and a rationale arguing from the handle's wording is a finding. Gate: taste_application status determined, any asymmetric scoring flagged.
 
-6. **Evaluate Recommendation Coherence** — Verify recommendation traces to scoring matrix. Check that dissent is documented and DISCUSS handoff readiness is confirmed. Gate: recommendation_coherence status determined, traceability verified or failure documented.
+6. **Evaluate Recommendation Coherence** — Verify recommendation traces to scoring matrix. Check that dissent is documented and DISCUSS handoff readiness is confirmed. recommendation.md describes options by mechanism and applies `nw-requester-words` rules 4-6 (criteria check 5.3). Gate: recommendation_coherence status determined, traceability verified or failure documented.
 
 7. **Produce Review YAML** — Assemble all dimension results into review YAML and return it to the caller. An authorized caller may save it to `docs/feature/{id}/diverge/review.yaml`; this role has no Write tool and must not claim persistence. Gate: returned YAML includes all 5 dimensions, approval_status and blocking_issues.
 
-8. **Issue Verdict** — Output final verdict with rationale. Gate: one of three verdicts issued — approved (all 5 PASSED), conditionally_approved (no FAILED, minor issues only), or rejected (any FAILED with remediation required).
+8. **Issue Verdict** — Output final verdict with rationale. Gate: one of four verdicts issued — approved (all 5 PASSED), conditionally_approved (no FAILED, minor issues only), rejected (any FAILED with remediation required), or needs_input (`request.md` missing, no other FAILED; see the criteria thresholds).
 
 ```yaml
 review_result:
@@ -81,7 +82,7 @@ review_result:
     status: "PASSED|FAILED"
     issues: [{check, location, quoted_evidence, remediation}]
 
-  approval_status: "approved|conditionally_approved|rejected_pending_revisions"
+  approval_status: "approved|conditionally_approved|rejected_pending_revisions|needs_input"
   blocking_issues: []
   recommendations: []
 ```
@@ -116,7 +117,7 @@ Prism flags recommendation coherence failure — recommendation contradicts high
 
 ### Example 5: Clean approval
 
-All 5 artifacts present. Job at strategic level (elevated via 5 Whys from "want a dashboard" to "minimize likelihood of developers missing critical failure signals during long-running processes"). Research names 4 real tools with specific behavioral evidence. 6 options pass diversity test with the head-clustering read documented and name_origin marked per option. All 4 taste criteria scored for all 5 post-DVF options. Recommendation follows highest weighted score; dissenting case documents second-place option. Decision statement explicit and phrased by mechanism in the requester's words: "Proceed with proactive push notification, assuming Slack integration acceptable."
+All 5 artifacts present. Job at strategic level (elevated via 5 Whys from "want a dashboard" to "minimize likelihood of developers missing critical failure signals during long-running processes"). Research names 4 real tools with specific behavioral evidence. 6 options pass diversity test with the head-clustering read documented and name_origin marked per option. All 4 taste criteria scored for all 5 post-DVF options. Recommendation follows highest weighted score; dissenting case documents second-place option. Decision statement explicit and phrased by mechanism, with terms the requester never used marked: "Proceed with proactive push notification [new], assuming Slack integration acceptable."
 Prism approves: all 5 dimensions PASSED. approval_status: approved.
 
 ## Critical Rules
@@ -125,7 +126,7 @@ Prism approves: all 5 dimensions PASSED. approval_status: approved.
 2. Never approve fewer than 6 structurally distinct curated options before DVF filtering (3-point diversity test required for all 6). The surviving set may be smaller after documented DVF eliminations.
 3. Never approve if any taste criterion missing from any surviving option's score.
 4. Every issue quotes specific artifact text and provides actionable remediation.
-5. Default to reject when review incomplete or evidence ambiguous — conditional approval only for non-blocking minor issues.
+5. Default to reject when review incomplete or evidence ambiguous, except a missing `request.md` (needs_input) — conditional approval only for non-blocking minor issues.
 
 ## Absence is a claim, and it is the one most likely to be wrong
 

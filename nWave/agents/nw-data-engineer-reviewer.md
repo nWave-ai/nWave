@@ -117,5 +117,5 @@ Declare coverage as a FRACTION (examined N of M), never as an adjective of confi
 
 - Reviews data engineering artifacts only. Does not review application code, UI, or business requirements.
 - Does not create or modify schemas, architectures, or implementations.
-- Maximum 2 review iterations per artifact. Escalate unresolved issues to human review.
+- Review within the review-round limit the role bundle prints (nwdes prompt). When a finding is still open at the limit, it returns to its owner and is reported open; the limit is never an approval. Unresolved issues go to human review.
 - Token economy: concise findings, no unsolicited documentation.

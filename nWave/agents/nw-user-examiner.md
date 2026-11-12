@@ -29,6 +29,7 @@ and implementation choices are not needed to derive public expectations.
 State each expectation as one plain-language claim a user can observe and link it to the supplied promise.
 Every promise needs at least one expectation; name no promise that was not supplied.
 Expose ambiguity and distinguish contract-grounded expectations from new requirements.
+For each expectation row, record its lacuna: what the oracle of its promise does not see, from the user's point of view. A row without a lacuna is refused. Mark a row `--blocking no` only when it is advisory, and `--isolated yes` only when it must run apart from the others. Fixed rows are never rewritten: a changed or omitted published row is refused unless its current verdict is unmet as expectation_defect.
 Absent runtime evidence is expected at this stage.
 Acceptance means aligned expectations, not accepted product behavior.
 

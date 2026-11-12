@@ -1,124 +1,51 @@
 ---
 name: nw-type-level-design
-description: Design or review evidence-preserving APIs that model invalid states, state transitions, capabilities, and trusted construction proportionately to the target language.
+description: Load when an invalid state, call or transition must be impossible to build, or a validation must carry evidence to the next operation.
 user-invocable: false
 disable-model-invocation: true
 ---
 
-# Type-Level Design and Evidence-Preserving APIs
+# Invalid states unrepresentable
 
-Use this skill when an API must represent valid states, excluded states, a phase
-transition, a capability, or evidence obtained at a trust boundary. Choose the
-smallest representation that makes ordinary misuse difficult and keeps the
-accepted call site clear.
+## Decide before writing
 
-Knowledge basis for the advanced Haskell material: Sandy Maguire, *Thinking
-with Types*.
+1. State the rule in one sentence: which state is excluded, who could build it, what harm follows. Name the admitted input, constructor, consumer and public observation.
+2. Encode only stable, local rules. Volatile policy, time, I/O, concurrency and untrusted input stay checked at their owning boundary.
+3. Use the least powerful encoding: a named sum for alternatives, a record for required parts, an opaque value with a smart constructor, a result carrying reason and value. Use a state-indexed API only for few, stable states central to the contract.
+4. Replace each flag, pair of optionals, or must-be-non-empty collection with distinct types, a choice type or a non-empty type.
+5. Give every intended value a construction path from admitted input to a public observation. A construction cycle needs a named bootstrap.
+6. Where several semantically equal values exist, prefer one canonical representation built into the constructor. If several stay valid, state the equality and that normalization preserves it.
 
-## Trigger
+## Write
 
-Use when a design or implementation needs one of these:
+1. Enforce the rule in the constructor or type, not at each use site.
+2. Expose no public raw constructor, setter or deserializer that builds what the smart constructor refuses; deserializers call the smart constructor.
+3. A decision returns its evidence: success carries the witness, failure carries the reason. No bare boolean or flag where the caller needs either. Remove a boolean validator left beside the evidence path.
+4. An operation that accepts only validated input takes the validator's evidence type as its parameter and does not re-validate inside.
+5. Return evidence at the smallest unit the consumer needs; independent failures stay separate until final assembly.
+6. Decide every semantic refusal on a pure description before any issuance, write or render; a refusal leaves prior state intact and runs none of those activities.
+7. Tests: one observes the refusal with its reason through the public surface the design declares; one builds a valid value through the public producer. Add them in the owned test paths when the oracle does not cover them; a throwaway script is not a test.
 
-- an invalid call or state must be rejected or made hard to construct;
-- a sum/product, opaque value, smart constructor, result type, or state/phase
-  API may make the invariant clearer;
-- a successful parse, validation, authorization, or transition must carry
-  evidence to the next operation;
-- a finite, stable state or capability changes which operations are valid; or
-- a proposed generic, phantom, indexed, dependent, GADT, type-family, or
-  singleton technique needs a proportionate design review.
+## State the claim honestly
 
-Do not trigger merely because an invariant exists. Keep volatile policy,
-user-defined schemas, external behavior, time, concurrency, I/O, migration,
-and untrusted input at their owning runtime boundary.
+- Claim the strength the repository's own checker gives: proof assistant = follows from checked definitions; strong static types = blocked on typed paths; gradual typing with the checker in verification = rejected on annotated paths; mainstream OO/FP = construction centralised, predicate not proved; no checker = checked at runtime boundaries.
+- A wrapper the runtime can build around an invalid value is not a guarantee.
+- Name each bypass the change leaves open (deserialization, casts, `Any`, reflection, outside writers, foreign code) and keep its runtime check.
+- Construction never establishes intent, authorization, time-dependent policy, cross-aggregate consistency, external API behaviour, availability. Do not claim them.
+- Safety (excludes the state), inhabitation (a valid value exists), reachability and liveness are separate claims; claim only what a test or checker shows.
+- A refuted rule is a representation problem: change the type, do not add a guard over it.
 
-## Core design method
+## Self-check before recording the step
 
-1. State the proposition in one sentence: which call or state is excluded, who
-   could otherwise construct it, and what harm follows. Name admitted input,
-   constructor, consumer, and public observation.
-2. Start with the least powerful representation: a named sum for alternatives,
-   a product/record for required parts, an opaque value with a smart
-   constructor, or a result carrying a reason and validated value. Do not
-   replace domain names with a clever encoding.
-3. For a phase or capability, name the finite stable states and each permitted
-   transition. Expose operations only through the state or evidence they need:
-   an operation that may only receive validated input takes the validator's
-   evidence type as its parameter. Where the repository runs a checker,
-   re-checking inside the operation instead keeps the rule at runtime but
-   leaves the checker nothing to reject. Do not let clients forge a later
-   phase through a public raw constructor.
-4. Sketch one ordinary accepted call and one rejected or refused call. The
-   accepted call must remain more legible than a value-level validation loop.
-   When implementing, demonstrate both as `nw-certainty-by-construction`
-   step 5 requires.
-5. State bypasses and residual obligations: deserialization, reflection,
-   casts, database writers, foreign code, process failure, and other systems
-   may remain outside the representation.
-6. Keep evidence through the boundary. Return a validated value, capability,
-   or explicit outcome rather than a Boolean that discards what the next step
-   needs. A Boolean validator left beside the evidence path returns that
-   evidence instead, or is removed.
-
-**Witness granularity.** Return evidence at the smallest unit its consumer needs,
-retaining independent failures separately until final assembly. A valid
-CustomerId can be resolved despite an invalid address; failed ID parsing supplies
-no lookup input. Changing an unrelated field's validity must not remove that
-witness or its checks. For the mixed composition policy, load `nw-fp-principles`
-§5 when applicable. This partial-aggregate API is application synthesis from Sandy
-Maguire, *Thinking with Types*, Indexed Monads → Definition and Necessary
-Machinery; *Certainty by Construction*, An Exploration of Numbers → Constructing
-Evidence—not a need for a generic scheduler on a single check.
-
-## Calibrate the guarantee
-
-State the claim at the strength of the matching row of
-`nw-certainty-by-construction`'s calibration table, chosen by the checker the
-repository actually runs.
-
-## State and evidence boundaries
-
-Use a state/phase-indexed API only when the states are small, stable, and
-central to the product contract, and when a rejected call matters before
-execution. Otherwise use a closed state value plus an explicit transition or
-validation result. A representation is successful when clients can see what
-they possess, which operation they may call, and what failure means without
-knowing its internal machinery.
-
-For representation-preserving conversion, distinguish representational
-equality from semantic equality. For normalization or transformation, state
-the observation and preservation claim before optimizing. For an existential
-or hidden implementation, preserve only the operations the client genuinely
-needs through a named eliminator or interface.
-
-**Retained identity.** Coalescing returns the identity actually retained, not a
-discarded candidate's ID. Allocate only after retention is decided; ownership
-names the semantic parent, not its ordinal. Duplicate-contact replay preserves
-IDs and counters; parent reordering preserves each child's owner. At persisted
-ingress, enforce unique owned IDs and freshness of future issuance relative to
-all retained IDs. Apply only within declared semantic equality: equal parameter
-values do not merge intentionally distinct histories. Exact identity policy is
-application synthesis from Sandy Maguire, *Certainty by Construction*, An
-Exploration of Numbers → Unique Integer Representations; *Thinking with Types*,
-Roles → Roles; Indexed Monads → Linear Allocations.
-
-**Semantic kind before spelling.** Where fields have different meanings, use
-their declared field kind or named alternative: only reference slots resolve;
-literal text such as `R7` stays literal. Under a verbatim command-text contract,
-preserve the payload bytes rather than trim, interpolate or dereference them.
-Represent file absence and unreadability as distinct load outcomes; only absence
-permits an absence default. Reusing a string representation does not make these
-kinds interchangeable; a single literal-string API needs no extra variants.
-These boundary policies are application synthesis from Sandy Maguire, *Thinking
-with Types*, Constraints and GADTs → GADTs; Roles → Roles—not a shell-safety
-guarantee or a prescribed exit-code policy.
+1. Each stable local rule is enforced in a constructor or type.
+2. No public path builds what the smart constructor refuses.
+3. No boolean result where a witness or reason is needed.
+4. Validated-only operations take the evidence type and do not re-check.
+5. No flag, optional pair or empty-able collection remains for a must-hold rule.
+6. Each constructor has a refusal test with reason and a valid-build test.
+7. Each valid type can be built from admitted input and observed publicly.
+8. The closing statement claims no more than the checker shows and lists open bypasses.
 
 ## Advanced Haskell/GHC
 
-Read [advanced Haskell design](references/advanced/haskell-type-level-design.md)
-only when the target and its compiler range make GADTs, `DataKinds`, rank-N
-types, families, roles, open rows, or singletons a concrete option. Then read
-[technique selection](references/advanced/technique-selection.md) and
-[ergonomics and compatibility](references/advanced/ergonomics-and-compatibility.md)
-before exposing the API. These techniques are optional tools for GHC projects,
-not a requirement for other languages.
+For GHC-targeted GADTs, DataKinds, type families, roles or singletons, read [advanced Haskell design](references/advanced/haskell-type-level-design.md), then [technique selection](references/advanced/technique-selection.md) and [ergonomics and compatibility](references/advanced/ergonomics-and-compatibility.md), only when the target and its compiler range make them a concrete option.

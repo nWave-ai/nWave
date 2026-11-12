@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from nwdes.contracts import (
+    EXAMINE_LEVEL_NAMES,
     LINE_BOUNDARIES,
     Built,
     Defect,
@@ -53,6 +54,7 @@ class Destinations:
     briefs: tuple[tuple[DocumentKind, str], ...]
     handoff: str
     adr_directory: str
+    html_pages: bool
 
 
 @dataclass(frozen=True)
@@ -157,6 +159,165 @@ def _jev_key(name, value, scoped):
     return _jev(name, value)
 
 
+def _review_key(name, value, scoped):
+    """The review-round limit: repository-wide, a whole number from 1 to 5."""
+    if scoped:
+        return (("review_max_rounds", None),), (
+            _malformed(
+                name, "review.max_rounds", "This key is repository-wide, not scoped."
+            ),
+        )
+    if not isinstance(value, dict) or set(value) - {"max_rounds"}:
+        return (("review_max_rounds", None),), (
+            _malformed(
+                name,
+                "review.max_rounds",
+                "Expected an object containing max_rounds.",
+            ),
+        )
+    number = value.get("max_rounds")
+    if isinstance(number, bool) or not isinstance(number, int) or not 1 <= number <= 5:
+        return (("review_max_rounds", None),), (
+            _malformed(
+                name,
+                "review.max_rounds",
+                "Expected a whole number from 1 to 5.",
+            ),
+        )
+    return (("review_max_rounds", number),), ()
+
+
+def _examine_key(name, value, scoped):
+    """The examine level: repository and global only; a scoped tier never declares one."""
+    if scoped:
+        return (), ()
+    if not isinstance(value, dict):
+        return (), (
+            _malformed(name, "examine.level", "Expected an object containing level."),
+        )
+    if "level" not in value:
+        return (), ()
+    level = value["level"]
+    if not isinstance(level, str) or level not in EXAMINE_LEVEL_NAMES:
+        return (), (
+            _malformed(
+                name,
+                "examine.level",
+                "Expected quick, standard or extended.",
+            ),
+        )
+    return (("examine_level", level),), ()
+
+
+def _documents_key(name, value, scoped):
+    """Our member of the documents object: readable_brief, repository-wide.
+
+    The documents object has another owner (the nwdes documents routing, which
+    is legitimately scoped); this parser only reads the readable_brief member
+    and leaves every other member opaque to its own producer.
+    """
+    if not isinstance(value, dict):
+        return (), ()
+    if "readable_brief" not in value:
+        return (), ()
+    if scoped:
+        return (("readable_brief", None),), (
+            _malformed(
+                name,
+                "documents.readable_brief",
+                "This key is repository-wide, not scoped.",
+            ),
+        )
+    brief = value.get("readable_brief")
+    if (
+        not isinstance(brief, dict)
+        or set(brief) - {"enabled", "language"}
+        or not isinstance(brief.get("enabled"), bool)
+        or not isinstance(brief.get("language"), str)
+    ):
+        return (("readable_brief", None),), (
+            _malformed(
+                name,
+                "documents.readable_brief",
+                "Expected an object with a boolean enabled and a string language.",
+            ),
+        )
+    return (("readable_brief", brief),), ()
+
+
+def _html_key(name, value, scoped):
+    """Our member of the documents object: html, repository-wide, absent meaning true.
+
+    false turns every HTML page off; the markdown briefs and the handoff are unaffected.
+    """
+    if not isinstance(value, dict) or "html" not in value:
+        return (), ()
+    if scoped:
+        return (("html", None),), (
+            _malformed(
+                name,
+                "documents.html",
+                "This key is repository-wide, not scoped.",
+            ),
+        )
+    html = value["html"]
+    if not isinstance(html, bool):
+        return (("html", None),), (
+            Defect(
+                f"ConfigurationMalformed: {name}: documents.html",
+                "Expected true or false.",
+                f"Set documents.html to true or false in {name}, or remove it to keep the pages.",
+            ),
+        )
+    return (("html", html),), ()
+
+
+def _model_runtime_key(name, value, scoped):
+    """The per-role model facts: repository-wide, the model set store shape."""
+    if scoped:
+        return (("model_runtime", None),), (
+            _malformed(
+                name, "model_runtime", "This key is repository-wide, not scoped."
+            ),
+        )
+    if not isinstance(value, dict):
+        return (("model_runtime", None),), (
+            _malformed(
+                name, "model_runtime", "Expected an object with default and roles."
+            ),
+        )
+    unknown = set(value) - {"default", "roles"}
+    if unknown:
+        return (("model_runtime", None),), (
+            _malformed(
+                name,
+                "model_runtime",
+                f"Unsupported keys {sorted(unknown)!r}.",
+            ),
+        )
+    roles = value.get("roles")
+    if roles is not None:
+        if not isinstance(roles, dict):
+            return (("model_runtime", None),), (
+                _malformed(name, "model_runtime.roles", "Expected an object."),
+            )
+        for role_id, pair in roles.items():
+            if (
+                not isinstance(pair, dict)
+                or set(pair) != {"provider", "model"}
+                or not isinstance(pair.get("provider"), str)
+                or not isinstance(pair.get("model"), str)
+            ):
+                return (("model_runtime", None),), (
+                    _malformed(
+                        name,
+                        f"model_runtime.roles[{role_id!r}]",
+                        "Expected exactly provider and model as strings.",
+                    ),
+                )
+    return (("model_runtime", value),), ()
+
+
 def parse_tier(kind: str, name: str, data: bytes):
     """Parse only owned keys; unrelated producers' configuration is opaque."""
     try:
@@ -194,6 +355,19 @@ def parse_tier(kind: str, name: str, data: bytes):
         )
         + ((_lanes(name, raw["lanes"], scoped),) if "lanes" in raw else ())
         + ((_jev_key(name, raw["jev"], scoped),) if "jev" in raw else ())
+        + ((_review_key(name, raw["review"], scoped),) if "review" in raw else ())
+        + ((_examine_key(name, raw["examine"], scoped),) if "examine" in raw else ())
+        + (
+            (_documents_key(name, raw["documents"], scoped),)
+            if "documents" in raw
+            else ()
+        )
+        + ((_html_key(name, raw["documents"], scoped),) if "documents" in raw else ())
+        + (
+            (_model_runtime_key(name, raw["model_runtime"], scoped),)
+            if "model_runtime" in raw
+            else ()
+        )
     )
     return _tier_result(
         ConfigurationTier(
@@ -271,6 +445,10 @@ def parse_lane_setting(name, key, value, scoped=False):
     return Built(tuple(value) if isinstance(value, (list, tuple)) else value)
 
 
+# The readable brief is on in English unless a declared level says enabled: false.
+READABLE_BRIEF_DEFAULT = {"enabled": True, "language": "en"}
+
+
 def readable_setting(tiers, key, default):
     for result in reversed(tiers):
         tier = (
@@ -330,6 +508,11 @@ def readable_paths(tiers, scope):
     )
 
 
+def pages_enabled(tiers):
+    """Whether feature and project HTML pages are generated: unless documents.html is false."""
+    return readable_setting(tiers, "html", True) is not False
+
+
 def resolve(tiers: tuple[ConfigurationTier, ...], scope):
     """Resolve ascending-precedence tiers, then derive every fixed filename."""
     problems = tuple(
@@ -344,5 +527,6 @@ def resolve(tiers: tuple[ConfigurationTier, ...], scope):
             briefs,
             directory + "/handoff.json",
             readable_setting(tiers, "adr.directory", "docs/product/architecture"),
+            pages_enabled(tiers),
         )
     )

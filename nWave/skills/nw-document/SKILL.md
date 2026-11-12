@@ -57,7 +57,7 @@ Prompt includes: research artifact path|review focus (source verification|bias d
 
 ### Phase 2: Documentation (@nw-documentarist)
 
-Prompt includes: topic|type|research path|DIVIO framework principles (from nw-documentarist.md)|type-specific validation rules + template|collapse detection anti-patterns|quality gates: type purity >=80%, Flesch 70-80, zero spelling errors, zero broken links, style >=95%. Output: doc file + .validation.yaml
+Prompt includes: topic|type|research path|DIVIO framework principles (from nw-documentarist.md)|type-specific validation rules + template|collapse detection anti-patterns|quality gates: type purity >=80%, Flesch 70-80, zero spelling errors, zero broken links, style >=95%, every diagram passes R1-R12 of `nw-diagram`. Output: doc file + .validation.yaml
 
 ### Phase 2.5: Documentation Review (@nw-documentarist-reviewer)
 
@@ -71,7 +71,7 @@ Verify all deliverables exist and both reviews APPROVED. Present: research path|
 
 Applies to both review gates (Phase 1.5 and 2.5):
 1. **APPROVED**: Proceed to next phase
-2. **NEEDS_REVISION**: Extract critiques, re-invoke producer with feedback, re-invoke reviewer. Max 2 cycles. Escalate to user after 2 failures.
+2. **NEEDS_REVISION**: Extract critiques, re-invoke producer with feedback, re-invoke reviewer within the review-round limit the role bundle prints (nwdes prompt). When a finding is still open at the limit, a finding still open at the limit returns to its owner and is reported open; the limit is never an approval, and unresolved findings go to the user.
 3. **REJECTED / RESTRUCTURE_REQUIRED**: Escalate immediately — restart|adjust scope|accept with issues|cancel.
 
 ## Examples
@@ -97,9 +97,9 @@ Orchestrator prompts user to select DIVIO type before proceeding.
 ## Success Criteria
 
 - [ ] Research created with trusted sources and cross-references
-- [ ] Research review: APPROVED (max 2 cycles)
+- [ ] Research review: APPROVED within the review-round limit the role bundle prints (nwdes prompt)
 - [ ] Documentation follows DIVIO template with >=80% type purity
-- [ ] Doc review: APPROVED (max 2 cycles)
+- [ ] Doc review: APPROVED within the review-round limit the role bundle prints (nwdes prompt)
 - [ ] All deliverables exist: research|documentation|validation report
 - [ ] No collapse anti-patterns detected
 

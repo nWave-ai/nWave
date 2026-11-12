@@ -405,6 +405,10 @@ COMMANDS = (
                 "--handoff",
                 "feature handoff for project aggregation, repeatable; omitted adds no feature handoffs; feature and epic mode use their configured handoff",
             ),
+            Argument(
+                "--overview",
+                "the project overview: the vision, roadmap and backlog with the decision list, written to docs/product/overview.md and overview.html; takes no --feature or --handoff",
+            ),
         ),
         (
             *ROOT_REFUSALS,
@@ -489,7 +493,7 @@ COMMANDS = (
                 "examine refuses host observations and root context before any read or effect",
             ),
         ),
-        "nwdes prompt --role nw-software-crafter-reviewer --handoff feature.handoff.json --jev unauthorized --diff candidate.diff --commit HEAD",
+        "nwdes prompt --role nw-software-crafter-reviewer --handoff feature.handoff.json --diff candidate.diff --commit HEAD",
     ),
     Command(
         "packet",
@@ -724,6 +728,7 @@ def _role_example(kind, verb, scope=("feature", "search"), role=None):
         "in": "S1",
         "expectation": "E1",
         "promise": "P1",
+        "covers": "P1",
         "observation": "O1",
         "command": "python -V",
         "verification": "python -V",
@@ -808,6 +813,14 @@ def _role_commands(kind, policy=None):
                             "UncoveredPromise",
                             "the revised set leaves a promise without an expectation",
                         ),
+                        (
+                            "EmptyLacuna",
+                            "a new or changed expectation row states no lacuna",
+                        ),
+                        (
+                            "RowRewritten",
+                            "a fixed row changed or left the set without an unmet expectation_defect verdict",
+                        ),
                     )
                     if kind == "expectations" and verb.name == "close"
                     else (
@@ -849,16 +862,31 @@ def _role_records(policy=None):
     return built
 
 
-COMMANDS = (*_FIXED_COMMANDS, *_role_records())
+def commands(policy=None):
+    """The grammar records under one policy: the base records when no policy is given."""
+    return (*_FIXED_COMMANDS, *_role_records(policy))
+
+
+COMMANDS = commands()
+
+
+def policy_notice(defects):
+    """The NOTE that opens a draft verb's help when the distributed policy did not load: the
+    cause's WHAT and WHY, then the HOW, and what the base text leaves out."""
+    causes = "; ".join(f"{d.what} ({d.why})" for d in defects)
+    fixes = " ".join(d.how for d in defects)
+    return (
+        f"NOTE: base grammar only; the distributed policy did not load: {causes}. "
+        "WHY: covers and promises are shown with the base requirement, so the close may ask "
+        f"more than this help shows. HOW: {fixes}\n"
+    )
 
 
 def help_text(
     verb: str | None = None, action: str | None = None, policy=None
 ) -> Built[str] | Refused:
     records = tuple(
-        record
-        for record in (*_FIXED_COMMANDS, *_role_records(policy))
-        if verb is None or record.verb == verb
+        record for record in commands(policy) if verb is None or record.verb == verb
     )
     if not records:
         return refuse(

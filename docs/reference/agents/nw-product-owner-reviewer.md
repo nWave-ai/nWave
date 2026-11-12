@@ -9,7 +9,7 @@ Reviews DISCUSS product decisions, human understanding and visible increments, o
 
 ## Preloaded skills
 
-- [nw-jtbd-core](../skills/nw-jtbd-core.md) — Core JTBD theory and job story format - job dimensions, job story template, job stories vs user stories, 8-step universal job map, outcome statements, and forces of progress
+- [nw-jtbd-core](../skills/nw-jtbd-core.md) — Load when turning a request into promises, job stories or scenario titles.
 - [nw-po-review-dimensions](../skills/nw-po-review-dimensions.md) — Requirements quality critique dimensions for peer review - confirmation bias detection, completeness validation, clarity checks, testability assessment, and priority validation
 - [nw-por-review-criteria](../skills/nw-por-review-criteria.md) — Review dimensions and bug patterns for journey artifact reviews
 - [nw-product-value-slicing](../skills/nw-product-value-slicing.md) — Product-owner foundation for slicing value — elephant carpaccio thin vertical slices, one walking skeleton per feature (not per slice), feature identity from user/product authority, JTBD/domain language framing. Consult when decomposing a feature into independently observable increments.

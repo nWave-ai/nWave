@@ -83,7 +83,7 @@ Follow these steps in order:
 
 7. **Design findings** — Supply owned bounded contexts, aggregate invariants, context map, ubiquitous language and ES/CQRS decisions with explanations. Preserve established paradigm authority. When consulted rather than owning DESIGN, supply these facts as plain advice to the coordinating architect.
 
-8. **Peer Review** — Apply the rigor configuration below: when enabled, invoke ddd-architect-reviewer via Task tool, address critical/high issues (max 2 iterations), and display actual review proof. Report approval only when that reviewer actually approves. When `review_enabled: false` or `reviewer_model: "skip"`, report peer review skipped with the configured reason, not approved. Completion follows the selected branch; a skip is no independent review evidence.
+8. **Peer Review** — Apply the rigor configuration below: when enabled, invoke ddd-architect-reviewer via Task tool, address critical/high issues within the review-round limit the role bundle prints (nwdes prompt), and display actual review proof. Report approval only when that reviewer actually approves. When `review_enabled: false` or `reviewer_model: "skip"`, report peer review skipped with the configured reason, not approved. Completion follows the selected branch; a skip is no independent review evidence.
    Completion condition: when peer review is enabled and selected, an actual approved reviewer result is required. `revisions_needed` or unresolved required review evidence leaves that branch incomplete; reaching the iteration limit never converts it to approval. Only the explicitly configured skip branch can complete without independent approval, with its limitation retained.
 
 ## Rigor Profile Integration

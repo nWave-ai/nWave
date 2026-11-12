@@ -18,7 +18,7 @@ python -m nwave_ai.cli <command> [options] [arguments]
 
 ## Synopsis
 
-All commands accept `--help` / `-h` and return exit code 0 on success, nonzero on failure.
+Observed `--help` behaviour: `nwave-ai status --help` exits 0 but prints the status report instead of usage; `nwave-ai install --help` and `nwave-ai uninstall --help` exit 0 and print their own usage (the uninstall text names `python uninstall_nwave.py`); `nwave-ai rigor --help` exits 2 and prints its usage line after WHAT/WHY/HOW lines; `nwave-ai attribution --help` and `nwave-ai mode --help` exit 1.
 
 ```
 nwave-ai install [--platform <tool>] [--target <path>] [--yes]
@@ -31,6 +31,8 @@ nwave-ai doctor [--json] [--fix]
 nwave-ai attribution <on|off|status>
 
 nwave-ai model set --provider {codex,claude} --model MODEL [--role ROLE] [--project]
+
+nwave-ai rigor [--show] [--yes] [--models keep | --model-set GROUP_OR_ROLE=PROVIDER/MODEL ...] [--review-rounds 1-5|current] [--examine-level quick|standard|extended|current] [--documents yes|no|keep [--document-language LANG]] [--hosts HOST[,HOST...]|none|keep]
 
 nwave-ai project <enable|disable>
 
@@ -255,6 +257,131 @@ and `claude`; whether your host consumes `model_runtime` depends on that
 host's model-configuration support (see
 [Assigning models to roles](../guides/assigning-models-to-roles.md)).
 
+`nwave-ai rigor` writes its per-role entries into the same `model_runtime.roles` store that `model set --role` writes, and it reads both the project and the global file. A per-role entry from `model set --role` (without `--competence`) appears in [`nwave-ai rigor --show`](#nwave-ai-rigor). A default from `model set` without `--role` does not: `--show` lists per-role entries only. `model set` keeps its meaning; rigor does not replace it.
+
+
+---
+
+## nwave-ai rigor
+
+Choose this project's quality scope: the model for each role, the review-round limit, the examine level, and whether readable documents for people are produced. Run it from the repository root. It is not the `nw-rigor` skill, which keeps using `nwave-ai model set`. On a terminal the command asks each missing question one at a time, showing the current value and its source. A script answers every question with an option. It writes nothing until the final summary is confirmed, or until `--yes` is given.
+
+### Synopsis
+
+```
+nwave-ai rigor [--show] [--yes] [--models keep | --model-set GROUP_OR_ROLE=PROVIDER/MODEL ...] [--review-rounds 1-5|current] [--examine-level quick|standard|extended|current] [--documents yes|no|keep [--document-language LANG]] [--hosts HOST[,HOST...]|none|keep]
+```
+
+### Answers
+
+`--models`, `--review-rounds`, `--documents` and `--hosts` each need one answer. On a terminal the command asks each missing one, one question at a time: Enter keeps the value in effect, and a wrong answer asks the same question again. With `--yes` it never asks: a missing answer refuses with exit 2 and names every missing option. Without `--yes` and without a terminal (stdin at end of input, for example `</dev/null` or an empty pipe), it refuses with exit 2 and names every question that has no answer, for example `no answer arrived for 5 questions: --models, --review-rounds, --examine-level, --documents, --hosts. The terminal closed.` The examine level is listed there because it is asked as well, although `--examine-level` is optional. A fully closed stdin (`0<&-`) was not measured after this change. Scripts must therefore pass `--yes` and all four answers, for example `--yes --models keep --review-rounds current --documents keep --hosts keep`. On a terminal the models question takes one `target=provider/model` pair; for several, use the options.
+
+### Flags
+
+| Flag | Required | Type | Description |
+|------|----------|------|-------------|
+| `--show` | no | bool | Print the effective value of every role model, the review rounds, the examine level and the documents choice, each with its source. Writes nothing. Other options are not applied when `--show` is given. |
+| `--yes` | no | bool | Confirm the final summary without asking. Every answer must then be given as an option. A host named by `--hosts` is written under this confirmation too. |
+| `--models` | answer | `keep` | Leave every role model unchanged. Only `keep` is accepted here; set models with `--model-set`. |
+| `--model-set` | answer | `GROUP_OR_ROLE=PROVIDER/MODEL` | Repeatable; several values may follow one option. `GROUP_OR_ROLE` is `producers` (roles whose tools include Write or Edit), `reviewers` (names ending `-reviewer`), `executors` (names ending `-crafter`), or one published role name. Groups overlap. Values apply in the order given, so give a group first and a single-role override after it. The provider is the text before the first `/` and the model is the rest; both are stored as given, with no availability check and no fallback. |
+| `--review-rounds` | answer | `1-5` or `current` | The review limit per finding: a whole number from 1 to 5. `current` keeps the value in effect. |
+| `--examine-level` | no | `quick`, `standard`, `extended` or `current` | The examine level: how many examinations a delivery admits. `quick` admits 1 examination and no repair round; `standard` (the built-in default) admits 2 examinations and one repair round; `extended` admits 3 examinations and two repair rounds. A level limits only the examinations, as the review rounds limit reviews. `current` keeps the value in effect, and an omitted option means `current`. A terminal session asks this question after the review rounds; Enter keeps the level in effect, and a wrong answer asks again. |
+| `--documents` | answer | `yes`, `no` or `keep` | Whether to produce a readable HTML brief for people at the charter and design closes. `keep` leaves the setting unchanged. |
+| `--document-language` | no | text | Language of the readable brief. Default `en`, stored as given. With `--yes`, `--documents yes` also needs this option. |
+| `--hosts` | answer | `HOST[,HOST...]`, `none` or `keep` | Host configuration files to write the model facts into. Host names: `omp`, `claude-code`, `codex`, `copilot`, `opencode`, `devin`. `none` and `keep` write no host file. See [Host files](#host-files). |
+
+### Exit codes
+
+| Code | Condition |
+|------|-----------|
+| 0    | The project file was written, or `--show` printed. A host that cannot take per-role models prints its refusal; the project file is still written and the command still exits 0. |
+| 1    | The project file could not be written (not writable, or a config migration conflict). Nothing was written, host files included. |
+| 2    | Refusal, with WHAT, WHY and HOW lines on stderr: an unknown or repeated option; a role name that is not published; review rounds outside 1 to 5; an answer missing with no terminal to ask; an unconfirmed summary; an unreadable project or global config file; a model fact that matches no published role; an unknown host name; `--documents yes` with `--yes` and no `--document-language`. Nothing was written. |
+
+### Output
+
+`--show` prints one line per published role, then the review limit and the documents choice:
+
+```
+role nw-acceptance-designer: claude-opus-5 (built-in default)
+role nw-acceptance-designer-reviewer: claude/opus-4-6 (project)
+review rounds: 3 (project)
+examine level: standard (built-in default)
+  gives: 2 examinations, 1 repair round
+  not covered at this level: more than 1 repair round
+  not covered at any level: security, load or checks on other machines
+  a row not examined is never green
+documents: yes, language en (project)
+```
+
+The built-in defaults are 2 review rounds, examine level `standard` and documents `yes` in English. The default applies if no level declares `documents.readable_brief`. If the readable brief is on, the command checks each markdown brief that it writes. A diagram without exactly one non-empty `%% alt:` line, or with more than 25 distinct nodes, refuses the command. The refusal names the brief file and the diagram. The command writes no file. `--documents no` turns the brief and the check off. See [document](../guides/nwdes/reference/document.md#readable-brief-check) for the briefs that are checked.
+
+On a terminal, each question prints its name, what it is, why change it, its answers, its default and where to see it later, then its answer line. The models question gives one example, `producers=claude/opus-4-6`, and says that running `nwave-ai rigor` again changes the models. The documents question says the language question, number 5, is asked only after yes. The review rounds question explains the trade-off: few rounds can leave defects unseen; many rounds can find new things and never stop. When a finding is still open at the limit, the work stops and the finding goes to its owner. Reaching the limit is never an approval.
+
+A write prints the final summary first. The Git sentence comes before the confirmation question, so you read it before you answer yes. A kept examine level shows as `keep`, with its source:
+
+```
+Final summary - read before you confirm
+  review rounds: 3 (was 2, built-in default)
+  examine level: quick (was standard, built-in default)
+    gives: 1 examination, no repair round
+    not covered: any repair round, security, load or checks on other machines
+    a row not examined is never green
+  documents: yes, language en (was no, built-in default)
+  model nw-documentarist: codex/gpt-5
+  hosts: none
+The project file .nwave/config.json: this file may be tracked by Git,
+depending on your .gitignore.
+Nothing is written until you answer yes.
+confirm the final summary? (yes):
+Written /path/to/repo/.nwave/config.json (project).
+```
+
+Whether the project file is tracked by Git depends on the repository's `.gitignore`. Run `git status` before you commit it.
+
+### Files written
+
+The project file `.nwave/config.json` in the current directory receives:
+
+- `review.max_rounds`, when the rounds answer is a number. `current` writes nothing.
+- `examine.level`, as `{"level": NAME}`, when the examine answer names a level. `current` and an omitted `--examine-level` write nothing.
+- `documents.readable_brief` as `{"enabled": true|false, "language": LANG}`, when `--documents` is `yes` or `no`.
+- `model_runtime.roles.<role>` as `{"provider": ..., "model": ...}`, for each role a model fact names. A group names every published role of that group.
+
+Top-level keys that rigor does not write are kept. When it writes `review` or `documents`, it replaces that whole object, so a nested key inside it that rigor does not write is dropped. The global file is read but never written. `documentation`, `rigor.profile` and `model_runtime.default` are not written.
+
+### Host files
+
+Only the hosts you name and confirm are written. Paths are under your home directory.
+
+| Host | File | Format status |
+|------|------|---------------|
+| `omp` | `.omp/agent/config.yml`, key `task.agentModelOverrides`. The file must already exist: without it the adapter reports a refusal naming `cannot access local variable 'task'`, the command still exits 0, and the project file is still written (observed). | Verified on this machine for an existing file. Comments in that YAML file are lost. |
+| `claude-code` | `.claude/agents/nw/<role>.md`, a `model:` line; the file is created when absent | Verified. Accepts only the `claude` provider and writes `claude-<model>`. An nWave reinstall regenerates these files. |
+| `opencode` | `.config/opencode/opencode.json`, key `agents.<role>.model` | Documented, not verified on this machine (version 2 format). |
+| `copilot` | `.copilot/agents/<role>.agent.md`, a `model:` frontmatter line | Documented only for provider-qualified local models; not verified. |
+| `codex` | none | Refuses: the config has one top-level `model` and no per-role surface. |
+| `devin` | none | Refuses: the documented config has one default model and no per-role surface. |
+
+The summary shows each host's path before the write. Unverified formats are labelled `format not verified: format NAME assumed from source URL`. The previous bytes are kept beside the file as `NAME.nwave-bak`, and an existing backup is never overwritten. A host file whose content does not match the documented shape is not written.
+
+### Which routes read these settings
+
+- The spine route (`nwdes prompt`) reads `review.max_rounds`, `examine.level`, `model_runtime.roles` and `documents.readable_brief` from the project file and the global file, project first. It prints them in each role bundle: `review rounds: N (source)`, `examine level: NAME (source) - N examinations, ...`, and `model <role>: provider/model (source)` or `none declared in project or global`. The examiner bundle states the level in examinations and repair rounds only. The readable-brief line appears only in the charter-close and design-close bundles, and only when enabled. A review value outside 1 to 5 or an examine level outside quick, standard and extended makes the bundle refuse, naming the key. The bundle states the model; `nwdes` starts no model.
+- Dynamic mode (`/nw-dynamic`, the `nwstep` route) reads `examine.level` (and `jev`) from the project file and the global file, project first, and fixes it in the run workspace at `nwstep prompt`, in `examine-level.json`. It still does not read `review.max_rounds`, `model_runtime` or `documents.readable_brief` through the tool. In interactive mode only, the host procedure in `nWave/tasks/nw/dynamic.md` reads `documents.readable_brief` and, when it is enabled, adds the readable-output block to the request file and runs one documentarist round; no tool checks that the executor follows it. The dynamic examine step (`dynamic-v9`, after `handoff`) records an examiner's id and one line per fixed row; the level's repair rounds are enforced by the nwdes examination. Host files from `--hosts` are host configuration; whether a dynamic run uses them depends on how the host starts its executor, which nWave does not check.
+
+### Example
+
+```bash
+# What is in effect (writes nothing)
+nwave-ai rigor --show
+
+# Group, then one role; rounds 3; readable brief in English; no host file
+nwave-ai rigor --yes --model-set reviewers=claude/opus-4-6 --model-set nw-documentarist=codex/gpt-5 --review-rounds 3 --documents yes --document-language en --hosts none
+
+# Keep every current value; still writes the project file
+nwave-ai rigor --yes --models keep --review-rounds current --documents keep --hosts keep
+```
 
 ---
 

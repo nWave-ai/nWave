@@ -5,7 +5,7 @@ global_on_demand:
 roles:
   nw-product-owner:
     on_demand:
-      nw-doc-as-artifact: sharing or revising the product brief for human understanding
+      nw-doc-as-artifact: sharing or revising the product brief for human understanding, documents.readable_brief is enabled, or the documentarist sends its one round of questions
       nw-spike: the human selects a bounded visual prototype or another uncertainty probe
       nw-po-scenario-exploration: assessing Quint relevance for each DISCUSS value or integrating model-generated scenarios
       nw-user-story-mapping: exploring feature journeys, release boundaries or gaps across user activities
@@ -63,6 +63,8 @@ roles:
       nw-review: applying the design-review question set as architecture self-check only; this trigger does not dispatch an independent review
     on_demand:
       nw-po-scenario-exploration: presenting model-generated behavioral or non-functional scenarios for human architectural review
+      nw-diagram: the design contains or changes an architecture diagram, or documents.readable_brief is enabled
+      nw-doc-as-artifact: documents.readable_brief is enabled, or the documentarist sends its one round of questions about a design decision or diagram
       nw-algebraic-design-protocol: every DESIGN authority before deciding public constructors, observations, or laws
       nw-certainty-by-construction: invalid-state or preservation claim
       nw-type-level-design: design proposes or reviews a valid-state model, opaque construction boundary, evidence-preserving result, or finite state/capability API; use advanced Haskell material only for a GHC target
@@ -93,6 +95,7 @@ roles:
       nw-algebraic-design-protocol: contested design or law
       nw-certainty-by-construction: invalid-state or preservation claim
       nw-stress-analysis: external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
+      nw-doc-as-artifact: documents.readable_brief is enabled, or the documentarist sends its one round of questions about an operational decision
   nw-system-designer:
     on_demand:
       nw-algebraic-design-protocol: contested infrastructure or recovery law
@@ -160,3 +163,7 @@ roles:
       nw-interaction-choreography: an interaction needs purposeful motion or transition behavior
       nw-sci-fi-design-patterns: the human explicitly chooses a futuristic or sci-fi visual direction
       nw-futuristic-color-typography: the human explicitly chooses futuristic styling and needs its palette or typography
+  nw-documentarist:
+    on_demand:
+      nw-diagram: a document under review contains a diagram, or documents.readable_brief is enabled
+      nw-doc-as-artifact: documents.readable_brief is enabled; the readable brief presents decisions and the one round of questions to the owning roles

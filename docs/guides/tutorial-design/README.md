@@ -313,6 +313,8 @@ To render the diagram, paste the Mermaid block into any Mermaid-compatible viewe
 
 **What just happened?** `/nw-diagram` read the architecture documents from the design phase and produced visual representations. The diagrams follow the C4 model: context (who uses the system), container (major components), and component (internal structure). You chose the container level, which shows how the CLI, domain, and storage relate.
 
+**Make it readable for everyone.** Your diagram needs a title inside the block and one sentence above it that says what it shows. It has at most 25 nodes, and colour is never the only signal. Morgan follows these rules from the `nw-diagram` skill. See [Read architecture diagrams and the readable brief](../readable-brief-and-diagrams.md).
+
 > **If you see "No architecture documents found"**: Make sure Step 3 completed successfully. Run `/nw-design bookmark-cli` again if needed -- Morgan will pick up where it left off.
 
 *Next: you will review all artifacts and commit them.*

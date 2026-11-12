@@ -2,7 +2,7 @@
 
 The examiner records with the `nwdes examine` CLI verbs and closes. See [role recording](index.md#role-recording).
 
-The examiner records its observations, then sets a verdict for every current E ID: met, or unmet with class oracle_gap, product_violation, expectation_defect, or observation_gap. Each verdict cites at least one recorded observation. Closing stores the cited text with the verdicts and renders the acceptance brief. nwdes does not judge the evidence.
+The examiner records its observations, then sets a verdict for every current E ID: met; unmet with class oracle_gap, product_violation, expectation_defect, observation_gap, or unstable; or not_examined with a reason. Each met or unmet verdict cites at least one recorded observation; a not_examined verdict carries its reason instead. The close outcome follows the verdicts: an unmet row rejects, a not_examined row is indeterminate, and only an all-met set is accepted. Closing stores the cited text with the verdicts and renders the acceptance brief. nwdes does not judge the evidence.
 
 The lean route invokes the examiner after whole-candidate review, without host observations or root context. Pass its complete bundle inline. The examiner gathers its own observations in the named public-only workspace, records each through its generated examination recording verbs before citing it, and judges from the user's point of view. Source, diffs, private plans and producer judgments do not belong in its packet. There is no per-slice charter step and the root submits no reply file.
 
@@ -10,7 +10,7 @@ A record can contain unmet expectations; a successful close alone is not a succe
 
 ## Gathering public evidence
 
-The bundle's TASK section sets the wall budget and the probing rules. The budget is a recipe instruction; nwdes enforces no time limit.
+The bundle's TASK section sets the probing rules. The examine level limits only how many examinations the delivery admits.
 
 Run these verbs from the candidate checkout top level, using the workspace named in the bundle:
 

@@ -332,6 +332,27 @@ def omp_extensions_dir(home_dir: Path | None = None) -> Path:
     return omp_skills_dir(home_dir).parent / "extensions"
 
 
+PI_AGENT_DIR_ENV = "PI_CODING_AGENT_DIR"
+
+
+def pi_agent_dir(home_dir: Path | None = None) -> Path:
+    """Return the pi.dev agent directory (pi 1.5.2 docs).
+
+    PI_CODING_AGENT_DIR overrides it; otherwise it is ``~/.pi/agent`` under the
+    resolved home. This is pi's own root, not OMP's ``PI_CONFIG_DIR`` root.
+    """
+    override = env_or_none(PI_AGENT_DIR_ENV)
+    if override:
+        return Path(override)
+    base = home_dir if home_dir is not None else agents_home()
+    return base / ".pi" / "agent"
+
+
+def pi_extensions_dir(home_dir: Path | None = None) -> Path:
+    """Return the directory pi auto-loads ``*.ts`` extensions from."""
+    return pi_agent_dir(home_dir) / "extensions"
+
+
 def nwave_config_dir() -> Path:
     """Return the global nWave state root for this install destination."""
     return agents_home() / ".nwave"

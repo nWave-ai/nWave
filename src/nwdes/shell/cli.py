@@ -2,6 +2,8 @@
 
 import argparse
 import errno
+import io
+import json
 import os
 import re
 import shlex
@@ -25,10 +27,19 @@ from nwdes import (
     packets,
     prompts,
 )
-from nwdes.contracts import Built, Defect, Refused, checked
+from nwdes.contracts import (
+    Built,
+    Defect,
+    Refused,
+    checked,
+    refuse,
+    resolved_examine_level,
+)
 from nwdes.destinations import (
+    READABLE_BRIEF_DEFAULT,
     CommitLocations,
     Destinations,
+    pages_enabled,
     readable_directory,
     readable_paths,
     readable_setting,
@@ -287,6 +298,8 @@ def _parser(*, replay=False):
                 entry.add_argument("--global-config")
             continue
         entry = verbs.add_parser(verb.name, parents=[common], add_help=False)
+        if verb.name == "document":
+            entry.add_argument("--overview", action="store_true")
         if verb.actions:
             entry.add_argument("action", choices=verb.actions)
     return parser
@@ -519,12 +532,89 @@ def _project(
     failure = _inspection_failure(defects, unreadable, brand)
     if failure:
         return 1 if args.configuration_operational else failure
-    return _emit(
-        ports,
-        documents.project_outputs(
-            previous.value, tuple(handoffs), destinations, brand.value
-        ),
+    outputs = documents.project_outputs(
+        previous.value, tuple(handoffs), destinations, brand.value
     )
+    gate = documents.readable_gate(outputs, args.readable_language)
+    if isinstance(gate, Refused):
+        return _refusal(gate.defects)
+    return _emit(ports, outputs)
+
+
+def _product_sources(ports: DocumentPorts, repo_root, directory):
+    """The three product texts as the overview reads them, and the files it cannot decode."""
+    unreadable = []
+    texts = {}
+    for name in documents.PRODUCT_FILES:
+        path = str(Path(repo_root) / directory / name)
+        raw = ports.file(path)
+        texts[name] = None
+        if isinstance(raw, Unreadable):
+            unreadable.append(raw)
+        elif isinstance(raw, bytes):
+            try:
+                texts[name] = raw.decode("utf-8")
+            except UnicodeDecodeError as error:
+                unreadable.append(Unreadable(path, str(error)))
+    sources = documents.ProductSources(
+        *(texts[name] for name in documents.PRODUCT_FILES)
+    )
+    return sources, unreadable
+
+
+def _readable_language(tiers):
+    """The language of the readable brief when the setting is on, else None."""
+    readable_brief = readable_setting(tiers, "readable_brief", READABLE_BRIEF_DEFAULT)
+    return (
+        readable_brief["language"]
+        if isinstance(readable_brief, dict) and readable_brief.get("enabled") is True
+        else None
+    )
+
+
+def _overview(args, ports: DocumentPorts, initial, directory, adr_directory):
+    brand = args.prepared_brand
+    defects = list(initial)
+    if directory is None or adr_directory is None:
+        return _refusal(defects)
+    if args.feature is not None:
+        defects.append(
+            Defect(
+                "PartInvalid: --feature",
+                "The overview covers the whole project, so a feature selection would be silently ignored.",
+                "Drop --feature to write the overview, or run nwdes document --feature <name> for that feature's page.",
+            )
+        )
+    if args.handoff:
+        defects.append(
+            Defect(
+                "PartInvalid: --handoff",
+                "The overview reads the product files, not feature handoffs, so a handoff would be silently ignored.",
+                "Drop --handoff to write the overview, or run nwdes document --product --handoff <file> for the project brief.",
+            )
+        )
+    sources, unreadable = _product_sources(ports, args.repo_root, directory)
+    register = ports.register(adr_directory)
+    if isinstance(register, Unreadable):
+        unreadable.append(register)
+    elif isinstance(register, Refused):
+        defects.extend(register.defects)
+    failure = _inspection_failure(defects, unreadable, brand)
+    if failure:
+        return 1 if args.configuration_operational else failure
+    outputs = documents.overview_outputs(
+        sources,
+        register.value if isinstance(register, Built) else (),
+        directory,
+        adr_directory,
+        brand.value,
+    )
+    if isinstance(outputs, Refused):
+        return _refusal(outputs.defects)
+    gate = documents.readable_gate(outputs.value, args.readable_language)
+    if isinstance(gate, Refused):
+        return _refusal(gate.defects)
+    return _emit(ports, outputs.value)
 
 
 def _command_program(command):
@@ -619,16 +709,25 @@ def _load_policy():
     try:
         text = (Path(__file__).resolve().parents[1] / "policy.toml").read_text("utf-8")
     except (OSError, UnicodeError) as error:
-        return Refused(
-            (
-                Defect(
-                    "InputUnreadable: policy.toml",
-                    str(error),
-                    "Restore src/nwdes/policy.toml from the installed package.",
-                ),
-            )
+        return refuse(
+            "InputUnreadable: policy.toml",
+            str(error),
+            "Restore src/nwdes/policy.toml from the installed package.",
         )
     return handoff.parse_policy(text)
+
+
+def _help_text(verb, action, loaded):
+    """The help of a verb: under the distributed policy for a draft kind; the base grammar, opened by
+    one NOTE, when that policy did not load; the base grammar for every other verb (loaded is None)."""
+    if loaded is None:
+        return grammar.help_text(verb, action)
+    if isinstance(loaded, Refused):
+        base = grammar.help_text(verb, action)
+        if isinstance(base, Refused):
+            return base
+        return Built(grammar.policy_notice(loaded.defects) + base.value)
+    return grammar.help_text(verb, action, policy=loaded.value)
 
 
 def _inspected_output(args, raw):
@@ -711,6 +810,9 @@ def _document(args, ports: DocumentPorts, initial=(), raw=None, existing=None):
     if isinstance(confined, Refused):
         defects.extend(confined.defects)
     args.configuration_operational = configuration_failed(tiers)
+    args.readable_language = _readable_language(tiers)
+    if args.product and getattr(args, "overview", False):
+        return _overview(args, ports, defects, directory, adr_directory)
     if args.product:
         return _project(
             args,
@@ -802,7 +904,11 @@ def _document(args, ports: DocumentPorts, initial=(), raw=None, existing=None):
         paths = (
             *(output.path for output in adr_outputs),
             *(path for _, path in destinations.briefs),
-            *(path[:-3] + ".html" for _, path in destinations.briefs),
+            *(
+                (path[:-3] + ".html" for _, path in destinations.briefs)
+                if destinations.html_pages
+                else ()
+            ),
             destinations.handoff,
         )
         for path in paths:
@@ -830,10 +936,16 @@ def _document(args, ports: DocumentPorts, initial=(), raw=None, existing=None):
             destinations.adr_directory,
             current.design.get("adrs", ()),
         )
-    result = _emit(
-        ports,
-        documents.feature_outputs(current, destinations, brand.value, adr_outputs),
+    outputs = documents.feature_outputs(
+        current,
+        destinations,
+        brand.value,
+        adr_outputs,
+        readable_language=args.readable_language,
     )
+    if isinstance(outputs, Refused):
+        return _refusal(outputs.defects)
+    result = _emit(ports, outputs.value)
     if result == 0:
         for notice in current.withdrawals:
             print(notice)
@@ -927,6 +1039,20 @@ def _declared_jev(tiers, kind):
         return None
     tier = result.value if isinstance(result, Built) else result.tier
     return None if tier.unknown else tier.get("jev")
+
+
+def _declared_entry(tiers, kind, key):
+    """The value one tier declares for a key; absent, unknown or refused is none."""
+    result = dict(tiers).get(kind)
+    if result is None:
+        return None
+    tier = result.value if isinstance(result, Built) else result.tier
+    return None if tier.unknown else tier.get(key)
+
+
+def _declared_brief(tiers, kind):
+    """The readable_brief object one tier declares, or None."""
+    return _declared_entry(tiers, kind, "readable_brief")
 
 
 def _handoff_scope(previous):
@@ -1055,7 +1181,9 @@ def _approved_oracle_paths(root, directory, ports, inspected):
 
 def _refuse_changed_oracle(args, previous):
     """Refuse a crafter prompt whose oracle bytes differ from the approved oracle review."""
-    directory = os.path.relpath(Path(args.handoff).absolute().parent, args.repo_root)
+    directory = repository_path(
+        Path(os.path.relpath(Path(args.handoff).absolute().parent, args.repo_root))
+    )
     return _approval_refusal(
         args.repo_root,
         directory,
@@ -1120,6 +1248,49 @@ def _prompt(args):
                 else decoded.value
             )
     flags = vars(args)
+    tiers, tier_defects = _consent_tiers(args, previous)
+    if tier_defects:
+        return _refusal(tier_defects)
+    selected_for_scope = selected.value if isinstance(selected, Built) else None
+    declared_review_repo = _declared_entry(tiers, "repository", "review_max_rounds")
+    declared_review_global = _declared_entry(tiers, "global", "review_max_rounds")
+    declared_runtime_repo = _declared_entry(tiers, "repository", "model_runtime")
+    declared_runtime_global = _declared_entry(tiers, "global", "model_runtime")
+    declared_brief_repo = _declared_brief(tiers, "repository")
+    declared_brief_global = _declared_brief(tiers, "global")
+    if declared_brief_repo is not None:
+        brief, brief_source = declared_brief_repo, "project"
+    elif declared_brief_global is not None:
+        brief, brief_source = declared_brief_global, "global"
+    else:
+        brief, brief_source = READABLE_BRIEF_DEFAULT, "built-in default"
+    html_pages = pages_enabled(tuple(result for _, result in tiers))
+    closing = (
+        selected_for_scope is not None
+        and selected_for_scope.id in prompts.READABLE_BRIEF_CLOSING_ROLES
+    )
+    examine_name, examine_source = resolved_examine_level(
+        _declared_entry(tiers, "repository", "examine_level"),
+        _declared_entry(tiers, "global", "examine_level"),
+    )
+    flags = {
+        **flags,
+        "examine_level": examine_name,
+        "examine_level_source": examine_source,
+        "review_rounds": prompts.review_rounds_line(
+            declared_review_repo, declared_review_global
+        ),
+        "model_fact": prompts.model_fact_line(
+            args.role, declared_runtime_repo, declared_runtime_global
+        ),
+        "readable_brief": prompts.readable_brief_line(
+            closing and html_pages and bool(brief and brief.get("enabled")),
+            brief.get("language") if isinstance(brief, dict) else None,
+            brief_source,
+        )
+        if closing
+        else "",
+    }
     if args.repo_root is not None:
         # This boundary knows invocation coordinates; renderers use the declared root.
         flags = {
@@ -1131,9 +1302,6 @@ def _prompt(args):
         }
     if flags.get("jev") is None:
         # Consent comes from a persistent, user-owned tier; with none declared, Jev is authorized.
-        tiers, defects = _consent_tiers(args, previous)
-        if defects:
-            return _refusal(defects)
         flags = {
             **flags,
             "jev": prompts.resolved_jev(
@@ -1156,7 +1324,9 @@ def _prompt(args):
             else failure
         )
     if prepared.value.recipe.id == "examine.user-v1":
-        workspace = _examination_workspace(args.repo_root, args.handoff)
+        workspace = _examination_workspace(
+            args.repo_root, args.handoff, prepared.value.inputs.examine_level
+        )
         if isinstance(workspace, Refused):
             return _examination_failure(workspace)
         prepared = Built(
@@ -1205,12 +1375,33 @@ def _examination_failure(result):
     )
 
 
-def _examination_workspace(root, handoff):
+def _examination_workspace(root, handoff, level=None):
     """The examine prompt's workspace; its record lives in this checkout's private nwdes directory."""
     locations = _commit_locations(root)
     if isinstance(locations, Refused):
         return locations
+    refused = probe.round_refusal(locations.value.workspaces, handoff, level)
+    if refused is not None:
+        return refused
     return probe.materialize(root, locations.value.workspaces, handoff)
+
+
+def _published_outcome(path):
+    """The outcome of the examination published at `path`; a publication without verdicts is rejected."""
+    published = json.loads(Path(path).read_text(encoding="utf-8")).get("examination")
+    if not published:
+        return "rejected"
+    return handoff.examination_outcome(published)
+
+
+def _stale_candidate(recorded, head):
+    return Defect(
+        "StaleCandidate: examine prompt",
+        f"the examine prompt was built on commit {recorded}, but HEAD is now {head}; "
+        "the examination's evidence holds only for the commit the examiner saw.",
+        "Rebuild the examine prompt on the current commit with nwdes prompt --role "
+        "nw-user-examiner --task examine, then record the examination again.",
+    )
 
 
 def _lane(args):
@@ -1322,7 +1513,9 @@ def _lane(args):
             resources["destinations"],
             resources["brand"].value,
         )
-        written = _emit(resources["ports"], outputs)
+        if isinstance(outputs, Refused):
+            return _refusal(outputs.defects)
+        written = _emit(resources["ports"], outputs.value)
         if written:
             return written
         original = next(
@@ -1541,7 +1734,33 @@ def _slice_required(arguments):
     return False
 
 
+def repository_path(path: Path) -> str:
+    """The recorded form of a repository path: forward slashes whatever separator the host writes."""
+    return path.as_posix()
+
+
+def _utf8_output_streams():
+    for stream in (sys.stdout, sys.stderr):
+        # In-process callers may replace a stream with a StringIO, which has no encoding to set.
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
+def _not_examined_spelling(argv):
+    """Read `examine verdict set --not-examined` as the `--verdict not_examined` it names."""
+    if argv[:3] != ["examine", "verdict", "set"] or "--verdict" in argv:
+        return argv
+    return [
+        word
+        for token in argv
+        for word in (
+            ("--verdict", "not_examined") if token == "--not-examined" else (token,)
+        )
+    ]
+
+
 def main(argv=None):
+    _utf8_output_streams()
     argv = list(sys.argv[1:] if argv is None else argv)
     verb = argv[0] if argv and not argv[0].startswith("-") else None
     if verb in ("prompt", "packet"):
@@ -1564,17 +1783,19 @@ def main(argv=None):
             ),
             action,
         )
-    help_result = grammar.help_text(verb, action)
-    if isinstance(help_result, Refused):
-        return _refusal(help_result.defects)
-    if (
+    help_requested = (
         "--help" in argv
         and not (verb == "examine" and action == "probe" and "--" in argv)
-    ) or not argv:
+    ) or not argv
+    loaded_policy = _load_policy() if help_requested and verb in drafts.KINDS else None
+    help_result = _help_text(verb, action, loaded_policy)
+    if isinstance(help_result, Refused):
+        return _refusal(help_result.defects)
+    if help_requested:
         sys.stdout.write(help_result.value)
         return 0
     try:
-        args = PARSER.parse_args(argv)
+        args = PARSER.parse_args(_not_examined_spelling(argv))
     except _Usage as error:
         if error.defects:
             return _refusal(error.defects)
@@ -1627,7 +1848,10 @@ def main(argv=None):
                 )
             )
         result = probe.run(
-            args.repo_root, args.workspace, args.examination_action, args.arguments
+            args.repo_root,
+            args.workspace,
+            args.examination_action,
+            args.arguments,
         )
         return _examination_failure(result) if isinstance(result, Refused) else result
     if args.verb in drafts.KINDS:
@@ -1645,6 +1869,8 @@ def main(argv=None):
         return _packet(args)
     if args.verb == "commit":
         return _commit(args)
+    if getattr(args, "overview", False):
+        args.product = True
     args.invocation = handoff.invocation(
         args.verb,
         getattr(args, "action", None),
@@ -1737,6 +1963,9 @@ class _DraftScope:
     key: drafts.DraftKey
     path: str
     handoff_bytes: bytes
+
+    def run_record_path(self) -> str:
+        return repository_path(Path(self.directory) / "runs" / self.key.filename)
 
 
 @dataclass(frozen=True)
@@ -1834,7 +2063,7 @@ def _record_role_scoped(kind, name, values, context, close_session):
         )
     if isinstance(current, Unreadable):
         return _inspection_failure((), (current,))
-    directory = str(Path(destinations.handoff).parent)
+    directory = repository_path(Path(destinations.handoff).parent)
     key = drafts.DraftKey(
         kind,
         review.value
@@ -1843,7 +2072,7 @@ def _record_role_scoped(kind, name, values, context, close_session):
         if kind in ("acceptance", "charter", "craft")
         else None,
     )
-    path = str(Path(directory) / ".nwdes-drafts" / key.filename)
+    path = repository_path(Path(directory) / ".nwdes-drafts" / key.filename)
     scope = _DraftScope(destinations, directory, key, path, current)
     if kind == "review" and name == "findings":
         return _read_review_findings(args, ports, scope, values["owner"])
@@ -1979,7 +2208,7 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
             return 1
         evidence = observed.value
     if name == "open" and kind in ("craft", "review"):
-        record_path = str(Path(scope.directory) / "runs" / scope.key.filename)
+        record_path = scope.run_record_path()
         confined = ports.confinement((record_path,))
         if isinstance(confined, Refused):
             return _refusal(confined.defects)
@@ -2079,7 +2308,7 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
                     (
                         documents.Output(
                             documents.OutputKind.Handoff,
-                            str(Path(scope.directory) / "runs" / scope.key.filename),
+                            scope.run_record_path(),
                             drafts.record_bytes(record),
                         ),
                     )
@@ -2238,7 +2467,7 @@ def _review_evidence(root, directory, files=None, others=()):
 
 
 def _read_review_findings(args, ports, scope, owner):
-    path = str(Path(scope.directory) / "runs" / scope.key.filename)
+    path = scope.run_record_path()
     confined = ports.confinement((path,))
     if isinstance(confined, Refused):
         return _refusal(confined.defects)
@@ -3071,6 +3300,21 @@ def _record_close(kind, name, values, context):
         head = _commit_git(args.repo_root, ("rev-parse", "--verify", "HEAD^{commit}"))
         if isinstance(head, Refused):
             return _commit_failure(head)
+        if kind == "examine":
+            current_head = head.value.decode("ascii").strip()
+            recorded = probe.stale_candidates(
+                locations.value.workspaces,
+                str(Path(args.repo_root) / context.destinations.handoff),
+                current_head,
+            )
+            if recorded:
+                return _refusal((_stale_candidate(recorded[0], current_head),))
+            rounds = probe.rounds_state(
+                locations.value.workspaces,
+                str(Path(args.repo_root) / context.destinations.handoff),
+            )
+            if isinstance(rounds, Refused):
+                return _refusal(rounds.defects)
         result = _record_role_scoped(
             kind,
             name,
@@ -3086,6 +3330,11 @@ def _record_close(kind, name, values, context):
         if result == 0 and kind == "examine":
             handoff = str(Path(args.repo_root) / context.destinations.handoff)
             _retire_workspaces(args.repo_root, locations.value, handoff)
+            counted = probe.record_examination(
+                locations.value.workspaces, handoff, _published_outcome(handoff)
+            )
+            if isinstance(counted, Refused):
+                return _refusal(counted.defects)
         return result
 
 

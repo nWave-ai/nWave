@@ -1,6 +1,6 @@
 ---
 name: nw-doc-as-artifact
-description: Use briefs and HTML as shared reading surfaces for human understanding and collaborative review.
+description: Use briefs and HTML as shared reading surfaces for human understanding, including the readable-brief round between the documentarist and the owning roles.
 user-invocable: false
 disable-model-invocation: true
 ---
@@ -47,3 +47,34 @@ Share the local HTML path and discuss one meaningful topic at a time.
 Regenerate the same projection after authority changes. Do not claim a view
 is current without rendering the current authority. No custom LLM-authored
 renderer, new ledger or progression gate is needed.
+
+## Readable brief: diagrams, decisions and one round of questions
+
+Applies when `documents.readable_brief` is enabled: the role bundle or the host says so.
+The diagrams and decisions below are part of the readable result, not extras.
+
+**Diagrams.** Read `nw-diagram` before you draw or change a diagram. Before you
+report a render as successful, check R1 (title in the block) and R2 (description
+above the block) for every diagram of the authority. Source shown as code is not
+a description. Styling cannot repair a diagram that fails these rules.
+
+**Decisions at the source.** The role that owns a choice records it in its own
+record, with its own CLI verb. Write the text as a title of at most 8 words, a
+colon, then the reason: `Use one config file: two files drifted in the past`.
+Product owner: product decisions. Architect: design decisions and constraints.
+Platform architect: operational decisions, in the architect's design authority.
+A choice with no recorded reason is not yet a decision.
+
+**One round.** At the end of analysis the documentarist reads the current
+authority and sends ONE message to each owning role. Each message has numbered
+questions; each question cites a decision id or a diagram and names the gap:
+missing title, missing reason, a choice the reader cannot follow, or a failed rule.
+The owner answers once: it corrects or adds the decision at the source, and
+replies with the id. Without direct messaging, the questions go to the caller
+as `CLARIFICATION_NEEDED`. The round is not repeated. An unanswered question
+is shown as open in the document.
+
+**The documentarist presents, never decides.** It writes each decision into
+the readable document citing its id, with the title and reason as recorded.
+It writes no decision, changes no authority and does not fill a missing reason
+from its own reading.

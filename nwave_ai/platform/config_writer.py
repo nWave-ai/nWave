@@ -7,8 +7,10 @@ the three retired files into those two documents before a reader is used.
 
 from __future__ import annotations
 
+import codecs
 import json
 import os
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +32,10 @@ if TYPE_CHECKING:
 
 class ConfigMigrationError(RuntimeError):
     """A legacy configuration cannot safely be made the unified authority."""
+
+
+class JevDeclarationUnverifiedError(ConfigMigrationError):
+    """The Jev entry was published, but the declaration could not confirm the published file."""
 
 
 @dataclass(frozen=True)
@@ -67,6 +73,13 @@ class ConfigWriter:
             "trailer": "Co-Authored-By: nWave <nwave@nwave.ai>",
         },
     }
+    # The Jev consent key of the repository tier. nwdes resolves it; this writer records one
+    # explicit choice, or the declared default, and never replaces a value already present.
+    JEV_KEY = "jev"
+    JEV_AUTHORIZED = "authorized"
+    JEV_UNAUTHORIZED = "unauthorized"
+    JEV_VALUES = (JEV_AUTHORIZED, JEV_UNAUTHORIZED)
+    JEV_DECLARED_DEFAULT = JEV_AUTHORIZED
 
     def __init__(
         self,
@@ -295,6 +308,125 @@ class ConfigWriter:
         mutate(document)
         return self._commit_authority(self.repo_path, document, (legacy, marker))
 
+    @classmethod
+    def _checked_jev_choice(cls, choice: str) -> str:
+        """Pure: the one value of the closed Jev set, or a refusal that names the set."""
+        if choice not in cls.JEV_VALUES:
+            raise ValueError(
+                f"the Jev choice {choice!r} is not recordable: only "
+                f"{' or '.join(cls.JEV_VALUES)} is a Jev choice nwdes reads; "
+                "pass one of those values."
+            )
+        return choice
+
+    @classmethod
+    def declared_jev_patch(
+        cls, document: dict[str, Any], choice: str
+    ) -> dict[str, str]:
+        """Pure: the jev entry to add to a repository document, or nothing when it holds one."""
+        checked = cls._checked_jev_choice(choice)
+        return {} if cls.JEV_KEY in document else {cls.JEV_KEY: checked}
+
+    def repo_declares_jev(self) -> bool:
+        """True when the project's own file already holds a jev key, whatever its value."""
+        return self.JEV_KEY in self._read_declared_object(
+            self.repo_path, label="project config"
+        )
+
+    def machine_jev(self) -> str | None:
+        """The jev value the machine-wide file declares, or None when it declares none.
+
+        Raises ConfigMigrationError when that file exists but cannot be read as a JSON object.
+        """
+        return self._read_declared_object(
+            self.global_path, label="machine-wide config"
+        ).get(self.JEV_KEY)
+
+    @classmethod
+    def declared_jev_text(cls, text: str, choice: str) -> str:
+        """Pure: the document text with one jev entry inserted before its closing brace.
+
+        Every byte outside the inserted entry is kept as it was written, and the entry takes the
+        document's own line ending (CRLF or LF). Empty text, which is a project file that does not
+        exist yet, becomes a document that holds only the entry.
+        """
+        entry = f'"{cls.JEV_KEY}": "{cls._checked_jev_choice(choice)}"'
+        if not text.strip():
+            return "{\n  " + entry + "\n}\n"
+        newline = "\r\n" if "\r\n" in text else "\n"
+        stripped = text.rstrip()
+        head, tail = stripped[:-1], text[len(stripped) :]
+        core = head.rstrip()
+        whitespace = head[len(core) :]
+        separator = "" if core.endswith("{") else ","
+        return core + separator + newline + "  " + entry + whitespace + "}" + tail
+
+    def declare_repo_jev(self, choice: str) -> bool:
+        """Record one explicit Jev choice in the project's own file and nothing else.
+
+        The declaration never reconciles, retires or re-serializes the project's own file or any
+        legacy file: it inserts the jev entry and keeps every other byte. Returns True when the
+        entry was written and False when the project already holds a jev key, which stays byte
+        for byte. A value outside JEV_VALUES and a project root that is the machine-wide
+        directory are refused before anything is written.
+        """
+        self._checked_jev_choice(choice)
+        if self.repo_path.resolve() == self.global_path.resolve():
+            raise ValueError(
+                f"the Jev choice was not recorded: project root {self._repo_root} is the "
+                f"machine-wide configuration directory, so the write would land in "
+                f"{self.global_path}; run nwave-ai install from a project folder."
+            )
+        document = self._read_declared_object(self.repo_path, label="project config")
+        patch = self.declared_jev_patch(document, choice)
+        if not patch:
+            return False
+        # Read the bytes and decode them: a text read would translate CRLF to LF on the way in.
+        original = (
+            self.repo_path.read_bytes().decode("utf-8")
+            if self.repo_path.exists()
+            else ""
+        )
+        written = self.declared_jev_text(original, choice)
+        expected = {**document, **patch}
+        if json.loads(written) != expected:
+            raise ConfigMigrationError(
+                f"Cannot record the Jev choice in {self.repo_path}: the entry would "
+                "change another value"
+            )
+        mode = (
+            stat.S_IMODE(self.repo_path.stat().st_mode)
+            if self.repo_path.exists()
+            else None
+        )
+        self._atomic_write(self.repo_path, written.encode("utf-8"))
+        if mode is not None:
+            # The atomic write publishes its own 0600 temp file; the user's mode is restored.
+            try:
+                self.repo_path.chmod(mode)
+            except OSError as exc:
+                raise JevDeclarationUnverifiedError(
+                    f"the jev entry was written to {self.repo_path}, but its permissions "
+                    f"could not be restored to {mode:o} ({exc.strerror}); check the file "
+                    "before relying on it"
+                ) from exc
+        try:
+            readback = self._read_declared_object(
+                self.repo_path, label="project config"
+            )
+        except ConfigMigrationError as exc:
+            raise JevDeclarationUnverifiedError(
+                f"the jev entry was written to {self.repo_path}, but reading the file back "
+                "failed; check the file before relying on it"
+            ) from exc
+        if readback != expected:
+            raise JevDeclarationUnverifiedError(
+                f"the jev entry was written to {self.repo_path}, but reading the file back "
+                "did not give the declared document; another writer may have changed the "
+                "file, so check it before relying on it"
+            )
+        return True
+
     def set_repo_override(self, field: str, value: bool | str) -> dict[str, Any]:
         """Atomically publish one well-typed public project override.
 
@@ -468,6 +600,50 @@ class ConfigWriter:
         if not isinstance(raw, dict):
             raise ConfigMigrationError(
                 f"Cannot migrate {path}: {role} must be a JSON object"
+            )
+        return raw
+
+    @staticmethod
+    def _read_declared_object(path: Path, *, label: str) -> dict[str, Any]:
+        """Read a document the Jev declaration reads, refusing it with the real cause.
+
+        A missing file is an empty document. Every refusal names the file and its real cause
+        (empty, byte-order mark, invalid JSON, or not an object), states that the file is
+        unchanged, and says what to do next. The declaration migrates nothing, so a refusal
+        never says migrate.
+        """
+        if not path.exists():
+            return {}
+        try:
+            data = path.read_bytes()
+        except OSError as exc:
+            raise ConfigMigrationError(
+                f"the {label} file {path} could not be read ({exc.strerror}); "
+                "fix its permissions, then rerun the command; the file is unchanged"
+            ) from exc
+        if not data:
+            raise ConfigMigrationError(
+                f"the {label} file {path} is empty (0 bytes), so it is not a JSON object; "
+                "put a JSON object in it, such as {}, or remove it, then rerun the command; "
+                "the file is unchanged"
+            )
+        if data.startswith(codecs.BOM_UTF8):
+            raise ConfigMigrationError(
+                f"the {label} file {path} starts with a UTF-8 byte-order mark, so it is not "
+                "read as JSON; save it again as UTF-8 without the byte-order mark, then rerun "
+                "the command; the file is unchanged"
+            )
+        try:
+            raw = json.loads(data.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ConfigMigrationError(
+                f"the {label} file {path} holds invalid JSON; correct it, then rerun the "
+                "command; the file is unchanged"
+            ) from exc
+        if not isinstance(raw, dict):
+            raise ConfigMigrationError(
+                f"the {label} file {path} must hold a JSON object; correct it, then rerun "
+                "the command; the file is unchanged"
             )
         return raw
 

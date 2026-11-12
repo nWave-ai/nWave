@@ -3,6 +3,9 @@ Role: {{role}} (exact installed role).
 feature: {{feature}}
 working directory: {{repo_root}}
 jev: {{jev}}
+review rounds: {{review_rounds}}
+{{model_fact}}
+{{readable_brief}}
 known baseline failures:
 {{baseline_failures}}
 request (verbatim from the handoff):
@@ -30,6 +33,7 @@ Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-inva
 ## TASK (template)
 Read/write only under working directory; change any lane file your slice needs, except the oracle, its supports and feature records. Perform declared move, preserving behavior/schema/reply bytes. Keep production/tests importable and tests collectable; no oracle/design edits or self-review.
 - Load triggered skills and `nw-code-analysis-port`. Jev: only authorized/available, follow `nw-typesafe-system-one` after mechanical facts, including preservation; verify advice, not verdict. Otherwise `typesafe: unavailable`, continue; report capability limits.
+- {{jev_decision}}
 - Diagnose preservation as needed; local results replace no recorded measurement. After edits, fail-fast on a few directly affected unit files, never common-import selection, directories or suite. Host owns verification; CI covers rest. Failure means behavior changed: repair regressions in any lane file your slice needs, or reject blocked-by design with failing ids.
 
 ## RECORD

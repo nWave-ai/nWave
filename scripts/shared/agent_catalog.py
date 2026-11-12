@@ -271,7 +271,17 @@ def scrub_removed_skill_references(
 
 
 def is_public_command(metadata: dict, public_agents: set[str]) -> bool:
-    """A command is public unless all of its declared agents are non-public."""
+    """A command is public unless it is marked private or all of its declared
+    agents are non-public.
+
+    An explicit ``public: false`` on the command entry makes the command
+    private even when every declared agent is public, so a command can stay
+    private independently of its agent roster. Without the key the agent
+    rule decides exactly as before: a command with no declared agents is
+    public, and a command is public while any declared agent is public.
+    """
+    if metadata.get("public") is False:
+        return False
     agents = metadata.get("agents") or []
     return not agents or any(
         agent.replace("_", "-") in public_agents for agent in agents

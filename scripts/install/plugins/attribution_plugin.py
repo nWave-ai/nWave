@@ -13,6 +13,7 @@ from pathlib import Path
 from scripts.install.attribution_utils import (
     ATTRIBUTION_USER_MANAGED,
     UnreadableAttributionPreference,
+    adopt_legacy_global_config,
     classify_attribution_value,
     cleanup_legacy_attribution_hook,
     migrate_legacy_hook,
@@ -102,6 +103,8 @@ class AttributionPlugin(InstallationPlugin):
             if context.user_project_root is not None
             else Path.cwd()
         )
+        if not context.dry_run:
+            adopt_legacy_global_config(config_dir)
         preference = AttributionPreference.read(config_dir)
         self._retire_legacy(context, config_dir, repository)
         if isinstance(preference, UnreadableAttributionPreference):

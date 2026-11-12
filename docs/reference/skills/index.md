@@ -70,7 +70,7 @@
 
 ## nw-algebraic-design-protocol
 
-- [nw-algebraic-design-protocol](nw-algebraic-design-protocol.md) — The METHOD for finding a design — name observations and equality before constructors, then follow any contradiction to the type or observation that causes it. Use when a design decision is contested, a law has exceptions, a census or model keeps producing wrong answers, or a representation change must preserve meaning. Complements nw-fp-algebra-driven-design, which catalogues the structures; this says how to arrive at one and what to do when it breaks.
+- [nw-algebraic-design-protocol](nw-algebraic-design-protocol.md) — Load when designing a representation, equality or laws, when a law has exceptions, or when a representation change must preserve meaning.
 
 ## nw-architectural-styles-tradeoffs
 
@@ -130,7 +130,7 @@
 
 ## nw-certainty-by-construction
 
-- [nw-certainty-by-construction](nw-certainty-by-construction.md) — Turn a stable layer claim (domain, application, adapter, or infrastructure) into a construction boundary so the invalid state cannot be built, and state honestly what remains unguarded. Use when a requirement says an invalid state or transition must not occur, when values need a canonical form, or when a rewrite/cache/optimisation must preserve meaning. Complements nw-fp-domain-modeling, which shows the encodings; this decides whether to encode, how strong the claim really is, and what obligation is left over.
+- [nw-certainty-by-construction](nw-certainty-by-construction.md) — Load when a state must be unrepresentable, evidence must carry instead of a boolean, or a representation change must preserve meaning - redirect plus the byte-preservation and structural-owner rules.
 
 ## nw-cicd-and-deployment
 
@@ -142,7 +142,7 @@
 
 ## nw-code-craftsmanship
 
-- [nw-code-craftsmanship](nw-code-craftsmanship.md) — Universal OO/FP craftsmanship foundation — domain-language naming, small cohesive units, semantic DRY/SSOT, reuse-before-new, one owner per rule/config/fact, prefactoring before new behavior, ports/adapters for testability. Consult before writing or reviewing any unit of code, either paradigm.
+- [nw-code-craftsmanship](nw-code-craftsmanship.md) — Load when writing or changing production code in craft; per-unit rules, failure messages, security, recovery, performance, honest closing statement.
 
 ## nw-code-design-fp
 
@@ -150,7 +150,7 @@
 
 ## nw-code-design-oo
 
-- [nw-code-design-oo](nw-code-design-oo.md) — OO code-design SSOT — the WHAT-to-design anti-smell catalog (Object Calisthenics, RPP smell taxonomy, effect isolation) shared by the solution architect (design-time) and the crafter (execution-time).
+- [nw-code-design-oo](nw-code-design-oo.md) — Load before designing or changing domain/application code: owners, reuse, boundaries, simplest design, domain language, calisthenics, aggregates, architectural and contract tests.
 
 ## nw-collapse-detection
 
@@ -250,7 +250,7 @@
 
 ## nw-diagram
 
-- [nw-diagram](nw-diagram.md) — Generates C4 architecture diagrams (context, container, component) in Mermaid or PlantUML. Use when creating or updating architecture visualizations.
+- [nw-diagram](nw-diagram.md) — Generates accessible, legible C4 architecture diagrams (context, container, component) in Mermaid or PlantUML under 12 checkable rules. Use when creating, updating or reviewing architecture diagrams, or when documents.readable_brief is enabled.
 
 ## nw-discover
 
@@ -262,7 +262,7 @@
 
 ## nw-discuss
 
-- [nw-discuss](nw-discuss.md) — PO-led product conversation, visible feedback increments and human-readable briefs.
+- [nw-discuss](nw-discuss.md) — Use when a product question or request must become agreed promises, sad paths, journey and slices before design or tests.
 
 ## nw-distill
 
@@ -294,7 +294,7 @@
 
 ## nw-doc-as-artifact
 
-- [nw-doc-as-artifact](nw-doc-as-artifact.md) — Use briefs and HTML as shared reading surfaces for human understanding and collaborative review.
+- [nw-doc-as-artifact](nw-doc-as-artifact.md) — Use briefs and HTML as shared reading surfaces for human understanding, including the readable-brief round between the documentarist and the owning roles.
 
 ## nw-document
 
@@ -322,7 +322,7 @@
 
 ## nw-formal-verification-tlaplus
 
-- [nw-formal-verification-tlaplus](nw-formal-verification-tlaplus.md) — TLA+ and PlusCal for specifying distributed system invariants. Decision heuristics for when formal verification adds value, key patterns, state explosion management, and alternatives comparison.
+- [nw-formal-verification-tlaplus](nw-formal-verification-tlaplus.md) — Load when writing a Quint or TLA+/PlusCal model to get runnable syntax, check commands and state-space limits; decision rules are in nw-solution-architect-formal-verification.
 
 ## nw-fp-algebra-driven-design
 
@@ -402,7 +402,7 @@
 
 ## nw-jtbd-core
 
-- [nw-jtbd-core](nw-jtbd-core.md) — Core JTBD theory and job story format - job dimensions, job story template, job stories vs user stories, 8-step universal job map, outcome statements, and forces of progress
+- [nw-jtbd-core](nw-jtbd-core.md) — Load when turning a request into promises, job stories or scenario titles.
 
 ## nw-jtbd-interviews
 
@@ -526,7 +526,7 @@
 
 ## nw-property-based-testing
 
-- [nw-property-based-testing](nw-property-based-testing.md) — Property-based testing strategies (PBT — ACTIVE, authored by the acceptance-designer during DISTILL), shrinking, PBT+TDD integration.
+- [nw-property-based-testing](nw-property-based-testing.md) — Load when a design law holds over a broad input, state or sequence domain and needs a generated property test.
 
 ## nw-quality-validation
 
@@ -538,7 +538,11 @@
 
 ## nw-refactor
 
-- [nw-refactor](nw-refactor.md) — Applies the Refactoring Priority Premise (RPP) levels L1-L6 for systematic code refactoring. Use when improving code quality through structured refactoring passes.
+- [nw-refactor](nw-refactor.md) — Load after green to refactor changed code in small behaviour-preserving commits (RPP L1-L6) and apply the structure rules per unit.
+
+## nw-requester-words
+
+- [nw-requester-words](nw-requester-words.md) — Use when naming DIVERGE options, writing recommendation or requester-facing text, or reviewing either — the requester-words quote match, new-term definition, `[new]` marking and handle rule
 
 ## nw-research
 
@@ -614,7 +618,7 @@
 
 ## nw-solution-architect-formal-verification
 
-- [nw-solution-architect-formal-verification](nw-solution-architect-formal-verification.md) — PROCEDURE — formally verify every design's algebraic claims with need-selected checkers and explicit host-relayed installation or human waiver.
+- [nw-solution-architect-formal-verification](nw-solution-architect-formal-verification.md) — Load in the model step to decide which design claims need a formal model, pick Quint or TLA+, and write, check and mutate-test it.
 
 ## nw-source-verification
 
@@ -678,11 +682,11 @@
 
 ## nw-test-design-mandates
 
-- [nw-test-design-mandates](nw-test-design-mandates.md) — Design mandates for acceptance tests - hexagonal boundary, business language abstraction, user journey completeness, pure function extraction, 3 Pillars (domain language / chained narrative / production composition), and the layered ATD discipline (Universe-bound assertion, layer-dependent PBT mode, two-tier acceptance, example-based sad paths). Lean recomposing core - routes to three narrow mandate modules.
+- [nw-test-design-mandates](nw-test-design-mandates.md) — Load before writing, reviewing or timing any test - oracle, scenarios, assertions, fakes, names, budgets, walking skeleton.
 
 ## nw-test-design-mandates-composition-contract
 
-- [nw-test-design-mandates-composition-contract](nw-test-design-mandates-composition-contract.md) — Composition-root authoring-contract mandates for acceptance tests — SSOT + Zero Duplication via Types + Services + DSL, Driving-Port-Only Boundary (Farley four-layer protocol-driver contract, fixture-theater/tautological-test anti-pattern), Contract Shape Classification (@in-memory/@real-io tag-vs-composition), and Dormant-Seam Reconciliation (AT drives the DESIGN-declared seam, not the new component). Consult while composing the AT's driving surface, structuring step/type/service code, and tagging the contract shape. Canonical definitions; SSOT for these mandates.
+- [nw-test-design-mandates-composition-contract](nw-test-design-mandates-composition-contract.md) — Stub - every test rule lives in nw-test-design-mandates; nothing to load here.
 
 ## nw-test-design-mandates-layered-mechanics
 
@@ -718,7 +722,7 @@
 
 ## nw-type-level-design
 
-- [nw-type-level-design](nw-type-level-design.md) — Design or review evidence-preserving APIs that model invalid states, state transitions, capabilities, and trusted construction proportionately to the target language.
+- [nw-type-level-design](nw-type-level-design.md) — Load when an invalid state, call or transition must be impossible to build, or a validation must carry evidence to the next operation.
 
 ## nw-typesafe-system-one
 

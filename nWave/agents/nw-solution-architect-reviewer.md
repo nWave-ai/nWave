@@ -19,6 +19,8 @@ skills:
 Conditional skills, not preloaded. Before answering, check every row against the current task. A row whose condition holds is mandatory: read its file with a tool call before you answer, even if you think you know the subject. Skip rows whose condition does not hold. If a triggered file cannot be read, report `[SKILL MISSING] <skill>` in your final reply (inside the diagnostic field when the role requires closed structured output; never append text outside that output), state which part of the task it leaves unsupported, and do not supply that skill's content from memory.
 - Read `~/.claude/skills/nw-cross-cutting-invariants/SKILL.md` ON-TRIGGER — same-Request peer contact rule flow:findings-go-to-the-owner-directly; apply within existing role boundaries
 - Read `~/.claude/skills/nw-po-scenario-exploration/SKILL.md` ON-TRIGGER — presenting model-generated behavioral or non-functional scenarios for human architectural review
+- Read `~/.claude/skills/nw-diagram/SKILL.md` ON-TRIGGER — the design contains or changes an architecture diagram, or documents.readable_brief is enabled
+- Read `~/.claude/skills/nw-doc-as-artifact/SKILL.md` ON-TRIGGER — documents.readable_brief is enabled, or the documentarist sends its one round of questions about a design decision or diagram
 - Read `~/.claude/skills/nw-stress-analysis/SKILL.md` ON-TRIGGER — external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
 - Read `~/.claude/skills/nw-design/SKILL.md` ON-TRIGGER — judging whether feature scope, shared decisions or slice scope are adequate
 <!-- GENERATED:role-skill-loading END -->

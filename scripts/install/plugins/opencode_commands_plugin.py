@@ -27,6 +27,7 @@ from scripts.install.plugins.opencode_common import (
     uninstall_with_manifest,
     verify_with_manifest,
 )
+from scripts.shared.agent_catalog import load_public_commands
 from scripts.shared.install_paths import (
     PYTHON_CMD_SUBSTITUTION,
     resolve_python_command,
@@ -181,6 +182,17 @@ def _write_manifest(
 # _read_manifest moved to opencode_common.read_manifest (parameterized).
 
 
+def _command_files(context: InstallContext, commands_source: Path) -> list[Path]:
+    """Command files to install: every file for a dev install, only the
+    catalog-public files otherwise, decided by the ONE shared public
+    command rule in scripts.shared.agent_catalog."""
+    files = sorted(commands_source.glob("*.md"))
+    if context.dev_mode:
+        return files
+    public_commands = load_public_commands(context.project_root / "nWave")
+    return [path for path in files if path.stem in public_commands]
+
+
 class OpenCodeCommandsPlugin(InstallationPlugin):
     """Plugin for installing nWave commands into OpenCode format."""
 
@@ -238,7 +250,7 @@ class OpenCodeCommandsPlugin(InstallationPlugin):
                     "OpenCode command(s) before rewrite"
                 )
 
-            command_files = sorted(commands_source.glob("*.md"))
+            command_files = _command_files(context, commands_source)
             if not command_files:
                 context.logger.info("  \u23ed\ufe0f No command files found, skipping")
                 return PluginResult(

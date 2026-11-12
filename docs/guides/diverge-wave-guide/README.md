@@ -147,7 +147,7 @@ The product-owner agent will read your recommendation and produce user stories g
 
 ### Phase 1: JTBD Analysis
 
-Problem statement: "Developers miss critical failure signals"
+`request.md` (requester-verbatim): "Developers miss critical failure signals"
 
 Extracted job: "When a production service fails, I want immediate notification through a channel I actively monitor, so I can respond before customers notice."
 
@@ -167,7 +167,7 @@ Research completed:
 
 ### Phase 3: Brainstorming
 
-6 generated options:
+6 generated options (the bold names are internal handles: they stay in the option list and scoring table, never in the recommendation):
 1. **PagerDuty-native** — full platform, complex setup
 2. **Slack webhook** — minimal, but limited to Slack users
 3. **Email digest** — low cost, high latency
@@ -196,11 +196,11 @@ Scoring matrix:
 
 ### Recommendation
 
-**Chosen**: Slack webhook integration
+**Chosen**: send each critical failure signal into Slack [new] through a webhook [new]
 
 **Rationale**: Fastest to implement (developers already monitoring Slack), simplest to operate, highest adoption. Extensibility is adequate for phase 1.
 
-**Dissenting case**: Hybrid (Slack+email) is worth reconsidering if we discover low adoption among remote teams who step away from Slack frequently.
+**Dissenting case**: sending each critical failure signal by chat and by email [new] is worth reconsidering if we discover low adoption among remote teams who step away from Slack frequently.
 
 ---
 

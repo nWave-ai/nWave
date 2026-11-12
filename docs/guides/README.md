@@ -55,3 +55,5 @@ throwaway repository, then run real work with the
 the way are defined in the [glossary](./glossary.md).
 
 **Coming from 3.x?** Follow [Migrate from nWave 3.x](./migrating-from-3x.md).
+
+**Want the side-by-side?** See [v3 and v4 compared](./v3-and-v4-compared.md).

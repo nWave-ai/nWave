@@ -19,7 +19,29 @@ Cross-references: [fp-principles](../nw-fp-principles/SKILL.md) | [fp-domain-mod
 
 ```bash
 # Install GHCup (manages GHC, cabal, stack, HLS)
-curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+# Never pipe a remote download into a shell: download a pinned released binary,
+# verify the GPG signature of the published checksum file, check the digest,
+# and install only the verified binary. (0.2.6.2 was current on 2026-11-10;
+# check https://downloads.haskell.org/~ghcup/ for the current release and keep
+# the version pinned while verifying.)
+curl --proto '=https' --tlsv1.2 -sSf -o x86_64-linux-ghcup-0.2.6.2 https://downloads.haskell.org/~ghcup/0.2.6.2/x86_64-linux-ghcup-0.2.6.2
+curl --proto '=https' --tlsv1.2 -sSf -o SHA256SUMS https://downloads.haskell.org/~ghcup/0.2.6.2/SHA256SUMS
+curl --proto '=https' --tlsv1.2 -sSf -o SHA256SUMS.sig https://downloads.haskell.org/~ghcup/0.2.6.2/SHA256SUMS.sig
+
+# 1. Verify the checksum file's GPG signature against the release key, pinned by
+#    fingerprint (Julian Ospald; a subkey of this key may have made the signature).
+gpg --batch --keyserver keyserver.ubuntu.com --recv-keys 7D1E8AFD1D4A16D71FADA2F2CCC85C0E40C06A8C
+gpg --verify SHA256SUMS.sig SHA256SUMS
+#    A Good signature is required and the printed primary key fingerprint MUST be
+#    7D1E 8AFD 1D4A 16D7 1FAD A2F2 CCC8 5C0E 40C0 6A8C; on any mismatch, stop.
+
+# 2. Check the binary digest against the signed checksum file:
+sha256sum --check --ignore-missing SHA256SUMS
+#    Must print OK for x86_64-linux-ghcup-0.2.6.2; on failure or a missing OK, stop.
+
+# 3. Install only the verified binary and let it manage the toolchain:
+mkdir -p "$HOME/.ghcup/bin" && install x86_64-linux-ghcup-0.2.6.2 "$HOME/.ghcup/bin/ghcup"
+ghcup install ghc cabal hls stack
 
 # Create project
 mkdir order-service && cd order-service && cabal init --interactive

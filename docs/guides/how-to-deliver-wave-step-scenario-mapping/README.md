@@ -54,7 +54,7 @@ Before proceeding, review the mapping rule:
 Run `/nw-deliver` to route the Request. When the slice reaches its acceptance stage, give the acceptance designer the complete bundle that nwdes builds:
 
 ```bash
-nwdes prompt --role nw-acceptance-designer --handoff "$H" --slice S1 --jev unauthorized
+nwdes prompt --role nw-acceptance-designer --handoff "$H" --slice S1
 ```
 
 **Pre-Check** (the designer verifies this):
@@ -94,7 +94,7 @@ nwdes renders the rows into `acceptance.md`. Verify them before crafting.
 The crafter implements the slice against the immutable oracle and records its files and commands with `nwdes craft`. The host runs the declared commands and observes the actual results.
 
 ```bash
-nwdes prompt --role nw-software-crafter --handoff "$H" --slice S1 --jev unauthorized
+nwdes prompt --role nw-software-crafter --handoff "$H" --slice S1
 ```
 
 **For Each Scenario**:

@@ -25,6 +25,7 @@ disable-model-invocation: true
 | Broken links | 0 |
 | Style compliance | 95%+ |
 | Type purity | 80%+ single type |
+| Diagram rules R1-R12 (`nw-diagram`) | 0 failed rules per diagram |
 
 ## Type-Specific Validation Checklists
 

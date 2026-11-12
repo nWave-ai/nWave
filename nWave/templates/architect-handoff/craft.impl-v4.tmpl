@@ -3,6 +3,9 @@ Role: {{role}} (exact installed role).
 feature: {{feature}}
 working directory: {{repo_root}}
 jev: {{jev}}
+review rounds: {{review_rounds}}
+{{model_fact}}
+{{readable_brief}}
 known baseline failures:
 {{baseline_failures}}
 request (verbatim from the handoff):
@@ -36,6 +39,7 @@ Refactor on your own at L1 to L4 in any lane file your slice needs, except the o
 ## TASK (template)
 Read/write only under working directory; change any lane file your slice needs, except the oracle, its supports and feature records. Implement DESIGN through the real driving port to GREEN before another slice. Keep production/tests importable and tests collectable.
 - Load triggered skills, `nw-code-analysis-port` and `nw-code-craftsmanship`. Jev: honor root/persistent authorization; when authorized/available follow `nw-typesafe-system-one` after mechanical facts, report capability limits; otherwise `typesafe: unavailable`, continue locally.
+- {{jev_decision}}
 - All projected DESIGN decisions, boundaries, reuse, tests, laws, claims and mapped symbols bind. Contradiction: reject, blocked-by design, naming it.
 - Acceptance owns every test: no added unit tests, weakened/skipped/rewritten tests, oracle/support/design edits or self-review. Public oracle is the outer loop; architectural/contract tests check structure.
 - Domain/application: OO follows `nw-code-design-oo`, FP `nw-code-design-fp`; procedural preserves imperative DESIGN. Adapters/DTOs/glue are exempt. Refactor coherent deltas preserving behavior/laws: OO RPP until no L1-L4 smell, FP skill order, procedural readability/complexity/duplication.

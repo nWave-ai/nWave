@@ -1,6 +1,6 @@
 # nw-documentarist
 
-Use for documentation quality enforcement using DIVIO/Diataxis principles. Classifies documentation type, validates against type-specific criteria, detects collapse patterns, and provides actionable improvement guidance.
+Use for documentation quality enforcement using DIVIO/Diataxis principles. Classifies documentation type, validates against type-specific criteria, checks diagrams against the nw-diagram accessibility rules, detects collapse patterns, and, when documents.readable_brief is enabled, runs one round of questions to the owning roles and presents their decisions.
 
 **Wave:** Other
 **Model:** haiku

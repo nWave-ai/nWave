@@ -1,72 +1,59 @@
 ---
 name: nw-discuss
-description: PO-led product conversation, visible feedback increments and human-readable briefs.
+description: Use when a product question or request must become agreed promises, sad paths, journey and slices before design or tests.
 user-invocable: true
 argument-hint: '<product question or outcome>'
 ---
-# NW-DISCUSS
 
-Read `nw-human-collaboration` for interactive refinement. Honor an already
-selected final-review or full-delegation mode; the host manages dialogue and
-progression. Apply `flow:findings-go-to-the-owner-directly` from
-`nw-cross-cutting-invariants` when exchanging findings.
+# Discuss: from request to agreed product facts
 
-## Product ownership
+The Product Owner (PO) owns product facts. The host relays human questions and runs tools. A missing human answer goes back to its owner as an open question; never fill it with your own product meaning.
 
-Read `nw-role-invocation` before delegating. The exact installed
-`nw-product-owner` owns semantic product facts and decomposition, using its
-collaboration, JTBD, BDD and value-slicing knowledge. The host relays human
-questions and executes requested tools within authorization. Offer proportionate
-visual exploration for changed experiences; select UX help or a bounded spike
-only when useful. Capturing product facts does not complete the conversation.
+## 1. Keep scope to the request
 
-Supply promises, included/excluded scope, decisions, journeys and independently
-observable slices. Keep corrections with the Product Owner and unresolved
-prerequisites with their owner; do not silently substitute product meaning.
+1. Copy the request unchanged at the top of the brief. Promises, actor, outcome and titles follow nw-jtbd-core.
+2. Name each value's included and excluded behaviour. Anything beyond the request is a Suggestion, outside the in-scope list and the ordered values until the human selects it.
+3. Reuse existing product authority only where relevant; leave delivered behaviour alone.
+4. Add no gate, check or approval step unless a named consumer needs its effect.
+5. Add no receipt, log, status field or marker unless something other than its producer reads it.
+6. Report an independent pre-existing defect you find to its owner as an Open question. Fix it only when the human authorised it or the request's own change caused it.
 
-## Explore relevant scenarios
+## 2. Find the sad paths
 
-Before settling product authority, read `nw-po-scenario-exploration` and
-apply its per-value relevance rule with the Product Owner. Do any values need
-bounded Quint exploration, or is an unexamined deferral hiding the uncertainty?
+Per value, list the sad paths the request states (refusal, conflict, race, stale or invalid input, missing operand). Each is its own promise with its own observable outcome, even when the expected behaviour seems settled; tests need one test per promised sad path.
 
-1. Obtain the PO's product questions and actor observations for relevant values.
-2. Probe `quint --version`, including a configured local binary. If unavailable,
-   follow that skill's one-time installation offer and authorization rules.
-3. The host obtains a model-capable helper and bounded real `quint run` evidence:
-   literal command, explicit seed/bounds, tool version, model identity and raw
-   trace. Mechanically render events through deterministic domain templates;
-   an LLM paraphrase is not deterministic rendering. The PO owns product meaning,
-   not model implementation.
-4. Return rendered scenarios and assumptions to the PO. In automatic mode keep
-   them unreviewed/open, never human-approved; in interactive mode obtain the
-   human's judgment through the exploration skill's collaboration sequence.
-5. Have the PO record real scenarios as Scenario promises and assumptions or
-   unresolved judgments as decisions. Tool unavailability or human refusal stays explicit. A missing model,
-   broken renderer or other host-owned prerequisite returns to that owner, not
-   to a silent skip or repeated unchanged PO invocation.
+Sad paths you find by exploration are proposals. Write each as a Suggestion or Open question; it becomes a promise only when the request states it or the human accepts it. List unclear order, timing or state interactions as Open questions.
 
-The LLM owns semantic values, their supplied order and dependencies.
-A simulation is not implementation verification.
-No solver is required for ordinary scenario discussion when the relevance rule
-finds no applicable value. Frontend/backend contracts and implementation planning
-remain design and delivery responsibilities.
+Explore with bounded Quint when available:
+1. Probe `quint --version`. If missing, write "exploration unavailable" for the value.
+2. Run bounded `quint run` with an explicit seed and bounds; keep the command, version and raw trace.
+3. Render trace events through fixed domain templates, not LLM paraphrase. Return scenarios and assumptions to the PO.
+4. Record assumptions and unresolved judgments as decisions with status Open. In automatic mode they stay Open; silence is never approval.
 
-## Shared human view
+A value with only a settled happy path may skip exploration; write that judgment and its reason per value.
 
-Read `nw-doc-as-artifact` and use current briefs or HTML during meaningful
-refinement when the view helps the human. Inspect
-the result; if rendering is unavailable, expose the gap and keep the host
-conversation readable. Rendering is not publication, approval or a progression gate.
+## 3. Journey (when you write one)
 
-Keep intent, actor/value outcomes, confirmed decisions, proposals, assumptions
-and open questions distinct. Start from known facts; deepen only what affects a
-decision or the human asks to explore. Human emotion belongs to the human:
-record it only from the human's account, or explicitly mark it not supplied.
-Explain unfamiliar terms and preserve original scope.
-Document language follows `nw-human-collaboration`.
+1. The journey runs from start to goal. Every step is reachable and leads on; no orphan step, no dead end; every error step leads to a recovery step.
+2. Write a step's emotion only from the human's account; else "emotion: not supplied".
 
-Forward human corrections to the Product Owner for revision.
-Regenerate the same local view after a meaningful authority change; never edit
-generated Markdown or HTML. No wave-entry setting, density gate, automatic
-expansion offer or separate completion ledger is needed.
+## 4. Slices
+
+1. Each slice is one behaviour a user observes alone through the real driving port. A technical layer ("the API contract", "the database table") or a mocked interaction is not a slice; fold groundwork into the thinnest slice that delivers observable value.
+2. Slice 1 is the walking skeleton: the thinnest end-to-end path, through the real port and real I/O. Order the rest by dependency; each extends that path and none adds a second skeleton.
+3. Per slice, state the observable result, dependencies and size.
+
+## 5. Decisions and shared view
+
+1. Mark every decision Confirmed, Proposed or Open, with an owner per open question. An Open question is never an agreed requirement.
+2. On a human correction, replace the superseded facts, keep the unaffected facts and identities, and say what changed.
+3. Brief or HTML views keep intent, actor outcomes, confirmed decisions, proposals, assumptions and open questions in separate sections. Regenerate after a change; never hand-edit generated files. Documents in English; talk to the human in theirs.
+
+## 6. Self-check
+
+1. The request is quoted unchanged; nothing in scope that the request does not state.
+2. Each stated sad path is a promise; each explored one is a Suggestion or Open question; per-value exploration judgment is written.
+3. No gate, receipt or marker without a reader; no pre-existing defect fixed unasked.
+4. Journey (if any): no orphan, no dead end, errors lead to recovery, emotion only if supplied.
+5. Each slice is one user-observable behaviour; one walking skeleton, extended.
+6. Every decision has a status; no open assumption presented as agreed.

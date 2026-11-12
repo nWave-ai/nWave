@@ -44,6 +44,22 @@ class UpdateResult:
     termination_unknown: bool = False
 
 
+def process_failure_cause(returncode: int, stdout: str, stderr: str) -> str:
+    """Name the exit code and quote every non-blank output stream of the process.
+
+    The installer prints its own error lines on stdout and plugin warnings on
+    stderr. A cause that quoted stderr alone reported a warning as the failure
+    and hid the line that stopped the process. Stderr is quoted first, stdout
+    second; a blank stream adds nothing, so two blank streams give ``exit N``.
+    """
+    streams = [text.strip() for text in (stderr, stdout) if text.strip()]
+    cause = f"exit {returncode}"
+    if not streams:
+        return cause
+    quoted = "\n".join(streams)
+    return f"{cause}: {quoted}"
+
+
 class UpdateService:
     """Run replacement, proof, synchronization, and migration fail-closed."""
 
@@ -641,8 +657,13 @@ class UpdateService:
         environment: dict[str, str] | None = None,
         cwd: Path | None = None,
     ) -> UpdateResult | None:
-        from nwave_ai.platform.update_timing import UPDATE_TIMING
+        from nwave_ai.platform.update_timing import resolve_stage_seconds
         from nwave_ai.update.process_control import stop_process
+
+        try:
+            stage_seconds = resolve_stage_seconds(os.environ)
+        except ValueError as exc:
+            return self._refusal(stage, command, str(exc))
 
         process: subprocess.Popen[str] | None = None
         previous_handlers = {}
@@ -673,7 +694,7 @@ class UpdateService:
             )
             if interrupted:
                 raise InterruptedError("update interrupted during process launch")
-            stdout, stderr = process.communicate(timeout=UPDATE_TIMING.stage_seconds)
+            stdout, stderr = process.communicate(timeout=stage_seconds)
         except (subprocess.TimeoutExpired, InterruptedError, KeyboardInterrupt) as exc:
             # A second termination signal must not interrupt bounded cleanup.
             for signum in previous_handlers:
@@ -716,10 +737,9 @@ class UpdateService:
                 signal.signal(signum, handler)
 
         if process.returncode != 0:
-            output = (stderr or stdout or "").strip()
-            cause = f"exit {process.returncode}"
-            if output:
-                cause = f"{cause}: {output}"
+            cause = process_failure_cause(
+                process.returncode, stdout or "", stderr or ""
+            )
             return self._refusal(stage, command, cause)
 
         if expected_version is not None:

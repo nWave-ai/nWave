@@ -72,6 +72,9 @@ If you installed release v3.22.2 of the `nwave-ai` package, upgrade the package 
 - Existing nWave backup snapshots are kept, subject to the configured retention limit.
 - After a successful run the installer warns you about existing backup snapshots. It prints one block per backup root, headed by `nWave backup snapshot(s) kept under <root>:`, and lists each snapshot under that line. A snapshot that holds a legacy-codex-dev copy — a backup of assets from a legacy Codex development install — is renamed with the prefix `legacy-hold-`, and its listing line is marked `held`.
 - A held legacy-codex-dev copy is kept regardless of the retention limit. Retention never removes a held snapshot.
+- Your attribution choice survives the upgrade. If you disabled attribution in v3.22.2, it stays disabled after `nwave-ai install`. The saved choice moves from `global-config.json` into `config.json`; the old file is kept as `global-config.json.unified-config.bak`.
+- The v3.22.2 Claude Code hook registrations that run the retired DES runtime are removed, including those with a `Task` matcher. Hooks and settings keys you wrote yourself stay as they were.
+- The `nwave_hook_version` key that v3.22.2 wrote into `settings.json` is removed.
 
 A held copy is retired only after a passing comparison, using the `verify_nwave.py` helper that ships with the installed package (`scripts/install/verify_nwave.py`). First compare it with the declared folder. Verify mode only reads:
 

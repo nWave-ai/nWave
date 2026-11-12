@@ -38,4 +38,4 @@ Human authority decides genuine scope/trade-offs.
 
 ### Privacy — Non-Negotiable
 
-nWave stores workflow data locally and collects no telemetry. Jev, a remote question service, is on by default for supported questions and sends only permitted data classes; refuse it with `--jev unauthorized` or `"jev": "unauthorized"` in `~/.nwave/config.json`. `TYPESAFE_API_KEY` is only Jev's technical prerequisite, not its authorization ([PRIVACY.md](../../PRIVACY.md)). Feedback via GitHub Issues is welcome, never required.
+nWave stores workflow data locally and collects no telemetry. Jev, a remote question service, is on by default for supported questions and sends only permitted data classes; switch it with `"jev": "authorized"` or `"jev": "unauthorized"` in `.nwave/config.json`. `TYPESAFE_API_KEY` is only Jev's technical prerequisite, not its authorization ([PRIVACY.md](../../PRIVACY.md)). Feedback via GitHub Issues is welcome, never required.

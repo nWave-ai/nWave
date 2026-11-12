@@ -122,12 +122,12 @@ Assemble all scores into a weighted matrix.
 
 Produce top 3 options from the scoring matrix.
 
-Carry each option's handle and `name_origin` from `options-raw.md` into the scoring table unchanged — handles are internal cross-references and carry no scoring weight.
+Carry each option's handle and `name_origin` (with its user-words quote) from `options-raw.md` into the scoring table in taste-evaluation.md unchanged — handles are internal cross-references and carry no scoring weight (handle rule: `nw-requester-words` rule 5).
 
-For each of the top 3, provide:
+For each of the top 3, provide in recommendation.md:
 
 ```
-### Option [handle] — Score [X.XX] — name_origin: [user-words | coined]
+### [The mechanism, in the requester's vocabulary] — Score [X.XX]
 
 **Why it scores well**: What taste principles it satisfies strongly
 **Core trade-off**: What it sacrifices (every option trades something)
@@ -135,7 +135,9 @@ For each of the top 3, provide:
 **Hire criteria**: Under what circumstances would a user choose this?
 ```
 
-**Recommendation**: Identify the top option with a one-paragraph rationale grounded in the scoring — not preference. If the top option has a critical weakness, flag it explicitly. Phrase the recommendation by mechanism in the requester's vocabulary; a coined handle stays in the scoring table.
+**Recommendation**: Identify the top option with a one-paragraph rationale grounded in the scoring — not preference. If the top option has a critical weakness, flag it explicitly. Phrase the recommendation by mechanism in the requester's vocabulary; a coined handle stays in the scoring table and no handle is cited as a label.
+
+**New-term marker `[new]`**: mark new terms in recommendation.md, the DIVERGE-RESULT block and every summary written for the requester exactly as `nw-requester-words` rules 3-4 say, e.g. "a pay-per-question inbox [new]"; write "your X" only per rule 6.
 
 ---
 
@@ -162,9 +164,9 @@ Produce `docs/feature/{feature-id}/diverge/taste-evaluation.md` and `recommendat
 4. Score breakdown per criterion per option
 
 **recommendation.md**:
-1. Top 3 options with pro/con/risk/hire-criteria
+1. Top 3 options, each headed and described by mechanism (no coined handles, no handle as a label), with pro/con/risk/hire-criteria
 2. Recommended option with rationale
-3. Dissenting case (which option the scoring almost chose instead, and why)
-4. Decision for DISCUSS wave: "Proceed with [the mechanism in the requester's vocabulary — never a coined handle unless marked as new], assuming [key risk] is acceptable"
+3. Dissenting case (which option the scoring almost chose instead, described by mechanism, and why)
+4. Decision for DISCUSS wave: "Proceed with [the mechanism in the requester's vocabulary; new terms marked `[new]`], assuming [key risk] is acceptable"
 
 **Gate**: Recommendation must be derivable from the scoring matrix. Any mismatch between scores and recommendation must be explicitly justified with weight adjustment.

@@ -5,6 +5,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 _DISTRIBUTION_ROOT = str(Path(__file__).resolve().parent.parent)
@@ -29,7 +30,7 @@ from nwave_ai.doctor.context import DoctorContext  # noqa: E402
 from nwave_ai.doctor.formatter import render_human, render_json  # noqa: E402
 from nwave_ai.doctor.runner import run_doctor  # noqa: E402
 from nwave_ai.platform.locations import NWaveLocations  # noqa: E402
-from nwave_ai.platform.result import Failure  # noqa: E402
+from nwave_ai.platform.result import Failure, Success  # noqa: E402
 from scripts.install.attribution_utils import (  # noqa: E402
     cleanup_legacy_attribution_hook,
     migrate_legacy_hook,
@@ -531,6 +532,169 @@ def _extract_target_flag(
     return (resolved, remaining, None)
 
 
+_JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone"
+_JEV_PRIVACY_URL = "https://github.com/nWave-ai/nWave/blob/main/PRIVACY.md"
+_JEV_SWITCH_LINE = '"jev": "unauthorized"'
+
+
+def _jev_machine_defect(machine: str | None, problem: str | None) -> str | None:
+    """Pure: why the machine-wide Jev value cannot be used, or None when it can."""
+    from nwave_ai.platform.config_writer import ConfigWriter
+
+    if problem is not None:
+        return f"the machine-wide file could not be read: {problem}"
+    if machine is None or machine in ConfigWriter.JEV_VALUES:
+        return None
+    return f"the machine-wide jev value {machine!r} is not a Jev choice"
+
+
+def _machine_jev_rule(machine: str | None, problem: str | None) -> tuple[str, str]:
+    """Pure: the value a project gets when nobody answers, and where that value comes from.
+
+    A machine-wide refusal is kept, so an install default can never loosen it. An absent
+    machine-wide value gives the declared default. A value that is not a Jev choice, or a
+    file that cannot be read, fails closed to unauthorized.
+    """
+    from nwave_ai.platform.config_writer import ConfigWriter
+
+    if _jev_machine_defect(machine, problem) is not None:
+        return (
+            ConfigWriter.JEV_UNAUTHORIZED,
+            "the machine-wide setting, which fails closed",
+        )
+    if machine is None:
+        return ConfigWriter.JEV_DECLARED_DEFAULT, "the declared default"
+    if machine == ConfigWriter.JEV_UNAUTHORIZED:
+        return machine, "your machine-wide refusal"
+    return machine, "your machine-wide setting"
+
+
+def _jev_question(machine: str | None, problem: str | None) -> str:
+    """Pure: the consent question shown on a terminal, stating the machine-wide value it keeps."""
+    defect = _jev_machine_defect(machine, problem)
+    if defect is not None:
+        setting = (
+            f"Machine-wide Jev setting: {defect}. An empty answer refuses Jev here. "
+        )
+    elif machine is None:
+        setting = ""
+    else:
+        setting = f"Machine-wide Jev setting: {machine}. An empty answer keeps it. "
+    return (
+        setting
+        + f"Jev is a remote service at {_JEV_ENDPOINT}. It receives the typed questions "
+        "and the task state nWave sends, never secrets, personal data, source-blind "
+        "material or secret-bearing logs. "
+        f"Allow Jev for this project? [Y/n] (see {_JEV_PRIVACY_URL}) "
+    )
+
+
+def _jev_answer(answer: str, default: str) -> tuple[str, str]:
+    """Pure: the value an answer records and how it was recorded, as enter or answer.
+
+    An empty answer keeps the default. y or yes allows Jev; any other text refuses it.
+    """
+    from nwave_ai.platform.config_writer import ConfigWriter
+
+    text = answer.strip().lower()
+    if text == "":
+        return default, "enter"
+    if text in ("y", "yes"):
+        return ConfigWriter.JEV_AUTHORIZED, "answer"
+    return ConfigWriter.JEV_UNAUTHORIZED, "answer"
+
+
+def _jev_origin(how: str, choice: str, why: str) -> str:
+    """Pure: the sentence saying whether a person chose the recorded value, and from what."""
+    if how == "answer":
+        return f"you answered, so {choice} is your choice"
+    if how == "enter":
+        return f"you pressed Enter, so {choice} is recorded from {why}"
+    return f"nWave wrote {choice} from {why}; you did not choose it for this project"
+
+
+def _jev_notice(config_path: Path, origin: str) -> str:
+    """Pure: the line printed after a value is recorded, naming where the value came from."""
+    return (
+        f"Jev for this project ({config_path}): {origin}. Jev is external processing, "
+        f"not telemetry; see {_JEV_PRIVACY_URL}. To switch it off for this project, "
+        f"set {_JEV_SWITCH_LINE} in that file."
+    )
+
+
+def _ask_jev(machine: str | None, problem: str | None, default: str) -> tuple[str, str]:
+    """Shell: ask on the terminal; end of input is no answer and records the default."""
+    try:
+        answer = input(_jev_question(machine, problem))
+    except EOFError:
+        return default, "written"
+    return _jev_answer(answer, default)
+
+
+def _read_machine_jev(writer) -> tuple[str | None, str | None]:
+    """Shell: the machine-wide jev value, or the reason the machine-wide file cannot be read."""
+    from nwave_ai.platform.config_writer import ConfigMigrationError
+
+    try:
+        return writer.machine_jev(), None
+    except ConfigMigrationError as error:
+        return None, str(error)
+
+
+def _declare_project_jev(
+    project_root: Path, home_dir: Path, *, interactive: bool
+) -> None:
+    """Shell: record the project's Jev choice after a successful install; never fails it.
+
+    A project that already holds a jev key is left alone and never asked about. The
+    machine-wide setting is respected: a refusal there is kept by the default and shown in the
+    question. A machine-wide value that cannot be used fails closed to unauthorized with a
+    WHAT, WHY, HOW line on stderr. Three outcomes: a refusal writes nothing; a failure before
+    the write writes nothing; a write that cannot be confirmed afterwards has written the entry,
+    and the WHAT line says it was written.
+    """
+    from nwave_ai.platform.config_writer import ConfigWriter
+    from nwave_ai.platform.gitignore import ensure_nwave_gitignore
+
+    writer = ConfigWriter(home_dir=home_dir, repo_root=project_root)
+    try:
+        if writer.repo_declares_jev():
+            return
+        machine, problem = _read_machine_jev(writer)
+        default, why = _machine_jev_rule(machine, problem)
+        choice, how = (
+            _ask_jev(machine, problem, default) if interactive else (default, "written")
+        )
+        folder_created = not writer.repo_path.parent.exists()
+        declared = writer.declare_repo_jev(choice)
+        if declared and folder_created:
+            # The installer created this .nwave folder for the declaration, so it owns the folder,
+            # the same ownership mark project enable writes; uninstall relies on that mark.
+            ensure_nwave_gitignore(writer.repo_path)
+    except Exception as exc:
+        from nwave_ai.platform.config_writer import JevDeclarationUnverifiedError
+
+        if isinstance(exc, JevDeclarationUnverifiedError):
+            outcome = f"the Jev choice for {project_root} was written but could not be confirmed"
+            remedy = "check the project's .nwave/config.json for the jev entry"
+        else:
+            outcome = f"the Jev choice for {project_root} was not recorded"
+            remedy = "fix the reported problem, then rerun nwave-ai install"
+        print(f"WHAT: {outcome}. WHY: {exc}. HOW: {remedy}.", file=sys.stderr)
+        return
+    defect = _jev_machine_defect(machine, problem)
+    if defect is not None and how != "answer":
+        print(
+            f"WHAT: the machine-wide Jev setting was not used for {project_root}. "
+            f"WHY: {defect}. HOW: correct the machine-wide configuration, or set jev in "
+            "this project's .nwave/config.json; nWave wrote unauthorized and will not "
+            "rewrite the project's value.",
+            file=sys.stderr,
+        )
+    if declared:
+        print(_jev_notice(writer.repo_path, _jev_origin(how, choice, why)))
+
+
 def _handle_install(args: list[str]) -> int:
     """Run the installer without prompting for inert documentation density.
 
@@ -642,6 +806,15 @@ def _handle_install(args: list[str]) -> int:
             )
         except OSError as exc:
             print(f"  (could not sync guidance sections: {exc})", file=sys.stderr)
+
+    # The project's Jev choice is recorded only after a successful install. A terminal
+    # answers it; a restore or backup-only run writes no new project state.
+    if "--restore" not in args and "--backup-only" not in args:
+        _declare_project_jev(
+            caller_project_root,
+            config_dir.parent,
+            interactive=not non_interactive,
+        )
 
     return 0
 
@@ -1343,6 +1516,622 @@ def _handle_model(args: list[str]) -> int:
     return 0
 
 
+_RIGOR_USAGE = (
+    "Usage: nwave-ai rigor [--show] [--yes] [--models keep | --model-set "
+    "GROUP_OR_ROLE=PROVIDER/MODEL ...] [--review-rounds 1-5|current] "
+    "[--examine-level quick|standard|extended|current] "
+    "[--documents yes|no|keep [--document-language LANG]] "
+    "[--hosts HOST[,HOST...]|none|keep]"
+)
+
+
+def _rigor_agents_home() -> Path:
+    import os
+
+    override = os.environ.get("NWAVE_AGENTS_HOME")
+    return Path(override).expanduser() if override else Path.home()
+
+
+def _rigor_published_roles() -> dict[str, dict[str, str]]:
+    """Published role names with their declared tools and model, from specs.
+
+    The roles are read from the nWave checkout surfaces (``nWave/agents`` in
+    the project and the agents home) and from the installed agent surfaces
+    (``~/.claude/agents/nw`` subagent files and ``~/.codex/agents`` TOML
+    files), so the command works in the developer's own repository too.
+    """
+    import re
+
+    published: dict[str, dict[str, str]] = {}
+    roots = [
+        (Path.cwd() / "nWave" / "agents", "*.md", "markdown"),
+        (_rigor_agents_home() / "nWave" / "agents", "*.md", "markdown"),
+        (_rigor_agents_home() / ".claude" / "agents" / "nw", "*.md", "markdown"),
+        (_rigor_agents_home() / ".codex" / "agents", "*.toml", "toml"),
+    ]
+    for root, pattern, kind in roots:
+        if not root.is_dir():
+            continue
+        for spec in sorted(root.glob(pattern)):
+            try:
+                text = spec.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if kind == "markdown":
+                name_match = re.search(r"^name:\s*(.+)$", text, re.MULTILINE)
+                if name_match is None:
+                    continue
+                name = name_match.group(1).strip()
+                tools_match = re.search(r"^tools:\s*(.+)$", text, re.MULTILINE)
+                model_match = re.search(r"^model:\s*(.+)$", text, re.MULTILINE)
+                published[name] = {
+                    "tools": tools_match.group(1).strip() if tools_match else "",
+                    "model": model_match.group(1).strip() if model_match else "",
+                }
+            else:
+                name_match = re.search(r'^name\s*=\s*"([^"]+)"', text, re.MULTILINE)
+                if name_match is None:
+                    continue
+                published.setdefault(
+                    name_match.group(1).strip(),
+                    {
+                        "tools": "",
+                        "model": "",
+                    },
+                )
+    return published
+
+
+def _rigor_read_json(path: Path) -> tuple[dict[str, Any] | None, str | None]:
+    """Read one config file; (document, None) or (None, error message)."""
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        return {}, None
+    except OSError as error:
+        return None, str(error)
+    import json as _json
+
+    try:
+        document = _json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeError) as error:
+        return None, f"{path} is unreadable JSON: {error}"
+    if not isinstance(document, dict):
+        return None, f"{path} is unreadable JSON: expected an object"
+    return document, None
+
+
+def _rigor_tiers(
+    project_path: Path, global_path: Path
+) -> tuple[tuple[dict[str, Any], dict[str, Any]] | None, str | None]:
+    project, project_error = _rigor_read_json(project_path)
+    if project_error is not None or project is None:
+        return None, project_error
+    global_tier, global_error = _rigor_read_json(global_path)
+    if global_error is not None or global_tier is None:
+        return None, global_error
+    return (project, global_tier), None
+
+
+def _rigor_print_refusal(refusal: Any, code: int = 2) -> int:
+    print(refusal.render(), file=sys.stderr)
+    return code
+
+
+def _handle_rigor(args: list[str]) -> int:
+    """Choose this project's quality scope: models per role, rounds, documents.
+
+    Pure decisions live in rigor_core and rigor_hosts; this shell only reads,
+    prints, prompts and applies atomic writes.
+    """
+    import os
+
+    from nwave_ai.platform import rigor_core, rigor_hosts
+
+    parsed_options = rigor_core.parse_options(tuple(args))
+    if isinstance(parsed_options, Failure):
+        what = parsed_options.error.render()
+        print(f"{what}\n{_RIGOR_USAGE}", file=sys.stderr)
+        return 2
+    options = parsed_options.unwrap()
+    show = options.show
+    yes = options.yes
+    model_sets = options.model_sets
+    review_rounds = options.review_rounds
+    documents = options.documents
+    document_language = options.document_language
+    hosts = options.hosts
+
+    repo_root = Path.cwd()
+    project_path = repo_root / ".nwave" / "config.json"
+    global_path = _rigor_agents_home() / ".nwave" / "config.json"
+    tiers, tier_error = _rigor_tiers(project_path, global_path)
+    if tiers is None:
+        return _rigor_print_refusal(
+            rigor_core.Refusal(
+                tier_error or "unknown config read failure",
+                "A corrupt file would lose keys the command does not own.",
+                "Restore the file from a copy or fix the JSON, then rerun; "
+                "nothing was written.",
+            )
+        )
+    repo_tier, global_tier = tiers
+    published = _rigor_published_roles()
+    published_tools = {name: entry["tools"] for name, entry in published.items()}
+
+    examine_resolved = rigor_core.resolved_examine_level(repo_tier, global_tier)
+    if isinstance(examine_resolved, Failure):
+        return _rigor_print_refusal(examine_resolved.error)
+    effective = rigor_core.EffectiveScope(
+        roles=tuple(
+            (
+                role,
+                rigor_core.resolved_role_model(
+                    role,
+                    repo_tier,
+                    global_tier,
+                    published.get(role, {}).get("model", ""),
+                ),
+            )
+            for role in sorted(published_tools)
+        ),
+        review_rounds=rigor_core.resolved_review_rounds(repo_tier, global_tier),
+        documents=rigor_core.resolved_documents(repo_tier, global_tier),
+        examine_level=examine_resolved.unwrap(),
+    )
+
+    if show:
+        for line in rigor_core.show_lines(effective):
+            print(line)
+        return 0
+
+    def can_ask() -> bool:
+        try:
+            if sys.stdin is None or sys.stdin.isatty():
+                return True
+            # A pipe or redirected stdin is readable; pytest's stdin raises.
+            sys.stdin.readable()
+
+            probe = sys.stdin.readline(0)
+            return isinstance(probe, str)
+        except (OSError, ValueError, AttributeError):
+            return False
+
+    model_facts: tuple[rigor_core.ModelFact, ...] | None = None
+    if model_sets is not None:
+        facts: list[rigor_core.ModelFact] = []
+        for token in model_sets:
+            parsed = rigor_core.parse_model_set(token, set(published_tools))
+            if isinstance(parsed, Failure):
+                return _rigor_print_refusal(parsed.error)
+            facts.append(parsed.unwrap())
+        model_facts = tuple(facts)
+
+    rounds_value: int | str | None = None
+    if review_rounds is not None:
+        effective_rounds, _ = effective.review_rounds
+        parsed_rounds = rigor_core.parse_review_rounds(review_rounds, effective_rounds)
+        if isinstance(parsed_rounds, Failure):
+            return _rigor_print_refusal(parsed_rounds.error)
+        rounds_value = (
+            "current" if review_rounds == "current" else parsed_rounds.unwrap()
+        )
+
+    if documents is not None:
+        parsed_documents = rigor_core.parse_documents(documents)
+        if isinstance(parsed_documents, Failure):
+            return _rigor_print_refusal(parsed_documents.error)
+
+    examine_answer: str | None = None
+    if options.examine_level is not None:
+        parsed_examine = rigor_core.parse_examine_level(options.examine_level)
+        if isinstance(parsed_examine, Failure):
+            refusal = parsed_examine.error
+            return _rigor_print_refusal(
+                rigor_core.Refusal(
+                    refusal.what,
+                    refusal.why,
+                    "run the command again with --examine-level quick, standard or "
+                    "extended. Use current to write nothing.",
+                )
+            )
+        examine_answer = parsed_examine.unwrap()
+
+    def ask(prompt: str) -> str | None:
+        print(prompt, end="", flush=True)
+        try:
+            line = sys.stdin.readline()
+        except (OSError, ValueError, AttributeError):
+            return None
+        return line.strip() if line else None
+
+    def ask_until_valid(prompt: str, parse: Any) -> Any:
+        """Ask again until the answer parses; None when the input ends first.
+
+        A wrong answer prints its refusal (WHAT, WHY, HOW) and asks the same
+        question again; the command itself never ends on a wrong answer.
+        """
+        while True:
+            answer = ask(prompt)
+            if answer is None:
+                return None
+            parsed = parse(answer)
+            if isinstance(parsed, Failure):
+                print(parsed.error.render(), file=sys.stderr)
+                continue
+            return parsed.unwrap()
+
+    answers_models = model_facts
+    answers_rounds = rounds_value
+    answers_documents = documents
+    answers_hosts: str | None = None
+    if hosts is not None:
+        parsed_hosts = rigor_core.parse_hosts_answer(
+            hosts, tuple(rigor_hosts.DECLARED_HOST_TARGETS)
+        )
+        if isinstance(parsed_hosts, Failure):
+            return _rigor_print_refusal(parsed_hosts.error)
+        answers_hosts = parsed_hosts.unwrap()
+
+    interactive = can_ask()
+    if not yes:
+        unanswered = [
+            name
+            for name, value in (
+                ("--models", answers_models),
+                ("--review-rounds", answers_rounds),
+                ("--documents", answers_documents),
+                ("--hosts", answers_hosts),
+            )
+            if value is None
+        ]
+        if unanswered and not interactive:
+            return _rigor_print_refusal(
+                rigor_core.Refusal(
+                    "Answers are missing for "
+                    + ", ".join(unanswered)
+                    + ", and no terminal is available to ask.",
+                    "A script cannot be asked questions; an unanswered question "
+                    "would silently keep the current value.",
+                    "Supply every option (" + ", ".join(unanswered) + ") or run "
+                    "the command on a terminal.",
+                )
+            )
+        if unanswered:
+            known_hosts = tuple(rigor_hosts.DECLARED_HOST_TARGETS)
+            language_in_effect = str(effective.documents[0].get("language") or "en")
+            pending = [
+                option
+                for option in (
+                    "--models",
+                    "--review-rounds",
+                    "--examine-level",
+                    "--documents",
+                    "--hosts",
+                )
+                if option in unanswered
+                or (option == "--examine-level" and examine_answer is None)
+            ]
+            for line in rigor_core.opening_lines(
+                tuple(rigor_core.show_lines(effective))
+            ):
+                print(line)
+
+            def remaining_from(option: str) -> int:
+                return _rigor_print_refusal(
+                    rigor_core.closed_terminal_refusal(
+                        tuple(pending[pending.index(option) :])
+                    )
+                )
+
+            def show_question(option: str) -> str:
+                block, prompt = rigor_core.question(
+                    option, known_hosts, language_in_effect
+                )
+                for line in block:
+                    print(line)
+                return prompt
+
+            if "--models" in unanswered:
+                prompt = show_question("--models")
+
+                def parse_models(text: str) -> Any:
+                    if text in {"", "keep"}:
+                        return Success(())
+                    parsed_model = rigor_core.parse_model_set(
+                        text, set(published_tools)
+                    )
+                    if isinstance(parsed_model, Failure):
+                        return parsed_model
+                    return Success((parsed_model.unwrap(),))
+
+                answers_models = ask_until_valid(prompt, parse_models)
+                if answers_models is None:
+                    return remaining_from("--models")
+
+            if "--review-rounds" in unanswered:
+                prompt = show_question("--review-rounds")
+                current_rounds, _ = effective.review_rounds
+
+                def parse_rounds(text: str) -> Any:
+                    if text in {"", "current"}:
+                        return Success("current")
+                    parsed_round = rigor_core.parse_review_rounds(text, current_rounds)
+                    if isinstance(parsed_round, Failure):
+                        return parsed_round
+                    return Success(parsed_round.unwrap())
+
+                answers_rounds = ask_until_valid(prompt, parse_rounds)
+                if answers_rounds is None:
+                    return remaining_from("--review-rounds")
+
+            if examine_answer is None:
+                prompt = show_question("--examine-level")
+                examine_answer = ask_until_valid(
+                    prompt,
+                    lambda text: rigor_core.parse_examine_level(text or "current"),
+                )
+                if examine_answer is None:
+                    return remaining_from("--examine-level")
+
+            if "--documents" in unanswered:
+                prompt = show_question("--documents")
+                answers_documents = ask_until_valid(
+                    prompt,
+                    lambda text: rigor_core.parse_documents(text or "keep"),
+                )
+                if answers_documents is None:
+                    return remaining_from("--documents")
+                if answers_documents == "yes" and document_language is None:
+                    language_prompt = show_question("--document-language")
+                    language = ask_until_valid(
+                        language_prompt,
+                        lambda text: Success(text or language_in_effect),
+                    )
+                    if language is None:
+                        return _rigor_print_refusal(
+                            rigor_core.closed_terminal_refusal(("--document-language",))
+                        )
+                    document_language = language
+
+            if "--hosts" in unanswered:
+                prompt = show_question("--hosts")
+                answers_hosts = ask_until_valid(
+                    prompt,
+                    lambda text: rigor_core.parse_hosts_answer(text, known_hosts),
+                )
+                if answers_hosts is None:
+                    return remaining_from("--hosts")
+
+    answers = rigor_core.RigorAnswers(
+        models=answers_models,
+        review_rounds=answers_rounds,
+        documents=answers_documents,
+        document_language=document_language,
+        hosts=answers_hosts,
+        examine_level=examine_answer,
+        confirmed=yes,
+    )
+    validated = rigor_core.validate_answers(answers, published_tools)
+    if isinstance(validated, Failure):
+        return _rigor_print_refusal(validated.error)
+
+    # Resolve the host list: keep, none, or named hosts.
+    if answers.hosts == "keep":
+        chosen_hosts: tuple[str, ...] = ()
+    elif answers.hosts == "none":
+        chosen_hosts = ()
+    else:
+        chosen_hosts = tuple(
+            host.strip() for host in (answers.hosts or "").split(",") if host.strip()
+        )
+    # Materialise group facts into per-role facts in the pure plan, once:
+    # the store write and the host writers consume the same per-role facts.
+    plan = rigor_core.write_plan(answers, published_tools)
+    materialised_facts = plan["role_facts"]
+    if answers.models and not materialised_facts:
+        return _rigor_print_refusal(
+            rigor_core.Refusal(
+                "The models answer "
+                + ", ".join(
+                    f"{fact.target}={fact.provider}/{fact.model}"
+                    for fact in answers.models
+                )
+                + " resolved to no published role, so nothing was written.",
+                "A model fact needs a published role; the published roles are "
+                "read from nWave/agents in this project and the agents home, "
+                "~/.claude/agents/nw and ~/.codex/agents, and none are "
+                "readable here.",
+                "Publish the roles, run the command in the nWave checkout, or "
+                "name single roles that exist on one of those surfaces.",
+            )
+        )
+
+    # The pure host plan over the existing bytes of every chosen host's files.
+    existing: dict[str, bytes] = {}
+    homes: dict[str, Path] = {
+        "omp": Path.home(),
+        "claude-code": Path.home(),
+        "codex": Path.home(),
+        "copilot": Path.home(),
+        "opencode": Path.home(),
+        "devin": Path.home(),
+    }
+    for host in chosen_hosts:
+        base = homes[host]
+        for relative in rigor_hosts.adapter_paths(host):
+            path = base / relative
+            try:
+                existing[relative] = path.read_bytes()
+            except OSError:
+                pass
+        scan = rigor_hosts.adapter_scan(host)
+        if scan is not None:
+            directory, pattern = scan
+            scan_root = base / directory
+            if scan_root.is_dir():
+                for path in sorted(scan_root.glob(pattern)):
+                    relative = str(path.relative_to(base))
+                    try:
+                        existing[relative] = path.read_bytes()
+                    except OSError:
+                        pass
+    host_resolutions: list = []
+    for host_name in chosen_hosts:
+        adapter = rigor_hosts.adapter_for(host_name)
+        if adapter is None or adapter.apply is None:
+            continue
+        prefix = rigor_hosts.adapter_prefixes(adapter)
+        scoped = {
+            path: raw for path, raw in existing.items() if path.startswith(prefix)
+        }
+        try:
+            host_resolutions.append(adapter.apply(scoped, materialised_facts))
+        except Exception as error:  # a host fault is a refusal, never a crash
+            host_resolutions.append(
+                rigor_hosts.HostResolution(
+                    name=host_name,
+                    refusal=rigor_core.Refusal(
+                        f"The {host_name} adapter failed, so nothing was "
+                        "written for it.",
+                        str(error),
+                        "Report this to the owner; later hosts were not "
+                        "attempted in this run.",
+                    ),
+                )
+            )
+
+    # Nothing is confirmed yet: show the summary and the disclosures.
+    print("Final summary - read before you confirm")
+    if answers.review_rounds is not None:
+        rounds, rounds_source = effective.review_rounds
+        if answers.review_rounds == "current":
+            print(f"  review rounds: keep ({rounds}, {rounds_source})")
+        else:
+            print(
+                f"  review rounds: {answers.review_rounds} "
+                f"(was {rounds}, {rounds_source})"
+            )
+    previous_name, previous_source = effective.examine_level
+    for line in rigor_core.summary_examine_lines(
+        answers.examine_level, previous_name, previous_source
+    ):
+        print(line)
+    brief_before, brief_source = effective.documents
+    previous_documents = (
+        f"yes, language {brief_before.get('language')}"
+        if brief_before.get("enabled")
+        else "no"
+    )
+    if answers.documents == "yes":
+        print(
+            f"  documents: yes, language {document_language or 'en'} "
+            f"(was {previous_documents}, {brief_source})"
+        )
+    elif answers.documents == "no":
+        print(f"  documents: no (was {previous_documents}, {brief_source})")
+    else:
+        print("  documents: keep (unchanged)")
+    if not materialised_facts:
+        print("  models: keep (unchanged)")
+    for fact in materialised_facts:
+        print(f"  model {fact.target}: {fact.provider}/{fact.model}")
+    if answers.hosts == "keep":
+        print("  hosts: keep (unchanged)")
+    else:
+        print(f"  hosts: {answers.hosts}")
+    for resolution in host_resolutions:
+        if resolution.refusal is not None:
+            print("  " + resolution.refusal.render().splitlines()[0] + " (see below)")
+            continue
+        if resolution.files and resolution.disclosure:
+            print("  " + resolution.disclosure)
+
+    for line in rigor_core.project_file_git_lines():
+        print(line)
+    if not yes:
+        print("Nothing is written until you answer yes.")
+        confirmed_answer = ask("confirm the final summary? (yes): ")
+        if confirmed_answer is None or confirmed_answer.lower() != "yes":
+            return _rigor_print_refusal(
+                rigor_core.Refusal(
+                    "The final summary was not confirmed, so nothing was written.",
+                    "Writes need the confirmation of the person.",
+                    "run the command again and answer yes at the end, or pass --yes "
+                    "in scripts.",
+                )
+            )
+
+    from nwave_ai.platform.config_writer import ConfigMigrationError, ConfigWriter
+
+    config_dir = _require_mutating_config_dir()
+    writer = ConfigWriter(home_dir=config_dir.parent, repo_root=repo_root)
+
+    def mutate(document: dict[str, Any]) -> None:
+        rigor_core.rigor_mutate(document, plan)
+
+    try:
+        writer.update_repo(mutate)
+    except ConfigMigrationError as error:
+        print(
+            "WHAT: the project file was not writable, so nothing was changed. "
+            f"WHY: {error}. HOW: repair the unified config and retry.",
+            file=sys.stderr,
+        )
+        return 1
+    except OSError as error:
+        print(
+            "WHAT: the project file is not writable, so nothing was changed. "
+            f"WHY: {error}. HOW: make {project_path} writable and retry.",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"Written {project_path} (project).")
+
+    # Apply the confirmed host plans: backup once, then one atomic move each.
+    for resolution in host_resolutions:
+        if resolution.refusal is not None:
+            print(resolution.refusal.render())
+            continue
+        try:
+            if resolution.files and resolution.disclosure:
+                print("  " + resolution.disclosure)
+            base = homes[resolution.name]
+            for relative in resolution.backup:
+                source_path = base / relative
+                backup_path = base / (relative + ".nwave-bak")
+                if source_path.exists() and not backup_path.exists():
+                    import shutil
+
+                    shutil.copyfile(source_path, backup_path)
+            verified_adapter = rigor_hosts.adapter_for(resolution.name)
+            if verified_adapter is None:
+                continue
+            for relative, payload in resolution.files:
+                target = base / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                temporary = target.with_name(target.name + ".rigor-tmp")
+                with open(temporary, "wb") as handle:
+                    handle.write(payload)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                temporary.replace(target)
+            if resolution.files:
+                print(
+                    "  "
+                    + rigor_hosts.write_line(verified_adapter)
+                    + f" — wrote {len(resolution.files)} file(s)."
+                )
+        except OSError as error:
+            print(
+                f"WHAT: the {resolution.name} file was not writable, so nothing "
+                "was written for this host. "
+                f"WHY: {error}. HOW: make the host file writable and retry.",
+                file=sys.stderr,
+            )
+    return 0
+
+
 def _print_usage(version: str) -> int:
     print(f"nwave-ai {version}")
     print()
@@ -1354,6 +2143,9 @@ def _print_usage(version: str) -> int:
     print("  doctor         Run diagnostics on the nWave installation")
     print("  attribution    Toggle commit attribution (on/off/status)")
     print("  model          Select the provider and model for nWave roles")
+    print(
+        "  rigor          Choose this project's quality scope (models, review rounds, documents)"
+    )
     print("  outcomes       Register / check shipped outcomes (Tier-1 collision)")
     print("  plugin         Manage tool plugins (install/uninstall/list)")
     print("  project        Enable, disable, or configure nWave for this project")
@@ -1593,6 +2385,16 @@ def _handle_project(args: list[str]) -> int:
     project_root = Path.cwd()
     if not _write_marker(project_root, enabled=action == "enable"):
         return 1
+    if action == "enable":
+        try:
+            home_dir = _require_mutating_config_dir().parent
+        except ValueError as error:
+            return _refuse_mutating_location(error)
+        _declare_project_jev(
+            project_root,
+            home_dir,
+            interactive=not assume_yes and sys.stdin.isatty(),
+        )
     ProjectGitignoreService().fix_gitignore(project_root=project_root)
     state = "enabled" if action == "enable" else "disabled (sticky opt-out)"
     print(f"nWave activation for this project: {state}.")
@@ -1750,6 +2552,7 @@ _ACTIVATION_HANDLERS = {
     "mode": _handle_mode,
     "status": _handle_status,
     "completion": _handle_completion,
+    "rigor": _handle_rigor,
 }
 
 
@@ -1815,6 +2618,8 @@ def main() -> int:
         return _handle_plugin(sys.argv[2:])
     elif command == "model":
         return _handle_model(sys.argv[2:])
+    elif command == "rigor":
+        return _handle_rigor(sys.argv[2:])
     elif command in ("project", "mode", "status", "completion"):
         return main_with_argv(sys.argv[1:])
     elif command == "version":

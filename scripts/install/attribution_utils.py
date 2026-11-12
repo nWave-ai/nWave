@@ -38,19 +38,36 @@ def read_global_config(config_dir: Path) -> dict:
         return {}
 
 
-def write_global_config(config_dir: Path, config: dict) -> None:
-    """Replace config_dir/config.json through the sole atomic configuration writer."""
+def _global_writer(config_dir: Path):
+    """The sole atomic writer of config_dir/config.json, global tier only."""
     from nwave_ai.platform.config_writer import ConfigWriter
 
     # update_global touches only the global tier, so the repository tier is
     # never written here; config_dir stands in for the required repo_root.
-    writer = ConfigWriter(global_dir=config_dir, repo_root=config_dir)
+    return ConfigWriter(global_dir=config_dir, repo_root=config_dir)
+
+
+def write_global_config(config_dir: Path, config: dict) -> None:
+    """Replace config_dir/config.json through the sole atomic configuration writer."""
 
     def replace(document: dict) -> None:
         document.clear()
         document.update(config)
 
-    writer.update_global(replace)
+    _global_writer(config_dir).update_global(replace)
+
+
+def adopt_legacy_global_config(config_dir: Path) -> None:
+    """Migrate a 3.x global-config.json into config.json before its values are read.
+
+    The unified writer reconciles the legacy document into config.json and
+    retires the legacy file. Reading first would miss a saved 3.x choice and the
+    install would write its first-install default over it. A home without the
+    legacy file is not rewritten.
+    """
+    if not (config_dir / "global-config.json").exists():
+        return
+    _global_writer(config_dir).update_global(lambda document: None)
 
 
 @dataclass(frozen=True)
@@ -109,13 +126,15 @@ def write_attribution_preference(
     enabled: bool,
     trailer: str = _DEFAULT_TRAILER,
 ) -> None:
-    """Write attribution preference, preserving other config keys."""
-    config = read_global_config(config_dir)
-    config["attribution"] = {
-        "enabled": enabled,
-        "trailer": trailer,
-    }
-    write_global_config(config_dir, config)
+    """Write attribution preference, preserving every key the unified document holds."""
+
+    def set_preference(document: dict) -> None:
+        document["attribution"] = {
+            "enabled": enabled,
+            "trailer": trailer,
+        }
+
+    _global_writer(config_dir).update_global(set_preference)
 
 
 def _resolve_python_path() -> str:

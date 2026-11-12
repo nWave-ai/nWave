@@ -10,15 +10,16 @@ from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, is_dataclass, replace
 from enum import Enum
-from functools import reduce
+from functools import partial, reduce
 from html import escape
 from itertools import chain, combinations, groupby, product
 from types import MappingProxyType
 
 from nwdes import handoff as model
-from nwdes.contracts import Built, Defect, Refused, checked, local_path
+from nwdes.contracts import Built, Defect, Refused, checked, collect, local_path
 from nwdes.destinations import DocumentKind
 from nwdes.destinations import resolve as resolve_destinations
+from nwdes.diagrams import Diagram, describe
 
 
 class OutputKind(str, Enum):
@@ -92,7 +93,7 @@ _ESCAPED_PUNCTUATION = str.maketrans(
 )
 _UNESCAPED_PUNCTUATION = re.compile(r"\\([" + re.escape(string.punctuation) + r"])")
 _HTML_TOKENS = re.compile(
-    r"^(?P<fence>`{3,})[^`\n]*\n(?P<content>[\s\S]*?)(?P=fence)$|^(?P<line>.*)$",
+    r"^(?P<fence>`{3,})(?P<info>[^`\n]*)\n(?P<content>[\s\S]*?)(?P=fence)$|^(?P<line>.*)$",
     re.MULTILINE,
 )
 _HTML_HEADING = re.compile(r"(#{1,6}) (.*)")
@@ -1084,28 +1085,169 @@ class ProductHandoff:
     sections: tuple[ProductSection, ...] = ()
 
 
-def render_html(markdown: str, brand: Brand) -> str:
-    def block(match):
-        if match["fence"] is not None:
-            return (
-                "<pre><code>" + escape(match["content"], quote=True) + "</code></pre>"
-            )
-        line = match["line"]
-        heading = _HTML_HEADING.fullmatch(line) if line.startswith("#") else None
-        if heading:
-            level = len(heading[1])
-            return f"<h{level}>{escape(unescape(heading[2]), quote=True)}</h{level}>"
-        return "<p>" + escape(unescape(line), quote=True) + "</p>" if line else ""
+def _prose_paragraphs(content: str) -> str:
+    """Readable form of a text fence: one escaped paragraph per non-blank line."""
+    return "\n".join(
+        "<p>" + escape(line, quote=True) + "</p>"
+        for line in content.split("\n")
+        if line.strip()
+    )
 
-    tokens = _HTML_TOKENS.finditer(markdown)
+
+_MARKDOWN_LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
+_SAFE_LINK_TARGET = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./-]*(#[A-Za-z0-9_.-]*)?")
+
+
+def _anchor(match):
+    """A link becomes an anchor only when its target is a relative path; otherwise it stays text."""
+    if _SAFE_LINK_TARGET.fullmatch(match[2]) is None:
+        return match[0]
+    return f'<a href="{match[2]}">{match[1]}</a>'
+
+
+def _code_block(content: str) -> str:
+    return "<pre><code>" + escape(content, quote=True) + "</code></pre>"
+
+
+def _line_html(line: str, *, links: bool = False) -> str:
+    heading = _HTML_HEADING.fullmatch(line) if line.startswith("#") else None
+    if heading:
+        level = len(heading[1])
+        return f"<h{level}>{escape(unescape(heading[2]), quote=True)}</h{level}>"
+    if not line:
+        return ""
+    text = escape(unescape(line), quote=True)
+    return "<p>" + (_MARKDOWN_LINK.sub(_anchor, text) if links else text) + "</p>"
+
+
+def _page(brand: Brand, body: str, language: str | None = None) -> str:
+    html_open = (
+        "<html>"
+        if language is None
+        else f'<html lang="{escape(language, quote=True)}">'
+    )
     return (
-        '<!doctype html>\n<html><head><meta charset="utf-8"><style>'
+        "<!doctype html>\n"
+        + html_open
+        + '<head><meta charset="utf-8"><style>'
         + brand.css
         + "</style></head><body>"
         + brand.logo.decode("utf-8")
         + "\n"
-        + "\n".join(map(block, tokens))
+        + body
         + "\n</body></html>\n"
+    )
+
+
+def render_html(markdown: str, brand: Brand, *, links: bool = False) -> str:
+    def block(match):
+        if match["fence"] is not None:
+            return _code_block(match["content"])
+        return _line_html(match["line"], links=links)
+
+    return _page(brand, "\n".join(map(block, _HTML_TOKENS.finditer(markdown))))
+
+
+_MERMAID_IN_TEXT = re.compile(
+    r"^(?P<fence>`{3,})mermaid[ \t]*\n(?P<body>[\s\S]*?)^(?P=fence)[ \t]*$",
+    re.MULTILINE,
+)
+
+
+def _readable_parts(match) -> list[tuple[str, str]]:
+    """One markdown block as readable parts: a line, code, prose or a Mermaid source."""
+    if match["fence"] is None:
+        return [("line", match["line"])]
+    info, content = match["info"].strip(), match["content"]
+    if info == "mermaid":
+        return [("mermaid", content.removesuffix("\n"))]
+    if info != "text":
+        return [("code", content)]
+    parts, cursor = [], 0
+    for found in _MERMAID_IN_TEXT.finditer(content):
+        parts += [
+            ("prose", content[cursor : found.start()]),
+            ("mermaid", found["body"].removesuffix("\n")),
+        ]
+        cursor = found.end()
+    return [*parts, ("prose", content[cursor:])]
+
+
+def _diagram_html(diagram: Diagram) -> str:
+    return (
+        "<p>" + escape(diagram.description.text, quote=True) + "</p>\n"
+        "<details><summary>Diagram source</summary><pre><code>"
+        + escape(diagram.source, quote=True)
+        + "</code></pre></details>"
+    )
+
+
+def _readable_part_html(kind: str, text: str, diagrams) -> str:
+    if kind == "line":
+        return _line_html(text)
+    if kind == "code":
+        return _code_block(text)
+    if kind == "prose":
+        return _prose_paragraphs(text)
+    return _diagram_html(next(diagrams))
+
+
+def readable_defects(markdown: str) -> Built[tuple[Diagram, ...]] | Refused:
+    """The one diagram rule of a readable brief: every Mermaid block must be described and
+    within the node limit. Refused names each broken diagram by its ordinal in this brief."""
+    blocks = [_readable_parts(match) for match in _HTML_TOKENS.finditer(markdown)]
+    sources = [text for parts in blocks for kind, text in parts if kind == "mermaid"]
+    return collect(
+        partial(describe, source, ordinal) for ordinal, source in enumerate(sources, 1)
+    )
+
+
+def _named_check(path, markdown):
+    described = readable_defects(markdown)
+    if isinstance(described, Refused):
+        return checked(
+            None,
+            (replace(d, what=f"{path}: {d.what}") for d in described.defects),
+        )
+    return Built(None)
+
+
+def _readable_gate(briefs, readable_language):
+    """Refused, naming each brief, when the readable rule is on and any brief breaks it.
+    Every brief written while the setting is on is checked, whatever its kind or HTML setting."""
+    if readable_language is None:
+        return Built(None)
+    return collect(partial(_named_check, path, markdown) for path, markdown in briefs)
+
+
+def readable_html(markdown: str, brand: Brand, language: str) -> Built[str] | Refused:
+    """The readable page: prose for text fences, a description above each Mermaid source.
+
+    Refuses, naming every broken diagram, when any Mermaid block breaks its rule; then no
+    page is built.
+    """
+    blocks = [_readable_parts(match) for match in _HTML_TOKENS.finditer(markdown)]
+    described = readable_defects(markdown)
+    if isinstance(described, Refused):
+        return described
+    diagrams = iter(described.value)
+    body = "\n".join(
+        "\n".join(_readable_part_html(kind, text, diagrams) for kind, text in parts)
+        for parts in blocks
+    )
+    return Built(_page(brand, body, language))
+
+
+def readable_gate(outputs: OutputSet, readable_language):
+    """Refused, naming each brief file, when the readable rule is on and a written brief breaks
+    it. Every markdown brief of a command is checked, whatever its kind or HTML setting."""
+    return _readable_gate(
+        (
+            (output.path, output.data.decode("utf-8"))
+            for output in outputs.outputs
+            if output.kind is OutputKind.Markdown
+        ),
+        readable_language,
     )
 
 
@@ -1469,27 +1611,56 @@ def render_markdown(handoff, kind, register=()):
     )
 
 
-def feature_outputs(handoff, destinations, brand, adr_files=()):
+def _brief_page(kind, output, brand, readable_language):
+    """The HTML page of one brief; the readable product page refuses a broken diagram."""
+    markdown = output.data.decode("utf-8")
+    path = output.path[:-3] + ".html"
+    if readable_language is None or kind is not DocumentKind.Product:
+        return Built(
+            Output(OutputKind.Html, path, render_html(markdown, brand).encode("utf-8"))
+        )
+    page = readable_html(markdown, brand, readable_language)
+    if isinstance(page, Refused):
+        return page
+    return Built(Output(OutputKind.Html, path, page.value.encode("utf-8")))
+
+
+def feature_outputs(
+    handoff, destinations, brand, adr_files=(), *, readable_language=None
+):
+    """The outputs of one feature. Refused, with no output at all, when a readable diagram breaks its rule."""
     briefs = tuple(
         Output(
             OutputKind.Markdown, path, render_markdown(handoff, kind).encode("utf-8")
         )
         for kind, path in destinations.briefs
     )
-    pages = tuple(
-        Output(
-            OutputKind.Html,
-            output.path[:-3] + ".html",
-            render_html(output.data.decode("utf-8"), brand).encode("utf-8"),
-        )
-        for output in briefs
-    )
-    return OutputSet(
+    gate = _readable_gate(
         (
-            *adr_files,
-            *briefs,
-            *pages,
-            Output(OutputKind.Handoff, destinations.handoff, model.serialize(handoff)),
+            (path, output.data.decode("utf-8"))
+            for (_, path), output in zip(destinations.briefs, briefs, strict=True)
+        ),
+        readable_language,
+    )
+    if isinstance(gate, Refused):
+        return gate
+    pages = collect(
+        partial(_brief_page, kind, output, brand, readable_language)
+        for (kind, _), output in zip(destinations.briefs, briefs, strict=True)
+        if destinations.html_pages
+    )
+    if isinstance(pages, Refused):
+        return pages
+    return Built(
+        OutputSet(
+            (
+                *adr_files,
+                *briefs,
+                *pages.value,
+                Output(
+                    OutputKind.Handoff, destinations.handoff, model.serialize(handoff)
+                ),
+            )
         )
     )
 
@@ -1544,13 +1715,17 @@ def project_outputs(previous, handoffs, destinations, brand):
         )
         for kind, path in destinations.briefs
     )
-    pages = tuple(
-        Output(
-            OutputKind.Html,
-            output.path[:-3] + ".html",
-            render_html(output.data.decode("utf-8"), brand).encode("utf-8"),
+    pages = (
+        ()
+        if not destinations.html_pages
+        else tuple(
+            Output(
+                OutputKind.Html,
+                output.path[:-3] + ".html",
+                render_html(output.data.decode("utf-8"), brand).encode("utf-8"),
+            )
+            for output in briefs
         )
-        for output in briefs
     )
     data = {
         "sections": [
@@ -1568,6 +1743,233 @@ def project_outputs(previous, handoffs, destinations, brand):
     ).encode("utf-8")
     return OutputSet(
         (*briefs, *pages, Output(OutputKind.Handoff, destinations.handoff, canonical))
+    )
+
+
+OVERVIEW_NAME = "overview"
+PRODUCT_FILES = ("vision.md", "roadmap.md", "backlog.md")
+NOT_STATED = "not stated"
+_TITLE_IDENTIFIER = re.compile(r"(?:ADR-)?(?:[A-Z][A-Z0-9]*-)?[0-9]{3}:?\s+")
+_STATUS_LINE = re.compile(r"\*{0,2}Status\*{0,2}:\s*(.+)")
+
+
+def _status_heading(line):
+    """The value of a heading that names Status: '' for a bare one, None for any other line."""
+    if not line.startswith("#"):
+        return None
+    text = line.lstrip("#").strip()
+    if text == "Status":
+        return ""
+    if text.startswith("Status:"):
+        return text[len("Status:") :]
+    return None
+
+
+@dataclass(frozen=True)
+class ProductSources:
+    """The three product texts in the order of PRODUCT_FILES; None marks an absent file."""
+
+    vision: str | None
+    roadmap: str | None
+    backlog: str | None
+
+
+@dataclass(frozen=True)
+class DecisionLine:
+    """One decision as the overview shows it; status is the file's own words."""
+
+    key: AdrKey
+    file: str
+    title: str
+    status: str
+
+
+def _decision_title(lines):
+    heading = next((line[2:] for line in lines if line.startswith("# ")), None)
+    if heading is None:
+        return NOT_STATED
+    identifier = _TITLE_IDENTIFIER.match(heading)
+    title = unescape(heading[identifier.end() :] if identifier else heading).strip()
+    return title or NOT_STATED
+
+
+def _plain(text):
+    return text.replace("*", "").strip()
+
+
+def _status_paragraph(lines, index):
+    """The Status section's paragraph after its heading: its lines stripped and joined by one space.
+
+    The paragraph starts at the first text line after the heading and ends at the next blank
+    line or heading; nothing after it is read.
+    """
+    start = next(
+        (
+            position
+            for position in range(index + 1, len(lines))
+            if lines[position].strip() and not lines[position].lstrip().startswith("#")
+        ),
+        None,
+    )
+    if start is None:
+        return ""
+    paragraph = []
+    for line in lines[start:]:
+        if not line.strip() or line.lstrip().startswith("#"):
+            break
+        paragraph.append(line.strip())
+    return " ".join(paragraph)
+
+
+def _decision_status(lines):
+    for index, line in enumerate(lines):
+        match = _STATUS_LINE.fullmatch(line.strip())
+        if match and _plain(match[1]):
+            return _plain(match[1])
+        heading = _status_heading(line.strip())
+        if heading is None:
+            continue
+        if _plain(heading):
+            return _plain(heading)
+        paragraph = _plain(_status_paragraph(lines, index))
+        if paragraph:
+            return paragraph
+    return NOT_STATED
+
+
+def decision_line(entry: AdrEntry) -> DecisionLine:
+    """Read a decision file leniently: its own title and status, or the marker that it has none."""
+    lines = normalize(entry.data.decode("utf-8", errors="replace")).split("\n")
+    return DecisionLine(
+        entry.key, entry.path, _decision_title(lines), _decision_status(lines)
+    )
+
+
+def _product_file_defects(name, text, directory):
+    if text is None:
+        return [
+            Defect(
+                f"MissingFact: {directory}/{name}",
+                "The overview joins this product file and it does not exist.",
+                f"Create {directory}/{name} with the text the overview should show, "
+                "then rerun nwdes document --overview.",
+            )
+        ]
+    if not text.strip():
+        return [
+            Defect(
+                f"EmptySource: {directory}/{name}",
+                "The product file holds no text, so the overview would show a silent gap.",
+                f"Write the text into {directory}/{name}, then rerun nwdes document --overview.",
+            )
+        ]
+    return []
+
+
+_RELATIVE_LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
+_URL_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def _rebase_links(text, source_directory, target_directory):
+    """Rewrite each relative link of copied text from its source directory to the target directory.
+
+    A link with a URL scheme, an absolute path or a bare anchor keeps its target. A link whose
+    target would leave the repository keeps its words and loses its target.
+    """
+
+    def rebase(match):
+        label, target = match[1], match[2]
+        if _URL_SCHEME.match(target) or target.startswith(("/", "#")):
+            return match[0]
+        path, hash_sign, anchor = target.partition("#")
+        resolved = posixpath.normpath(posixpath.join(source_directory, path))
+        if resolved == ".." or resolved.startswith("../"):
+            return label
+        relative = posixpath.relpath(resolved, target_directory)
+        return f"[{label}]({relative}{hash_sign}{anchor})"
+
+    return _RELATIVE_LINK.sub(rebase, text)
+
+
+def _overview_markdown(sources, decisions, directory, adr_directory):
+    rows = "".join(
+        f"- [ADR-{line.key.text}]"
+        f"({posixpath.relpath(posixpath.join(adr_directory, line.file), directory)})"
+        f": {_rebase_links(line.title, adr_directory, directory)}. "
+        f"Status: {_rebase_links(line.status, adr_directory, directory)}\n"
+        for line in decisions
+    )
+    sections = "".join(
+        f"## {heading}\n\n{_deepen(normalize(text))}\n\n"
+        for heading, text in (
+            ("Vision", sources.vision),
+            ("Roadmap", sources.roadmap),
+            ("Backlog", sources.backlog),
+        )
+    )
+    return (
+        "# Project overview\n\n"
+        "Generated by nwdes document --overview from the product files named "
+        "in the sections below. Edit those files, not this page.\n\n"
+        + sections
+        + "## Architecture decisions\n\n"
+        + rows
+    )
+
+
+def _overview_defects(sources, entries, directory, adr_directory):
+    files = zip(
+        PRODUCT_FILES, (sources.vision, sources.roadmap, sources.backlog), strict=True
+    )
+    defects = [
+        defect
+        for name, text in files
+        for defect in _product_file_defects(name, text, directory)
+    ]
+    if not entries:
+        defects.append(
+            Defect(
+                f"MissingFact: {adr_directory}",
+                "No decision file named as an ADR is in the decision directory, "
+                "so the overview would claim the project has no decisions.",
+                "Add the ADR-named decision files to the directory the "
+                "adr.directory setting names, then rerun nwdes document --overview.",
+            )
+        )
+    return defects
+
+
+def overview_outputs(
+    sources: ProductSources,
+    entries,
+    directory: str,
+    adr_directory: str,
+    brand: Brand,
+):
+    """The project overview as Markdown and as the same brand page the features use."""
+    defects = _overview_defects(sources, entries, directory, adr_directory)
+    if defects:
+        return checked(None, defects)
+    decisions = tuple(
+        sorted((decision_line(entry) for entry in entries), key=lambda row: row.key)
+    )
+    markdown = _overview_markdown(sources, decisions, directory, adr_directory)
+    return checked(
+        OutputSet(
+            (
+                Output(
+                    OutputKind.Markdown,
+                    directory + "/" + OVERVIEW_NAME + ".md",
+                    markdown.encode("utf-8"),
+                ),
+                Output(
+                    OutputKind.Html,
+                    directory + "/" + OVERVIEW_NAME + ".html",
+                    render_html(markdown, brand, links=True).encode("utf-8"),
+                ),
+            )
+        ),
+        (),
     )
 
 

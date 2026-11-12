@@ -97,7 +97,7 @@ When executing `*approve-handoff`, follow these steps in order:
 
 1. **First Review** — Execute full workflow phases 1-4. Produce YAML feedback. Gate: review YAML complete.
 2. **Second Review** — Invoke second reviewer instance via Task tool. Validate review quality: evidence classification accuracy and bias detection thoroughness. Gate: second instance returns assessment.
-3. **Resolve Discrepancies** — Compare first and second review findings. Resolve discrepancies or escalate to human after 2 iterations. Gate: discrepancies resolved or escalation issued.
+3. **Resolve Discrepancies** — Compare first and second review findings. Resolve discrepancies within the review-round limit the role bundle prints (nwdes prompt), or escalate to the human when a finding is still open at the limit. Gate: discrepancies resolved or escalation issued.
 4. **Display Proof** — Output complete review proof: review YAML, meta-review result, quality gate status. Gate: all three artifacts displayed to user.
 
 ## Commands

@@ -16,6 +16,7 @@ Delegates enumerate/filter/copy logic to scripts.shared.skill_distribution.
 """
 
 import shutil
+import tempfile
 from pathlib import Path
 
 from scripts.install.plugins.base import (
@@ -28,6 +29,7 @@ from scripts.shared.agent_catalog import (
     detect_command_skills,
     load_public_agents,
 )
+from scripts.shared.dynamic_command_skill import dynamic_skill_entry
 from scripts.shared.install_paths import (
     PYTHON_CMD_SUBSTITUTION,
     resolve_python_command,
@@ -306,7 +308,19 @@ class SkillsPlugin(InstallationPlugin):
             entries, public_agents, ownership_map, command_skills
         )
         _log_skipped_skills(context, excluded)
-        copy_skills_to_target(entries, skills_target, clean_existing=True)
+        # Dev-only: the private dynamic command projected from its one
+        # source, staged in a temporary directory that the finally removes
+        # even when the install fails (review N3).
+        dynamic_staging = Path(tempfile.mkdtemp(prefix="nwave-dynamic-skill-"))
+        try:
+            dynamic_entry = dynamic_skill_entry(
+                context.dev_mode, context.project_root / "nWave", dynamic_staging
+            )
+            if dynamic_entry is not None:
+                entries.append(dynamic_entry)
+            copy_skills_to_target(entries, skills_target, clean_existing=True)
+        finally:
+            shutil.rmtree(dynamic_staging, ignore_errors=True)
 
         # Resolve Python command substitution in installed files
         python_cmd = resolve_python_command()

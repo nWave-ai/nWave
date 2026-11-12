@@ -129,3 +129,70 @@ def strict_object(pairs):
     if len(set(names)) != len(names):
         raise DuplicateKey("Duplicate JSON key")
     return dict(pairs)
+
+
+@dataclass(frozen=True)
+class ExamineLevel:
+    """One examine level: its name and the repair rounds it grants, and nothing else.
+
+    A level limits how many examinations a delivery admits, the same way review.max_rounds
+    limits review rounds. An examination has no clock.
+    """
+
+    name: str
+    repair_rounds: int
+
+    @property
+    def examinations(self) -> int:
+        return 1 + self.repair_rounds
+
+
+# The examine levels a person chooses. One table in nwdes, read by the config
+# parser, the bundle and the shell; nwave_ai/platform/rigor_core.py keeps the
+# rigor command's copy, pinned equal by a parity test.
+EXAMINE_LEVELS = (
+    ExamineLevel("quick", 0),
+    ExamineLevel("standard", 1),
+    ExamineLevel("extended", 2),
+)
+DEFAULT_EXAMINE_LEVEL = "standard"
+EXAMINE_LEVEL_NAMES = tuple(level.name for level in EXAMINE_LEVELS)
+
+
+def examine_level_named(name: str) -> ExamineLevel:
+    """The level a validated name stands for; any other name is a programming error."""
+    for level in EXAMINE_LEVELS:
+        if level.name == name:
+            return level
+    raise ValueError(f"not an examine level: {name!r}")
+
+
+def describe_examine_level(name: str) -> str:
+    """The examinations and repair rounds a level grants: the text every surface prints."""
+    level = examine_level_named(name)
+    examinations = f"{level.examinations} examination" + (
+        "" if level.examinations == 1 else "s"
+    )
+    if level.repair_rounds == 0:
+        repairs = "no repair round"
+    else:
+        repairs = f"{level.repair_rounds} repair round" + (
+            "" if level.repair_rounds == 1 else "s"
+        )
+    return f"{examinations}, {repairs}"
+
+
+def examine_level_line(name: str, source: str) -> str:
+    """The examine level line: the name, where its value comes from, what it stands for."""
+    return f"examine level: {name} ({source}) - {describe_examine_level(name)}"
+
+
+def resolved_examine_level(
+    repository: str | None, global_: str | None
+) -> tuple[str, str]:
+    """The level in effect with its source: project over global over the built-in default."""
+    if repository is not None:
+        return repository, "project"
+    if global_ is not None:
+        return global_, "global"
+    return DEFAULT_EXAMINE_LEVEL, "built-in default"

@@ -1,5 +1,9 @@
 ## FROM NWDES
 jev: {{jev}}
+review rounds: {{review_rounds}}
+{{examine_level}}
+{{model_fact}}
+{{readable_brief}}
 Public examination packet:
 {{packet}}
 
@@ -10,7 +14,7 @@ Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-inva
 Judge every fixed expectation id in the packet from the user's point of view: met, or unmet with its declared class. The packet's Expectations rows are the list to confirm; its Charter gives the feature's intent, exploration, positive and negative cases, so choose your discriminators from them. The packet carries no source code, diffs, reviews, producer verification or private design evidence. Gather your own public observations in the named workspace with nwdes examine read and nwdes examine probe. Record each observation through the generated examination recording verbs before citing it. Judge from the user's point of view, not implementation details. Report gaps honestly and record verdicts through the CLI, never document edits.
 
 Method:
-- Wall budget: {{budget}} minutes from your first call. At the budget, stop probing and close with the observations you have. Record each expectation you did not probe as an observation naming the non-probe, and cite that observation in its verdict.
+- Examine every fixed expectation you can prove. A row you cannot prove, declare with `nwdes examine verdict set --expectation ID --verdict not_examined --reason TEXT`; a row not examined is never green. The level limits only how many examinations the delivery admits.
 - Read each public source once. Never repeat an identical read or probe call.
 - Batch probes: one driver per expectation class, one bash call each. Never one scenario per call. Make at most three probing bash calls in all.
 - Probe the uncovered input form or negative case first. Do not re-confirm rows the oracle already covers before those discriminators.

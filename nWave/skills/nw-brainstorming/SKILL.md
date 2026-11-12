@@ -48,7 +48,7 @@ Apply each SCAMPER lens to the validated job to generate one option per letter. 
 | **E** | Eliminate | What if we removed the most complex part? | Radical simplification |
 | **R** | Reverse | What if the workflow ran backwards? User and system switched roles? | Inversion |
 
-**Required output**: At minimum, one option per SCAMPER letter. For each lens, state a probability per candidate — the distribution over that lens's candidates, summing to 1 — then deliberately keep the low-probability (tail) candidates alongside the head candidates: this counteracts the pull toward the typical answer (verbalized sampling, Zhang et al., arXiv 2510.01171), so that repeated runs tend to sample different tail candidates. Name each option with the requester's own words where they described the thing; coin a name only when nothing the requester said covers it, and make a coined name describe the mechanism rather than evoke. Do not evaluate during generation.
+**Required output**: At minimum, one option per SCAMPER letter. For each lens, state a probability per candidate — the distribution over that lens's candidates, summing to 1 — then deliberately keep the low-probability (tail) candidates alongside the head candidates: this counteracts the pull toward the typical answer (verbalized sampling, Zhang et al., arXiv 2510.01171), so that repeated runs tend to sample different tail candidates. Name each option with the requester's own words where they described the thing — words from a `requester-verbatim` block of the host-written `request.md`, never from a `host-summary` block; coin a name only when nothing the requester said covers it, and make a coined name describe the mechanism rather than evoke. Do not evaluate during generation.
 
 A **tail candidate** is a candidate whose stated probability is at most 0.2 within the distribution it was drawn from — its SCAMPER lens's candidates, or the Crazy 8s supplements' distribution. Every other retained candidate is a head candidate.
 
@@ -96,11 +96,11 @@ Each option in `options-raw.md` must follow:
 **Key assumption**: What must be true for this to succeed?
 **SCAMPER origin**: Which lens generated this? (or "Crazy 8s supplement")
 **Closest competitor**: What existing product does this most?
-**name_origin**: user-words (the requester's own description) | coined (this wave minted it)
+**name_origin**: user-words ("<contiguous span of a requester-verbatim block of request.md>") | coined (this wave minted it)
 **stated_probability**: the probability stated for this candidate within the distribution it was drawn from, restated over the curated six at curation (a stated estimate, not a measurement)
 ```
 
-The heading handle is an internal cross-reference label for the scoring table. Nothing downstream may read it as vocabulary: replacing a handle with an unrelated word must change no score, weight or ranking. A user-words name is the requester's description verbatim, shortened only to a phrase; a coined name describes the mechanism.
+The heading handle is an internal cross-reference label for the scoring table: replacing each handle with an unrelated word must change no score, weight or ranking. Name each option and write `name_origin` per `nw-requester-words` (a user-words name is the quoted span itself; a coined name describes the mechanism).
 
 ---
 
@@ -126,4 +126,4 @@ Produce `docs/feature/{feature-id}/diverge/options-raw.md` with:
 4. **Curated 6** — with diversity test results including the head-clustering read
 5. **Eliminated options** — brief note on why merged/removed
 
-**Gate**: 6 curated options, each passing the 3-point diversity test, two tail candidates among the six — or one tail candidate whose mechanism differs from every head candidate's — name_origin marked on every option, before taste evaluation begins.
+**Gate**: 6 curated options, each passing the 3-point diversity test, two tail candidates among the six — or one tail candidate whose mechanism differs from every head candidate's — name_origin marked on every option (every user-words name equal to its quote, the quote passing `nw-requester-words` rule 1), before taste evaluation begins.

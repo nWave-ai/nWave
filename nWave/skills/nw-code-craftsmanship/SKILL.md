@@ -1,123 +1,74 @@
 ---
 name: nw-code-craftsmanship
-description: Universal OO/FP craftsmanship foundation — domain-language naming, small cohesive units, semantic DRY/SSOT, reuse-before-new, one owner per rule/config/fact, prefactoring before new behavior, ports/adapters for testability. Consult before writing or reviewing any unit of code, either paradigm.
+description: Load when writing or changing production code in craft; per-unit rules, failure messages, security, recovery, performance, honest closing statement.
 user-invocable: false
 disable-model-invocation: true
 ---
 
-# Code Craftsmanship — Universal Foundation
+# Code craftsmanship
 
-**Kind**: KNOWLEDGE (reference). No forced sequence — consult while writing or reviewing a unit.
-**Trigger**: authoring, extending, or reviewing code in either paradigm.
+## Before writing a unit
+1. Search for an existing owner of the responsibility (by what it decides and who consumes it). Reuse or extend it; create a new one only when you can name the incompatibility.
+2. Give each fact, rule or config value one owner. Two units deciding the same fact are a defect even if the code differs; look-alikes that answer different questions stay separate.
+3. Generalize (abstraction, plugin, framework) only when a second real caller needs it now.
+4. Follow the design already chosen; if two owners compete for a rule, stop and raise it to the design owner instead of picking one.
+5. Follow the paradigm of the touched code; state the reason in the closing statement for any unit in another paradigm.
 
-Load `nw-cross-cutting-invariants` and apply `flow:findings-go-to-the-owner-directly` when exchanging findings or questions between roles.
+## Writing each unit
+6. Name from the domain language, never `Manager`, `Helper`, mechanics. One unit = one reason to change, one responsibility visible from its name.
+7. State what the domain decides (expressions, pipelines, polymorphism), not bookkeeping.
+8. Keep state private; change it only through the owner's methods; keep data with the behaviour that uses it; expose no internal type across a boundary.
+9. When unit A reads unit B's data to decide, move the decision into B and send B a message.
+10. Two units sharing a position, literal, value meaning, algorithm or call order: replace by a named type, a named constant or one shared owner.
+11. Give a concept its own type when it can be confused with another, when a type can exclude invalid states, or when it owns a rule; its constructor refuses the invalid value. A native type that already says this stays native.
+12. At deliberate boundaries use precise records, unions or result types. Document, at the boundary, every generic payload (dict, Any, object) you add.
+13. Keep business decisions apart from SQL, transport and filesystem code; dependencies point inward through ports; inject collaborators.
+14. Functional code: pure core, thin effect shell (read, decide, write); the core never calls the shell.
+15. A driving or driven port exposes no private structure.
 
-## Quality Axes
+## Failure messages
+16. Every refusal or failure you add states WHAT failed (the violated invariant), WHY (the cause), and HOW to fix, naming the concrete fix and the command or tool that produces a valid input.
+17. Include every fact the rejecting code already holds that the reader needs: the offending value and where it lives (file, line, field), the limit it broke.
+18. A validator over several inputs collects every independent defect and reports them all in one pass; checks that depend on another say they did not run.
+19. Run the remedy the message names; it must lead to an accepted input.
+20. Return every domain outcome in the return type; raise only for programming errors.
+21. Each failure ends in correct recovery, a loud refusal or INDETERMINATE, never a silent wrong success. Could-not-verify is a third result and reaches the summary.
 
-The crafter writes, and the reviewer judges, every changed unit on nine axes:
+## Security and portability
+22. Parse untrusted input with schema validation at the trust boundary before use; never deserialize it into an arbitrary object (no `pickle`, no `yaml.load`).
+23. Normalise untrusted paths (`resolve()`) and check they stay inside the allowed root.
+24. Pass untrusted data to commands, queries and templates only as arguments: `subprocess.run([..])` without shell, `cursor.execute("... ?", (v,))`, never string-built syntax.
+25. Never log or print a secret or commit a secret literal; read secrets from environment or store.
+26. Security defaults deny on error and grant least privilege; looser settings need explicit opt-in; check access on every request. A missing or newly added security scanner yields failure or INDETERMINATE, never a silent pass.
+27. Make each read-check-write atomic where a race breaks an invariant (`open(p, "x")`, rename, lock, transaction).
 
-| Axis | The code shows it when |
-|---|---|
-| Readable | names come from the domain language and each unit reads as one intention |
-| Encapsulated | state is private and changed only through the owner's behaviour; no internal type leaks across a boundary |
-| Declarative | it states what the domain decides (expressions, pipelines, polymorphism) rather than step-by-step bookkeeping |
-| Modular | each module has one reason to change and a narrow public surface |
-| Performant | no avoidable allocation, copying, repeated I/O or quadratic work on a hot path |
-| Maintainable | a requirement change touches one owner; no duplication of a rule |
-| Decoupled | dependencies point inward through ports; collaborators are injected; connascence stays weak and local |
-| Cohesive | data and the behaviour that uses it live together |
-| Secure | inputs are parsed and validated at the boundary; paths are normalized and confined to their root; commands run as argv without shell interpolation; secrets never reach logs |
+## Recovery
+28. An operation promised idempotent or recoverable must reach the same final state when re-run after interruption, with no duplicate or half-applied effect (write temp then rename; upsert).
+29. When you change persisted data, keep a way back (revert or stated partial-rollback plan), or list it as unverified in the closing statement.
+30. For each failure point or bypass the design names, have a test observe the degraded outcome, or state in the closing statement why it is unreachable. When an assumption (dependency down, input twice, step interrupted) is negated, the code refuses loudly or degrades as documented.
+31. Adapter fault-injection tests (storage down, interrupted or double write, crash, concurrent writers) go in an infrastructure suite the default run excludes, and only where the human granted it.
+32. A rollback or degradation trigger is a stated measurable value that a check can trip.
 
-Tests are not the crafter's: the acceptance designer authors the oracle and its
-supports, and those tests specify the behaviour. The crafter adds no unit tests;
-design quality comes from the code, not from a growing suite of tests around it.
+## Performance
+33. Avoid allocation, copying, repeated I/O and quadratic work on hot paths.
+34. Claim a speedup only with a re-runnable before/after measurement; each performance threshold you hard-code comes from a stated requirement.
 
-## Simple Design
+## Tests you add
+35. The oracle is not yours to edit. Add a unit test only when the oracle cannot go green without it, and only in the owned test paths.
+36. Every refusal or check you add gets one assertion that fails on a constructed violation; probe once by re-injecting the violation, then restore.
+37. A count assertion names its population and compares to it (`len(found) == len(expected_ids)`); a partition asserts that its parts sum to the whole; "nothing found" differs in output from a broken case.
 
-Judge in this order: the behaviour is demonstrated by the tests; no semantic
-duplication; maximal clarity; then the fewest elements. Removing a type or a
-collaborator is an improvement only when the first three still hold.
+## Comments, docs, closing statement
+38. Comments and docstrings give the reason for a choice or a dated incident; no "this module reads X", no numbers the code can derive.
+39. A document you change agrees with the code; fix the wrong side in the same change. Commands in a README or runbook run as written. Every nontrivial claim in a changed document is backed by a check the reader can rerun, or marked `not measured`.
+40. Call something wired or active only after running the surface that invokes it and seeing the effect.
+41. Closing statement: name the delivered behaviour, claim none the diff lacks. Show command and output for each check reported passed and for each numeric claim. Mark anything not run, stale or partly run as `not measured`, never as passed. Each unresolved finding names the obligation affected and a remedy.
+42. Report an independent pre-existing defect to its owner; fix it only when authorised or when it is a regression of this request. State in the closing statement every repair of a pre-existing defect and who authorised it.
 
-## Coupling and Connascence
-
-Checkable on the diff:
-
-- Two units that must agree on a position, a literal value, the meaning of a
-  value, an algorithm or a call order share a hidden agreement: replace it with
-  a named type, a named constant or one owner that both call. Agreements on a
-  name or a type are the acceptable ones.
-- A unit reads another's data to decide (control flag, branch on its state,
-  reach into its fields): move the decision to the data's owner and send it a
-  message.
-- A method groups steps only because they run in sequence, at the same time or
-  on the same data: split it by responsibility.
-
-## Naming and Shape
-
-Names come from the domain language, not implementation mechanics. Units (functions, classes, modules) stay small and cohesive — one reason to change, one responsibility observable from the name.
-
-## Semantic DRY / Single Source of Truth
-
-Duplication is a SEMANTIC question, not a textual one. Before writing new logic, run reuse analysis: does an existing symbol already own this responsibility? One business rule, one config value, one fact has exactly ONE owner. Two algorithms independently deciding the same fact is a defect even when their code looks nothing alike — the risk is divergence, not the copy-paste.
-
-Distinguish **coincidental similarity** (two units that happen to look alike but answer different questions, change for different reasons, owned by different authorities) from **shared responsibility** (two units answering the same question). Only the second is a DRY violation. Collapsing coincidental similarity into a shared abstraction creates a false dependency — the two callers now change together for no domain reason.
-
-Search by responsibility, invariant and real consumers, not only matching names. For each relevant existing owner, explain whether it can be reused or extended; `CREATE_NEW` needs a concrete incompatibility or absent responsibility, not a preference for a fresh abstraction. A rule change must reach every known consumer through its one owner. Atomically derived projections or denormalized storage are not competing authorities when the owning rule and update invariant remain single.
-
-Keep business decisions readable apart from SQL, transport and filesystem plumbing. Make wrong state unrepresentable with the type system: give a concept its own type (value object, record, choice type) when it can be confused with another concept, when its type can exclude invalid states, or when it owns a rule; its constructor refuses the invalid value. A native type that already says all of this stays native. Use precise native records, unions or result types at deliberate boundaries; document any generic payload boundary. Judge cohesion and consumer behavior, not file/class counts.
-
-## Prefactoring Before New Behavior
-
-The architect owns the applicability and selected preservation recipe in the canonical DESIGN grammar (`nw-design`). For an applicable move, the host observes a trustworthy existing GREEN baseline, then the same oracle/support content and argv/runtime on the intermediate state after only the declared movement, before feature behavior changes. Keep distinct production identities and before-move/after-move-before-behavior evidence; two finite GREEN runs support only those observations. A failing feature oracle is not the preservation baseline. No autonomous commit, extra review cycle or unrelated cleanup is implied.
-
-## Ports and Adapters
-
-Ports/adapters exist to make testing easy without leaking implementation details across the boundary. A driving port is a clean seam to test through; a driven port isolates an external dependency behind a swappable adapter. Neither port exposes internal types or private structure to its caller.
-
-## FP Hexagonal Architecture
-
-In functional code the hexagon is the separation of pure functions from side effects. Keep a large pure core (domain logic, validation, calculation over immutable data) and a thin side-effect shell (HTTP, CLI, database, file and network I/O). The shell reads, calls the core, then writes: read (impure) → decide (pure) → write (impure). The shell may call the core; the core never calls the shell and does not know it exists.
-
-| OO concept | FP equivalent |
-|---|---|
-| Port (interface) | Function type signature or type alias, named verb-noun for the capability, never the technology (`FindOrder`, `SaveOrder`) |
-| Adapter (class) | Concrete function matching the port's signature (Postgres and in-memory implementations of `FindOrder`) |
-| DI container | Function parameters and partial application at the composition root |
-| Domain service class | Module of pure functions |
-| Entity with behaviour | Immutable data plus functions that transform it |
-
-Workflows run as pipelines through the hexagon: parse (shell) → validate (core) → calculate (core) → persist (shell) → respond (shell). Each pure step returns a result type and the pipeline short-circuits on the first failure; use applicative style when all validation errors must be collected (see `nw-fp-domain-modeling` and `nw-fp-principles`). Test the pure core with unit and property-based tests and no mocks; give the composition root a few wiring tests and each adapter a few integration tests against real dependencies. Where the compiler cannot track effects, mark impure functions through return types, naming or annotations.
-
-## FP Dependency Injection
-
-Choose the lightest injection that keeps the function legible:
-
-| Dependencies | Approach |
-|---|---|
-| 1-3 | Functions as parameters, partially applied at the composition root: `placeOrder = placeOrder(findCustomer, saveOrder)` |
-| 4-6 | Environment (Reader) pattern: dependencies in one record provided once at the top level, or group related ones |
-| 7+ | Capability interfaces or an effect system (tagless final, ZIO, Koka); also reconsider the function's responsibilities |
-
-A small or medium codebase, and pragmatic TypeScript or F#, stay on functions as parameters plus modules. The public workflow hides its dependencies from callers; internal steps take them explicitly.
-
-## Usable Design for Algebraic APIs
-
-The developer is the user of the design: when developers struggle, fix the design rather than blame the people. Judge an API on learnability, efficiency, memorability, error resistance and satisfaction.
-
-- **Names**: domain vocabulary, not mathematical jargon or `Manager`/`Helper`/`Factory`; verb-noun for pipeline transformations (`validateOrderFields`, `calculateOrderTotal`); question-style predicates (`isActiveCustomer`, `canPlaceOrder`); lifecycle prefixes on types by workflow stage (`UnvalidatedOrder`, `ValidatedOrder`, `PricedOrder`); error types named for what went wrong (`ValidationError`, `PricingError`).
-- **Organization**: by feature domain (`order/`, `auth/`) rather than technical layer (`controllers/`, `services/`); simple types first, compound types next, aggregates and workflows last. Names precise enough that a search yields a handful of results.
-- **Constraints as clarity**: restrict what each component can do and call; each role states its responsibilities, permitted collaborators and test approach. Derive roles after about ten features, not upfront.
-- **Small orthogonal operations**: algebraic decomposition yields operations with simple rules that are easy to name and search (`applyDiscount`, `calculateTax` rather than `processOrder`); roles' constraints can be stated as machine-checkable rules (`imports(controllerModule) ∩ dbModules = ∅`). See `nw-fp-algebra-driven-design`.
-- **Root-cause bugs in the design**: ask which design change prevents the whole category of bug; fear of changing a unit signals unclear side effects, missing tests or tangled responsibilities.
-
-## SOLID and Object Calisthenics
-
-For OO application/domain code, use SOLID (single responsibility, open/closed, Liskov substitution, interface segregation and dependency inversion) and the ten Object Calisthenics in `nw-code-design-oo`, strictly inside the hexagon. That skill also owns the rich domain model, the code smells hierarchy and the Refactoring Priority Premise order applied within each delta. Domain identity, lifecycle, aggregate consistency, repositories and domain events follow `nw-ddd-tactical` (OO) or `nw-fp-domain-modeling` (FP). Do not repeat their tables here.
-
-## Both Paradigms, No Forced Framework
-
-The shared readability, ownership, reuse and boundary principles apply in both paradigms; OO-specific constraints above stay scoped to OO application/domain code. A unit can be a function or module as much as a class. Never impose a generalized framework, abstraction layer, or plugin mechanism the current requirement does not need. Generalize only when a second real caller demands it.
-
-## Role Boundary
-
-The LLM (orchestrating agent) chooses and orchestrates the design; the crafter respects the design already selected and implements within it. When implementation surfaces a new ownership conflict (two candidate owners for the same rule/fact), the crafter raises it to the architect rather than picking one silently. A reviewer judges semantic duplication as part of review. None of this is a runtime gate — it is authoring and review discipline, not an enforced check.
+## Self-check before recording the step
+1. No fact decided twice; new owners justified.
+2. Every refusal says what, why, how, with located facts; remedy executed.
+3. Untrusted input validated, paths confined, races atomic.
+4. Recovery and failure-point tests or stated limits present.
+5. Each added check has a failing-on-violation assertion.
+6. Closing statement: commands with output, unknowns listed, pre-existing repairs named.

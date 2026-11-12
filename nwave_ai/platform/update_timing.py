@@ -8,6 +8,7 @@ Controlled host launchers own admission before starting the host process.
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 
@@ -73,3 +74,26 @@ class UpdateTiming:
 
 
 UPDATE_TIMING = UpdateTiming()
+
+STAGE_SECONDS_VARIABLE = "NWAVE_UPDATE_STAGE_SECONDS"
+
+
+def resolve_stage_seconds(environment: Mapping[str, str]) -> float:
+    """Return the stage wait for one launch, refusing unusable overrides by name.
+
+    Unset or empty selects ``UPDATE_TIMING.stage_seconds``. A supplied value must
+    parse as a finite number in ``(0, UPDATE_TIMING.stage_seconds]``.
+    """
+    supplied = environment.get(STAGE_SECONDS_VARIABLE, "")
+    if supplied == "":
+        return UPDATE_TIMING.stage_seconds
+    try:
+        value = float(supplied)
+    except ValueError:
+        value = math.nan
+    if not (math.isfinite(value) and 0 < value <= UPDATE_TIMING.stage_seconds):
+        raise ValueError(
+            f'{STAGE_SECONDS_VARIABLE}="{supplied}" is refused; the accepted '
+            f"stage deadline range is (0, {UPDATE_TIMING.stage_seconds}] seconds"
+        )
+    return value

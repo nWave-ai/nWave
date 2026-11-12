@@ -47,34 +47,61 @@ nWave operates no collection server. Your coding host handles its AI-provider co
 
 ## Jev External Processing
 
-Jev is a remote service at `https://api.typesafe.ai/v1/systemone`. The local
-client sends the caller-supplied `state`, model and typed questions over HTTPS,
-with the configured API credential in the authorization header. Results and
-request records remain local.
-
-Jev is authorized by default. What authorizes it is that default policy plus
-your refusal switch: pass `--jev unauthorized` on an nwdes call, or set
-`"jev": "unauthorized"` in `~/.nwave/config.json` (global) or the
-repository's `.nwave/config.json`; the flag wins over the repository tier,
-which wins over the global tier, and nwdes never writes the key. Any value
-other than `authorized` or `unauthorized` is refused. The
-`TYPESAFE_API_KEY` environment variable is a technical prerequisite for the
-service to accept requests — it is not the authorization, and without it
-nothing is sent. When authorized and the service is available, supported
-semantic questions use Jev under the shared skill.
+Jev is a remote service at `https://api.typesafe.ai/v1/systemone`. Jev is
+external processing of the state that nWave sends it, not telemetry: nWave sends
+no usage data. The local client sends the caller-supplied `state`, model and
+typed questions over HTTPS, with the configured API credential in the
+authorization header. Results and request records remain local.
 
 These data classes are never sent: credentials and secrets, personal data,
-private findings, source-blind material, secret-bearing logs, and
-confidential account, host or resource identifiers. Send minimal permitted
-task summaries or excerpts; authorization is not permission to transmit a
-repository or log dump. Independent reviewers own their questions and must
-not inherit producer-owned classifications. Source-blind EXAMINE retains its
-current isolated-access limit. Service failures are explicit and local work
-can continue without invented results. nWave makes no claim here about the
-remote provider's retention policy.
+private findings, source-blind material, secret-bearing logs, and confidential
+account, host or resource identifiers. Send minimal permitted task summaries or
+excerpts; authorization is not permission to transmit a repository or log dump.
+Independent reviewers own their questions and must not inherit producer-owned
+classifications. Source-blind EXAMINE retains its current isolated-access limit.
+Service failures are explicit and local work can continue without invented
+results. nWave makes no claim here about the remote provider's retention policy.
 
-To stop Jev use, declare `"jev": "unauthorized"` (or pass the flag). This does
-not disable the rest of nWave.
+**Installing into a project and enabling it.** When you run `nwave-ai install` or
+`nwave-ai project enable` on a terminal, nWave asks whether Jev may be used in that
+project. The question states the machine-wide value in `~/.nwave/config.json` when one
+is set; an empty answer keeps that value, and `y` allows Jev for this project even
+then. Your answer is written as an explicit value in the project's `.nwave/config.json`.
+Without a terminal (for example in CI, or with `--yes`), the same command writes the
+declared default: `"jev": "authorized"` when the machine-wide file is silent or allows
+Jev, and `"jev": "unauthorized"` when it refuses Jev, so a refusal you made
+machine-wide is never loosened by an install or an enable. nWave wrote that value and
+you did not choose it for this project, and the command says so. A machine-wide value
+that is not a Jev choice fails closed to `"unauthorized"`, with the reason on stderr.
+A machine-wide file that cannot be read stops `nwave-ai install` before anything is
+written; `nwave-ai project enable` records `"unauthorized"` and prints the reason on
+stderr. The declaration adds only the `jev` entry to the project file and keeps every
+other byte. `nwave-ai project enable` first runs its own activation write, which sets
+`enabled` and the schema version; the declaration then adds the `jev` entry to the file
+that write produced. Either way, a project that already holds a `jev` value is never
+asked about and that value is never replaced.
+
+**Switching per project or per machine.** The switch is the `jev` key. In a
+project, it lives in `.nwave/config.json`:
+
+```json
+{
+  "jev": "authorized"
+}
+```
+
+Set `"jev": "unauthorized"` in that file to stop Jev for this project, and
+`"jev": "authorized"` to allow it again. The same key in `~/.nwave/config.json`
+is the machine-wide switch, used by a project that declares no value of its own.
+The project value wins over the machine-wide value, and the `--jev` flag wins
+over both for one nwdes call. nwdes reads the key and never writes it.
+
+With no `jev` key in any of these places, Jev is authorized. The
+`TYPESAFE_API_KEY` environment variable is a technical prerequisite for the
+service to accept requests; it is not the authorization, and without it nothing
+is sent. When authorized and the service is available, supported semantic
+questions use Jev under the shared skill. This does not disable the rest of nWave.
+
 
 ## Does nWave See My Code?
 

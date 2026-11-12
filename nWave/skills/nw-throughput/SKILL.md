@@ -126,8 +126,7 @@ wall time.
   falls. Derived from the TLA+ model FlowPolicy.tla and queueing assumptions,
   not observed performance. Splitting never skips a value's own native verification;
   the final whole-candidate review and source-blind EXAMINE still cover every value integrated.
-- **Return a stuck finding to its owner.** A finding still open after 2 rework
-  rounds returns to its owner instead of receiving a further patch round.
+- **Return a stuck finding to its owner.** A finding still open at the review round limit the role bundle prints (nwdes prompt) returns to its owner instead of receiving a further patch round; that limit defaults to 2 rework rounds.
   Assumption: each rework round is a bounded step and a repeated finding means
   the cause is not in the patch. Expected lead-time effect: the steps one lane
   can take stay bounded, so one finding cannot loop without bound. Derived from

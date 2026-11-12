@@ -1,103 +1,33 @@
 ---
 name: nw-refactor
-description: "Applies the Refactoring Priority Premise (RPP) levels L1-L6 for systematic code refactoring. Use when improving code quality through structured refactoring passes."
+description: Load after green to refactor changed code in small behaviour-preserving commits (RPP L1-L6) and apply the structure rules per unit.
 user-invocable: true
 argument-hint: '[target-class-or-module] - Optional: --level=[1-6] --method=[extract|inline|rename|move] --scope=[method|class|module]'
 ---
 
-> **Code facts** — resolve structural facts about code through `code-fact` CLI (vendor-neutral, bundled adapters: AST then TextSearch). Degrade LOUD. Never ad-hoc grep. Example: `code-fact query.callers-of SYMBOL --root ROOT`.
+# Post-green refactor
 
-# NW-REFACTOR: Systematic Code Refactoring
+## Preconditions
+1. Start only when the required check is green on the current commit. Refactor only the code your slice changed; never the oracle, its supports or feature records.
+2. Declared paradigm picks the smell catalogue: functional, object-oriented; procedural uses long function, duplication, unclear names, mixed decision and effect.
 
-**Wave**: CROSS_WAVE
-**Agent**: Crafty (nw-software-crafter)
-**Command**: `*refactor`
+## Procedure
+3. Work smallest level first: L1 readability (rename, constants, dead code), L2 complexity (extract, simplify conditionals), L3 responsibilities, L4 abstractions, L5 patterns, L6 SOLID. Start a level only when lower levels are clean in the changed code.
+4. Inside a managed delivery slice, the default is one behaviour-preserving move per commit, and the same check you ran on the parent is green on each commit. A standalone `/nw-refactor` request follows the command's own batch-then-verify execution model (plan L1-L6, apply as one batch, run the suite once; nWave/tasks/nw/refactor.md).
+5. Edit no test and no expected value; declared laws and expected values stay unchanged. A test that must change means the move altered behaviour: revert the move. A test that encodes an implementation detail: report it to its owner, do not edit it.
+6. If red after a move, fix or revert the production code only.
+7. Multi-class moves: list the dependency steps, do the leaf first, commit each green.
+8. A structural move made before new behaviour leaves oracle content untouched. Probe once: re-inject a break at the moved code, confirm a test fails, then restore.
 
-## Overview
+## Per changed unit apply, then record what was applied or why none was needed
+9. Object-oriented domain and application classes (not adapters, DTOs, read models, config): apply the Object Calisthenics rules by their rule numbers in nw-code-design-oo, strictly; a deliberate break is recorded with its smell, benefit and cost. Functional and procedural code skip this rule and use the paradigm smell classes.
+10. Apply the nw-code-design-oo rules on data-owner decisions and on sequence-only grouping to each changed unit.
+11. Each agreed literal (limit, label, name) lives in one place that every use reads.
+12. Judge in order: tests demonstrate behaviour; no semantic duplication; clarity; fewest elements. Remove a type only if the first three still hold; keep an element whose removal raises the whole-path burden.
+13. Do not add a framework or abstraction for a single caller.
 
-Applies the Refactoring Priority Premise (RPP) — 6-level hierarchy L1 Readability|L2 Complexity|L3 Responsibilities|L4 Abstractions|L5 Design Patterns|L6 SOLID++. For complex multi-class refactorings, agent applies Mikado Method internally.
-
-**Paradigm.** Smell classes and levels follow the declared paradigm: `functional` uses nw-code-design-fp, `object_oriented` uses nw-code-design-oo; `procedural` has no catalog and applies the general classes: long function, duplication, unclear names, mixed decision and effect.
-
-## Execution Model — Batch-Then-Verify (default, unconditional)
-
-`/nw-refactor` runs **batch-then-verify** by default, regardless of test-suite speed:
-
-1. **Cascade governs PLANNING ORDER only** — analyze and plan lower levels before higher (L2 transformations build on L1, L3 on L2, etc.). The cascade is a planning discipline, not a test-gating sequence.
-2. **Edits applied as one coherent batch** — apply all planned L1-L6 transformations in a single editing session. NO interleaved test runs between levels.
-3. **Run the test suite exactly ONCE**, at the very end, after all L1-L6 edits.
-4. **If RED after the batch**: diagnose the breakage and fix the **production** code. Do NOT modify tests to make them pass. A test that must change to pass means either (a) the refactor altered observable behavior — revert that transformation — or (b) the test encoded an implementation detail rather than behavior — flag this to the user explicitly before touching it. Tests changing during a refactor is a signal, not a step.
-
-**Inside a managed delivery** (a crafter changing one ready batch): the declared mutable production targets are analysis (reuse, impact, prefactoring, review focus), not a permission. The crafter may change any lane file its slice needs, never the oracle, its supports or the feature records, and refactors only what that needs. The "test suite" run once at the end is the host-supplied verification command. A needed test change is reported to its owner instead of edited. The scope, context-file and configuration defaults below apply only to a standalone `/nw-refactor` request.
-
-**Crafter latitude.** Refactor L1 to L4 in your slice's code, except oracle and feature records, when easier; commit each alone and green first via `nwdes commit --role ROLE --type refactor`. Craft template: Refactor latitude.
-
-**Legacy incremental variant** (opt-in only): the incremental L1→test→L2→test cycle, running the tests after each level instead of once at the end. It is NOT the default — use it only when explicitly requested.
-
-## Context Files Required
-
-- src/\* - Production codebase
-- tests/\* - Test codebase
-
-## Agent Invocation
-
-@nw-software-crafter
-
-Execute \*refactor for {target-class-or-module}.
-
-**Context Files:**
-- src/\*
-- tests/\*
-
-**Configuration:**
-- level: 3 # Shorthand: --from=1 --to=3 (RPP range)
-- from: 1 # Start RPP level (default: 1)
-- to: 3 # End RPP level (default: same as level)
-- scope: module # file/module/project
-- method: extract # extract/inline/rename/move
-- mikado_planning: false # Use Mikado Method for complex refactorings
-
-
-## Success Criteria
-
-- [ ] Code quality metrics improved (measured before/after)
-- [ ] L1-L6 transformations planned in cascade order, applied as one batch
-- [ ] If RED after batch: production code fixed (tests NOT modified to pass)
-- [ ] Technical debt reduced measurably
-
-## Next Wave
-
-**Handoff To**: {invoking-agent-returns-to-workflow}
-**Deliverables**: Refactored codebase with quality improvements
-
-## Examples
-
-### Example 1: Module-level readability refactor
-```
-/nw-refactor src/auth/token_manager.py --level=2 --scope=module
-```
-Crafty applies RPP L1-L2: rename ambiguous variables|extract magic numbers into constants|remove dead code (L1), then simplify conditionals|extract long methods (L2).
-
-### Example 2: SOLID-level design refactor
-```
-/nw-refactor src/billing/ --level=6 --scope=module --mikado_planning=true
-```
-Crafty uses Mikado Method for multi-class refactoring, applies dependency inversion|interface segregation across billing module.
-
-### Example 3: RPP range sweep (L1-L3)
-```
-/nw-refactor src/billing/domain/ --from=1 --to=3 --scope=module
-```
-Sweeps L1 readability|L2 complexity|L3 responsibility smells. Cascade governs planning order (analyze L1 before L2 before L3); edits applied as one batch; suite run once at the end.
-
-### Example 4: Targeted single-level refactor
-```
-/nw-refactor src/billing/checkout.py --level=3 --scope=file
-```
-Targets L3 responsibility smells only. Assumes L1-L2 already clean.
-
-## Expected Outputs
-
-- Refactored production code with measurable quality improvements.
-- End-of-batch test-suite result; if RED, diagnose and correct production code as specified above.
-- Standalone refactoring documentation only when explicitly requested by the user.
+## Self-check before recording the step
+1. Each commit one move, green on same check as parent.
+2. No test, law or expected value edited.
+3. Per unit: which rules applied, or why none was needed.
+4. Closing line lists checks run with output and any not run.

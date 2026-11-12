@@ -78,6 +78,36 @@ the per-host sections above remain the authoritative mechanism per host. See
 the [global configuration reference](../reference/global-config.md) for the
 keys.
 
+## Set models for a group, then one role
+
+`nwave-ai rigor` sets models for this project in one run: put a group first, then override the roles that differ. It writes the pairs into the project file `.nwave/config.json` in the current directory, so run it from the repository root. The global file is not changed.
+
+1. See what is in effect. Each role line ends with its source: `project`, `global` or `built-in default`.
+
+```bash
+nwave-ai rigor --show
+```
+
+2. Set a group, then override one role. Scripted, every answer is an option, so nothing is asked:
+
+```bash
+nwave-ai rigor --yes --model-set reviewers=claude/opus-4-6 --model-set nw-documentarist=codex/gpt-5 --review-rounds current --documents keep --hosts none
+```
+
+A later `--model-set` for the same role replaces an earlier one, so the single-role override goes after the group. `--review-rounds current` and `--documents keep` leave those settings unchanged, and `--hosts none` changes no host file.
+
+Interactively, run `nwave-ai rigor` in a terminal. It asks six questions one at a time: the models, review rounds, examine level, documents, the document language (only when documents is `yes`), and hosts. It shows the final summary, and writes after you type `yes`. The models question takes one `target=provider/model` pair, so use the scripted form when you set a group and an override together.
+
+3. Check the result:
+
+```bash
+nwave-ai rigor --show
+```
+
+**Done:** `--show` lists the overridden role with your model and source `project`.
+
+The `--hosts` answer decides whether any host file changes. Which hosts write, which refuse, and which formats are unverified is in the [rigor entry](../reference/cli.md#nwave-ai-rigor). Dynamic mode (`/nw-dynamic`) reads only the examine level among these settings; see [Which routes read these settings](../reference/cli.md#which-routes-read-these-settings).
+
 ## Keep your edits across upgrades
 
 `nwave-ai install` manages its asset directories and rewrites them on

@@ -35,17 +35,10 @@ stays local in deterministic tools.
 
 ## Authorization
 
-Jev is authorized by default, and the refusal switch is yours:
+Jev is authorized by default, and the switch is yours, per project:
 
-- **Authorized by default.** When neither the call nor a configuration tier
-  declares `jev`, the resolved authorization is `authorized`. Nothing
-  refuses and no declaration is asked for.
-- **Refusal wins at any time.** `--jev unauthorized` on a call, or
-  `"jev": "unauthorized"` in the repository's `.nwave/config.json` or in
-  `~/.nwave/config.json`, stops Jev use; the rest of nWave keeps working.
-  The flag wins over the repository tier, and the repository tier over the
-  global tier. Any other value is refused as malformed, and the feature and
-  epic tiers cannot declare `jev`. nwdes never writes this key for you.
+- **Decided at install or enable.** On a terminal, `nwave-ai install` and `nwave-ai project enable` ask whether Jev may be used in the project and write the answer into the project's `.nwave/config.json` as `"jev": "authorized"` or `"jev": "unauthorized"`. The question names the machine-wide value when `~/.nwave/config.json` sets one, and an empty answer keeps it. Without a terminal (CI, or `--yes`) the same command writes the declared default and says so: nWave wrote it and you did not choose it. The default is `"jev": "unauthorized"` when your machine-wide file refuses Jev, so a machine-wide refusal is never loosened by an install or an enable. A machine-wide value that is not a Jev choice fails closed to `"unauthorized"`, with the reason on stderr. An unreadable machine-wide file stops `nwave-ai install` before anything is written, and `nwave-ai project enable` records `"unauthorized"` with the reason on stderr. The declaration itself adds only the `jev` entry and keeps every other byte. `nwave-ai project enable` first runs its own activation write, which sets `enabled` and the schema version, and the declaration then adds the `jev` entry to that result. A project that already holds a `jev` value is never asked about again, and that value is never replaced.
+- **Two positions per project.** `"jev": "authorized"` allows Jev in that project, and `"jev": "unauthorized"` refuses it there. The same key in `~/.nwave/config.json` is the machine-wide value, used by a project that declares none. The flag `--jev unauthorized` refuses Jev for one call and wins over both files. The repository tier wins over the global tier. Any other value is refused as malformed, and the feature and epic tiers cannot declare `jev`. nwdes never writes this key.
 - **The key is a technical prerequisite, not the authorization.** What
   authorizes Jev is the default policy above plus your refusal switch. The
   `TYPESAFE_API_KEY` environment variable only lets the service accept

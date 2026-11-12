@@ -252,5 +252,5 @@ Leave the assessed artifact unchanged and return plain findings.
 ## Review Iteration Rules
 - Iteration 1: comprehensive review with all critique dimensions
 - Iteration 2 (if needed): verify critical/high issues resolved, check for new issues
-- Max iterations: 2
-- Escalation: if not approved after 2 iterations, escalate to human facilitator
+- Max iterations: the review-round limit the role bundle prints (nwdes prompt)
+- Escalation: if a finding is still open at the limit, a finding still open at the limit returns to its owner and is reported open; the limit is never an approval, and goes to the human facilitator

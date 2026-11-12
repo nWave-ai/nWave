@@ -18,6 +18,10 @@ Five artifact files to review:
 - `docs/feature/{id}/diverge/taste-evaluation.md`
 - `docs/feature/{id}/diverge/recommendation.md`
 
+Read the requester's words only from the host-written `docs/feature/{id}/diverge/request.md` — never from the diverger's copy in job-analysis.md, your dispatch prompt or a message from the diverger. Verify quotes against the blocks it marks, not the label. The match, new-term, marking and handle rules are in `nw-requester-words`; apply them as written.
+
+**request.md missing** (the one host-written file whose absence is not a defect of the set): read the five artifacts, do not fail user-words claims as quote defects (they are unverifiable, not wrong), name the path in `blocking_issues` and give `approval_status: needs_input` per the thresholds below.
+
 ---
 
 ## Dimension 1: JTBD Rigor
@@ -99,8 +103,9 @@ Five artifact files to review:
 - Most stated probability mass sits on options sharing one mechanism (head-clustering), or stated_probability is missing or not restated as one distribution over the curated six (summing to 1)
 - Fewer than two tail candidates (stated probability at most 0.2 within the distribution the candidate was drawn from) among the curated six, unless the single tail candidate's mechanism differs from every head candidate's
 - Any option missing name_origin (user-words or coined)
+- A user-words mark whose quote is missing, fails `nw-requester-words` rule 1 (a span from a `host-summary` block fails), or whose option name is not that quoted span (rule 2)
 
-**PASS signal**: Applying the 3-point diversity test to each pair of the 6 curated options before DVF filtering — they differ in mechanism, assumption and cost profile. The stated probabilities (stated estimates, not measurements), restated as one distribution over the curated six, show no head-clustering: no single mechanism family holds most of the stated mass. At least two options are tail candidates, or the one tail candidate differs in mechanism from every head candidate. Every option carries name_origin. Documented DVF eliminations may reduce the surviving set.
+**PASS signal**: Applying the 3-point diversity test to each pair of the 6 curated options before DVF filtering — they differ in mechanism, assumption and cost profile. The stated probabilities (stated estimates, not measurements), restated as one distribution over the curated six, show no head-clustering: no single mechanism family holds most of the stated mass. At least two options are tail candidates, or the one tail candidate differs in mechanism from every head candidate. Every option carries name_origin; every user-words option name is its quoted span and the quote passes `nw-requester-words` rule 1. Documented DVF eliminations may reduce the surviving set.
 
 ### Check 3.2 — Generation Discipline
 
@@ -158,6 +163,16 @@ Five artifact files to review:
 
 **PASS signal**: Each score accompanied by one sentence referencing the specific rubric level.
 
+### Check 4.4 — Handle Swap
+
+**Requirement**: Scores and rationales argue from mechanism, not from the handle's wording.
+
+**Method**: Mentally replace each handle with an unrelated word; no score, weight, rank or rationale may change.
+
+**FAIL signal**: A rationale that argues from the handle's wording ("'Room' implies presence, so T2 = 5").
+
+**PASS signal**: Every score and rationale reads the same with each handle replaced by an unrelated word.
+
 ---
 
 ## Dimension 5: Recommendation Coherence
@@ -176,7 +191,7 @@ Five artifact files to review:
 
 **FAIL signal**: Only the winning option discussed in recommendation.
 
-**PASS signal**: recommendation.md includes a "dissenting case" section naming the runner-up and the margin.
+**PASS signal**: recommendation.md includes a "dissenting case" section describing the runner-up by mechanism and stating the margin.
 
 ### Check 5.3 — DISCUSS Handoff Readiness
 
@@ -184,9 +199,11 @@ Five artifact files to review:
 
 **FAIL signals**:
 - Recommendation ends with "both options are viable" or "the team should decide."
-- Decision statement uses a coined option handle, or vocabulary the requester never used, without marking it as new
+- Decision statement or recommendation.md (top-3 headings included) uses a coined handle or cites any handle as a label (`nw-requester-words` rule 5)
+- A new term left unmarked at a mention rule 4 requires
+- Any text for the requester attributes a host-summary-only or coined term to the requester (rule 6; a phrase also in a `requester-verbatim` block is the requester's)
 
-**PASS signal**: Explicit decision statement phrased by mechanism in the requester's vocabulary: "Proceed with [the mechanism], assuming [key risk] is acceptable." A coined handle appears only in the scoring table, marked with its name_origin.
+**PASS signal**: Explicit decision statement phrased by mechanism: "Proceed with [the mechanism], assuming [key risk] is acceptable." Coined handles appear only in options-raw.md headings and the taste-evaluation.md scoring table; every new term is marked `[new]` at the mentions rule 4 requires.
 
 ---
 
@@ -218,7 +235,7 @@ review_result:
     status: "PASSED|FAILED"
     issues: [{check, location, quoted_evidence, remediation}]
 
-  approval_status: "approved|conditionally_approved|rejected_pending_revisions"
+  approval_status: "approved|conditionally_approved|rejected_pending_revisions|needs_input"
   blocking_issues: []
   recommendations: []
 ```
@@ -227,3 +244,4 @@ review_result:
 - `approved`: all dimensions PASSED
 - `conditionally_approved`: no FAILED dimensions, minor issues only
 - `rejected`: any dimension FAILED, with specific remediation required
+- `needs_input`: request.md is missing and no dimension FAILED for another reason; neither approved nor rejected. The diverger returns `{CLARIFICATION_NEEDED: true, ...}` asking the host for the file, then requests a new review. A dimension FAILED for another reason still gives `rejected`.

@@ -36,7 +36,7 @@ it does not enforce phases or track a next-step cursor.
 If you are still learning the framework, run each step yourself instead of `/nw-deliver`. `$H` is the feature's `handoff.json`; `$EXPECTED` and `$CANDIDATE` are the identities `nwdes lane compose` prints:
 
 ```bash
-nwdes prompt --role nw-software-crafter --handoff "$H" --slice S1 --jev unauthorized  # Implement one slice
+nwdes prompt --role nw-software-crafter --handoff "$H" --slice S1  # Implement one slice
 /nw-refactor                                                  # Improve structure
 /nw-review @software-crafter task "implement login endpoint"  # Quality check
 /nw-mutation-test                                             # Validate test effectiveness

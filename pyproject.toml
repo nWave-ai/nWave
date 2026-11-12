@@ -32,7 +32,7 @@ path = "scripts/release/offline_wheelhouse_hook.py"
 
 [project]
 name = "nwave-ai"
-version = "4.3.0"
+version = "4.4.0"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -331,6 +331,11 @@ disallow_untyped_defs = false
 target-version = "py311"
 line-length = 88
 src = ["src", "tests"]
+# The private dynamic-mode tool (scripts/dev/nwstep) is third-party-style
+# experimental code copied as is; it predates this contract and is not
+# rewritten to satisfy it (format has no per-file-ignores mechanism, so a
+# whole-tree exclude is the only switch that covers both check and format).
+extend-exclude = ["scripts/dev/nwstep"]
 [tool.ruff.lint]
 select = [
     "E",      # pycodestyle errors
@@ -442,7 +447,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "4.3.0"
+version = "4.4.0"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",
@@ -499,3 +504,8 @@ verify-hooks     = "python scripts/validation/verify_hooks.py"  # fails loudly u
 # Root board (dev only): `board` refreshes the Backlog.md view of the todo and serves
 # the web board.
 board            = "python scripts/dev/nwboard.py kanban"
+# Private dynamic-mode tool (dev only, scripts/dev/nwstep): same CLI as the
+# README run section, e.g. `uv run poe nwstep status --workspace ...`.
+[tool.poe.tasks.nwstep]
+cmd = "python -m nwstep"
+env = { PYTHONPATH = "scripts/dev/nwstep/src" }

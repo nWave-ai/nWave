@@ -107,6 +107,7 @@ except ImportError:
 # private module-level constant, so it is repeated here rather than reaching
 # into another module's private name.
 _NATIVE_DES_MANIFEST_FILENAME = ".nwave-des-manifest.json"
+_PROJECT_INSTALLER_KEYS = ("jev", "enabled", "schema-version")
 
 
 def _copilot_config_dir() -> Path:
@@ -845,6 +846,26 @@ class NWaveUninstaller:
             subdir="templates", key=TEMPLATES_FAMILY_KEY, family_label="templates"
         )
 
+    def remove_dev_launcher(self) -> None:
+        """Remove the stable nwstep launcher when nWave wrote it; a foreign
+        file at that path is left untouched and reported."""
+        if self.dry_run:
+            self.logger.info("  🚨 [DRY RUN] Would remove the nwstep launcher")
+            return
+        try:
+            from scripts.install.plugins.nwstep_launcher_plugin import (
+                NwstepLauncherPlugin,
+            )
+        except ImportError:
+            from plugins.nwstep_launcher_plugin import NwstepLauncherPlugin
+
+        result = NwstepLauncherPlugin().uninstall(self._plugin_context())
+        if result.success:
+            self.logger.info(f"  🗑️ {result.message}")
+        else:
+            self._removal_failures.append(result.message)
+            self.logger.warn(f"  ⚠️ {result.message}")
+
     def remove_utility_scripts(self) -> None:
         """Remove nWave non-hook utility scripts via manifest ownership record only.
 
@@ -1257,10 +1278,46 @@ class NWaveUninstaller:
             )
         except (OSError, UnicodeDecodeError):
             return
-        if generated:
+        if not generated:
+            return
+        config = project_nwave / "config.json"
+        if self._strip_installer_project_keys(config):
             self._unlink_installed(gitignore)
-            self._unlink_installed(project_nwave / "config.json")
+            self._unlink_installed(config)
             self._remove_dir_if_empty(project_nwave)
+
+    def _strip_installer_project_keys(self, config: Path) -> bool:
+        """Remove the installer's keys from a project config; True when nothing else remains.
+
+        A key the installer did not write is never removed: when one remains, the file is
+        rewritten with only those keys. A file that cannot be read as a JSON object is left
+        exactly as it is, and False keeps the folder too.
+        """
+        if not config.exists():
+            return True
+        try:
+            document = json.loads(config.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            return False
+        if not isinstance(document, dict):
+            return False
+        remaining = {
+            key: value
+            for key, value in document.items()
+            if key not in _PROJECT_INSTALLER_KEYS
+        }
+        if not remaining:
+            return True
+        if remaining != document:
+            try:
+                config.write_text(
+                    json.dumps(remaining, indent=2) + "\n", encoding="utf-8"
+                )
+            except OSError as error:
+                self._removal_failures.append(
+                    f"{config} could not be rewritten: {error}"
+                )
+        return False
 
     def remove_runtime_pointer_and_lock(self) -> None:
         """Remove the active-runtime pointer, install lock and an emptied state root.
@@ -2164,6 +2221,7 @@ def main():
     uninstaller.remove_commands()
     uninstaller.remove_templates()
     uninstaller.remove_utility_scripts()
+    uninstaller.remove_dev_launcher()
     uninstaller.remove_data()
     uninstaller.remove_lib_python()
     uninstaller.remove_host_neutral_des_runtime()

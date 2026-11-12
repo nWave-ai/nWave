@@ -1,5 +1,5 @@
 name: nWave
-version: 4.2.2
+version: 4.3.0
 description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192DESIGN\u2192DEVOPS\u2192\
   DISTILL\u2192DELIVER methodology with visual architecture lifecycle management"
 author: nWave Team
@@ -448,6 +448,17 @@ commands:
     outputs:
     - updated_diagrams
     - visual_architecture
+  refactor:
+    description: Applies the Refactoring Priority Premise (RPP) levels L1-L6 for systematic
+      code refactoring. Use when improving code quality through structured refactoring
+      passes.
+    argument_hint: '[target-class-or-module] - Optional: --level=[1-6] --method=[extract|inline|rename|move]
+      --scope=[method|class|module]'
+    agents:
+    - software-crafter
+    outputs:
+    - refactored_code
+    - refactoring_log
   review:
     description: Routes an actual artifact or candidate diff to the matching independent
       reviewer.

@@ -56,6 +56,8 @@ If `docs/product/` does not exist, this is the first wave using the SSOT model. 
 
 ## Agent Invocation
 
+**Request words** (host, before invoking): write `docs/feature/{feature-id}/diverge/request.md` as the Dispatch section of `nw-diverge` specifies (read it for the block labels and source rule). Flux and Prism only read it; if it is missing, Flux returns NEEDS_INPUT asking for it.
+
 @nw-diverger
 
 Execute \*diverge for {feature-id}.
@@ -75,13 +77,13 @@ Flux loads `jtbd-analysis` skill. Extracts and elevates the job from the raw req
 Flux invokes `nw-researcher` sub-agent for evidence-grounded competitive research. Maps how existing products serve the validated job. Identifies non-obvious alternatives. Gate G2 validates real products named and evidence quality.
 
 **Phase 3 -- Brainstorming:**
-Flux loads `brainstorming` skill. Frames HMW question, applies SCAMPER lenses, states a probability per candidate, keeps tail candidates, and names options with the requester's words where they exist (coined names marked as coined). Gate G3 validates diversity (mechanism|assumption|cost differ) plus the head-clustering read of the stated probabilities restated as one distribution over the curated six.
+Flux loads `brainstorming` skill. Frames HMW question, applies SCAMPER lenses, states a probability per candidate, keeps tail candidates, and names options per `nw-requester-words`. Gate G3 validates diversity (mechanism|assumption|cost differ) plus the head-clustering read of the stated probabilities restated as one distribution over the curated six.
 
 **Phase 4 -- Taste Evaluation:**
 Flux loads `taste-evaluation` skill. Applies DVF filter, scores surviving options on 4 taste criteria with locked weights, produces weighted ranking and recommendation with dissenting case. Gate G4 validates completeness and traceability.
 
 **Peer Review:**
-After Phase 4 gates pass, Flux invokes `nw-diverger-reviewer` (Prism) to validate all 5 dimensions. Max 2 revision iterations before handoff.
+After Phase 4 gates pass, Flux invokes `nw-diverger-reviewer` (Prism) to validate all 5 dimensions, reading `request.md` itself. Max 2 revision iterations before handoff. Relay the returned wording to the requester as returned, `[new]` markers included.
 
 
 ## Success Criteria
@@ -89,7 +91,7 @@ After Phase 4 gates pass, Flux invokes `nw-diverger-reviewer` (Prism) to validat
 - [ ] Job extracted at strategic or physical level (not tactical, not a feature description)
 - [ ] Minimum 3 ODI outcome statements produced
 - [ ] 3+ real competitors researched, at least one non-obvious alternative
-- [ ] 6 structurally diverse options generated (different mechanism, assumption, cost; two tail candidates among the six or one differing in mechanism from every head candidate; head-clustering read documented; name_origin marked per option)
+- [ ] 6 structurally diverse options generated (different mechanism, assumption, cost; two tail candidates among the six or one differing in mechanism from every head candidate; head-clustering read documented; name_origin marked per option, every user-words name equal to its quoted span per `nw-requester-words`)
 - [ ] All surviving options scored on all 4 taste criteria with locked weights
 - [ ] Recommendation traceable to scoring matrix (no "feels right" overrides)
 - [ ] Dissenting case documented for second-place option

@@ -34,6 +34,7 @@ paste and who runs what.
 | [Activate nWave in a project](./activating-nwave-per-project.md) | Turn nWave on or off per repository and check status | Beginner |
 | [Assign models to roles](./assigning-models-to-roles.md) | Run one role on a different model, per host | Beginner |
 | [Configure documentation density](./configuring-doc-density.md) | Set how much documentation nWave produces | Beginner |
+| [Read architecture diagrams and the readable brief](./readable-brief-and-diagrams.md) | Turn on the readable output, check that a diagram is accessible, and see what the documentarist does | Beginner |
 
 ## Upgrade and recover
 

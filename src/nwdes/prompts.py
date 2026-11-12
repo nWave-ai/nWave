@@ -10,9 +10,26 @@ from enum import Enum
 from functools import partial
 from types import MappingProxyType
 
-from nwdes import documents, grammar, packets
+from nwdes import diagrams, documents, grammar, packets
 from nwdes import handoff as model
-from nwdes.contracts import Built, Defect, Refused, checked
+from nwdes.contracts import (
+    DEFAULT_EXAMINE_LEVEL,
+    Built,
+    Defect,
+    Refused,
+    checked,
+    examine_level_line,
+)
+
+
+#: The built-in review-round default for the bundle line. Owned by nwdes; the
+#: rigor command owns its own copy of the same value in
+#: nwave_ai/platform/rigor_core.py (a cross-package runtime import would
+#: resolve the two consumers to different checkouts), and the parity of the
+#: two is pinned behaviourally: the rigor suite pins `review rounds: 2
+#: (built-in default)` for the command and this suite pins the same line for
+#: the bundle.
+DEFAULT_REVIEW_ROUNDS = 2
 
 
 @dataclass(frozen=True)
@@ -74,6 +91,11 @@ class Inputs:
     workspace: packets.ExaminationWorkspace | None = None
     commit: str | None = None
     touched: str | None = None
+    review_rounds: str | None = None
+    model_fact: str | None = None
+    readable_brief: str | None = None
+    examine_level: str | None = None
+    examine_level_source: str | None = None
 
 
 def _path(placeholder, name=None):
@@ -126,6 +148,9 @@ def _recipe(identity, roles, sources, task=None, *, admits=()):
     sources = (
         *sources,
         _input("jev"),
+        _input("review_rounds"),
+        _input("model_fact"),
+        _input("readable_brief"),
         *context,
     )
     return Recipe(
@@ -208,6 +233,7 @@ RECIPES = (
         (
             *_SLICE_HEAD,
             _derived("implementation_mode"),
+            _derived("jev_decision"),
             _derived("authority", "authority/craft"),
             _derived("operations", "reach.constraints"),
             _path("adrs", "design.adrs"),
@@ -235,6 +261,7 @@ RECIPES = (
             _path("preserved", "design.slices.S.prefactoring.preserved"),
             _path("existing_oracle", "design.slices.S.prefactoring.existing_oracle"),
             _derived("verification", "prefactoring_verification"),
+            _derived("jev_decision"),
             _derived("acceptance_index"),
             *_TAIL,
         ),
@@ -246,6 +273,7 @@ RECIPES = (
             _path("promises", "product.promises"),
             _path("expectations"),
             _input("root_input"),
+            _derived("examine_level", "examine_level_line"),
             _derived("asks"),
         ),
         "expectations",
@@ -271,7 +299,7 @@ RECIPES = (
         ("nw-user-examiner",),
         (
             _derived("packet", "packet/examine"),
-            _derived("budget", "examine_budget"),
+            _derived("examine_level", "examine_level_line"),
         ),
         "examine",
     ),
@@ -327,8 +355,6 @@ CONSUMERS = MappingProxyType(
 _PLACEHOLDER = re.compile(r"\{\{([A-Za-z_][A-Za-z0-9_]*)(?:\|(bullets|csv))?\}\}")
 _NONE = Printed("None.")
 
-# The wall budget the examiner is told to keep: a recipe instruction, never an enforced limit.
-EXAMINE_WALL_BUDGET_MINUTES = 5
 _EXAMINE_REWORK_RULE = (
     "Each examine finding repaired here becomes an oracle test: RED before the repair, "
     "GREEN after, added before or with it. The acceptance designer authors it."
@@ -597,6 +623,45 @@ def _root_problems(value):
         if value is not None
         and (not isinstance(value, str) or model._LINE_BOUNDARY.search(value))
         else ()
+    )
+
+
+def review_rounds_line(repository, global_):
+    """Pure: the bundle value, project over global over the built-in default."""
+    if repository is not None:
+        return f"{repository} (project)"
+    if global_ is not None:
+        return f"{global_} (global)"
+    return f"{DEFAULT_REVIEW_ROUNDS} (built-in default)"
+
+
+def model_fact_line(role, repository, global_):
+    """Pure: the per-role model line, project over global, or none declared."""
+    for runtime, source in ((repository, "project"), (global_, "global")):
+        if isinstance(runtime, dict):
+            roles = runtime.get("roles")
+            if isinstance(roles, dict):
+                pair = roles.get(role)
+                if isinstance(pair, dict):
+                    return (
+                        f"model {role}: {pair.get('provider')}/{pair.get('model')}"
+                        f" ({source})"
+                    )
+    return f"model {role}: none declared in project or global"
+
+
+READABLE_BRIEF_CLOSING_ROLES = ("po.charter-v1", "design.architect-v10")
+
+
+def readable_brief_line(enabled, language, source):
+    """Pure: the closing role's brief instruction, empty when disabled."""
+    if not enabled:
+        return ""
+    return (
+        "readable brief: produce the readable HTML brief for this feature with "
+        f"the nwdes renderer, language {language} "
+        f"(documents.readable_brief: {source}); every Mermaid diagram in it declares "
+        f"one %% alt: line and at most {diagrams.NODE_LIMIT} distinct nodes"
     )
 
 
@@ -941,6 +1006,11 @@ def prepare_prompt(flags, previous, diff, template, policy):
         workspace=flags.get("workspace"),
         commit=flags.get("commit"),
         touched=flags.get("touched", touched_files(diff_text)),
+        review_rounds=flags.get("review_rounds"),
+        model_fact=flags.get("model_fact"),
+        readable_brief=flags.get("readable_brief"),
+        examine_level=flags.get("examine_level"),
+        examine_level_source=flags.get("examine_level_source"),
     )
     return _prepare(
         _Inspection(
@@ -1424,6 +1494,26 @@ def _implementation_mode(view):
     )
 
 
+# The crafter's one Jev line at the point of decision: guidance for the role, never a gate.
+_JEV_DECISION = MappingProxyType(
+    {
+        JevAuthorization.AUTHORIZED: (
+            "Did you settle a choice by reading alone and skip Jev as unnecessary? "
+            "That is the wrong default: ask Jev now, or, if no choice stayed open, write "
+            "typesafe: no open choice in the craft close diagnostic."
+        ),
+        JevAuthorization.UNAUTHORIZED: (
+            "Jev is refused for this call: ask it nothing and say so in the craft close "
+            "diagnostic."
+        ),
+    }
+)
+
+
+def _jev_decision(view):
+    return Printed(_JEV_DECISION[view.plan.inputs.jev])
+
+
 def _verification(prefactoring, view):
     design = _design(view)
     commands = (
@@ -1607,8 +1697,14 @@ def _verb_reference(recipe, inputs, handoff, policy):
     )
 
 
-def _examine_budget(view):
-    return Printed(str(EXAMINE_WALL_BUDGET_MINUTES))
+def _examine_name(inputs):
+    return inputs.examine_level or DEFAULT_EXAMINE_LEVEL
+
+
+def _examine_level_text(view):
+    inputs = view.plan.inputs
+    source = inputs.examine_level_source or "built-in default"
+    return Printed(examine_level_line(_examine_name(inputs), source))
 
 
 def _examine_rework(view):
@@ -1682,6 +1778,7 @@ _DERIVATIONS = MappingProxyType(
         "current_product": partial(_current, "product"),
         "current_design": partial(_current, "design"),
         "implementation_mode": _implementation_mode,
+        "jev_decision": _jev_decision,
         "verification": partial(_verification, False),
         "prefactoring_verification": partial(_verification, True),
         "reach.constraints": partial(_reachable_field, "constraints"),
@@ -1694,7 +1791,7 @@ _DERIVATIONS = MappingProxyType(
         "craft_view": _craft_obligations,
         "acceptance_index": _acceptance_index,
         "charter_slices": _charter_slices,
-        "examine_budget": _examine_budget,
+        "examine_level_line": _examine_level_text,
         "asks": _asks,
         "examine_rework": _examine_rework,
     }

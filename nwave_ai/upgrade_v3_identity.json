@@ -832,6 +832,9 @@
   "settings_env_keys": [
    "PATH",
    "SLASH_COMMAND_TOOL_CHAR_BUDGET"
+  ],
+  "settings_stamp_keys": [
+   "nwave_hook_version"
   ]
  },
  "provenance": {

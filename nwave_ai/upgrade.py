@@ -31,6 +31,7 @@ class HookTemplate:
 class ReleaseIdentity:
     files: frozenset[IdentityRow]
     hook_templates: tuple[HookTemplate, ...]
+    retired_module: str
 
 
 @dataclass(frozen=True)
@@ -214,6 +215,7 @@ class Witness(Enum):
     W3 = "W3"
     W4 = "W4"
     W5 = "W5"
+    W6 = "W6"
 
 
 @dataclass(frozen=True)
@@ -386,6 +388,26 @@ def _template_owned(
     return False
 
 
+def _retired_module_owned(
+    entry: HookEntry,
+    retired_module: str,
+    hosts: tuple[tuple[str, str], ...],
+) -> bool:
+    """A Claude Code hook that invokes the retired runtime module is dead after the migration.
+
+    Whatever its event, matcher or rendering, the migration deletes that module,
+    so the command can no longer run. The dotted name must stand alone, so a
+    different module that only shares a prefix or suffix is not claimed. Other
+    hosts keep their own provenance rules: a command that merely names the module
+    is not ownership proof there, so only the claude-code settings file is in scope.
+    """
+    host = _host(entry.file, hosts)
+    if host is None or host not in {root for name, root in hosts if name == "claude"}:
+        return False
+    name = re.escape(retired_module)
+    return re.search(rf"(?<![\w.]){name}(?![\w.])", entry.command) is not None
+
+
 def _receipt_entry(entry: HookEntry, receipts: tuple[Receipt, ...]) -> bool:
     for receipt in receipts:
         if (
@@ -522,6 +544,8 @@ def partition(  # noqa: PLR0913, PLR0917
                 verdicts.append(Owned(entry, Witness.W4))
             elif _template_owned(entry, home, identity, hosts):
                 verdicts.append(Owned(entry, Witness.W3))
+            elif _retired_module_owned(entry, identity.retired_module, hosts):
+                verdicts.append(Owned(entry, Witness.W6))
             else:
                 witness = (
                     Witness.W4

@@ -31,6 +31,8 @@ Conditional skills, not preloaded. Before answering, check every row against the
 - Read `~/.claude/skills/nw-test-design-mandates/SKILL.md` ON-TRIGGER — selecting the native DESIGN test substrate, language convention frame, runner, layout, or generated-law observation treatment
 - Read `~/.claude/skills/nw-review/SKILL.md` ON-TRIGGER — applying the design-review question set as architecture self-check only; this trigger does not dispatch an independent review
 - Read `~/.claude/skills/nw-po-scenario-exploration/SKILL.md` ON-TRIGGER — presenting model-generated behavioral or non-functional scenarios for human architectural review
+- Read `~/.claude/skills/nw-diagram/SKILL.md` ON-TRIGGER — the design contains or changes an architecture diagram, or documents.readable_brief is enabled
+- Read `~/.claude/skills/nw-doc-as-artifact/SKILL.md` ON-TRIGGER — documents.readable_brief is enabled, or the documentarist sends its one round of questions about a design decision or diagram
 - Read `~/.claude/skills/nw-stress-analysis/SKILL.md` ON-TRIGGER — external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
 - Read `~/.claude/skills/nw-code-design-oo/SKILL.md` ON-TRIGGER — paradigm confirmed object_oriented
 - Read `~/.claude/skills/nw-code-design-fp/SKILL.md` ON-TRIGGER — paradigm confirmed functional
@@ -161,6 +163,11 @@ self-check, not independent approval. Absent authorization, transmit nothing
 and retain that limitation. Batch concrete consumer constructibility questions;
 no universal architect-plus-ATD phase, score gate or forced adapter enrollment.
 
+When `documents.readable_brief` is enabled, record each design decision with a
+title of at most 8 words and its reason, draw diagrams under `nw-diagram` R1-R12,
+and answer the documentarist's one round of questions once, by correcting the
+decision or diagram at its source and replying with its id.
+
 ## Examples
 
 ### Example 1: Verified model, unbuilt runtime
@@ -169,8 +176,10 @@ Record the mapped design claim with `--runtime DesignedNotBuilt`, never observed
 production behavior or an independently approved oracle.
 
 ### Example 2: Bound exceeds checker budget
-Retain the timed-out bound and `INDETERMINATE` proof. Stop unchanged retries;
-complete independent design facts without calling the missing proof PASS.
+Retain the timed-out bound, then diagnose before any outcome: reduce the model to a
+narrower recorded claim or change the checker strategy or configuration, recording
+what was tried; claim `INDETERMINATE` only when no repair reaches the claim, never
+PASS. Complete independent design facts meanwhile.
 
 ### Example 3: Changed carrier after a refuted law
 Use the algebra protocol's reference checks on both representations, including

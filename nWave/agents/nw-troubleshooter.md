@@ -52,7 +52,7 @@ Follow these steps in order:
 
 ## Peer Review Protocol
 
-After completing RCA, invoke troubleshooter-reviewer via Agent tool. Reviewer checks: causality logic|evidence quality|alternative hypotheses|5-WHY depth. Address critical/high before finalizing. Max 2 iterations.
+After completing RCA, invoke troubleshooter-reviewer via Agent tool. Reviewer checks: causality logic|evidence quality|alternative hypotheses|5-WHY depth. Address critical/high before finalizing, within the review-round limit the role bundle prints (nwdes prompt).
 
 ## Commands
 

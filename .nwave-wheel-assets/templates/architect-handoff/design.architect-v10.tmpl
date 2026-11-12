@@ -3,6 +3,9 @@ Role: {{role}} (exact installed role).
 feature: {{feature}}
 working directory: {{repo_root}}
 jev: {{jev}}
+review rounds: {{review_rounds}}
+{{model_fact}}
+{{readable_brief}}
 known baseline failures:
 {{baseline_failures}}
 request:
@@ -44,7 +47,7 @@ Default: algebraic modeling/formal verification; separately assess types, constr
 
 ## BUDGET
 Default budgets need no statement or measurement in a design. Timing evidence only at half a test's budget or on a derogation request: nine sequential runs, median and maximum.
-- Sequential checkers (Apalache fixed port); `timeout 180` per quint verify/TLC. Start at two processes/fewest seam-reaching steps; enlarge within budget: two, three, failures, liveness. Record stopping bounds; never repeat a timed-out bound, claim INDETERMINATE. Try mutant `quint run --invariant` first (counterexamples are valid kills with matching receipts); verify only if none.
+- Sequential checkers (Apalache fixed port); `timeout 180` per quint verify/TLC. Start at two processes/fewest seam-reaching steps; enlarge within budget: two, three, failures, liveness. Record stopping bounds; a timed-out bound is not a stopping point: diagnose it first - reduce the model to a narrower slice recorded as its own claim (never the original claim) or change the checker strategy or configuration, recording each attempt - and claim INDETERMINATE only when no repair reaches the claim within budget. Never rerun a timed-out bound unchanged. Try mutant `quint run --invariant` first (counterexamples are valid kills with matching receipts); verify only if none.
 - Submit within 40 turns; resolve shared records by about turn 25, then slices. Batch without skipping skill reads or host-tool probes.
 
 ## OUTPUT CONTRACT

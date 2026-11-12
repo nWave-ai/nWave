@@ -55,6 +55,18 @@ producer-to-consumer connection through the real public port. Return a
 consumer's specific missing semantic question and counterexample to its owner
 before expanding the solution. This creates no cycle for technical fragments.
 
+## Invocation outcome and the wave
+
+One invocation's completion is not the wave's completion. Read a close receipt's
+outcome and residual obligations before deciding anything else. Ready work the
+receipt leaves continues: dispatch or work it before the turn ends. A refused
+close (rejected or indeterminate) is unfinished work, never completion: resolve
+its diagnostic or dispatch it to its owner. A design hole in an output returns
+to its owning role: design findings are dispatched to `nw-solution-architect`,
+never worked by the returning role or absorbed by the root. Say an agent is
+working only while an invocation is actually active. The turn ends only for a
+human decision, a concrete block, or a pause the user requested.
+
 ## Human-readable authority
 
 Use `nwdes document` to render current briefs and HTML. Read

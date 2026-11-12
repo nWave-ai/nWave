@@ -12,7 +12,14 @@ import tempfile
 from pathlib import Path
 
 from nwdes import packets, prose
-from nwdes.contracts import Built, Defect, Refused, checked
+from nwdes.contracts import (
+    DEFAULT_EXAMINE_LEVEL,
+    Built,
+    Defect,
+    Refused,
+    checked,
+    examine_level_named,
+)
 from nwdes.shell.git import failure_reason, run_git, scrubbed_env
 from nwdes.shell.ports import Unreadable
 
@@ -243,13 +250,16 @@ def _scope_records(records, handoff):
     return sorted(directory.glob(_scope_key(handoff) + "-*.json"))
 
 
-def _record(records, handoff, workspace):
-    """Name the workspace in the checkout's private record directory, so close can find it."""
+def _record(records, handoff, workspace, candidate):
+    """Name the workspace in the checkout's private record directory, so close can find it.
+
+    The record keeps the candidate commit the prompt was built on, so the probe and the close
+    read it later. It holds no time: an examination has no clock.
+    """
     Path(records).mkdir(parents=True, exist_ok=True)
     name = _scope_key(handoff) + "-" + workspace.name + ".json"
-    (Path(records) / name).write_text(
-        json.dumps({"workspace": str(workspace)}), encoding="utf-8"
-    )
+    entry = {"workspace": str(workspace), "candidate": candidate}
+    (Path(records) / name).write_text(json.dumps(entry), encoding="utf-8")
 
 
 def materialize(root, records, handoff):
@@ -258,6 +268,11 @@ def materialize(root, records, handoff):
     if isinstance(planned, Refused):
         return planned
     public, roots = planned.value
+    head = _git(root, ("rev-parse", "--verify", "HEAD^{commit}"))
+    if isinstance(head, Refused):
+        return head
+    value = head.value
+    candidate = (value.decode("ascii") if isinstance(value, bytes) else value).strip()
     for outcome, path, reason in discard(records, handoff):
         if outcome == "kept":
             sys.stderr.write("\nKEPT " + path + " - " + reason + "\n")
@@ -275,7 +290,7 @@ def materialize(root, records, handoff):
         if isinstance(inspected, Refused):
             shutil.rmtree(workspace)
             return inspected
-        _record(records, handoff, workspace)
+        _record(records, handoff, workspace, candidate)
         return inspected
     except OSError as error:
         if workspace is not None:
@@ -523,3 +538,99 @@ def _run_declared(root, plan):
     sys.stdout.buffer.write(packets.mask_candidate(result.stdout, plan.candidate))
     sys.stderr.buffer.write(packets.mask_candidate(result.stderr, plan.candidate))
     return result.returncode
+
+
+def _rounds_path(records, handoff):
+    return Path(records) / (_scope_key(handoff) + ".rounds")
+
+
+def rounds_state(records, handoff):
+    """The scope's rounds record: Built(None) when none is kept, Built(state) when it reads, else Refused."""
+    path = _rounds_path(records, handoff)
+    if not path.is_file():
+        return checked(None, ())
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        state = None
+    if _is_rounds_state(state):
+        return checked(state, ())
+    return checked(
+        None,
+        (
+            Defect(
+                "PartInvalid: examine rounds " + str(path),
+                "the rounds record of this examination scope is damaged, so the examinations "
+                "it counts cannot be read.",
+                "Restore "
+                + str(path)
+                + " from a copy, or ask the owner which round count applies; do not delete it "
+                "to reset the rounds.",
+            ),
+        ),
+    )
+
+
+def _is_rounds_state(state):
+    return (
+        isinstance(state, dict)
+        and set(state) == {"examinations", "last"}
+        and type(state["examinations"]) is int
+        and state["examinations"] >= 0
+        and state["last"] in ("accepted", "rejected", "indeterminate")
+    )
+
+
+def round_refusal(records, handoff, level):
+    """Refuse a new examination once the level's examinations are used up and the last one did not pass."""
+    state = rounds_state(records, handoff)
+    if isinstance(state, Refused):
+        return state
+    if state.value is None:
+        return None
+    name = level or DEFAULT_EXAMINE_LEVEL
+    allowed = 1 + examine_level_named(name).repair_rounds
+    if state.value["last"] == "accepted" or state.value["examinations"] < allowed:
+        return None
+    return checked(
+        None,
+        (
+            Defect(
+                "ExamineRoundsExhausted: level " + name,
+                f"level {name} grants {allowed} examination{'' if allowed == 1 else 's'} "
+                f"and {'it is' if allowed == 1 else 'they are'} used up; "
+                "the cycle does not converge.",
+                "Give each open problem to its owner; for another round choose a longer "
+                "level with nwave-ai rigor --examine-level extended, then examine again.",
+            ),
+        ),
+    )
+
+
+def record_examination(records, handoff, outcome):
+    """Count one published examination of the scope; the record is replaced in one step."""
+    state = rounds_state(records, handoff)
+    if isinstance(state, Refused):
+        return state
+    count = 0 if state.value is None else state.value["examinations"]
+    path = _rounds_path(records, handoff)
+    Path(records).mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(
+        json.dumps({"examinations": count + 1, "last": outcome}), encoding="utf-8"
+    )
+    temporary.replace(path)
+    return checked(None, ())
+
+
+def stale_candidates(records, handoff, head):
+    """The candidate commits the scope's prompts recorded that differ from HEAD now."""
+    found = []
+    for record in _scope_records(records, handoff):
+        try:
+            candidate = json.loads(record.read_text(encoding="utf-8")).get("candidate")
+        except (OSError, ValueError):
+            continue
+        if candidate is not None and candidate != head:
+            found.append(candidate)
+    return found

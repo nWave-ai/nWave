@@ -1,6 +1,6 @@
 # nw-property-based-testing
 
-Property-based testing strategies (PBT — ACTIVE, authored by the acceptance-designer during DISTILL), shrinking, PBT+TDD integration.
+Load when a design law holds over a broad input, state or sequence domain and needs a generated property test.
 
 **Used by:** [nw-acceptance-designer](../agents/nw-acceptance-designer.md), [nw-acceptance-designer-reviewer](../agents/nw-acceptance-designer-reviewer.md), [nw-solution-architect](../agents/nw-solution-architect.md)
 

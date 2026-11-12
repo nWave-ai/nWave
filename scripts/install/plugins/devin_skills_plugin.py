@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import tempfile
 from pathlib import Path
 from shutil import which as _which
 
@@ -35,6 +36,7 @@ from scripts.shared.agent_catalog import (
     load_private_skills,
     load_public_agents,
 )
+from scripts.shared.dynamic_command_skill import dynamic_skill_entry
 from scripts.shared.install_paths import devin_config_dir, devin_skills_dir
 from scripts.shared.skill_distribution import (
     enumerate_skills,
@@ -173,6 +175,7 @@ class DevinSkillsPlugin(InstallationPlugin):
         clean-then-write, foreign ``nw-*`` directories are refused, and
         symlinks are never traversed or replaced.
         """
+        dynamic_staging: Path | None = None
         try:
             prereq = self.validate_prerequisites(context)
             if "skip" in prereq.message.lower():
@@ -214,6 +217,15 @@ class DevinSkillsPlugin(InstallationPlugin):
                 command_skills,
                 private_skills,
             )
+            # Dev-only: the private dynamic command projected from its one
+            # source, staged in a temporary directory that the finally
+            # removes even when the install fails (review N3).
+            dynamic_staging = Path(tempfile.mkdtemp(prefix="nwave-dynamic-skill-"))
+            dynamic_entry = dynamic_skill_entry(
+                context.dev_mode, context.project_root / "nWave", dynamic_staging
+            )
+            if dynamic_entry is not None:
+                entries.append(dynamic_entry)
 
             desired_names = {entry.name for entry in entries}
             target_dir = devin_skills_dir()
@@ -307,6 +319,9 @@ class DevinSkillsPlugin(InstallationPlugin):
                 message=f"Devin skills installation failed: {e!s}",
                 errors=[str(e)],
             )
+        finally:
+            if dynamic_staging is not None:
+                shutil.rmtree(dynamic_staging, ignore_errors=True)
 
     def uninstall(self, context: InstallContext) -> PluginResult:
         """Uninstall only manifest-owned Devin skills; everything else stays."""

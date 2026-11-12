@@ -10,9 +10,18 @@ reviewer reasoning and verdicts remain with the role, not this transport.
 Missing capability returns an explicit exit status, never a synthetic judgment.
 
 Wire schema: https://api.typesafe.ai/openapi.json (2026-10-01).
-The API specifies approximately normalized probabilities without a precision
-bound. We allow 0.01 absolute rounding error for sums and expected scores,
-plus floating-point epsilon. Confidence is independent of the distribution.
+The wire carries no precision bound, so a Score is judged by the rounding its
+own numbers evidently carry. The probabilities and the score are each judged at
+their own precision: the finest decimal count evident among the probabilities,
+and the decimal count of the score, each never coarser than one decimal. A Score
+is recorded when its deviation from the probability-weighted level sum is within
+the worst-case error that rounding those numbers at their precision can produce
+over n levels. Trailing zeros are invisible in a JSON number, so 4.50 reads as one
+decimal place and is judged with that coarser, more lenient bound. Otherwise the
+Score is refused and the raw response is kept beside the output as
+<output stem>.rejected.json (with --output - it follows on stderr). The probability
+sum keeps its 0.01 approximate tolerance. Confidence is independent of the
+distribution.
 """
 
 from __future__ import annotations
@@ -22,6 +31,7 @@ import json
 import math
 import os
 import sys
+from decimal import Decimal
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -29,6 +39,8 @@ from urllib.request import Request, urlopen
 
 _ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 _REQUIRED = {"state", "model", "questions"}
+# Floating-point slack on top of the wire rounding bound.
+_EPSILON = 1e-9
 
 
 def _unique_object(pairs: list[tuple[str, object]]) -> dict:
@@ -156,6 +168,98 @@ def _distribution(answer: dict, labels: set[str], field: str) -> dict:
     return probabilities
 
 
+def _decimals(number: float) -> int:
+    """Decimal places in the shortest repr of a JSON number; integers have none."""
+    return max(-Decimal(repr(number)).as_tuple().exponent, 0)
+
+
+def _rounding_bound(probabilities: list[float], score: float) -> tuple[int, int, float]:
+    """Return the probability and score precision and the weighted error they explain.
+
+    Each quantity is off by at most half a unit in its own finest evident decimal
+    place, never coarser than one decimal. Over n levels with centre c and
+    probability sum S, the weighted level sum moves by at most
+    h_p * sum|i - c| + h_s + c * |1 - S|: each probability's rounding weighted by
+    its distance from the centre, the score's own rounding, and the drift of the sum.
+    """
+    probability_places = max([1, *map(_decimals, probabilities)])
+    score_places = max(1, _decimals(score))
+    probability_half = 0.5 * 10.0**-probability_places
+    score_half = 0.5 * 10.0**-score_places
+    centre = (len(probabilities) - 1) / 2
+    spread = sum(abs(i - centre) for i in range(len(probabilities)))
+    drift = abs(1 - sum(probabilities))
+    bound = probability_half * spread + score_half + centre * drift + _EPSILON
+    return probability_places, score_places, bound
+
+
+def _weighted_level_sum(probabilities: list[float]) -> float:
+    return sum(level * probability for level, probability in enumerate(probabilities))
+
+
+class _ScoreMismatch(ValueError):
+    """A Score that the rounding of its own numbers cannot explain."""
+
+
+def _score_refusal(
+    field: str,
+    score: float,
+    expected: float,
+    probability_places: int,
+    score_places: int,
+    tolerance: float,
+) -> str:
+    return (
+        f"{field} score {score:.6g} is not explained by its probability-weighted "
+        f"level sum. WHAT: the received score {score:.6g} differs from the "
+        f"probability-weighted level sum {expected:.6g} by "
+        f"{abs(score - expected):.6g}, beyond the tolerance {tolerance:.6g}. "
+        f"WHY: rounding the received probabilities to {probability_places} decimal "
+        f"places and the score to {score_places} decimal places explains at most "
+        f"{tolerance:.6g}, so the gap is not rounding and the answer is internally "
+        "inconsistent"
+    )
+
+
+_SCORE_HOW = (
+    "the answer is not used; {kept}; ask once more with a narrower rubric, "
+    "or continue locally and report the refusal"
+)
+_UNUSABLE_HOW = "the response is unusable; {kept}; report it and continue locally"
+_UNREADABLE = (
+    "invalid response JSON. WHY: the body is not one finite, unique-key UTF-8 "
+    "JSON document, so it carries no readable judgment"
+)
+_MALFORMED = (
+    "WHY: the response does not match the typed contract the request asked for, "
+    "so it carries no readable judgment"
+)
+
+
+def _rejected_path(output: Path) -> Path:
+    """Where a refused response's raw body is kept beside the output."""
+    return output.with_name(output.stem + ".rejected.json")
+
+
+def _refusal(what_why: str, how: str, kept: str) -> str:
+    return f"typesafe: {what_why}. HOW: {how.format(kept=kept)}."
+
+
+def _response_refusal(body: bytes, questions: dict) -> tuple[str, str] | None:
+    """Return (WHAT and WHY, HOW template) when refused, or None when recordable."""
+    try:
+        decoded = _decode(body)
+    except (ValueError, UnicodeDecodeError):
+        return _UNREADABLE, _UNUSABLE_HOW
+    try:
+        _validate_response(decoded, questions)
+    except _ScoreMismatch as error:
+        return f"invalid response: {error}", _SCORE_HOW
+    except ValueError as error:
+        return f"invalid response: {error}. {_MALFORMED}", _UNUSABLE_HOW
+    return None
+
+
 def _validate_response(payload: object, questions: dict) -> None:
     if not isinstance(payload, dict) or not isinstance(payload.get("answers"), dict):
         raise ValueError("response has no typed answers")
@@ -200,10 +304,14 @@ def _validate_response(payload: object, questions: dict) -> None:
                 raise ValueError(f"{field} legend must match ordered criteria")
             score = answer.get("score")
             _number(score, 0, len(criteria) - 1, f"{field} score")
-            expected = sum(i * probabilities[str(i)] for i in range(len(criteria)))
-            if not math.isclose(score, expected, rel_tol=0, abs_tol=0.010000000001):
-                raise ValueError(
-                    f"{field} score must match probability-weighted levels"
+            ordered = [probabilities[str(i)] for i in range(len(criteria))]
+            expected = _weighted_level_sum(ordered)
+            prob_places, score_places, tolerance = _rounding_bound(ordered, score)
+            if abs(score - expected) > tolerance:
+                raise _ScoreMismatch(
+                    _score_refusal(
+                        field, score, expected, prob_places, score_places, tolerance
+                    )
                 )
 
 
@@ -276,15 +384,25 @@ def main(argv: list[str] | None = None) -> int:
     except (URLError, OSError):
         print("typesafe: unavailable (network failure)", file=sys.stderr)
         return 3
-    try:
-        decoded = _decode(response_body)
-    except (ValueError, UnicodeDecodeError):
-        print("typesafe: invalid response JSON", file=sys.stderr)
-        return 4
-    try:
-        _validate_response(decoded, questions)
-    except ValueError as error:
-        print(f"typesafe: invalid response ({error})", file=sys.stderr)
+    refusal = _response_refusal(response_body, questions)
+    if refusal is not None:
+        what_why, how = refusal
+        if str(args.output) == "-":
+            print(
+                _refusal(what_why, how, "the raw body follows on stderr"),
+                file=sys.stderr,
+            )
+            sys.stderr.flush()
+            sys.stderr.buffer.write(response_body)
+            sys.stderr.buffer.flush()
+        else:
+            rejected = _rejected_path(args.output)
+            rejected.parent.mkdir(parents=True, exist_ok=True)
+            rejected.write_bytes(response_body)
+            print(
+                _refusal(what_why, how, f"the raw body is kept at {rejected}"),
+                file=sys.stderr,
+            )
         return 4
     _write(args.output, response_body)
     print(

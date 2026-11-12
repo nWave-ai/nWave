@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import tempfile
 from collections import Counter
 from hashlib import sha256
 from pathlib import Path
@@ -27,6 +28,7 @@ from scripts.install.plugins.base import (
 )
 from scripts.shared.agent_catalog import detect_command_skills, load_public_agents
 from scripts.shared.codex_model_wording import rewrite_claude_model_names
+from scripts.shared.dynamic_command_skill import dynamic_skill_entry
 from scripts.shared.frontmatter import parse_frontmatter_file
 from scripts.shared.platform_contracts import CODEX_SKILL_FORBIDDEN_FIELDS
 from scripts.shared.skill_distribution import (
@@ -521,6 +523,7 @@ class CodexSkillsPlugin(InstallationPlugin):
         Returns:
             PluginResult indicating success or failure
         """
+        dynamic_staging: Path | None = None
         try:
             # Check prerequisites first; skip if Codex not present
             prereq = self.validate_prerequisites(context)
@@ -558,6 +561,15 @@ class CodexSkillsPlugin(InstallationPlugin):
             entries = filter_public_skills(
                 entries, public_agents, ownership_map, command_skills
             )
+            # Dev-only: the private dynamic command projected from its one
+            # source, staged in a temporary directory that the finally
+            # removes even when the install fails (review N3).
+            dynamic_staging = Path(tempfile.mkdtemp(prefix="nwave-dynamic-skill-"))
+            dynamic_entry = dynamic_skill_entry(
+                context.dev_mode, context.project_root / "nWave", dynamic_staging
+            )
+            if dynamic_entry is not None:
+                entries.append(dynamic_entry)
 
             # Snapshot the desired catalogue before looking at mutable target
             # state.  The manifest is the ownership oracle; historical
@@ -761,6 +773,9 @@ class CodexSkillsPlugin(InstallationPlugin):
                 message=f"Codex skills installation failed: {e!s}",
                 errors=[str(e)],
             )
+        finally:
+            if dynamic_staging is not None:
+                shutil.rmtree(dynamic_staging, ignore_errors=True)
 
     def uninstall(self, context: InstallContext) -> PluginResult:
         """Uninstall only nWave-installed Codex skills using manifest.

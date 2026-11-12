@@ -57,7 +57,7 @@ Use Task tool to invoke product-discoverer-reviewer during handoff.
 1. Scout produces discovery artifacts
 2. Reviewer critiques for evidence quality|bias|sample adequacy|completeness
 3. Scout addresses critical/high issues
-4. Reviewer validates revisions (max 2 iterations)
+4. Reviewer validates revisions within the review-round limit the role bundle prints (nwdes prompt)
 5. Handoff proceeds when approved
 
 ### Phase 4 Gate (Hard Gate)

@@ -15,7 +15,7 @@ unless a project sets its own override.
 - **Project path**: `<repo>/.nwave/config.json`.
 - **Created by**: A fresh install may leave both files absent. Configuration
   writes create the relevant tier: `mode`, `model set`, or `attribution` for
-  machine settings; `project enable|disable|set` for project settings.
+  machine settings; `project enable|disable|set` and `nwave-ai rigor` for project settings.
 - **User-editable**: Yes, with a text editor.
 - **Verification**: Run `nwave-ai doctor` to validate your config.
 
@@ -39,6 +39,7 @@ never use the retired paths as runtime fallbacks.
 {
   "activation": { "mode": "..." },
   "rigor": { "profile": "..." },
+  "review": { "max_rounds": 2 },
   "documentation": { "density": "...", "expansion_prompt": "..." },
   "attribution": { "enabled": true, "trailer": "..." },
   "updates": { "check": false, "install": false, "controlled_launch": false },
@@ -58,10 +59,12 @@ on the next explicit global or project config write; read-only commands do
 not rewrite the file.
 
 Per-project overrides live in `<repo>/.nwave/config.json` instead, with a
-smaller, closed set of public keys: `enabled` (activation marker),
+smaller set of public keys: `enabled` (activation marker),
 `verbosity`, `attribution`, and `model_runtime` (set via `nwave-ai model set --project ...`, not via `project set`).
 `audit_logging_enabled` and `audit_log_dir` are also project-tier keys (see
 below), not global ones.
+
+`nwave-ai rigor` also writes `review.max_rounds`, `documents.readable_brief` and `model_runtime.roles` to that file. See [`review`](#review-object-optional) below and the [rigor entry](cli.md#nwave-ai-rigor) in the CLI reference.
 
 ---
 
@@ -231,6 +234,27 @@ verification passed.
   "rigor": {
     "profile": "lean"
   }
+}
+```
+
+---
+
+### `review` (object, optional)
+
+#### `review.max_rounds` (integer, optional)
+
+The maximum number of review rounds per finding: a whole number from 1 to 5. Default: 2 (built-in).
+
+Written by `nwave-ai rigor --review-rounds` to the project file. No command writes it to the global file, but the global file is read for it too.
+
+Precedence: the project file, then the global file, then the built-in default. `nwave-ai rigor --show` prints the value with its source (`project`, `global` or `built-in default`), and `nwdes prompt` prints the same resolution in each role bundle. A value outside 1 to 5, or one that is not a whole number, makes `nwdes prompt` refuse, naming `review.max_rounds`.
+
+This key is unrelated to `rigor.profile` above. `rigor.profile` is a fallback for the density and wave-end explanation settings, and no `nwave-ai` command sets it. `review.max_rounds` only sets the review limit.
+
+**Example**:
+```json
+{
+  "review": { "max_rounds": 3 }
 }
 ```
 

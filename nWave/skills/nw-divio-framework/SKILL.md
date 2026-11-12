@@ -134,3 +134,7 @@ This procedure replaces aesthetic debate with a falsifiable check.
 ### Anti-pattern: collapse via JTBD-blending
 
 Some authors blend two JTBDs in one document ("a Tutorial that's also a Reference"). This is the same collapse pattern the four-types-only rule rejects, surfaced via the JTBD lens. Detection: if the document has TWO canonical JTBDs in tension (e.g. "build mental model" AND "look up specific answer"), flag for splitting.
+
+### Diagrams
+
+A diagram has no DIVIO type of its own. It takes the type of the section that holds it, and it must serve that section's JTBD: an Explanation diagram shows structure and reasons; a Reference diagram is a lookup aid with a description above it. Every diagram follows the accessibility rules R1-R12 of `nw-diagram`.

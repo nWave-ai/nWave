@@ -1,5 +1,5 @@
 ---
-description: "Generates C4 architecture diagrams (context, container, component) in Mermaid or PlantUML. Use when creating or updating architecture visualizations."
+description: Generates C4 architecture diagrams (context, container, component) in Mermaid or PlantUML. Use when creating or updating architecture visualizations.
 argument-hint: "[diagram-type] - Optional: --format=[mermaid|plantuml|c4] --level=[context|container|component]"
 ---
 
@@ -9,7 +9,7 @@ argument-hint: "[diagram-type] - Optional: --format=[mermaid|plantuml|c4] --leve
 
 ## Overview
 
-Generate standalone architecture diagram content from design documents, without authoring architecture authority. Supports C4 model levels (context|container|component) in Mermaid|PlantUML|C4 format. Audience-appropriate: high-level context for stakeholders|component details for developers|deployment topology for operations.
+Generate standalone architecture diagram content from design documents, without authoring architecture authority. Supports C4 model levels (context|container|component) in Mermaid|PlantUML|C4 format. Audience-appropriate: high-level context for stakeholders|component details for developers|deployment topology for operations. Every diagram follows the 12 legibility and accessibility rules (R1-R12) of the `nw-diagram` skill, which is their single source.
 
 ## Context Files Required
 
@@ -19,7 +19,7 @@ Generate standalone architecture diagram content from design documents, without 
 
 @nw-solution-architect
 
-Return semantic diagram content in the configured format for {architecture-component}; do not write final architecture-document bytes or diagram files. The caller validates the content with the selected renderer and writes any requested diagram files.
+Return semantic diagram content in the configured format for {architecture-component}, following R1-R12 of the `nw-diagram` skill; do not write final architecture-document bytes or diagram files. The caller checks R1-R12 on the source, returns each failed rule id to the architect, validates the content with the selected renderer and writes any requested diagram files.
 
 **Context Files:** docs/product/architecture/brief.md
 
@@ -34,6 +34,7 @@ Return semantic diagram content in the configured format for {architecture-compo
 
 - [ ] Diagrams accurately represent current architecture
 - [ ] Audience-appropriate detail level applied
+- [ ] R1-R12 of `nw-diagram` hold for every block, or the exception is named in the description
 - [ ] Diagrams render without syntax errors
 - [ ] Requested output files, if any, rendered and written by the caller in the configured directory
 

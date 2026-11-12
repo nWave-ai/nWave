@@ -493,6 +493,30 @@ def _charter(charter):
     )
 
 
+def _row_obligations(row):
+    """What the examiner checks the row against: its lacuna, blocking, isolation and needs.
+
+    A legacy row has no lacuna field and says so; an absent blocking flag is blocking and
+    an absent isolated flag is sequential, the defaults the row contract states.
+    """
+    lacuna = row.get("lacuna")
+    needs = row.get("needs")
+    return (
+        (
+            "Lacuna: not recorded\n"
+            if lacuna is None
+            else "Lacuna:\n" + documents.fenced(lacuna, language="")
+        )
+        + (
+            "Blocking: non-blocking\n"
+            if row.get("blocking") == "no"
+            else "Blocking: blocking\n"
+        )
+        + ("Run: isolated\n" if row.get("isolated") == "yes" else "Run: in sequence\n")
+        + ("" if needs is None else "Needs:\n" + documents.fenced(needs, language=""))
+    )
+
+
 def render_examination(packet: PublicExamination):
     return (
         "## Scope\n"
@@ -524,6 +548,7 @@ def render_examination(packet: PublicExamination):
                 )
                 + "\n"
                 + documents.fenced(row["text"], language="")
+                + _row_obligations(row)
                 for row in packet.expectations
             )
             or "None.\n"

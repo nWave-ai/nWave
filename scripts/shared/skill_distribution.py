@@ -19,6 +19,7 @@ Pipeline:
 from __future__ import annotations
 
 import enum
+import fnmatch
 import json
 import shutil
 from typing import TYPE_CHECKING, NamedTuple
@@ -35,6 +36,11 @@ class SkillEntry(NamedTuple):
 
     name: str
     source_path: Path
+
+
+# Names never installed with a skill folder: bytecode caches are machine-specific.
+# One rule for every copy site; verification reads the same tuple.
+SKILL_COPY_IGNORED: tuple[str, ...] = ("__pycache__", "*.pyc")
 
 
 class SourceLayout(enum.Enum):
@@ -190,6 +196,26 @@ def _exclusion_reason(skill_name: str, ownership_map: dict[str, set[str]]) -> st
     return f"private-owned by {', '.join(sorted(owners))}"
 
 
+def list_copy_files(source_dir: Path) -> list[Path]:
+    """Return the files a skill folder copy installs, relative to source_dir.
+
+    Uses SKILL_COPY_IGNORED, the same rule copy_skills_to_target applies, so
+    verification expects exactly the files installation writes.
+    """
+    kept: list[Path] = []
+    for path in sorted(source_dir.rglob("*")):
+        relative = path.relative_to(source_dir)
+        if any(
+            fnmatch.fnmatch(part, pattern)
+            for part in relative.parts
+            for pattern in SKILL_COPY_IGNORED
+        ):
+            continue
+        if path.is_file():
+            kept.append(relative)
+    return kept
+
+
 def copy_skills_to_target(
     entries: list[SkillEntry],
     target_dir: Path,
@@ -235,7 +261,7 @@ def copy_skills_to_target(
                 entry.source_path,
                 destination,
                 dirs_exist_ok=True,
-                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+                ignore=shutil.ignore_patterns(*SKILL_COPY_IGNORED),
             )
         else:
             destination.mkdir(parents=True, exist_ok=True)

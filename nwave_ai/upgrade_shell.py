@@ -441,7 +441,14 @@ def _render_settings(
             raw["env"] = environment
         else:
             raw.pop("env")
-    if not drops and not segments and not dropped_env_keys:
+    # The pinned release stamped its version into settings; nothing in the current
+    # release writes that stamp, so the upgrade drops it and leaves no 3.x marker behind.
+    dropped_stamp_keys = {
+        key for key in legacy.get("settings_stamp_keys", ()) if key in raw
+    }
+    for key in dropped_stamp_keys:
+        raw.pop(key)
+    if not drops and not segments and not dropped_env_keys and not dropped_stamp_keys:
         return snapshot.read_bytes
     hooks = raw.get("hooks", raw if "preToolUse" in raw else {})
     changed_hooks = {}
@@ -894,6 +901,7 @@ def cleanup(
                 )
                 for row in record["hook_templates"]
             ),
+            marker,
         )
         if hosts is None:
             selection = selected_hosts(home)

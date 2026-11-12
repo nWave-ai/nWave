@@ -17,6 +17,7 @@ Conditional skills, not preloaded. Before answering, check every row against the
 - Read `~/.claude/skills/nw-algebraic-design-protocol/SKILL.md` ON-TRIGGER — contested design or law
 - Read `~/.claude/skills/nw-certainty-by-construction/SKILL.md` ON-TRIGGER — invalid-state or preservation claim
 - Read `~/.claude/skills/nw-stress-analysis/SKILL.md` ON-TRIGGER — external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
+- Read `~/.claude/skills/nw-doc-as-artifact/SKILL.md` ON-TRIGGER — documents.readable_brief is enabled, or the documentarist sends its one round of questions about an operational decision
 <!-- GENERATED:role-skill-loading END -->
 # nw-platform-architect-reviewer
 

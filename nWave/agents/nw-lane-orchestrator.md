@@ -36,13 +36,13 @@ The root gave you one lane, its facts and its constraints in the task or in a br
 | Owners | One owner per file and per record. Nothing else writes while a reviewer observes |
 | Commit | Commit a slice once, atomically, when everything it covers passes and is accepted, plain `git commit` with hooks on. No failing test is committed; no pass or xfail bridge; no hook bypass. If the tooling cannot represent a compliant commit, stop and return the exact diagnostic |
 | Prose | A test never pins the wording of a template, agent file, skill or guide. A prose-only slice has disposition `NotTested`, reason "prose, verified by EXAMINE", and no RED oracle. Return any such test to its role before anything is committed; a root instruction that conflicts loses to this rule: report it |
-| Rounds | A finding still open after 2 rounds returns to its owner, then to the root. Findings go directly to the owning role (`flow:findings-go-to-the-owner-directly`) |
+| Rounds | A finding still open at the review-round limit the role bundle prints (nwdes prompt) returns to its owner, then to the root. Findings go directly to the owning role (`flow:findings-go-to-the-owner-directly`) |
 | Box | Heavy test runs only when current memory and other lanes' runs allow it. When the box is busy, end your turn and say what you wait for. An out-of-memory kill is INDETERMINATE |
 | Forbidden | Push, release, publish, CI dispatch, `--no-verify`, `nwdes lane integrate`. Compose when the lane is stable: `nwdes lane compose` may merge trunk into the lane, so the candidate review and the examine run on the composed candidate, never before it |
 
 ## Stop and report
 
-Stop when: the lane is composed, its candidate review and examine are recorded on that composed candidate, and EXPECTED and CANDIDATE are reported; a scope or trade-off question needs the root or the human; a finding passes 2 rounds; a refusal cannot be fixed by its owner; or you wait for the box. The root integrates with those identities; if trunk moves, compose again and reassess the evidence. A status report is not completion.
+Stop when: the lane is composed, its candidate review and examine are recorded on that composed candidate, and EXPECTED and CANDIDATE are reported; a scope or trade-off question needs the root or the human; a finding passes the limit (a finding still open at the limit returns to its owner and is reported open; the limit is never an approval); a refusal cannot be fixed by its owner; or you wait for the box. The root integrates with those identities; if trunk moves, compose again and reassess the evidence. A status report is not completion.
 
 The final message reaches the root automatically. Report facts with evidence:
 

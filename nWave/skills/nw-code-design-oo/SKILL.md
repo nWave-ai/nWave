@@ -1,187 +1,97 @@
 ---
 name: nw-code-design-oo
-description: OO code-design SSOT — the WHAT-to-design anti-smell catalog (Object Calisthenics, RPP smell taxonomy, effect isolation) shared by the solution architect (design-time) and the crafter (execution-time).
+description: "Load before designing or changing domain/application code: owners, reuse, boundaries, simplest design, domain language, calisthenics, aggregates, architectural and contract tests."
 ---
 
-# OO Code Design
+# Code design (OO, ports and adapters)
 
-Design-time anti-smell catalog for object-oriented work. The architect loads this
-to design smell-free domain types and module boundaries BEFORE DISTILL authors
-ATs; the crafter loads the same SSOT for the execution mechanics that enforce it.
-This file is the WHAT-to-design subset. `nw-tdd-methodology` owns RED→GREEN
-verification; `nw-refactor` owns behavior-preserving refactoring. Repository
-runner and hooks own build, test, and commit execution.
+## 1. Decide before writing
 
-## Object Calisthenics
+1. Follow the paradigm the repository and touched code already use; a unit in another paradigm gets its reason in the closing statement. Procedural code keeps its imperative structure; do not rewrite it into classes or functions to fit a label. Section 5 (calisthenics) applies to the OO track only; FP track rules are in section 5b.
+2. Search for an existing owner by responsibility, invariant and consumers, not by name. A second algorithm deciding a fact an owner already decides is a defect even when it looks different. Reuse or extend the owner at the place that owns the rule; create new only for a stated incompatibility.
+3. Merge two units into one abstraction only when they answer the same question and change for the same reason; look-alikes that change for different reasons stay apart.
+4. Give each decision, effect, error type and per-process state exactly one owning module. No second module decides or stores it.
+5. Changing a shared contract or rule: change its owner, its producer and every consumer in the same diff, or name in the closing statement why a consumer is unaffected.
+6. A pipeline stage, container or infra file extends the existing workflow/definition; if it cannot, name the existing alternative and why it failed.
+7. Add no field, parameter, flag, branch, layer, option or extension point that no accepted outcome reads. Add no pass-through layer that hides no knowledge. Add no type or channel that repeats a fact an existing carrier already holds.
+8. Abstract (framework, plugin, base class) only when a second real caller needs it.
+9. An edge case: reuse or relax the general rule; add no named exception, token or special-case branch.
+10. When removing or merging a type, layer or branch, keep every accepted outcome observed by a passing test. Keep an element if an accepted outcome breaks without it, or if removing it makes the whole path costlier (more steps, rework or waiting for other roles).
+11. Judge a design in this order: behaviour shown by tests; no semantic duplication; clarity; fewest elements.
+12. State in the closing statement the chosen design, the alternative you rejected and what the choice costs (coupling, latency, effort).
+13. For a change touching an external dependency, retry, recovery or concurrency, name each assumption it relies on, what still works when it fails, and what must never happen then; add one test per such failure.
 
-Ten rules for the OO core (Agile Technical Practices Distilled, "Object
-Calisthenics – 10 Steps to Better Software Design"). Inside the hexagon, domain
-objects and application services, they are strict. Breaking one is a conscious
-design decision recorded in the diagnostic with the smell it causes, its benefit
-and its cost; an unrecorded break is accidental complexity.
+## 2. Boundaries
 
-| # | Rule | Why | Smell it prevents |
-|---|------|-----|-------------------|
-| 1 | Only one level of indentation per method | One thing per method; small reusable units | Long Method |
-| 2 | Don't use the ELSE keyword | One main lane with guard clauses; polymorphism (State, Strategy) or Null Object for the alternatives | Switch Statements, Long Method |
-| 3 | Wrap all primitives and strings | No primitive or string as a method argument (except constructors) or return value; each concept gets a type that attracts its behaviour and makes wrong state unrepresentable | Primitive Obsession, Shotgun Surgery |
-| 4 | First-class collections | No collection as an argument (except constructors); a class that holds a collection holds nothing else; filters and joins live there | Primitive Obsession, Feature Envy |
-| 5 | One dot per line | Talk only to your immediate collaborators (Law of Demeter): self, owned fields, parameters and objects the method creates. The rule is about navigating a collaborator's internals, not LINQ, streams or fluent builders | Message Chains, Inappropriate Intimacy |
-| 6 | Don't abbreviate | Names reveal intention; a name you want to abbreviate signals a unit doing too much | Large Class |
-| 7 | Keep all entities small | Each method does one thing and each class holds one responsibility; size follows from cohesion, never from splitting code to meet a line count | Large Class, Long Method |
-| 8 | No classes with more than two instance variables | High cohesion; a third field signals a missing collaborator | Large Class, Data Clumps |
-| 9 | No getters/setters/properties | Tell, don't ask: the decision lives on the object that owns the data | Data Class, Feature Envy |
-| 10 | All classes must have state | No static utility classes or stateless "managers"; behaviour has a home | Feature Envy, Middle Man |
+- Dependencies point inward. Domain and application code depend on driven ports named for a capability (`OrderStore`, not `PostgresClient`), never on adapters or technology.
+- Every new user-facing behaviour is reachable from its public driving port; check the producer-to-consumer path reaches that port.
+- An adapter failure (timeout, decode error, dependency down) is translated at the port into the declared application outcome. No vendor or transport exception type reaches domain or application code.
+- A read-only driving port exposes no write method. A preview or validate operation returns a plan value and writes nothing: `dry_run(cfg) -> Plan` is pure, `execute(plan)` is the only impure call.
+- Core and business units receive collaborators and environment (clock, env vars, home dir, filesystem) as constructor or function parameters, resolved where the caller can see them. Only composition roots and effect adapters construct or read them.
+- Wiring needs a restricted capability (`SafeFileSystem(root)`), not a god object (`os`, `Path.home()`).
+- Per component state its contract shape: pure (return only), bounded change (declared mutation set), or plan-only.
 
-**Scope**: domain entities, value objects and application services. Adapters,
-infrastructure, DTOs at port boundaries, CQRS read models, configuration and
-framework or ORM mapping are exempt; map them to the domain at the boundary.
+## 3. Domain model and language
 
-**Services**: an application service coordinates ports and domain objects and
-owns no domain rule. A decision about one object's data lives on that object; a
-policy spanning several aggregates may live in a domain service. An application
-service method that reads an object's state, branches on it and writes it back
-is a transaction script; move the decision onto the owner.
+- A decision about an object's data lives on its owner: value object, entity, aggregate root, choice type. A policy spanning aggregates lives in a named domain service. An application service coordinates ports and owns no domain rule; a method that reads state, branches, and writes it back moves onto the owner.
+- Value object: immutable, refuses an invalid value at construction, equal when its exposed observations agree.
+- One transaction changes one aggregate. Reference other aggregates by identity (`ProductId`, not `Product`). A cross-aggregate effect is a domain event.
+- A repository serves one aggregate root, returns domain objects, takes domain-language queries (`find_active_orders`), and exposes no SQL, JSON or row shape to domain code.
+- Domain events are past-tense facts, one fact each (`OrderConfirmed`).
+- Names and types come from the domain vocabulary, never from mechanics (`Manager`, `Helper`, `Data`). Do not abbreviate a name.
+- One word names one concept across code, tests and docs of a bounded context. Use the context glossary's terms in changed docs. A word meaning different things in two contexts is kept distinct at the boundary (`SalesOrder`, `FulfilmentOrder`).
+- Renaming a concept renames every use in code, tests and docs in the same diff.
+- Two confusable concepts get distinct types, not the same `str`/`int`; a native type that already says the concept stays native.
+- A generic payload boundary (dict, JSON) is documented at the boundary; deliberate boundaries use precise records, unions or result types.
 
-**Rich domain model**: entities carry identity and the behaviour of their
-lifecycle; value objects are immutable, equal by value and refuse an invalid
-value at construction; an aggregate root is the only entry point that changes
-its aggregate and guards its invariants in one consistency boundary; a
-repository loads and stores one aggregate; a domain event names a completed
-fact. `nw-ddd-tactical` owns these building blocks and their rules.
+## 4. Outcomes
 
-## Code Smells Hierarchy
+Count the operation's outcomes. Each domain outcome (not found, refused, empty, already done) is in the return type as a named value the caller branches on, illegal combinations unconstructible; never return `None`/null for a domain outcome. Raise only for programming errors. A caller matching on `except` of a domain outcome is a defect.
 
-Primitive Obsession, Feature Envy (with Inappropriate Intimacy) and Message
-Chains cause most other smells; remove them first.
+## 5. Calisthenics (OO track: all ten, strict, in domain and application code)
 
-- **Primitive Obsession** → Duplicated Code, Shotgun Surgery, Divergent Change, Long Parameter List.
-- **Feature Envy / Inappropriate Intimacy** → Lazy Class, Data Class, Middle Man, Data Clumps, Long Method, Large Class, Duplicated Code, Shotgun Surgery, Divergent Change, Long Parameter List.
-- **Message Chains** → Data Clumps, Duplicated Code.
+1. One indentation level per method.
+2. No `else`: guard clauses, polymorphism or Null Object.
+3. Wrap primitives and strings that carry domain meaning; none as a method argument or return except in constructors.
+4. First-class collections: a class holding a collection holds nothing else; no collection argument except in constructors.
+5. One dot per line: talk to self, owned fields, parameters, objects you create. Fluent builders and streams are fine.
+6. No abbreviations.
+7. Small units: one responsibility each; cohesion decides size, not line counts.
+8. At most two instance variables; a third is a missing collaborator.
+9. No getters, setters or public mutable properties: tell, don't ask.
+10. No stateless utility classes or "managers".
 
-## Refactoring Priority Premise
+Adapters, DTOs at port boundaries, read models, config and ORM mappings are exempt; map them to the domain at the boundary. State each break and its cost in the closing statement.
 
-Refactor each delta in this order, smallest level first, without changing
-behaviour; the refactoring is verified once, together with the delta. A level is
-done when none of its smells remains in the code you changed. `nw-refactor` owns
-the mechanics.
+## 5b. FP track
 
-| Level | Goal | Smells it cleans |
-|-------|------|------------------|
-| L1 Readability | Tackle clutter, comments, dead code, implicit knowledge, scattering, bad naming | Comments, Dead Code, Magic Strings and Numbers, Scope of variables and methods |
-| L2 Complexity | Tackle complexity and duplication | Long Method, Duplicated Code |
-| L3 Responsibilities | Tackle misplaced responsibilities | Long Class, Feature Envy, Inappropriate Intimacy, Data Class, Message Chain |
-| L4 Abstractions | Tackle missing abstractions | Long Parameter List, Data Clump, Primitive Obsession, Middle Man |
-| L5 Design Patterns | Replace conditionals with polymorphism; apply a pattern only as the target of a refactoring the actual recurring problem asks for, shaped to the context and named for the domain behaviour | Switch Statements → Dictionary/Hashmap, Strategy, State, Command |
-| L6 SOLID++ | Fix the design principles | Refused Bequest → LSP, ISP; Divergent Change → SRP; Shotgun Surgery → SRP; Speculative Generality → YAGNI; Parallel Inheritance → ISP |
+- Build behaviour by composing small single-purpose functions.
+- Each function's type admits only the capabilities its body uses (a pure function takes no clock or store).
 
-**Liskov substitution**: a subtype or interface implementation keeps every
-promise to its clients: no stronger preconditions, no weaker postconditions,
-invariants preserved. **Interface segregation**: an interface is one cohesive
-role its clients need; no client depends on an operation it does not use.
-Inheritance expresses substitutable specialization only; other collaboration
-uses composition.
+## 6. Modularity
 
-## RPP Smell Taxonomy
+- One reason to change and a narrow public surface per module.
+- A unit that reads another unit's fields to decide (flag, branch on its state) sends the decision to the data's owner instead.
+- Two units that agree on a position, literal, algorithm or call order get one named type, constant or single owner.
+- A method that groups steps only because they run in sequence or share data is split by responsibility.
+- Inheritance only for substitutable specialization: a subtype never strengthens a precondition or weakens a postcondition. An interface is one cohesive role; no client depends on an operation it does not use. Otherwise compose.
 
-Smells an architect detects in a design before code is written, and the design
-decision each one asks for. Detection is design-time; the refactoring order above
-and `nw-refactor` belong to the crafter.
+## 7. Architectural and contract tests
 
-| Level | Smell | Design-time implication |
-|-------|-------|-------------------------|
-| L3 | Primitive Obsession | Raw int/str carrying domain meaning → introduce a value object |
-| L3 | Magic Numbers | Bare literal with hidden semantics → name it (enum / constant / value object) |
-| L3 | Tell-Don't-Ask | Caller queries state then decides → move the decision onto the owning object |
-| L3 | Feature Envy | Method reaches into another type's data → relocate behavior to that type |
-| L3 | God Object | One type owns too many responsibilities → split along bounded responsibilities |
-| L3 | Large Class | Class owns more than one cohesive responsibility → extract collaborators |
-| L4 | Shotgun Surgery | One change forces edits across many sites → consolidate the concept into one home |
+1. For each dependency, boundary or ownership law the change can reach, add or keep an architectural test; else state why the law does not apply. It checks the law over everything the law governs (modules added later, transitive paths), never a fixed file list or style.
+2. For each shared contract whose parties can change apart (other owner, deployable, release schedule, or persisted/wire data outliving the producer), add or keep a contract test; else state why not. It feeds real producer output through the real consumer; no mock echo, no hand-written producer record.
+3. Add no contract test for callers in one deployable that change in the same commit, unless persisted or wire data outlives the producer version.
+4. Run these tests under a verification command the repository declares. Leave existing ones present and unweakened.
 
-Design rule: a smell detected at design time does not survive into the design
-artifact unless it is a recorded conscious trade-off. Resolve it in the type and
-boundary decisions, not at DELIVER.
+## Self-check before recording the step
 
-## Effect Isolation
-
-Design components so the bug class "side-effect-free function silently writes" is
-non-representable, not testable-around. Push contract enforcement up the type
-hierarchy as far as the language allows. Three levers:
-
-- **Functional Core / Imperative Shell** (Bernhardt) — business logic in pure
-  functions; effects only at a thin shell. Approximates IO-monad separation in
-  any language.
-- **Plan-value pattern** — dry-run / preview / validate functions return a `Plan`
-  data value, never silent side effects (`dry_run(cfg) -> Plan` pure; `execute(plan)`
-  the only impure call). Makes "preview wrote to disk" structurally impossible.
-- **Capability injection** — pass restricted interfaces (`PlanRecorder`,
-  `SafeFileSystem(root=tmp)`) at boundaries, never god-objects (`os`,
-  `Path.home()`). Approximates capability typing via DI.
-
-Per component, declare a **contract shape**: pure-function (return-only),
-bounded-change (declared mutation set), or unbounded-preservation (must return a
-Plan, never mutate). A driving port that "only reads" must not expose write
-methods — split read/write into separate ports.
-
-### Declared inputs at the boundary
-
-The OO reading of `contract:declared-inputs-not-ambient-reads` (SSOT:
-`nw-cross-cutting-invariants` — the gate list and the anchor live there, not
-here). It is `Capability injection` above restated as a review question, because
-that pattern is easy to agree with and easy not to apply.
-
-> **What does this component read that nobody passed it?** For every gate the
-> clause lists, decide at the boundary: a constructor parameter, an injected
-> capability, or an explicit override — with the ambient lookup kept as a default
-> the caller may state.
-
-Resolve it **where the caller can see it**. A gate resolved lazily, at first use
-deep inside a method, is read outside the window in which the caller — or a test
-— controls the environment, so even a caller that wanted to declare it cannot.
-
-Test-side mirror: the Algebraic Analysis Before the Scenario mandate
-(`nw-test-design-mandates`), its declared-inputs question.
-
-### Enumerate the outcomes before choosing the return type
-
-> **How many outcomes does this operation have — and does its signature carry
-> every one of them?** "It returns the value and raises on the bad case" is the
-> wrong answer: that is N-1 outcomes in the type and one in the control flow.
-> **If any outcome is not in the return type, put it there** — a value the caller
-> branches on, with the illegal combinations unconstructible (enforce in the
-> constructor: only the outcome that carries a payload may carry one, and it
-> always does).
-
-Why this is a design rule, not a style preference: `except` matches on class
-**identity**, so a raised outcome couples the caller to the exact module object
-the raiser was loaded from. Where the same package is reachable by more than one
-path — a source tree plus an installed runtime, a harness that adjusts
-`sys.path`, a plugin cache — that identity is not guaranteed. The `except` then
-fails to match and a *handled* outcome escapes as a crash, in an environment
-nobody was testing.
-
-Keep `raise` for what it is good at: a **programming error** (a broken
-precondition, an import-time drift guard) where crashing is the correct outcome
-and no `except` is meant to cross a module boundary to catch it.
-
-FP states the canonical form of the same rule — a total function into a sum type
-(`nw-code-design-fp` § Railway, "Count the outcomes before you choose the return
-type"). This is its OO translation.
-
-Empirical anchor, 2026-08-06: CI reported `UnknownPhaseName`
-propagating out of `_resolve` from the line INSIDE its own `try`, with the
-matching `except` on the next line. `resolve_phase` documented three outcomes,
-returned two, threw the third. Returning all three closed the failure class
-*without* establishing why the module loaded twice — a fix that does not depend
-on that answer is a design fix rather than a patch.
-
-## Cross-cutting invariants (load them — they are not restated here)
-
-Paradigm- and role-independent rules live in ONE shipped home: `nw-cross-cutting-invariants`.
-Load it alongside this skill and honour these clauses by id — they are NOT duplicated here:
-
-- `data:consumer-known-before-produced` — a datum is produced only because a named consumer
-  reads it, and you must name the JOIN KEY it will be related on. No reader, or no key → the
-  datum is unjustified.
-- `gate:self-explaining-what-why-how` — every rejection states WHAT / WHY / HOW.
-- `gate:design-principles-gdp-1-9` — the canonical gate-design contract.
+1. Each reused owner is called or edited where it owns the rule; no second decider exists.
+2. Every added element is read by an accepted outcome.
+3. Dependencies point inward; adapter errors are translated at the port.
+4. Each decision, effect and error has one owner; every consumer of a changed contract changed.
+5. All ten calisthenics rules hold in changed domain code, or the break is stated.
+6. Aggregates: one per transaction, others by id, effects as events.
+7. Names are domain words, unabbreviated, one word per concept.
+8. Architectural and contract tests exist or have a stated reason.
+9. Every domain outcome is a named return value, never null.
+10. The closing statement names the rejected alternative and its cost, and each failure assumption with its test.

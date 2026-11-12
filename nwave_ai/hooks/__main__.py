@@ -58,7 +58,7 @@ from nwave_ai.platform.result import Failure
 
 
 EVENTS = ("PreToolUse", "SubagentStop", "SessionStart", "SessionEnd")
-HOSTS = ("claude", "codex", "cursor", "copilot", "omp", "opencode")
+HOSTS = ("claude", "codex", "cursor", "copilot", "omp", "opencode", "pi")
 _EVENT_ACTIONS = {
     "SubagentStop": "subagent-stop",
     "SessionStart": "session-start",

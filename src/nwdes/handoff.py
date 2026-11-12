@@ -790,7 +790,16 @@ ACCEPTANCE_SHAPE = replace(
 
 EXPECTATIONS = record(
     rows=array(
-        record(("text",), identity="E", promises=array(PROMISE_REFERENCE), text=TEXT)
+        record(
+            ("text",),
+            identity="E",
+            promises=array(PROMISE_REFERENCE),
+            text=TEXT,
+            lacuna=TEXT,
+            blocking=enum("yes", "no"),
+            isolated=enum("yes", "no"),
+            needs=TEXT,
+        )
     )
 )
 CHARTER = record(
@@ -819,8 +828,14 @@ VERDICT = choice(
                 "product_violation",
                 "expectation_defect",
                 "observation_gap",
+                "unstable",
             )
         },
+    ),
+    not_examined=record(
+        ("reason",),
+        required_error=RequiredError.PartInvalid,
+        reason=TEXT,
     ),
 )
 OBSERVATION_REFERENCE = Spec("draft_reference", ("O",))
@@ -3803,7 +3818,7 @@ def inspect_output(kind, data, *, policy=None, resolution=EMPTY):
 
 
 def _expectation_set_problems(previous, action):
-    """Revise needs a fixed set; apply over a fixed set replaces it."""
+    """Revise needs a fixed set; a fixed row never changes, see _expectation_row_problems."""
     return (
         (
             Defect(
@@ -3814,6 +3829,108 @@ def _expectation_set_problems(previous, action):
         )
         if action == "revise" and previous.expectations is None
         else ()
+    )
+
+
+_EXPECTATION_TEXT_FIELDS = ("text", "lacuna", "needs")
+
+
+def _row_content(row, resolve):
+    """What a row says, so a row is kept only when nothing it says changed.
+
+    `blocking` is absent for a blocking row and `isolated` for a sequential one; an absent
+    flag reads as its default, so a row that states the default is the same row.
+    """
+    return (
+        tuple(sorted(row.get("promises", ()))),
+        tuple(resolve(row.get(name)) for name in _EXPECTATION_TEXT_FIELDS),
+        row.get("blocking", "yes"),
+        row.get("isolated", "no"),
+    )
+
+
+def _fact_text(facts):
+    return lambda value: None if value is None else facts.get(value, value)
+
+
+def _lacuna_given(row):
+    lacuna = row.get("lacuna")
+    return isinstance(lacuna, str) and lacuna.strip() != ""
+
+
+def _readable(row, resolve):
+    """A published row whose texts resolve to text can be compared; a damaged one cannot.
+
+    A damaged previous row is unavailable, so the checks that read it stay silent while the
+    healthy rows still answer for themselves.
+    """
+    texts = [resolve(row.get(name)) for name in _EXPECTATION_TEXT_FIELDS]
+    return all(
+        value is None or isinstance(value, str) for value in texts
+    ) and isinstance(texts[0], str)
+
+
+def _withdrawable(previous, identity):
+    """A fixed row leaves the set only with the current verdict unmet as expectation_defect."""
+    verdict = (previous.examination or {}).get(identity) or {}
+    return verdict.get("verdict") == "unmet" and verdict.get("class") == (
+        "expectation_defect"
+    )
+
+
+def _expectation_row_problems(previous, payload):
+    """Fixed rows are append-only; a new or changed row states a lacuna.
+
+    A row keeps its id and its content until it is withdrawn. A row without an id takes the
+    next expectation number, which the counter keeps monotone. Pure over its inputs.
+    """
+    kept = {row["id"]: row for row in (previous.expectations or {}).get("rows", ())}
+    resolve_fact = _fact_text(previous.facts)
+    stated = {}
+    issued = previous.counters.get("E", 0)
+    for row in payload.get("rows", ()):
+        identity = row.get("id")
+        if identity is None:
+            issued += 1
+            identity = f"E{issued}"
+        stated[identity] = row
+    problems = []
+    for identity, row in stated.items():
+        if not _readable(row, _same):
+            continue
+        before = kept.get(identity)
+        if before is None:
+            if not _lacuna_given(row):
+                problems.append(
+                    Defect(
+                        "EmptyLacuna: " + identity,
+                        f"The expectation row {identity} states no lacuna. WHY: without a lacuna the row repeats the oracle of its promise.",
+                        "Say what the oracle of its promise does not see, with nwdes expectations row add --lacuna TEXT; a lacuna is required for each new or changed row.",
+                    )
+                )
+        elif _readable(before, resolve_fact) and _row_content(
+            row, _same
+        ) != _row_content(before, resolve_fact):
+            problems.append(_row_rewritten(identity))
+    for identity, before in kept.items():
+        if (
+            identity not in stated
+            and _readable(before, resolve_fact)
+            and not _withdrawable(previous, identity)
+        ):
+            problems.append(_row_rewritten(identity))
+    return tuple(problems)
+
+
+def _same(value):
+    return value
+
+
+def _row_rewritten(identity):
+    return Defect(
+        "RowRewritten: " + identity,
+        f"The fixed row {identity} changed or left the set. WHY: fixed rows are append-only; a row's content stays identical once published.",
+        f"Keep {identity} unchanged. It may leave the set only after its current verdict is unmet as expectation_defect; otherwise add a new row with nwdes expectations row add.",
     )
 
 
@@ -3874,28 +3991,24 @@ def uncited_verdict(expectation):
 def examination_verdicts(payload):
     observations = {row["id"]: row["text"] for row in payload["observations"]}
     return Record(
+        (expectation, Record(_published_fields(verdict, observations)))
+        for expectation, verdict in payload["verdicts"].items()
+    )
+
+
+def _published_fields(verdict, observations):
+    if verdict.get("verdict") == "not_examined":
+        return tuple(verdict.items())
+    return (
+        *((name, value) for name, value in verdict.items() if name != "observations"),
         (
-            expectation,
-            Record(
-                (
-                    *(
-                        (name, value)
-                        for name, value in verdict.items()
-                        if name != "observations"
-                    ),
-                    (
-                        "observations",
-                        tuple(
-                            dict.fromkeys(
-                                observations[identity]
-                                for identity in verdict["observations"]
-                            )
-                        ),
-                    ),
+            "observations",
+            tuple(
+                dict.fromkeys(
+                    observations[identity] for identity in verdict["observations"]
                 )
             ),
-        )
-        for expectation, verdict in payload["verdicts"].items()
+        ),
     )
 
 
@@ -3917,7 +4030,9 @@ def examination_observation_problems(payload):
         *(
             uncited_verdict(identity)
             for identity, verdict in verdicts.items()
-            if isinstance(verdict, Mapping) and not verdict.get("observations")
+            if isinstance(verdict, Mapping)
+            and verdict.get("verdict") != "not_examined"
+            and not verdict.get("observations")
         ),
         *(
             Defect(
@@ -3988,12 +4103,17 @@ def _examination_problems(previous, decoded):
 
 
 def examination_outcome(verdicts):
-    """Derive the outcome of a constructed total verdict set, never judge its evidence."""
-    return (
-        "accepted"
-        if all(verdict["verdict"] == "met" for verdict in verdicts.values())
-        else "rejected"
-    )
+    """Derive the outcome of a constructed verdict set, never judge its evidence.
+
+    The most serious state decides: an unmet row (FAIL or UNSTABLE) rejects, a row that was
+    not examined (declared by the examiner with a reason) is indeterminate, and only an all-met set is accepted.
+    """
+    states = {verdict["verdict"] for verdict in verdicts.values()}
+    if "unmet" in states:
+        return "rejected"
+    if "not_examined" in states:
+        return "indeterminate"
+    return "accepted"
 
 
 def _acceptance_statement_problems(payload, slice):
@@ -4326,6 +4446,11 @@ def _prepare_decoded(
         *(
             _expectation_set_problems(previous, application.action)
             if kind == "expectations"
+            else ()
+        ),
+        *(
+            _expectation_row_problems(previous, decoded.payload)
+            if kind == "expectations" and decoded.outcome == "accepted"
             else ()
         ),
         *(

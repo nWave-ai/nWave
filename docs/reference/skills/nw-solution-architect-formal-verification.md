@@ -1,6 +1,6 @@
 # nw-solution-architect-formal-verification
 
-PROCEDURE — formally verify every design's algebraic claims with need-selected checkers and explicit host-relayed installation or human waiver.
+Load in the model step to decide which design claims need a formal model, pick Quint or TLA+, and write, check and mutate-test it.
 
 **Used by:** [nw-solution-architect](../agents/nw-solution-architect.md)
 

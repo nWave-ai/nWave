@@ -1,6 +1,6 @@
 # nw-jtbd-core
 
-Core JTBD theory and job story format - job dimensions, job story template, job stories vs user stories, 8-step universal job map, outcome statements, and forces of progress
+Load when turning a request into promises, job stories or scenario titles.
 
 **Used by:** [nw-product-owner](../agents/nw-product-owner.md), [nw-product-owner-reviewer](../agents/nw-product-owner-reviewer.md)
 

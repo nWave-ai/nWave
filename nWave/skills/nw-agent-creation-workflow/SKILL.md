@@ -170,5 +170,5 @@ Reviewer agents pair with a primary agent and use the Reflection pattern:
 1. Set `model: haiku` in frontmatter (cost-efficient review)
 2. Use same tools as primary agent (no Write/Edit -- reviewers don't modify)
 3. Define structured critique output format (YAML)
-4. Include max 2 review iterations
+4. Include review rounds, referencing the review-round limit the role bundle prints (nwdes prompt) rather than a hardcoded count
 5. Define clear approval/rejection criteria

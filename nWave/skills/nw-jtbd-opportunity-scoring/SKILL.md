@@ -34,7 +34,7 @@ Outcome statement must be: **Solution-free** (no specific technology) | **Measur
 
 ### Deriving Outcome Statements
 
-Walk the 8-step job map (see `jtbd-core` skill) and generate 2-3 per step. Produces 16-24 outcome statements per job -- comprehensive view of customer needs.
+Walk the 8-step job map (Define, Locate, Prepare, Confirm, Execute, Monitor, Modify, Conclude) and generate 2-3 per step. Produces 16-24 outcome statements per job -- comprehensive view of customer needs.
 
 | Job Map Step | Outcome Statement Pattern |
 |-------------|--------------------------|
