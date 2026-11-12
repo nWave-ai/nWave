@@ -20,6 +20,12 @@ paste and who runs what.
 | [Resolve an outcomes collision](./howto-resolve-outcomes-collision.md) | Triage an `nwave-ai outcomes check` flag against an existing outcome | Intermediate |
 | [Invoke reviewer agents](./invoke-reviewer-agents/) | Request peer reviews from reviewer agents | Intermediate |
 
+## Recipes
+
+| Guide | Description | Level |
+|-------|-------------|-------|
+| [nWave Cookbook](./nwave-cookbook/) | Copy-paste recipes for architecture, refactoring, docs, tests and feature delivery, grounded in this repository | Beginner |
+
 ## Install and set up
 
 | Guide | Description | Level |
