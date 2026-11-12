@@ -3,6 +3,8 @@
 Copy-paste recipes for using nWave's skills and agents to improve a project.
 Each recipe is grounded in this repository's real files and sizes.
 
+Back to the [nWave README](../../../README.md) · [How-to guides](../HOW-TO.md)
+
 Run the categories in the order below when you can. Each one feeds the next.
 
 | # | Category | Use it when |
@@ -364,6 +366,13 @@ Acceptance oracle: what nw-user-examiner will independently verify —
 ```
 
 ---
+
+## Related
+
+- [How-to guides](../HOW-TO.md) — task-oriented procedures for nwdes delivery, install and upgrade.
+- [Skill reference](../../reference/skills/index.md) — every `/nw-*` skill and its inputs.
+- [Refactoring tutorial](../tutorial-refactoring/README.md) — a guided walk through the refactoring levels.
+- [Mikado method](../../reference/skills/nw-mikado.md) — the experimental planner for large refactors, used in the refactoring recipes.
 
 ## Glossary
 
