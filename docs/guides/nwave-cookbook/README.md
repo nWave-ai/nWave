@@ -1,7 +1,7 @@
-# nWave Prompt Playbook
+# nWave Cookbook
 
-Copy-paste prompts for using nWave's skills and agents to improve a project.
-Each prompt is grounded in this repository's real files and sizes.
+Copy-paste recipes for using nWave's skills and agents to improve a project.
+Each recipe is grounded in this repository's real files and sizes.
 
 Run the categories in the order below when you can. Each one feeds the next.
 
@@ -46,7 +46,7 @@ Then compare to nwave_ai/outcomes/ — which uses clean hexagonal structure
 
 ### 1.2 Find the natural seams in `config.py`
 
-*What it does:* `config.py` is 1,163 lines. It probably mixes reading, writing, checking, and default values. This prompt names those mixed parts. It does not change anything yet.
+*What it does:* `config.py` is 1,163 lines. It probably mixes reading, writing, checking, and default values. This recipe names those mixed parts. It does not change anything yet.
 *Agent:* `@nw-ddd-architect`
 
 ```text
@@ -77,7 +77,7 @@ before any changes are made.
 
 ### 1.4 Find what breaks when outside services are down
 
-*What it does:* `nwave_ai/update/` talks to outside systems (release discovery, package activity). This prompt lists each outside dependency and what the user would see if it failed.
+*What it does:* `nwave_ai/update/` talks to outside systems (release discovery, package activity). This recipe lists each outside dependency and what the user would see if it failed.
 *Skill:* `/nw-stress-analysis`
 
 ```text
@@ -110,7 +110,7 @@ Confirm: is upgrade_shell.py in the top tier? Explain why it keeps changing.
 
 **The pattern:** Scan → Review → Apply.
 
-Never ask for the scan and the change in the same prompt. The separate review catches false alarms and misses that the first scan made.
+Never ask for the scan and the change in the same recipe. The separate review catches false alarms and misses that the first scan made.
 
 **Refactoring levels (RPP):** `/nw-refactor` works through six levels, from easiest to deepest:
 
@@ -367,6 +367,7 @@ Acceptance oracle: what nw-user-examiner will independently verify —
 
 ## Glossary
 
+- **Recipe** — one copy-paste instruction, with its agent or skill and what it produces.
 - **Agent** — a specialist helper, written as `@name`. It does the work.
 - **Reviewer** — an agent whose job is to check someone else's work. It does not edit.
 - **Skill** — a reusable procedure, written as `/name`.
@@ -378,4 +379,4 @@ Acceptance oracle: what nw-user-examiner will independently verify —
 
 ## Where this came from
 
-Built from the nWave skill and agent definitions in `nWave/skills/` and `nWave/agents/`, and checked against this repository's file sizes and commit history. The refactoring prompts follow `nWave/skills/nw-refactor/SKILL.md`.
+Built from the nWave skill and agent definitions in `nWave/skills/` and `nWave/agents/`, and checked against this repository's file sizes and commit history. The refactoring recipes follow `nWave/skills/nw-refactor/SKILL.md`.
