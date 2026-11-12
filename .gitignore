@@ -18,3 +18,11 @@ dist/
 .idea/
 .vscode/
 .DS_Store
+# nWave config (keep .nwave/config.json trackable)
+.nwave/*
+!.nwave/config.json
+
+.omc/
+
+.reports/
+.test-results/
