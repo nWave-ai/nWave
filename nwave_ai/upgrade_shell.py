@@ -643,7 +643,7 @@ def _snapshot(
                     quoted = _cursor_build_hook_entry(python, lib, legacy_marker)
                     unquoted = {
                         **quoted,
-                        "command": f"PYTHONPATH={lib} {python} -m {legacy['hook_marker']} pre-tool-use",
+                        "command": f"PYTHONPATH={lib} {python} -m {legacy_marker} pre-tool-use",
                     }
                     forms = (quoted, unquoted)
                     receipts.append(
