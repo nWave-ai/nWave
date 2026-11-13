@@ -47,6 +47,8 @@ On rework, retain each previously declared ADR that the current repository regis
 
 A selectorless row with the same exact title but a different body from an accepted ADR in the same allocation prefix refuses; a title never establishes identity or supersession. For an independent decision use a distinct title. Equal-body selectorless replay may reuse an existing identity. Explicit supersession emits the successor before updating the predecessor; replay reuses the successor.
 
+A draft row set with `adr set --at N` keeps every optional member of the row that the set does not name: its prefix, and its selector pair (`key` or `supersedes`). Naming `--prefix` replaces the prefix; naming `--key` or `--supersedes` replaces the selector, so the row never holds both. `--at` counts rows from 1. Ratifying a published ADR after integration is `nwdes adr accept`; see [adr](adr.md).
+
 ## Replacement and withdrawal
 
 A valid replacement retires existing design identities absent from the candidate. Carry existing IDs for same-record edits; otherwise existing content-matching and identity-assignment rules apply. B2 and B3 replaced by B4 are retired identities, not aliases of B4: no dependent evidence transfers to B4.

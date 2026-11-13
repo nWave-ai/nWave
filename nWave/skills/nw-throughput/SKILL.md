@@ -28,7 +28,20 @@ wall time.
    apply the worktree lifecycle below when creating or inheriting a lane.
    A pending owner answer blocks only the work that depends on it; see nw-auto
    §4.
-3. Admit local test runs by capacity, not by one exclusive lock. Before each
+3. Admit local test runs by capacity, not by one exclusive lock. Run every
+   local test command through `nwave-ai tests run`: one queue per account
+   (two accounts on one machine do not coordinate) admits runs up to the
+   ceiling the project declares (one at a time unless declared otherwise),
+   never above what the cores and the available memory it detects allow. The
+   wait in the queue is not counted in the run's time limit, and each run ends
+   with a receipt: candidate, exact command, exit, wait, duration and, where
+   the platform gives it, peak memory. The wait has a declared limit
+   (`queue.max_wait_seconds`): a run that reaches it leaves the queue unrun,
+   INDETERMINATE, exit 75, and names the process, the command and the age of
+   each run ahead of it; a stuck run is stopped by its owner, never by the
+   queue. The command refuses, with what, why and how, when the project
+   declares how to check it and the tool under test resolves outside the tree
+   under test. The queue sees only the runs that go through it. Before each
    admission, the operator checks current box-wide load, including launchers
    outside the queue, and the headroom of any existing shared process,
    container or scope cap that bounds the lanes. Gate on `MemAvailable`, not
@@ -40,8 +53,8 @@ wall time.
    A single run passes the same check.
    Check the measured binding resource too: defer CPU-saturating work when it
    would increase end-to-end wall time or starve focused runs.
-   This is operator practice, not atomic reservation accounting: no box-wide
-   reservation mechanism exists here, and per-worktree locks cannot provide one.
+   For launchers outside the queue this is operator practice, not atomic
+   reservation accounting: per-worktree locks cannot provide one.
    One operator coordinates admissions across lanes; independent operators must
    coordinate before launch because a load snapshot alone cannot prevent races.
    Keep exclusivity only for a resource shown to be shared and mutable.
@@ -53,14 +66,23 @@ wall time.
    change as unverified until that run returns, or for as long as no CI capacity
    can run it. Starving the box can kill other lanes' work and can corrupt `.git`.
    An OOM-killed run is INDETERMINATE, never a red.
-4. The operator orders waiting runs shortest first (RED, GREEN, focused tests
-   before broad runs), with aging: after a broad run waits 1200 s (Ale's chosen
-   bound), it goes next and nothing behind it starts until it fits. Never
-   preempt a running test. This is a manual queue policy, not an implemented gate.
+4. The queue orders waiting runs by the classes the project declares, the
+   first class first (RED, GREEN, focused tests before broad runs), with
+   aging: after a run of a later class waits the declared threshold (1200 s
+   unless declared otherwise, Ale's chosen bound), it goes next and nothing
+   behind it starts until it fits. Never preempt a running test. Name the
+   class of a run with `--class`. A run started outside `nwave-ai tests run`
+   is outside this order: the operator applies the same policy by hand.
 5. Minimize broad local runs. Do not rerun a broad scope locally once per
    commit or per slice. Commit with the focused checks and batch related slices.
-   The focused checks are the tests a reliable test-impact analysis selects over
-   the change (dependency-affected tests), run locally within rule 3 or, when
+   The focused checks are the tests `nwave-ai tests select` lists over the
+   change (dependency-affected tests, through any number of files, including
+   the modules and scripts a test starts as a separate process), at the depth
+   the project declares for the use named with `--use`. Same change, same
+   list; a reviewer or an executor may only add tests to it (`--add`). When a
+   changed file has no dependency adapter the selector says INDETERMINATE and
+   lists the widest group the project declares: it never guesses. Run the list
+   locally within rule 3 or, when
    rule 3 forbids the selected set, as one complete CI run; the default CI suite
    (300 s unless a repository ADR sets another) and each feature's infrastructure suite at its
    declared trigger run the rest (`test:feedback-loop-budget` in `nw-cross-cutting-invariants`).
@@ -157,16 +179,20 @@ contract within the shared repair-scope clause, then run the required broad veri
 Diagnosing an interface migration does not itself authorize that migration. Selected files are evidence
 about that scope only; they do not establish whole-project coverage.
 
-Use the repository's own affected-test selector when it exists. In this Python
+Use the repository's own affected-test selector: `nwave-ai tests select`
+reads the project's declaration and lists the affected test files for a
+declared use. In this Python
 repository, `python3 scripts/hooks/pytest_touched_files.py --diagnose PATH ...`
-is available: it launches every selected runnable file within the normal
+is also available: it asks the same selector, launches every selected
+runnable file within the normal
 bounded ceiling without early stopping, clears ambient `PYTEST_ADDOPTS`
 selection filters, and prints the exact argv plus deferred and uncovered paths.
 Repository collection configuration still applies. It returns nonzero for
 failures, zero collection, an oversized scope, or a scope left incomplete by
 deferred/uncovered paths. The ordinary pre-commit command runs every selected runnable file
 within the same bounded ceiling and reports every failure, not only the first. This example is not a
-cross-language requirement: another repository uses its native executor and
+cross-language requirement: another repository declares its own test command
+and dependency adapter, and
 must report the corresponding selected, deferred, and uncovered scope loudly.
 
 The LLM selects the scope and the next commands from the observed failures. Do

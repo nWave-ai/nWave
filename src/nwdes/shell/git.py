@@ -10,11 +10,20 @@ from nwdes.shell.ports import GitResult, Unreadable
 
 
 def run_git(
-    root: str | None, arguments: tuple[str, ...], *, env=None
+    root: str | None,
+    arguments: tuple[str, ...],
+    *,
+    env=None,
+    stdin: bytes | None = None,
 ) -> GitResult | Unreadable:
     try:
         result = subprocess.run(
-            ["git", *arguments], cwd=root, env=env, capture_output=True, check=False
+            ["git", *arguments],
+            cwd=root,
+            env=env,
+            input=stdin,
+            capture_output=True,
+            check=False,
         )
         return GitResult(result.returncode, result.stdout, result.stderr)
     except OSError as error:

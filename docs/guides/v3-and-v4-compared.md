@@ -53,8 +53,6 @@ What stays the same is the idea of v3's adversarial review: an independent judge
 
 One honest limit: nothing blocks the integration of the lane when an examination did not pass. nWave records the verdicts; reading them and deciding is yours.
 
-The dynamic route (`/nw-dynamic`) records its examination in its own step record: the examiner's id and one line per fixed row. That route's lines carry their own words — `pass`, `fail`, `not-examined`, `unstable` — where the spine's examination speaks of `met`, `unmet` and `not_examined`; the two vocabularies belong to their own routes and are not interchangeable.
-
 ## The rigor conversation
 
 Both limits are set with one command: `nwave-ai rigor`. On a terminal it asks six questions, one at a time: the model for each role, the review rounds, the examine level, the documents for people, the document language — asked only when documents is `yes` — and the hosts. Each question says what it is, why to change it, its answers and its default. Enter keeps the value in effect. A wrong answer asks the same question again; it does not abort. A closed terminal, where no question can be asked, refuses once and names every question that has no answer. The answers go to `.nwave/config.json` in the repository; the global file is read, never written. `nwave-ai rigor --show` prints every value with its source and writes nothing.

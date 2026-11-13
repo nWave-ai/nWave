@@ -217,12 +217,11 @@ class DevinSkillsPlugin(InstallationPlugin):
                 command_skills,
                 private_skills,
             )
-            # Dev-only: the private dynamic command projected from its one
-            # source, staged in a temporary directory that the finally
-            # removes even when the install fails (review N3).
+            # The dynamic command skill is rendered from its one source, staged in
+            # a temporary directory that the finally removes even on failure.
             dynamic_staging = Path(tempfile.mkdtemp(prefix="nwave-dynamic-skill-"))
             dynamic_entry = dynamic_skill_entry(
-                context.dev_mode, context.project_root / "nWave", dynamic_staging
+                context.project_root / "nWave", dynamic_staging
             )
             if dynamic_entry is not None:
                 entries.append(dynamic_entry)

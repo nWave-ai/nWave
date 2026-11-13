@@ -137,6 +137,7 @@ _ATD = (
     _path("adrs", "design.adrs"),
 )
 _CRAFTER_ROLES = ("nw-software-crafter", "nw-functional-software-crafter")
+_DESIGN_REVIEW_SUBJECT = "design"
 
 
 def _recipe(identity, roles, sources, task=None, *, admits=()):
@@ -189,6 +190,7 @@ RECIPES = (
             _path("product"),
             _path("adrs", "design.adrs"),
             _derived("design", "current_design"),
+            _derived("fixed"),
             _derived("asks"),
             *_TAIL,
         ),
@@ -323,6 +325,22 @@ RECIPES = (
         optional=frozenset(("slice",)),
         review_subject="candidate",
         slice_review_subject="slice",
+    ),
+    replace(
+        _recipe(
+            "review.design-v1",
+            ("nw-solution-architect-reviewer",),
+            (
+                _path("feature", "scope.id"),
+                _path("request"),
+                _path("paradigm", "design.paradigm"),
+                _path("adrs", "design.adrs"),
+                _derived("authority", "authority/review"),
+                _input("diff"),
+                *_TAIL,
+            ),
+        ),
+        review_subject=_DESIGN_REVIEW_SUBJECT,
     ),
 )
 _RECIPE_INDEX = MappingProxyType({recipe.id: recipe for recipe in RECIPES})
@@ -467,6 +485,17 @@ def check_consumers(paths, consumers):
     )
 
 
+def _task_remedy(role):
+    """The concrete --task choices this role accepts, as a HOW line."""
+    tasks = tuple(dict.fromkeys(recipe.task for recipe in _ROLE_INDEX[role]))
+    named = tuple(f"--task {task}" for task in tasks if task is not None)
+    if None not in tasks:
+        return "Use " + " or ".join(named) + " for this role."
+    if not named:
+        return "Omit --task: this role's bundle takes no task."
+    return "Use " + " or ".join(("omit --task", *named)) + " for this role."
+
+
 def recipe_for(role, task=None, phase=None):
     if role is None:
         return checked(None, (model.missing_flag("role"),))
@@ -480,7 +509,14 @@ def recipe_for(role, task=None, phase=None):
     if not candidates:
         return checked(
             None,
-            (_problem("InconsistentFacts", "--task", "This role has no such task."),),
+            (
+                _problem(
+                    "InconsistentFacts",
+                    "--task",
+                    "This role has no such task.",
+                    _task_remedy(role),
+                ),
+            ),
         )
     if len(candidates) > 1:
         candidates = tuple(
@@ -881,7 +917,8 @@ def _recipe_problems(inspection, recipe, scalar):
         *_prose_problems(recipe, previous, target),
         *(
             (model.missing_flag("commit"),)
-            if recipe.review_subject is not None and inputs.commit is None
+            if recipe.review_subject not in (None, _DESIGN_REVIEW_SUBJECT)
+            and inputs.commit is None
             else ()
         ),
         *_packet_problems(inspection, recipe),
@@ -1433,6 +1470,7 @@ class _View:
     reached: model.Handoff | None
     craft: model.Handoff | None
     owed: tuple = ()
+    fixed: tuple = ()
 
 
 def _relative_path(path, root):
@@ -1634,6 +1672,7 @@ def recording_kind(recipe):
         "craft.prefactor-v4": "craft",
         "review.atd-v1": "review",
         "review.craft-v1": "review",
+        "review.design-v1": "review",
     }[recipe.id]
 
 
@@ -1693,7 +1732,9 @@ def _verb_reference(recipe, inputs, handoff, policy):
         revision
         + "\n".join(recording)
         + "\n\n"
-        + grammar.describe(kind, role=inputs.role, policy=policy)
+        + grammar.describe(
+            kind, role=inputs.role, policy=policy, subject=recipe.review_subject
+        )
     )
 
 
@@ -1734,6 +1775,25 @@ def _accepted(member):
         prefixes = "".join(prefix + "<n> " for prefix in item.members)
         return prefixes + "identities already recorded in this handoff"
     return "free text"
+
+
+def _fixed(view):
+    """The user's Confirmed product decisions, quoted verbatim as FIXED lines in the architect bundle."""
+    if not view.fixed:
+        return _NONE
+    return Printed(
+        "\n".join(
+            [FIXED_RULE, *(f"FIXED: {text}" for text in view.fixed)],
+        )
+    )
+
+
+FIXED_RULE = "FIXED by the owner: do not change. Propose a change only as a labelled REQUEST TO OWNER."
+
+
+def _confirmed_decisions(handoff):
+    """The raw text of each Confirmed product decision, read before fact references replace it."""
+    return model.confirmed_decision_texts(handoff.product, handoff.facts)
 
 
 def _asks(view):
@@ -1793,6 +1853,7 @@ _DERIVATIONS = MappingProxyType(
         "charter_slices": _charter_slices,
         "examine_level_line": _examine_level_text,
         "asks": _asks,
+        "fixed": _fixed,
         "examine_rework": _examine_rework,
     }
 )
@@ -1818,6 +1879,7 @@ def _render_ready(plan):
         if plan.inputs.slice is not None
         else ()
     )
+    fixed = _confirmed_decisions(plan.handoff)
     references = (
         documents.fact_references(plan.handoff, (plan.inputs, plan.template))
         if any(
@@ -1837,7 +1899,7 @@ def _render_ready(plan):
         if any(source.name == "craft_view" for source in plan.recipe.sources)
         else None
     )
-    view = _View(plan, reached, craft, owed)
+    view = _View(plan, reached, craft, owed, fixed)
 
     def field(source):
         if source.kind in ("input", "role"):

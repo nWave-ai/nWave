@@ -11,7 +11,7 @@ The bundle supports [Claude Code](https://claude.com/product/claude-code) and [C
 | Complete a first feature | [Your First Feature](../docs/guides/tutorial-first-feature/) |
 | Choose waves or a direct route | [Wave Routing Guide](../docs/guides/wave-routing-and-entry-points/) |
 | Look up commands and agents | [Commands Reference](../docs/reference/commands/index.md) and [Agents Reference](../docs/reference/agents/index.md) |
-| Select a provider and model | [`nw-rigor` guidance](skills/nw-rigor/SKILL.md) and [Global Config Reference](../docs/reference/global-config.md) |
+| Set review rounds, examine level, provider and model | [`nw-rigor` guidance](skills/nw-rigor/SKILL.md) and [Global Config Reference](../docs/reference/global-config.md) |
 | Understand native role execution | [`nw-role-invocation`](skills/nw-role-invocation/SKILL.md): the host runs models and verification; nwdes builds documents |
 | Understand where artifacts go | [Wave Directory Structure](../docs/guides/wave-directory-structure/) |
 | Diagnose installation issues | [Installation Guide](../docs/guides/installation-guide/) and [Troubleshooting](../docs/guides/troubleshooting-guide/) |

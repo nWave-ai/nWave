@@ -1,0 +1,31 @@
+## FROM NWDES
+Feature: {{feature}}
+working directory: {{repo_root}}
+jev: {{jev}}
+review rounds: {{review_rounds}}
+{{model_fact}}
+{{readable_brief}}
+known baseline failures:
+{{baseline_failures}}
+Request:
+{{request}}
+Paradigm: {{paradigm}}
+Authority:
+{{authority}}
+ADRs:
+{{adrs|bullets}}
+Delta (nwdes delta between the previous and the current handoff; a changed shared decision or ADR is the trigger):
+{{diff}}
+
+## Peer contact
+Shared rule: flow:findings-go-to-the-owner-directly (skill nw-cross-cutting-invariants); apply within existing role boundaries.
+
+## TASK
+Read and write only under the working directory. Judge the changed shared decision or ADR named in the delta against the request and the design files in FROM THE ROOT. Separate evidence gaps from defects; each finding names its location, its obligation and its remedy, and its owner is design.
+Record the review for the whole feature: it has no slice. Use nwdes review observation add, nwdes review finding add and nwdes review close with --subject design.
+
+## RECORD
+Record observations and findings, then close accepted or rejected with --subject design. Missing evidence refuses close. Keep every finding's owner and remedy. No continuation.
+
+## FROM THE ROOT (verbatim)
+{{root_input}}

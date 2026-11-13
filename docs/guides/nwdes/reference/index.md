@@ -19,6 +19,7 @@ This reference is checked against actual help output. Each linked page covers on
 | [prompt](prompt.md) | Render role prompts |
 | [packet](packet.md) | Render review or examination packets |
 | [lane](lane.md) | Optionally isolate work; integrate also removes the lane without force |
+| [adr](adr.md) | Ratify a Proposed ADR as Accepted; records the operator and the UTC second |
 | [commit](commit.md) | Commit only the calling role's owned files with configured identity and hooks |
 | [measure](#measure) | Read supplied intervals or qualify native delivery measurement |
 

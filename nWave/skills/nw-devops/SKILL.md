@@ -54,6 +54,8 @@ Keep platform review replies verbatim. The host invokes models, runs native
 checks and retains actual output. Declared operational facts and rendered
 documents do not deploy or verify infrastructure.
 
+Guidance, not enforced by nwdes: when a design declares an auto-deploy target, the architect should record in the shared DESIGN constraint the target, its trigger and its health endpoint, and should record as a slice `verification` command a deploy probe the host can run against that target or a faithful mirror. nwdes does not check that the probe ran or that its output exists; a close with `--outcome indeterminate --diagnostic TEXT` that names the missing probe is the honest outcome when it cannot run.
+
 Before creating or inheriting a lane, or finalizing/resuming cleanup, apply
 the worktree lifecycle in `nw-throughput`. The feature's handoff and product
 brief are its record; there is no separate evolution constructor.

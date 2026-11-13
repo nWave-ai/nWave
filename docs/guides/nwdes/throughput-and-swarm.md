@@ -39,7 +39,14 @@ Delivery lanes).
 
 ## Admitting local runs by capacity
 
-Never run the whole suite locally. Before each local test run, the operator
+Never run the whole suite locally. Run every local test command through
+`nwave-ai tests run`: one queue per account admits runs up to the
+ceiling the project declares, within the cores and available memory it
+detects, and writes a receipt per run. Two accounts on one machine have two
+queues and do not coordinate. A run that waits past the declared
+`queue.max_wait_seconds` leaves the queue unrun (INDETERMINATE, exit 75) and
+names the runs ahead of it. The queue sees only the runs that go
+through it, so before each local test run the operator still
 checks box-wide load — including launchers outside any queue — and gates on
 `MemAvailable` (not `MemFree`, not load): judge whether current capacity
 covers the run alongside work already running on the box, and whether any
@@ -48,15 +55,19 @@ other lanes' work and can corrupt `.git`. An OOM-killed run is
 INDETERMINATE, never a red
 (`nWave/skills/nw-throughput/SKILL.md`, § Strategy rule 3).
 
-Admission is operator practice, not an atomic reservation: one operator
+For launchers outside the queue, admission is operator practice, not an atomic
+reservation: one operator
 coordinates admissions across lanes, and independent operators must coordinate
 before launching. Defer CPU-saturating work when it would slow
-focused runs. Broad runs that exceed local capacity go to CI as one complete
+focused runs. The tests of a change are the list of `nwave-ai tests select`;
+a list that exceeds local capacity goes to CI as one complete
 run; never narrow the selection to fit (`nWave/skills/nw-throughput/SKILL.md`,
 § Strategy rules 3 and 5). The full admission rule text is in the throughput
-skill; this guide states only the shape.
+skill; this guide states only the shape. The declaration both commands read is
+described in `docs/reference/test-queue-and-selector.md`.
 
-The operator orders waiting runs shortest first (focused before broad), with an
+The queue orders waiting runs by declared class, the first class first
+(focused before broad), with an
 aging bound after which a long-waiting broad run goes next; never preempt a
 running test (`nWave/skills/nw-throughput/SKILL.md`, § Strategy rule 4).
 

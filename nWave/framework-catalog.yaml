@@ -1,5 +1,5 @@
 name: nWave
-version: 4.3.0
+version: 4.4.0
 description: "Comprehensive DISCOVER\u2192DIVERGE\u2192DISCUSS\u2192DESIGN\u2192DEVOPS\u2192\
   DISTILL\u2192DELIVER methodology with visual architecture lifecycle management"
 author: nWave Team
@@ -519,6 +519,17 @@ commands:
     wave: CROSS_WAVE
     outputs:
     - research_document
+  dynamic:
+    description: Runs a step-recorded delivery from init to briefs.
+    argument_hint: '[interactive] [request or request-file]'
+    agents: []
+    wave: CROSS_WAVE
+    outputs: []
+    listed: false
+    unlisted_terms:
+    - nwstep
+    - dynamic mode
+    - dynamic route
 quality_gates:
   knowledge_preservation:
     software-crafter: 925_lines_methodology

@@ -17,6 +17,7 @@
 | architect-handoff/po.discuss-v1.tmpl | handoff prompt | nwdes handoff prompt po.discuss (version 1) |
 | architect-handoff/review.atd-v1.tmpl | handoff prompt | nwdes handoff prompt review.atd (version 1) |
 | architect-handoff/review.craft-v1.tmpl | handoff prompt | nwdes handoff prompt review.craft (version 1) |
+| architect-handoff/review.design-v1.tmpl | handoff prompt | nwdes handoff prompt review.design (version 1) |
 | beta-project-agents-section.md | markdown | nWave (beta) — How to Work in This Project |
 | beta-project-claude-section.md | markdown | nWave (beta) — How to Work in This Project |
 | delivery-route-fragment.md | markdown | Three routes are open to a Request: |

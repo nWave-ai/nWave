@@ -152,13 +152,20 @@ def _declared_status(root, relative):
 
 
 def projection(root):
-    listing = _git(
-        root, ("ls-tree", "-r", "-z", "HEAD", "--", *prose.PUBLIC_PROJECTION[0])
-    )
+    listing = _git(root, ("ls-tree", "-r", "-z", "HEAD"))
     if isinstance(listing, Refused):
         return listing
+    configured = _committed(root, packets.CONFIG_FILE)
+    if isinstance(configured, Refused):
+        return configured
+    declared_public = packets.public_declaration(configured.value)
+    if isinstance(declared_public, Refused):
+        return declared_public
+    entries = packets.public_entries(
+        listing.value, prose.examined_patterns(declared_public.value)
+    )
     files = {}
-    for name, identity in packets.public_entries(listing.value):
+    for name, identity in entries:
         content = _git(root, ("cat-file", "blob", identity))
         if isinstance(content, Refused):
             return content
@@ -169,9 +176,6 @@ def projection(root):
         if isinstance(found, Refused):
             return found
         manifests[name] = found.value
-        if found.value is not None:
-            # the first committed manifest in precedence order decides; a later one is never read
-            break
     common = _git(root, ("rev-parse", "--path-format=absolute", "--git-common-dir"))
     if isinstance(common, Refused):
         return common
@@ -180,7 +184,7 @@ def projection(root):
         path: _declared_status(root, path) for path in packets.required_paths(declared)
     }
     planned = packets.public_projection(
-        listing.value, files, declared, str(root), executables
+        entries, files, declared, str(root), executables
     )
     if isinstance(planned, Refused):
         return planned
@@ -221,18 +225,26 @@ def _enumerate(workspace):
     return tuple(entries)
 
 
+def _real_path(workspace):
+    """The workspace named through the real path of its parent. A link above the workspace, such as the
+    system folder on macOS (/var -> /private/var), is resolved; a link inside the workspace is still seen
+    by the inspection, since only the parent is resolved."""
+    absolute = Path(workspace).absolute()
+    return absolute.parent.resolve() / absolute.name
+
+
 def inspect(projection, workspace, roots):
+    real = _real_path(workspace)
     try:
-        if workspace.is_symlink():
+        if real.is_symlink():
             return checked(
                 None, (packets.workspace_contaminated(("workspace symlink",)),)
             )
         return packets.inspect_workspace(
             projection,
-            str(workspace),
-            str(workspace.resolve()),
+            str(real),
             roots,
-            _enumerate(workspace),
+            _enumerate(real),
         )
     except OSError as error:
         return checked(None, (packets.workspace_contaminated((str(error),)),))
@@ -262,6 +274,16 @@ def _record(records, handoff, workspace, candidate):
     (Path(records) / name).write_text(json.dumps(entry), encoding="utf-8")
 
 
+def _new_workspace():
+    """A new empty folder for one examination workspace, made in the real system temporary folder.
+
+    A system folder reached through a symbolic link (macOS /var -> /private/var) would name the
+    workspace by a path that is not its real path; the folder is resolved before the workspace is made.
+    """
+    real = Path(tempfile.gettempdir()).resolve()
+    return Path(tempfile.mkdtemp(prefix=WORKSPACE_PREFIX, dir=real))
+
+
 def materialize(root, records, handoff):
     root = Path(root).resolve()
     planned = projection(root)
@@ -278,7 +300,7 @@ def materialize(root, records, handoff):
             sys.stderr.write("\nKEPT " + path + " - " + reason + "\n")
     workspace = None
     try:
-        workspace = Path(tempfile.mkdtemp(prefix=WORKSPACE_PREFIX))
+        workspace = _new_workspace()
         (workspace / "public").mkdir()
         (workspace / "scratch").mkdir()
         for name, content in public.files:
@@ -413,9 +435,28 @@ def _read_path(workspace, path):
     )
 
 
+def _start(plan, **placement):
+    """Start the plan's command with its environment and streams captured; placement says how it starts."""
+    return subprocess.run(
+        plan.argv,
+        cwd=plan.cwd,
+        env=dict(plan.environment),
+        capture_output=True,
+        check=False,
+        **placement,
+    )
+
+
+def _pass_through(result, candidate):
+    """Write the child's streams with the candidate path masked, and return its exit status."""
+    sys.stdout.buffer.write(packets.mask_candidate(result.stdout, candidate))
+    sys.stderr.buffer.write(packets.mask_candidate(result.stderr, candidate))
+    return result.returncode
+
+
 def run(root, workspace, action, arguments):
     root = Path(root).resolve()
-    workspace = Path(workspace).absolute()
+    workspace = _real_path(workspace)
     planned = projection(root)
     if isinstance(planned, Refused):
         return planned
@@ -487,13 +528,7 @@ def run(root, workspace, action, arguments):
     if plan.executable is not None:
         return _run_declared(root, plan)
     try:
-        result = subprocess.run(
-            plan.argv,
-            cwd=plan.cwd,
-            env=dict(plan.environment),
-            capture_output=True,
-            check=False,
-        )
+        result = _start(plan)
     except OSError as error:
         return checked(
             None,
@@ -505,29 +540,54 @@ def run(root, workspace, action, arguments):
                 ),
             ),
         )
-    sys.stdout.buffer.write(packets.mask_candidate(result.stdout, plan.candidate))
-    sys.stderr.buffer.write(packets.mask_candidate(result.stderr, plan.candidate))
-    return result.returncode
+    return _pass_through(result, plan.candidate)
 
 
 def _run_declared(root, plan):
     """Run the declared executable that was checked, passing its exit and streams through. The program
-    is started through /dev/fd/N, the very file the descriptor walk checked."""
+    is started through /dev/fd/N, the very file the descriptor walk checked. Where the system refuses
+    that start for permission, the same file is verified again and started by its path; a file that
+    changed or became a link in between is refused and not started."""
+    status, handle = _open_declared(root, plan.executable)
+    if handle is None:
+        return checked(
+            None, (packets.executable_defect(plan.executable, status, plan.remedy),)
+        )
+    first = packets.file_identity(os.fstat(handle))
+    try:
+        result = _start(plan, executable=f"/dev/fd/{handle}", pass_fds=(handle,))
+    except OSError as error:
+        if error.errno not in (errno.EACCES, errno.EPERM):
+            return checked(
+                None,
+                (
+                    packets.executable_launch_failure(
+                        plan.executable, error, plan.remedy
+                    ),
+                ),
+            )
+        return _relaunch_by_path(root, plan, first, error)
+    finally:
+        os.close(handle)
+    return _pass_through(result, plan.candidate)
+
+
+def _relaunch_by_path(root, plan, first, refusal):
+    """Start the declared file by its path, once it is verified again: a regular file with the identity
+    verified before the descriptor start. The outcome line says the launch was by path."""
     status, handle = _open_declared(root, plan.executable)
     if handle is None:
         return checked(
             None, (packets.executable_defect(plan.executable, status, plan.remedy),)
         )
     try:
-        result = subprocess.run(
-            plan.argv,
-            executable=f"/dev/fd/{handle}",
-            pass_fds=(handle,),
-            cwd=plan.cwd,
-            env=dict(plan.environment),
-            capture_output=True,
-            check=False,
-        )
+        if not packets.same_file(first, packets.file_identity(os.fstat(handle))):
+            return checked(
+                None, (packets.executable_changed(plan.executable, plan.remedy),)
+            )
+        sys.stderr.write(packets.launched_by_path_note(plan.executable, refusal))
+        sys.stderr.flush()
+        result = _start(plan, executable=str(Path(root) / plan.executable))
     except OSError as error:
         return checked(
             None,
@@ -535,9 +595,7 @@ def _run_declared(root, plan):
         )
     finally:
         os.close(handle)
-    sys.stdout.buffer.write(packets.mask_candidate(result.stdout, plan.candidate))
-    sys.stderr.buffer.write(packets.mask_candidate(result.stderr, plan.candidate))
-    return result.returncode
+    return _pass_through(result, plan.candidate)
 
 
 def _rounds_path(records, handoff):

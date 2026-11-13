@@ -40,6 +40,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from nwave_ai.platform.advisory_lock import try_lock, unlock
+
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -90,43 +92,6 @@ def session_key(host: str, session_id: str) -> str:
 
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
-
-
-def _try_lock(fd: int) -> bool:
-    try:
-        import fcntl
-    except ImportError:  # pragma: no cover - Windows only
-        import msvcrt
-
-        try:
-            os.lseek(fd, 0, os.SEEK_SET)
-            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-            return True
-        except OSError:
-            return False
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return True
-    except OSError:
-        return False
-
-
-def _unlock(fd: int) -> None:
-    try:
-        import fcntl
-    except ImportError:  # pragma: no cover - Windows only
-        import msvcrt
-
-        try:
-            os.lseek(fd, 0, os.SEEK_SET)
-            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-        except OSError:
-            pass
-        return
-    try:
-        fcntl.flock(fd, fcntl.LOCK_UN)
-    except OSError:
-        pass
 
 
 class SessionActivityRegistry:
@@ -219,14 +184,14 @@ class SessionActivityRegistry:
         acquired = False
         try:
             deadline = time.monotonic() + max(wait_seconds, 0.0)
-            acquired = _try_lock(fd)
+            acquired = try_lock(fd)
             while not acquired and time.monotonic() < deadline:
                 time.sleep(0.05)
-                acquired = _try_lock(fd)
+                acquired = try_lock(fd)
             yield acquired
         finally:
             if acquired:
-                _unlock(fd)
+                unlock(fd)
             os.close(fd)
 
     def _write_json(self, target: Path, document: dict[str, object]) -> None:

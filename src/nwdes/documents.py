@@ -9,6 +9,7 @@ import string
 from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, is_dataclass, replace
+from datetime import UTC, datetime
 from enum import Enum
 from functools import partial, reduce
 from html import escape
@@ -438,6 +439,148 @@ def _foreign(entry):
                 "add a new ADR or migrate the file by hand",
             ),
         ),
+    )
+
+
+@dataclass(frozen=True)
+class Ratifier:
+    """The operator who decides a ratification: a non-blank name, built through `of`."""
+
+    name: str
+
+    @classmethod
+    def of(cls, name: str | None) -> Built[Ratifier] | Refused:
+        if name is None:
+            return checked(
+                None,
+                (
+                    Defect(
+                        "MissingFact: --by",
+                        "A ratification records the operator who decided it, and no operator was given.",
+                        "Pass --by with the operator's name, then rerun the same nwdes adr accept command.",
+                    ),
+                ),
+            )
+        if not name.strip():
+            return checked(
+                None,
+                (
+                    Defect(
+                        "PartInvalid: --by",
+                        "The operator's name is blank; a ratification with no name records no decision.",
+                        "Pass --by with the operator's name rather than an empty value, then rerun the same nwdes adr accept command.",
+                    ),
+                ),
+            )
+        return Built(cls(name))
+
+
+@dataclass(frozen=True)
+class RatifiedAt:
+    """The whole UTC second, counted from the epoch, at which an operator ratified."""
+
+    epoch_seconds: int
+
+    @property
+    def text(self) -> str:
+        return datetime.fromtimestamp(self.epoch_seconds, UTC).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+
+
+def ratification_filename(key: AdrKey) -> str:
+    return f"ADR-{key.text}.ratification.json"
+
+
+def ratification_record(key: AdrKey, ratifier: Ratifier, at: RatifiedAt) -> bytes:
+    return (
+        json.dumps(
+            {"key": key.text, "ratified_at": at.text, "ratified_by": ratifier.name},
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+@dataclass(frozen=True)
+class Ratified:
+    """The writes of one ratification, record first; the ADR status line changes last."""
+
+    outputs: tuple[Output, ...]
+
+
+@dataclass(frozen=True)
+class AlreadyAccepted:
+    path: str
+
+
+def select_adr_entry(
+    entries: tuple[AdrEntry, ...], key: str | None, directory: str
+) -> Built[AdrEntry] | Refused:
+    """The register entry a ratification names; an absent or unknown key is refused."""
+    if key is None:
+        return checked(
+            None,
+            (
+                Defect(
+                    "MissingFact: --key",
+                    "A ratification names the ADR it accepts, and no key was given.",
+                    "Pass --key with the key of a Proposed ADR in "
+                    + directory
+                    + ", then rerun the same command.",
+                ),
+            ),
+        )
+    entry = next((entry for entry in entries if entry.key.text == key), None)
+    if entry is None:
+        return checked(
+            None,
+            (
+                Defect(
+                    "DanglingReference: " + key,
+                    "No ADR file in " + directory + " holds this key.",
+                    "Pass the key of an ADR file in "
+                    + directory
+                    + ", then rerun the command.",
+                ),
+            ),
+        )
+    return Built(entry)
+
+
+def ratify_adr(
+    entry: AdrEntry, ratifier: Ratifier, at: RatifiedAt, directory: str
+) -> Built[Ratified | AlreadyAccepted] | Refused:
+    """Decide one ADR file's ratification: only a Proposed file changes, and only its status line."""
+    if entry.body is None:
+        return _foreign(entry)
+    path = directory + "/" + entry.path
+    if entry.status == "Accepted":
+        return Built(AlreadyAccepted(path))
+    if entry.status != "Proposed":
+        return checked(
+            None,
+            (
+                Defect(
+                    f"AdrTransitionInvalid: {entry.key.text}",
+                    f"Only a Proposed ADR can be ratified; this ADR reads {entry.status!r}.",
+                    "Ratify the ADR that supersedes it, or keep this superseded decision as recorded.",
+                ),
+            ),
+        )
+    return Built(
+        Ratified(
+            (
+                Output(
+                    OutputKind.Adr,
+                    directory + "/" + ratification_filename(entry.key),
+                    ratification_record(entry.key, ratifier, at),
+                ),
+                Output(OutputKind.Adr, path, _with_status(entry, "Accepted").data),
+            )
+        )
     )
 
 

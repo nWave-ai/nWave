@@ -696,29 +696,50 @@ def show_lines(effective: EffectiveScope) -> list[str]:
     return lines
 
 
+def _with_owned(section: Any, owned: dict[str, Any]) -> dict[str, Any]:
+    """Pure: the section with the rigor-owned keys set; every sibling key survives."""
+    merged = dict(section) if isinstance(section, dict) else {}
+    merged.update(owned)
+    return merged
+
+
 def rigor_mutate(document: dict[str, Any], plan: dict[str, Any]) -> None:
-    """INV3: touch only rigor-owned keys; the writer replaces the whole document.
+    """INV3: set only the rigor-owned keys at each depth; every other key survives.
 
     ``plan`` carries the validated answers; keeps write nothing for their area.
     """
     if plan["review_rounds"] is not None:
-        document["review"] = {"max_rounds": plan["review_rounds"]}
+        document["review"] = _with_owned(
+            document.get("review"), {"max_rounds": plan["review_rounds"]}
+        )
     if plan["examine_level"] is not None:
-        document["examine"] = {"level": plan["examine_level"]}
+        document["examine"] = _with_owned(
+            document.get("examine"), {"level": plan["examine_level"]}
+        )
     if plan["documents_enabled"] is not None:
-        document["documents"] = {
-            "readable_brief": {
-                "enabled": plan["documents_enabled"],
-                "language": plan["documents_language"],
-            }
-        }
+        documents = document.get("documents")
+        brief = documents.get("readable_brief") if isinstance(documents, dict) else None
+        document["documents"] = _with_owned(
+            documents,
+            {
+                "readable_brief": _with_owned(
+                    brief,
+                    {
+                        "enabled": plan["documents_enabled"],
+                        "language": plan["documents_language"],
+                    },
+                )
+            },
+        )
     if plan["role_pairs"]:
         runtime = document.get("model_runtime")
         runtime = dict(runtime) if isinstance(runtime, dict) else {}
         roles = runtime.get("roles")
         roles = dict(roles) if isinstance(roles, dict) else {}
         for role, pair in plan["role_pairs"].items():
-            roles[role] = {"provider": pair[0], "model": pair[1]}
+            roles[role] = _with_owned(
+                roles.get(role), {"provider": pair[0], "model": pair[1]}
+            )
         runtime["roles"] = roles
         document["model_runtime"] = runtime
 

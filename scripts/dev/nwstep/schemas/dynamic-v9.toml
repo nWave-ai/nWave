@@ -1,0 +1,383 @@
+# nwstep schema v9: the v8 steps, plus an examine step after handoff in which an examiner other than the executor records one verdict line per fixed row. The examination level is fixed in the run workspace at the prompt; the step carries no clock, deadline or round field.
+# Each step's output is the change or a fact the tool verifies from the change; no step asks the executor
+# to type what git or pytest report.
+# - oracle: the RED run is observed by the tool on the pre-feature tree (runs_on) and names its failing tests;
+#   each law's generator must be a property test (generated); predictions made here are compared with the probe.
+# - design: decides whether refactor commits come first (prefactoring yes or no) and says why.
+# - model: a modeled decision needs a mutant file the checker must reject, not only a passing check.
+# - craft: refactor commits and their receipt (runs_on refactor) are recorded exactly when design decided yes.
+# - refactor: after green, the code the change added or changed is refactored in commits made after the feature commits, with their receipt (runs_on refactor) and one line per changed unit.
+# - probe: a case may name an artifact the committed change defines and is checked against its prediction.
+# - selfreview: optional independent review items, written by a reviewer other than the executor.
+# - handoff: each guarantee-style sentence of the summary is checked against the change; unbacked ones are listed.
+# - every step repeats, so an upstream step recorded again can be recorded again in turn.
+
+[[step]]
+id = "oracle"
+title = "Frame the work and write the oracle"
+repeat = true
+replay = true
+help = "Map every request sentence to a promise or to a reason it is not testable, give each promise a concrete scenario, write the tests that state them, watch them fail, and record the edge matrix, the laws and the messages."
+skills = ["nw-discuss", "nw-jtbd-core", "nw-test-design-mandates", "nw-test-design-mandates-composition-contract", "nw-property-based-testing"]
+
+[[step.field]]
+name = "request"
+kind = "paths"
+max_items = 1
+help = "The request file, exactly one. Its sentences are numbered S1..Sn and every one must be mapped."
+
+[[step.field]]
+name = "promises"
+kind = "list"
+help = "Each promise as 'P1: sentence', numbered so the mapping can refer to it."
+
+[[step.field]]
+name = "sentence_map"
+kind = "list"
+covers_sentences = "request"
+help = "Each request sentence as 'S1 => P1,P2', or 'S1 => not-testable: reason of at least 15 characters'; every sentence must appear."
+
+[[step.field]]
+name = "scenarios"
+kind = "scenarios"
+help = "Each scenario as 'ID | PROMISE | GIVEN concrete data | WHEN concrete input | THEN concrete observable result'. GIVEN and THEN need at least 15 characters and a digit, a quote or a literal (true, false, null, none, empty). Every promise a sentence maps to needs a scenario."
+
+[[step.field]]
+name = "conflicts"
+kind = "conflicts"
+help = "One line per request sentence, S1..Sn. Read the code ONLY to look for contradictions between the sentence and what the system already does, never to design. 'S1 | NONE | reason of at least 20 characters naming what you checked' or 'S1 | CONFLICT | existing behaviour it contradicts, at least 20 characters | question for the owner, ending with ?'."
+
+[[step.field]]
+name = "decisions"
+kind = "list"
+decides = "oracle.conflicts"
+required = false
+help = "The decision table. Each CONFLICT sentence as 'S2: decision of at least 20 characters', required for every sentence whose promise is recorded here; then each other decision taken as 'DEC1: decision and its reason'."
+
+[[step.field]]
+name = "mapping"
+names_tests = true
+kind = "list"
+covers = "oracle.promises"
+prefix_ids = true
+help = "Each promise as 'P1 => test that proves it'; every promise must appear."
+
+[[step.field]]
+name = "covers_scenarios"
+names_tests = true
+kind = "list"
+covers = "oracle.scenarios"
+prefix_ids = true
+help = "Each scenario as 'SC1 => test that proves it'; every scenario must appear."
+
+[[step.field]]
+name = "predictions"
+kind = "list"
+required = false
+help = "Before any code exists, each probe case's expected outcome on the pre-feature tree as 'ID => base held' or 'ID => base differs'. The probe compares it with what it observes; a mismatch is shown as a surprise in the brief."
+
+[[step.field]]
+name = "interfaces"
+kind = "list"
+help = "Each public entry point the work touches, as 'I1: description'."
+
+[[step.field]]
+name = "matrix"
+kind = "list"
+cross_with = "interfaces"
+help = "Every interface with every edge category: 'I1.empty => case => expected result', or 'I1.empty => n/a: reason of at least 15 characters'."
+
+[[step.field]]
+name = "laws"
+kind = "list"
+contract = "law"
+after_craft = true
+generated = true
+help = "Each design law as 'LAW1 | law text | generator=TEST_ID | observation=TEXT | mutant=TEXT'. Before craft only the format is checked; selfreview checks that TEST_ID is a test function in a test file the committed change contains. Or 'LAW0 | none: reason of at least 20 characters'."
+
+[[step.field]]
+name = "messages"
+kind = "list"
+contract = "message"
+after_craft = true
+help = "Each message of an edge form as 'MSG1 | input | what | why | how | test=TEST_ID'; selfreview checks TEST_ID against the committed change. Or 'MSG0 | none: reason of at least 20 characters'."
+
+[[step.field]]
+name = "red"
+kind = "command"
+expect = "fail"
+runs_on = "pre-feature"
+must_fail = "mapping,covers_scenarios"
+help = "The test command that must fail. The tool runs it itself on the pre-feature tree with this change's test files copied over it, and records the failing test ids. A RED with no failing test id is refused, and so is a RED in which a test named by mapping or covers_scenarios passes: that test proves no change."
+
+[[step]]
+id = "design"
+title = "Find the owners and design the change"
+needs = ["oracle"]
+repeat = true
+replay = true
+help = "Find the existing code that already owns each rule before anything new is written, then choose the paradigm, the boundaries, the domain types and the invariants the change must keep."
+skills = ["nw-code-design-oo", "nw-type-level-design", "nw-certainty-by-construction", "nw-algebraic-design-protocol", "nw-solution-architect-formal-verification", "nw-formal-verification-tlaplus"]
+
+[[step.field]]
+name = "owners"
+kind = "list"
+help = "Each rule as 'rule => file that owns it', or 'rule => new: reason' when no existing owner fits."
+
+[[step.field]]
+name = "reuse_decision"
+kind = "text"
+min_chars = 30
+help = "What is reused, what is created new, and why no existing owner fits."
+
+[[step.field]]
+name = "paradigm"
+kind = "enum"
+choices = ["oo", "fp"]
+help = "The paradigm the change follows."
+
+[[step.field]]
+name = "boundaries"
+kind = "list"
+help = "The boundaries the change crosses and who owns each one."
+
+[[step.field]]
+name = "domain_types"
+kind = "list"
+help = "The domain types introduced or changed."
+
+[[step.field]]
+name = "invariants"
+kind = "list"
+contract = "invariant"
+help = "Each design invariant as 'INV1 | invariant text | witness=PATH:SYMBOL | bypass=text or none', or 'INV0 | none: reason of at least 20 characters'. Recorded before craft, so the witness is only declared here; selfreview verifies that PATH is a file the committed change touched and SYMBOL is defined in it."
+
+[[step.field]]
+name = "prefactoring"
+kind = "enum"
+choices = ["yes", "no"]
+help = "Whether behaviour-preserving refactor commits must come before the feature commits: yes when the existing code the change touches must be prepared first, no when it need not be."
+
+[[step.field]]
+name = "prefactoring_reason"
+kind = "text"
+min_chars = 30
+help = "Yes: what the refactor prepares and why it keeps behaviour. No: why the existing code needs no refactor for this change."
+
+[[step]]
+id = "model"
+title = "Decide and prove the formal model"
+needs = ["design"]
+repeat = true
+replay = true
+help = "Decide whether the change has state, a protocol, concurrency or a crash window, and record the decision. modeled needs a model file the change contains, a check command whose exit 0 is recorded, and one witness per model invariant; not_needed needs a reason that the change has none of them."
+
+[[step.field]]
+name = "formal_model"
+kind = "enum"
+choices = ["modeled", "not_needed"]
+help = "'modeled' when the change has state, a protocol, concurrency, locks, atomic writes or a crash window; 'not_needed' only when it has none of them."
+
+[[step.field]]
+name = "no_state_reason"
+kind = "list"
+contract = "stateless"
+required = false
+help = "Only for not_needed: one 'reason' of at least 30 characters saying that the change has no state, protocol, concurrency or crash window. Selfreview refuses it when the added lines use open( in a write mode, os.replace, flock, fcntl, msvcrt, threading, subprocess, signal, sqlite or write_text and the reason does not name that keyword and what the change does not do with it."
+
+[[step.field]]
+name = "model_file"
+kind = "text"
+required = false
+help = "Only for modeled: the formal model, a relative .qnt or .tla file that the change contains (written; uncommitted is fine)."
+
+[[step.field]]
+name = "check_command"
+kind = "command"
+expect = "pass"
+fallback = "fallback_command"
+required = false
+help = "Only for modeled: the checker command; exit 0 is required and its exit code is recorded. Example: 'quint run --invariant nonNegative --max-steps 10 --max-samples 20 models/greeter.qnt'. quint run is a bounded random simulation, not a proof: a pass means no violation within the bound. If the checker cannot start, the declared fallback_command runs instead and the record says so; with no fallback_command, a checker that cannot start refuses the record."
+
+[[step.field]]
+name = "invariant_witnesses"
+kind = "list"
+contract = "model"
+required = false
+help = "Only for modeled: one per model invariant, 'INV1 | model invariant name | witness=PATH:SYMBOL'. The name must occur in model_file; selfreview verifies that PATH is a file the committed change touched and SYMBOL a function or class defined in it."
+
+[[step.field]]
+name = "mutant_file"
+kind = "text"
+required = false
+help = "Only for modeled: a relative .qnt or .tla file the change contains that is a mutant of model_file, the same model with one deliberate defect. It must differ from model_file."
+
+[[step.field]]
+name = "mutant_command"
+kind = "command"
+expect = "fail"
+fallback = "fallback_mutant_command"
+required = false
+help = "Only for modeled: the declared checker run on mutant_file; it must exit non-zero, which is the recorded rejection. The checker is the one in check_command; none is assumed."
+
+[[step.field]]
+name = "fallback_command"
+kind = "command"
+expect = "pass"
+required = false
+help = "Only for modeled: the declared checker that runs instead of check_command when check_command cannot start (for example, the model checker is not installed). It must exit 0. The record names it and the reason."
+
+[[step.field]]
+name = "fallback_mutant_command"
+kind = "command"
+expect = "fail"
+required = false
+help = "Only for modeled: the declared checker that runs on mutant_file instead of mutant_command when that cannot start; it must exit non-zero. The record names it and the reason."
+
+[[step]]
+id = "craft"
+title = "Craft the change"
+needs = ["model"]
+repeat = true
+replay = true
+help = "Implement the change until the oracle passes; each attempt is one revision. The tool reads the test counts and timings from the run, so give pytest --durations=10."
+skills = ["nw-code-craftsmanship", "nw-refactor"]
+
+[[step.field]]
+name = "refactor_commits"
+kind = "list"
+required = false
+decided_by = "design.prefactoring"
+help = "Only when design decided prefactoring yes: each behaviour-preserving refactor commit as a revision, oldest first, before every feature commit. The tool reads git and refuses a commit that edits a test file."
+
+[[step.field]]
+name = "refactor_check"
+kind = "command"
+expect = "pass"
+runs_on = "refactor"
+required = false
+help = "The check run on the parent and on each refactor commit: it must exit 0 on both. Give it with refactor_commits in this record."
+
+[[step.field]]
+name = "green"
+kind = "command"
+expect = "pass"
+help = "The test command that must pass after the change, with --durations=10 so the slowest tests are read from the run."
+
+[[step.field]]
+name = "scorecard"
+kind = "command"
+compare_baseline = true
+help = "The scorecard command: lint, types and the other mechanical checks. It runs on this clone and on the pre-feature tree; the record gives the verdict against the pre-feature tree (new findings only) and the exit code it observed."
+
+[[step.field]]
+name = "typesafe"
+kind = "typesafe"
+required = false
+help = "The Jev outcome of this craft run: requested: REFERENCE, unavailable: REASON, refused: REASON, or no open choice. Optional: Jev never blocks the step."
+
+[[step]]
+id = "refactor"
+title = "Refactor the code you wrote"
+needs = ["craft"]
+repeat = true
+replay = true
+help = "After the oracle is green, refactor the code this change added or changed, smallest level first (the levels of nw-refactor), one behaviour-preserving commit per refactor, no test file edited, the same check green on the parent and on each commit. For each changed unit apply the rules of nw-code-design-oo (the ten calisthenics rules inside the domain and application layers) and nw-code-craftsmanship; record per unit what was applied or why no refactor is needed."
+skills = ["nw-refactor", "nw-code-design-oo", "nw-code-craftsmanship"]
+
+[[step.field]]
+name = "post_refactor_commits"
+kind = "list"
+required = false
+help = "Each behaviour-preserving refactor commit as a revision, oldest first, after every feature commit. The tool reads git and refuses a commit that edits a test file."
+
+[[step.field]]
+name = "post_refactor_check"
+kind = "command"
+expect = "pass"
+runs_on = "refactor"
+required = false
+help = "The check run on the parent and on each refactor commit: it must exit 0 on both. Give it with post_refactor_commits in this record."
+
+[[step.field]]
+name = "units"
+kind = "list"
+help = "One line per changed unit as 'PATH:SYMBOL | applied: rule or level' or 'PATH:SYMBOL | none: reason'."
+
+[[step]]
+id = "probe"
+title = "Probe the build"
+needs = ["refactor"]
+repeat = true
+replay = true
+help = "Run each edge cell that is not n/a against the real build and record what was observed. This is a self-probe, not an independent review."
+
+[[step.field]]
+name = "cases"
+kind = "cases"
+needs_ids = "oracle.matrix"
+predicted_by = "oracle.predictions"
+help = "Each case as 'I1.empty | command | exit=0,kind=new,baseline-contains=TEXT' or 'I1.empty | command | exit=0,kind=preserve,protects=PATH'; add ',artifact=NAME' when the case explores a function or test the committed change defines. A case the oracle predicted is compared with its pre-feature outcome. Every matrix cell that is not n/a needs one. A case whose ID is a scenario ID (SC1) reports that scenario as held in the definition of done."
+
+[[step]]
+id = "selfreview"
+title = "Self-review"
+needs = ["probe"]
+repeat = true
+replay = true
+help = "Check the laws, messages, invariants and model witnesses against the committed change, then answer each review dimension with pass, fixed or n/a, and the evidence. Fix it now rather than record fail or debt. The dimensions: D1 architecture matches the written design and decisions; D2 one source of truth, no duplication; D3 layer boundaries and dependency direction; D4 wrong states unrepresentable, no primitive obsession; D5 object calisthenics, small cohesive classes; D6 design patterns used well; D7 domain-driven design; D8 infrastructure out of domain and application; D9 tests only through the public interface, decoupled from implementation; D10 test naming; D11 test DSL and helpers; D12 property and generative tests; D13 test speed and fixture cost; D14 test duplication; D15 readability and failure messages (what, why, how); D16 formal-model decision where behaviour has state, protocol or concurrency; D17 documents are honest and match the code."
+
+[[step.field]]
+name = "answers"
+kind = "list"
+ids = "D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12,D13,D14,D15,D16,D17"
+evidence_chars = 20
+locator_ids = "D4,D5,D9,D12,D15"
+verifies = "oracle.laws,oracle.messages,design.invariants,model.no_state_reason,model.invariant_witnesses"
+help = "Each answer as 'D1: pass - evidence', 'D1: fixed:evidence' or 'D1: n/a:reason', each of at least 20 characters; fail and debt are not accepted. For D4, D5, D9, D12 and D15 pass or fixed must cite a locator PATH:LINE of an added line of the change, and n/a is not accepted. Fix it now, then record fixed: with the evidence, or justify n/a."
+
+[[step.field]]
+name = "independent_review"
+kind = "list"
+required = false
+review = true
+help = "Optional: each independent review as 'REV1 | reviewer=ID | findings=TEXT | resolution=TEXT', written by a reviewer other than the executor; findings and resolution at least 20 characters. The tool records it; it cannot verify who wrote it."
+
+[[step]]
+id = "handoff"
+title = "Hand off"
+needs = ["selfreview"]
+repeat = true
+replay = true
+help = "Write the summary for the next reader and say what was not verified. The documents are generated by brief --out from the journal; the side effects and the commits of the change come from git."
+
+[[step.field]]
+name = "summary"
+kind = "text"
+min_chars = 60
+checked_claims = true
+help = "What was delivered, how it was checked, and what the reader must know. Do not repeat counts or commits: the tool reads them from the run and from git."
+
+[[step.field]]
+name = "not_verified"
+kind = "list"
+help = "Everything that was not verified; write 'none' only if nothing was left out."
+
+[[step]]
+id = "examine"
+title = "Examine the handed-off change as a user"
+needs = ["handoff"]
+repeat = true
+replay = true
+help = "Examine the change through its public behaviour, as a user who has not read the code. The examination level in effect is fixed in the run workspace (examine-level.json) at the prompt and is not chosen here; the level counts examinations (repair rounds). Record the examiner's id and one line per fixed row. Repair-round enforcement belongs to the nwdes examination, not to this step."
+
+[[step.field]]
+name = "examiner"
+kind = "text"
+min_chars = 3
+help = "The id of the examiner. The examiner is a different agent from the executor; the tool records the id it is given and cannot verify it."
+
+[[step.field]]
+name = "rows"
+kind = "list"
+help = "One line per fixed row as 'X1 | pass|fail|not-examined|unstable | observation=TEXT', where observation says what the examiner saw from the user's side."

@@ -1,0 +1,14 @@
+# The prompt templates of this checkout, by the schema version each belongs to. nwstep reads this file.
+#
+# A template is in use when its schema version has a schema in schemas/ and it is listed here; the default
+# is always in use. Every shipped schema version has a key here, empty when it has no template of its own.
+# A name under [retired] is a template removed from the checkout: it is refused as retired. Git history keeps it.
+default = "dynamic.v1"
+
+[versions]
+v9 = []
+v10 = []
+v11 = ["dynamic.v11a", "dynamic.v11b", "dynamic.v11c", "dynamic.v11d", "dynamic.v11e"]
+
+[retired]
+templates = ["dynamic.v2q", "dynamic.v3p", "dynamic.v4", "dynamic.v5", "dynamic.v6"]

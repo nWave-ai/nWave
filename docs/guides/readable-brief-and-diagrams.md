@@ -110,11 +110,6 @@ The owner answers once. The owner corrects the decision at its source and replie
 - It does not make product, architecture or operations choices.
 - It does not run a second round.
 
-## Use it in the interactive dynamic route
-
-In `/nw-dynamic interactive`, the host reads `documents.readable_brief`. When it is on, the host adds a readable-output block to the request. The executor then reads `nw-diagram` and `nw-doc-as-artifact`. After the design step, the host runs the one documentarist round. Auto mode does not do this.
-No tool checks that the executor follows the block.
-
 ## Explanation: why these rules exist
 
 A diagram can be correct and still be unreadable. A screen reader gets the raw Mermaid source, not a picture. A reader with low vision cannot use a pale fill with a pale line. A reader who is new to the project cannot decode `E1` or `SYS-4`.

@@ -54,6 +54,4 @@ or the examine level. Each fixed expectation row states a `lacuna`: what its own
 oracle does not see. A new or changed row without a non-blank lacuna is refused.
 A row also carries `blocking`, `isolated` (each `yes` or `no`) and free-text
 `needs`. A kept row is append-only: it leaves the set only with an unmet
-`expectation_defect` verdict. Dynamic mode reads the examine level (`quick`,
-`standard`, `extended`) from the repository or global configuration at the first
-prompt and keeps it for the run. The repair rounds are stated to the examiner and enforced by the nwdes examination: `quick` admits one examination, `standard` two and `extended` three.
+`expectation_defect` verdict. The repair rounds are stated to the examiner and enforced by the nwdes examination: `quick` admits one examination, `standard` two and `extended` three.

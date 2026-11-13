@@ -1,31 +1,88 @@
-"""Prose assets: the one set of public files the examiner reads and the prose-only classifier decides from.
+"""Prose assets: the public prose the examiner reads and the prose-only classifier decides from.
 
-A pure leaf: it imports nothing from nwdes, so the handoff, the packets and the shell probe
-all read the same set and cannot diverge.
+A pure leaf: it imports nothing from nwdes, so the handoff, the packets and the shell probe all
+decide public prose from the same patterns and cannot diverge.
+
+A pattern is a path or a glob relative to the candidate root. '*' stays within one path segment,
+'**' crosses segments, and '/**/' admits zero or more directories. The examiner's public set is the
+default patterns plus the patterns a project declares; the prose-only classifier keeps the defaults.
 """
 
 import posixpath
+import re
+from dataclasses import dataclass
+from functools import cache
 
 
-# Roots and suffixes of the files the source-blind examiner reads from HEAD.
-PUBLIC_PROJECTION = (
-    ("docs/guides", "nWave/skills", "nWave/templates", "nWave/agents"),
-    (".md", ".tmpl"),
+@dataclass(frozen=True)
+class PublicPattern:
+    """One declared public path or glob. Built only from a validated declaration or the defaults."""
+
+    text: str
+
+    def matches(self, path: str) -> bool:
+        return _compiled(self.text).fullmatch(path) is not None
+
+
+@cache
+def _compiled(text: str) -> re.Pattern[str]:
+    return re.compile(_glob_regex(text))
+
+
+def _glob_regex(text: str) -> str:
+    parts = []
+    index = 0
+    while index < len(text):
+        if text.startswith("/**/", index):
+            parts.append("/(?:.*/)?")
+            index += 4
+        elif text.startswith("**", index):
+            parts.append(".*")
+            index += 2
+        else:
+            parts.append(_glob_character(text[index]))
+            index += 1
+    return "".join(parts)
+
+
+def _glob_character(character: str) -> str:
+    if character == "*":
+        return "[^/]*"
+    if character == "?":
+        return "[^/]"
+    return re.escape(character)
+
+
+# The default public prose: the guides, skills, templates and agents, as Markdown and template files.
+DEFAULT_PATTERNS = tuple(
+    PublicPattern(f"{root}/**{suffix}")
+    for root in ("docs/guides", "nWave/skills", "nWave/templates", "nWave/agents")
+    for suffix in (".md", ".tmpl")
 )
 
 
-def is_prose_path(path) -> bool:
-    """True when the lexically normalised path stays under a prose root with a prose suffix.
+def examined_patterns(declared) -> tuple[PublicPattern, ...]:
+    """The default patterns followed by the declared ones, each pattern once."""
+    return tuple(dict.fromkeys((*DEFAULT_PATTERNS, *declared)))
 
-    Absolute paths, paths that escape their root and other casings of a suffix are not prose.
-    """
+
+def _normal(path):
     if not isinstance(path, str) or not path or path.startswith("/"):
-        return False
-    normal = posixpath.normpath(path)
-    roots, suffixes = PUBLIC_PROJECTION
-    return normal.endswith(suffixes) and any(
-        normal.startswith(root + "/") for root in roots
-    )
+        return None
+    return posixpath.normpath(path)
+
+
+def is_public_path(path, patterns) -> bool:
+    """True when the lexically normalised path stays a relative path that a pattern matches.
+
+    Absolute paths, paths that escape their root and other casings of a suffix are not public.
+    """
+    normal = _normal(path)
+    return normal is not None and any(pattern.matches(normal) for pattern in patterns)
+
+
+def is_prose_path(path) -> bool:
+    return is_public_path(path, DEFAULT_PATTERNS)
 
 
 def prose_only(paths) -> bool:

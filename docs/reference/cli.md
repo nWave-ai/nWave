@@ -50,6 +50,12 @@ nwave-ai outcomes [--registry PATH] register | check
 
 nwave-ai plugin <list|install|uninstall> [name]
 
+nwave-ai tests run [--root DIR] [--declaration FILE] [--class NAME] [--timeout SECONDS]
+                   [--receipt FILE] (NAME [ARG ...] | -- COMMAND [ARG ...])
+
+nwave-ai tests select --use NAME [--root DIR] [--declaration FILE] [--add TEST]...
+                      [--json] [PATH ...]
+
 ```
 
 ---
@@ -368,7 +374,6 @@ The summary shows each host's path before the write. Unverified formats are labe
 ### Which routes read these settings
 
 - The spine route (`nwdes prompt`) reads `review.max_rounds`, `examine.level`, `model_runtime.roles` and `documents.readable_brief` from the project file and the global file, project first. It prints them in each role bundle: `review rounds: N (source)`, `examine level: NAME (source) - N examinations, ...`, and `model <role>: provider/model (source)` or `none declared in project or global`. The examiner bundle states the level in examinations and repair rounds only. The readable-brief line appears only in the charter-close and design-close bundles, and only when enabled. A review value outside 1 to 5 or an examine level outside quick, standard and extended makes the bundle refuse, naming the key. The bundle states the model; `nwdes` starts no model.
-- Dynamic mode (`/nw-dynamic`, the `nwstep` route) reads `examine.level` (and `jev`) from the project file and the global file, project first, and fixes it in the run workspace at `nwstep prompt`, in `examine-level.json`. It still does not read `review.max_rounds`, `model_runtime` or `documents.readable_brief` through the tool. In interactive mode only, the host procedure in `nWave/tasks/nw/dynamic.md` reads `documents.readable_brief` and, when it is enabled, adds the readable-output block to the request file and runs one documentarist round; no tool checks that the executor follows it. The dynamic examine step (`dynamic-v9`, after `handoff`) records an examiner's id and one line per fixed row; the level's repair rounds are enforced by the nwdes examination. Host files from `--hosts` are host configuration; whether a dynamic run uses them depends on how the host starts its executor, which nWave does not check.
 
 ### Example
 
@@ -736,6 +741,7 @@ The following subcommands are supported but are not part of the everyday user su
 
 - **outcomes** — Register / check shipped outcomes (Tier-1 collision detection). See **[Outcomes CLI Reference](./outcomes-cli.md)**.
 - **plugin** — Install, uninstall, or list nWave tool plugins.
+- **tests** — Run a test command through the test queue of the account (`tests run`; one queue per account, two accounts on one machine do not coordinate) and list the tests a change selects (`tests select`). See **[Test Queue and Test Selector Reference](./test-queue-and-selector.md)**.
 
 ---
 

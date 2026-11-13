@@ -642,9 +642,11 @@ class Launch(Enum):
 
 
 PYTHON_MANIFEST = "pyproject.toml"
-# the neutral declaration of public commands, read only when HEAD commits no pyproject.toml
+# the neutral declaration of public commands; it decides with pyproject.toml, see declare
 DECLARATION_FILE = ".nwave/examine.json"
-# in precedence order: the first committed source decides the declaration
+# the committed configuration whose examine.public declares public prose beyond the defaults
+CONFIG_FILE = ".nwave/config.json"
+# every committed source the examiner reads: the declared commands and the declared prose
 MANIFESTS = (PYTHON_MANIFEST, DECLARATION_FILE)
 _COMMAND_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 _DECLARATION_KEYS = frozenset({"commands", "build"})
@@ -745,15 +747,13 @@ def examination_admission(flags):
     )
 
 
-def public_entries(listing):
-    roots, suffixes = prose.PUBLIC_PROJECTION
+def public_entries(listing, patterns):
     return tuple(
         (name, metadata.split()[2])
         for row in listing.decode("utf-8", "surrogateescape").split("\0")
         if row
         for metadata, name in (row.split("\t", 1),)
-        if any(name.startswith(root + "/") for root in roots)
-        and name.endswith(suffixes)
+        if prose.is_public_path(name, patterns)
     )
 
 
@@ -932,6 +932,106 @@ def _neutral_declaration(text):
     )
 
 
+def _config_defect(why):
+    return Defect(
+        "InputUnreadable: examine.public in " + CONFIG_FILE + " at HEAD",
+        why,
+        "Commit "
+        + CONFIG_FILE
+        + " with examine.public as a JSON array of relative paths or globs, such as "
+        '["docs/runbooks/**.md", "README.md"], or remove the examine key to keep the default '
+        "prose, then rebuild the examine prompt.",
+    )
+
+
+def _public_problem(entry):
+    """Why one declared public pattern is not admitted, or None when it is a plain relative pattern."""
+    if not isinstance(entry, str):
+        return f"entry {entry!r} is not a string"
+    problem = declared_path_problem(entry)
+    if problem is not None:
+        return f"entry {entry!r} {problem}"
+    return None
+
+
+def public_declaration(text):
+    """The public patterns HEAD's configuration declares, or the first defect.
+
+    An absent configuration or an absent examine key declares none, so the defaults apply alone.
+    Every other shape the examine key can take that the examiner does not read is refused.
+    """
+    if text is None:
+        return Built(())
+    try:
+        raw = json.loads(text.decode("utf-8"), object_pairs_hook=strict_object)
+    except (ValueError, UnicodeError) as error:
+        return checked(
+            None,
+            (
+                _config_defect(
+                    f"{CONFIG_FILE} is not valid JSON ({error}), so its declaration cannot be read"
+                ),
+            ),
+        )
+    if not isinstance(raw, dict):
+        return checked(
+            None,
+            (
+                _config_defect(
+                    f"{CONFIG_FILE} is not a JSON object, so its declaration cannot be read"
+                ),
+            ),
+        )
+    if "examine" not in raw:
+        return Built(())
+    examine = raw["examine"]
+    if not isinstance(examine, dict):
+        return checked(
+            None,
+            (_config_defect("examine must be a JSON object that holds public"),),
+        )
+    unknown = sorted(set(examine) - {"public", "level"})
+    if unknown:
+        return checked(
+            None,
+            (
+                _config_defect(
+                    "examine holds keys the examiner does not read: "
+                    + ", ".join(unknown)
+                ),
+            ),
+        )
+    if "public" not in examine:
+        # ``level`` is read by the examine level reader; a configuration that sets only the level declares no prose.
+        return Built(())
+    public = examine["public"]
+    if not isinstance(public, list) or not public:
+        return checked(
+            None,
+            (
+                _config_defect(
+                    "examine.public must be a non-empty JSON array of relative paths or globs"
+                ),
+            ),
+        )
+    problem = next(
+        (found for found in map(_public_problem, public) if found is not None), None
+    )
+    if problem is not None:
+        return checked(
+            None,
+            (
+                _config_defect(
+                    "examine.public "
+                    + problem
+                    + ": a declared pattern is relative to the candidate and names no "
+                    "absolute, parent or empty segment"
+                ),
+            ),
+        )
+    return Built(tuple(prose.PublicPattern(entry) for entry in dict.fromkeys(public)))
+
+
 def _no_declaration():
     return Defect(
         "InputUnreadable: no examination declaration at HEAD",
@@ -1094,25 +1194,90 @@ def executable_launch_failure(path, error, build):
     )
 
 
+def _listed(declared):
+    return ", ".join(sorted(command.name for command in declared.value.commands))
+
+
+def _contradiction(console, neutral):
+    return Defect(
+        f"InputUnreadable: {PYTHON_MANIFEST} and {DECLARATION_FILE} at HEAD",
+        f"{PYTHON_MANIFEST} declares the console commands {_listed(console)}, and "
+        f"{DECLARATION_FILE} declares {_listed(neutral)}: the two name different public "
+        "commands, so the examiner cannot tell which commands are public",
+        f"Make {PYTHON_MANIFEST} and {DECLARATION_FILE} name the same public commands, or remove "
+        f"the [project.scripts] table from {PYTHON_MANIFEST} so {DECLARATION_FILE} decides, then "
+        "rebuild the examine prompt.",
+    )
+
+
 def declare(manifests):
-    """One declaration from what HEAD commits: the Python rule where pyproject.toml is committed,
-    else the neutral declaration file, else a refusal."""
+    """One declaration from what HEAD commits. The explicit declaration decides; pyproject.toml decides
+    alone only when it declares no console script, and two declarations that name different commands
+    are refused naming both files."""
     python = manifests.get(PYTHON_MANIFEST)
-    if python is not None:
-        return _python_declaration(python)
-    declared = manifests.get(DECLARATION_FILE)
-    if declared is not None:
-        return _neutral_declaration(declared)
-    return checked(None, (_no_declaration(),))
+    explicit = manifests.get(DECLARATION_FILE)
+    console = None if python is None else _python_declaration(python)
+    if isinstance(console, Refused):
+        return console
+    if explicit is None:
+        return console if console is not None else checked(None, (_no_declaration(),))
+    neutral = _neutral_declaration(explicit)
+    if isinstance(neutral, Refused) or console is None or not console.value.commands:
+        return neutral
+    if {command.name for command in console.value.commands} == {
+        command.name for command in neutral.value.commands
+    }:
+        return neutral
+    return checked(None, (_contradiction(console, neutral),))
+
+
+@dataclass(frozen=True)
+class FileIdentity:
+    """What makes a declared file the same file: its device, inode, size and modification time."""
+
+    device: int
+    inode: int
+    size: int
+    mtime_ns: int
+
+
+def file_identity(status) -> FileIdentity:
+    return FileIdentity(
+        status.st_dev, status.st_ino, status.st_size, status.st_mtime_ns
+    )
+
+
+def same_file(first: FileIdentity, second: FileIdentity) -> bool:
+    """A path start is allowed only when every identity field agrees with the verified file."""
+    return first == second
+
+
+def executable_changed(path, build):
+    """The refusal for a declared file that is no longer the file verified before its descriptor start."""
+    return Defect(
+        "InputUnreadable: " + path,
+        "the declared file changed after its descriptor launch was refused: it is no longer the "
+        "file that was verified, so it is not started",
+        f"Do not replace {path} while the examination runs; {_rebuild(build)}, then rebuild the "
+        "examine prompt.",
+    )
+
+
+def launched_by_path_note(path, error):
+    """The outcome line for a declared file started by its path after the system refused its descriptor."""
+    return (
+        f"nwdes examine probe: {path} launched by path, because the system refused its descriptor "
+        f"launch ({error.strerror or error}); the same file was verified again by device, inode, "
+        "size and modification time.\n"
+    )
 
 
 def required_paths(declared):
     return declared.value.required if isinstance(declared, Built) else ()
 
 
-def public_projection(listing, blobs, declared, candidate, executables):
-    """executables maps each required path to its status: ok, missing or unsafe."""
-    entries = public_entries(listing)
+def public_projection(entries, blobs, declared, candidate, executables):
+    """entries are the public (name, identity) pairs; executables maps each required path to its status."""
     tainted = tuple(name for name, _ in entries if candidate.encode() in blobs[name])
     if tainted:
         return checked(None, (workspace_contaminated(tainted),))
@@ -1141,7 +1306,7 @@ def _under(path, root):
     return path == root or path.startswith(root.rstrip("/") + "/")
 
 
-def inspect_workspace(projection, workspace, resolved, checkout_roots, entries):
+def inspect_workspace(projection, workspace, checkout_roots, entries):
     expected_files = {"public/" + name: content for name, content in projection.files}
     expected_dirs = frozenset(
         (
@@ -1180,8 +1345,7 @@ def inspect_workspace(projection, workspace, resolved, checkout_roots, entries):
                 ),
                 *(
                     ("workspace",)
-                    if workspace != resolved
-                    or any(_under(resolved, root) for root in checkout_roots)
+                    if any(_under(workspace, root) for root in checkout_roots)
                     else ()
                 ),
             )

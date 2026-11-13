@@ -24,6 +24,7 @@ class Role(str, Enum):
     FunctionalCrafter = "nw-functional-software-crafter"
     CandidateReviewer = "nw-software-crafter-reviewer"
     OracleReviewer = "nw-acceptance-designer-reviewer"
+    ArchitectReviewer = "nw-solution-architect-reviewer"
 
 
 class CommitType(str, Enum):
@@ -80,7 +81,10 @@ def _review_records(role, selected, directory):
         for subject in (recipe.review_subject, recipe.slice_review_subject)
         if subject is not None
         for identity in (
-            (None,) if subject == drafts.ReviewSubject.CANDIDATE.value else selected
+            (None,)
+            if subject
+            in (drafts.ReviewSubject.CANDIDATE.value, drafts.ReviewSubject.DESIGN.value)
+            else selected
         )
     )
     return frozenset(
@@ -153,7 +157,7 @@ def owned_paths(
                     ),
                 )
             )
-        case Role.CandidateReviewer | Role.OracleReviewer:
+        case Role.CandidateReviewer | Role.OracleReviewer | Role.ArchitectReviewer:
             return _review_records(
                 role, tuple(identity for identity, _ in selected), directory
             )

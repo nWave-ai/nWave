@@ -23,6 +23,7 @@ VERBS = (
     Verb("prompt"),
     Verb("packet"),
     Verb("lane", ("open", "compose", "rekey", "integrate")),
+    Verb("adr", ("accept",)),
     Verb("measure"),
     Verb("commit"),
     *(
@@ -146,6 +147,9 @@ ROOT_ARGUMENTS = (
         "--feature",
         "feature identity; omitted selects --epic scope, or project scope with document --product",
     ),
+)
+ADR_ROOT_ARGUMENTS = tuple(
+    argument for argument in ROOT_ARGUMENTS if argument.flag != "--feature"
 )
 SLICE_ARGUMENT = Argument("--slice", "slice identity")
 HANDOFF_ARGUMENT = Argument("--handoff", "input handoff file")
@@ -452,7 +456,7 @@ COMMANDS = (
                 "nw-software-crafter-reviewer to name an embedded slice review, omitted "
                 "for its whole-candidate review; omit it for nw-product-owner --task "
                 "discuss (also the default task) or --task charter, "
-                "nw-solution-architect, nw-user-examiner --task expectations or "
+                "nw-solution-architect, nw-solution-architect-reviewer, nw-user-examiner --task expectations or "
                 "--task examine, whose recipes reject it; omission selects no slice",
             ),
             Argument(
@@ -467,7 +471,7 @@ COMMANDS = (
             ),
             Argument(
                 "--commit",
-                "reviewed commit REV; required for review recipes and resolved to the full clean lane HEAD; omitted for other recipes",
+                "reviewed commit REV; required for oracle and candidate review recipes and resolved to the full clean lane HEAD; omitted for the design review and other recipes",
             ),
             Argument("--root-context", ROOT_CONTEXT_HELP),
             Argument("--repo-root", ROOT_DEFAULTS["repo-root"]),
@@ -611,6 +615,44 @@ COMMANDS = (
         ),
         "nwdes lane integrate --feature search --expected aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --candidate bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     ),
+    Command(
+        "adr",
+        "accept",
+        "Ratify a Proposed ADR as Accepted: records the operator and the UTC second in a ratification file beside the ADRs and changes only the status line of the ADR file; an Accepted ADR is a no-op.",
+        (
+            *ADR_ROOT_ARGUMENTS,
+            Argument("--key", "key of the Proposed ADR to ratify, for example 001"),
+            Argument(
+                "--by",
+                "name of the operator who decides the ratification; required and recorded",
+            ),
+        ),
+        (
+            ("MissingFact", "--key or --by is absent"),
+            ("PartInvalid", "--by is blank"),
+            (
+                "ConfigurationMalformed",
+                "the adr.directory setting of a read tier is malformed",
+            ),
+            ("AdrKeyClash", "several ADR files hold the key"),
+            ("DanglingReference", "no ADR file holds the key"),
+            ("InputUnreadable", "the ADR directory or one of its files cannot be read"),
+            (
+                "AdrForeignLayout",
+                "the ADR file layout is not the nwdes layout, so it is refused unchanged",
+            ),
+            (
+                "AdrTransitionInvalid",
+                "the ADR is superseded and cannot be ratified",
+            ),
+            ("OutputUnreadable", "a ratification file cannot be written"),
+            (
+                "DestinationInvalid",
+                "the register directory or an ADR file is a symlink, so it is refused unchanged",
+            ),
+        ),
+        "nwdes adr accept --key 001 --by 'Operator Name'",
+    ),
 )
 
 MEASURE_OPTIONS = (
@@ -712,7 +754,7 @@ COMMANDS = (
 )
 
 
-def _role_example(kind, verb, scope=("feature", "search"), role=None):
+def _role_example(kind, verb, scope=("feature", "search"), role=None, subject=None):
     alternatives = frozenset(
         field.choices[0] for field in verb.fields if field.required and field.choices
     )
@@ -732,7 +774,7 @@ def _role_example(kind, verb, scope=("feature", "search"), role=None):
         "observation": "O1",
         "command": "python -V",
         "verification": "python -V",
-        "subject": "candidate",
+        "subject": subject or "candidate",
     }
 
     def argument(field):
@@ -958,7 +1000,7 @@ def commit_example(scope, role):
     )
 
 
-def describe(kind, handoff=None, role=None, policy=None):
+def describe(kind, handoff=None, role=None, policy=None, subject=None):
     """Render role verbs and their worked examples from the table the CLI parses."""
     if kind == "craft" and role is not None and role not in drafts.CRAFT_ACTOR.members:
         raise ValueError("A craft reference requires one of its two crafter roles.")
@@ -971,6 +1013,7 @@ def describe(kind, handoff=None, role=None, policy=None):
         "examine": "nw-user-examiner --task examine",
         "craft": "Crafters",
         "review": "Reviewers",
+        "nw-solution-architect-reviewer": "nw-solution-architect-reviewer (design review of a changed shared decision or ADR; records with --subject design)",
     }
     scope = ("feature", "feature-id")
 
@@ -1043,12 +1086,12 @@ def describe(kind, handoff=None, role=None, policy=None):
         else ()
     )
     examples = (
-        *(_role_example(kind, verb, scope, role) for verb in verbs),
+        *(_role_example(kind, verb, scope, role, subject) for verb in verbs),
         *(command.example for command in EXAMINATION_COMMANDS if kind == "examine"),
     )
     return (
         "## ROLE VERBS\n"
-        + roles.get(kind, kind)
+        + roles.get(role, roles.get(kind, kind))
         + "\n"
         + "nwdes "
         + kind

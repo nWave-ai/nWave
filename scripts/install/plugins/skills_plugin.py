@@ -308,13 +308,12 @@ class SkillsPlugin(InstallationPlugin):
             entries, public_agents, ownership_map, command_skills
         )
         _log_skipped_skills(context, excluded)
-        # Dev-only: the private dynamic command projected from its one
-        # source, staged in a temporary directory that the finally removes
-        # even when the install fails (review N3).
+        # The dynamic command skill is rendered from its one source, staged in a
+        # temporary directory that the finally removes even when the install fails.
         dynamic_staging = Path(tempfile.mkdtemp(prefix="nwave-dynamic-skill-"))
         try:
             dynamic_entry = dynamic_skill_entry(
-                context.dev_mode, context.project_root / "nWave", dynamic_staging
+                context.project_root / "nWave", dynamic_staging
             )
             if dynamic_entry is not None:
                 entries.append(dynamic_entry)

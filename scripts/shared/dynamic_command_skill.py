@@ -1,13 +1,8 @@
-"""Project the private dynamic command into a host command-skill.
+"""Project the dynamic command into a host command-skill at install time.
 
-The ONE source is ``nWave/tasks/nw/dynamic.md``; the catalog marks the
-command ``public: false``, so nothing in the repository tree, the plugin
-build, the wheel or the strip ever sees a rendered copy. This module
-materializes the rendered skill only inside a DEV-mode skills install,
-into a caller-owned staging directory outside the repository, and the
-callers pass ``dev_mode=False`` nowhere else. A non-dev install both
-materializes nothing and purges a staging leftover a previous dev
-install may have left in the same host home.
+The ONE source is ``nWave/tasks/nw/dynamic.md``. Every install mode renders the
+skill from it into a caller-owned staging directory outside the repository, so
+the shipped tree carries no second copy that could drift from the command.
 """
 
 from __future__ import annotations
@@ -81,22 +76,14 @@ def render_dynamic_command_skill(task_text: str) -> str:
     return "\n".join(lines) + "\n" + body
 
 
-def dynamic_skill_entry(
-    dev_mode: bool, nwave_dir: Path, staging_dir: Path
-) -> SkillEntry | None:
-    """Materialize the nw-dynamic command-skill for a dev skills install.
+def dynamic_skill_entry(nwave_dir: Path, staging_dir: Path) -> SkillEntry | None:
+    """Render the nw-dynamic command-skill into *staging_dir* for this install.
 
-    Reads the task file, renders the skill, writes it under
-    *staging_dir*/nw-dynamic/SKILL.md and returns the entry the caller
-    copies like any enumerated skill. Returns None when *dev_mode* is
-    False or the task file is absent; either way a leftover staging dir
-    from an earlier dev install in the same home is purged first, so a
-    non-dev install never keeps a private rendered copy. The staging dir
-    lives in the caller's host home, never in the repository tree.
+    Returns the entry the caller copies like any enumerated skill, or None when
+    the task file is absent. A leftover staging dir from an earlier install is
+    purged first, so no stale rendered copy survives an install.
     """
     shutil.rmtree(staging_dir, ignore_errors=True)
-    if not dev_mode:
-        return None
     task_file = nwave_dir / _TASK_RELATIVE
     if not task_file.is_file():
         return None

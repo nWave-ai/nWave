@@ -10,11 +10,12 @@ import shlex
 import shutil
 import sys
 import tempfile
+import time
 from collections.abc import Mapping
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, replace
 from functools import partial
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from nwdes import (
     commits,
@@ -271,6 +272,12 @@ def _parser(*, replay=False):
             entry = verbs.add_parser("lane", add_help=False)
             entry.add_argument("action", choices=verb.actions)
             for option in ("repo-root", "feature", "key", "expected", "candidate"):
+                entry.add_argument("--" + option)
+            continue
+        if verb.name == "adr":
+            entry = verbs.add_parser("adr", add_help=False)
+            entry.add_argument("action", choices=verb.actions)
+            for option in ("repo-root", "project-root", "global-config", "key", "by"):
                 entry.add_argument("--" + option)
             continue
         if verb.name in ("prompt", "packet"):
@@ -1594,6 +1601,60 @@ def _lane(args):
     return 0
 
 
+def _adr(args):
+    """Ratify one Proposed ADR of the project register; only its status line changes."""
+    ports = _document_ports(args)
+    scope = handoff.build_scope("Project").value
+    tiers = tuple(ports.configuration(kind, scope) for kind in ("global", "repository"))
+    directory = readable_setting(tiers, "adr.directory", "docs/product/architecture")
+    if not isinstance(directory, str):
+        return _refusal(
+            (
+                Defect(
+                    "ConfigurationMalformed: adr.directory",
+                    "The adr.directory setting of a read configuration tier is malformed.",
+                    "Repair adr.directory in ROOT/.nwave/config.json, then rerun nwdes adr accept.",
+                ),
+            )
+        )
+    confined = ports.confinement((directory,))
+    if isinstance(confined, Refused):
+        return _refusal(confined.defects)
+    register = ports.register(directory)
+    if isinstance(register, Unreadable):
+        return _refusal(
+            (
+                Defect(
+                    "InputUnreadable: " + register.path,
+                    register.reason,
+                    "Make the ADR directory readable before retrying nwdes adr accept.",
+                ),
+            )
+        )
+    if isinstance(register, Refused):
+        return _refusal(register.defects)
+    ratifier = documents.Ratifier.of(args.by)
+    if isinstance(ratifier, Refused):
+        return _refusal(ratifier.defects)
+    selected = documents.select_adr_entry(register.value, args.key, directory)
+    if isinstance(selected, Refused):
+        return _refusal(selected.defects)
+    entry = selected.value
+    confined = ports.confinement((directory + "/" + entry.path,))
+    if isinstance(confined, Refused):
+        return _refusal(confined.defects)
+    decided = documents.ratify_adr(
+        entry, ratifier.value, documents.RatifiedAt(int(time.time())), directory
+    )
+    if isinstance(decided, Refused):
+        return _refusal(decided.defects)
+    outcome = decided.value
+    if isinstance(outcome, documents.AlreadyAccepted):
+        print("UNCHANGED", outcome.path, "(already Accepted)")
+        return 0
+    return _emit(ports, documents.OutputSet(outcome.outputs)) or 0
+
+
 def _effect_failure(args, step, why):
     command = f"nwdes lane {args.action} --repo-root {args.repo_root} --feature {args.feature}"
     match args.action:
@@ -1861,6 +1922,8 @@ def main(argv=None):
             SimpleNamespace(run_role=_run_role), args.verb, args.role_verb, vars(args)
         )
         return _refusal(result.defects) if isinstance(result, Refused) else result
+    if args.verb == "adr":
+        return _adr(args)
     if args.verb == "lane":
         return _lane(args)
     if args.verb == "prompt":
@@ -2186,7 +2249,7 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
     before = draft
     evidence = None
     if drafts.needs_review_evidence(kind, name):
-        files, others = None, ()
+        files = None
         slice_id = drafts.oracle_slice(scope.key.scope)
         if slice_id is not None:
             approved = _oracle_files(
@@ -2199,10 +2262,13 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
                 _refusal(approved.defects)
                 return 1
             files = approved.value
-            others = _other_oracle_paths(
-                handoff.inspect_handoff(scope.handoff_bytes), slice_id
-            )
-        observed = _review_evidence(args.repo_root, scope.directory, files, others)
+        judged = _judged_paths(args.repo_root, scope)
+        if isinstance(judged, Refused):
+            _refusal(judged.defects)
+            return 1
+        observed = _review_evidence(
+            args.repo_root, scope.directory, judged.value, files
+        )
         if isinstance(observed, Refused):
             _refusal(observed.defects)
             return 1
@@ -2260,6 +2326,14 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
             if isinstance(inspected.result, Refused):
                 return _refusal(inspected.result.defects)
             paradigm = (inspected.result.value.design or handoff.EMPTY).get("paradigm")
+        if kind == "examine" and values["outcome"] != "accepted":
+            return _refusal(
+                (
+                    handoff.examination_close_refusal(
+                        draft, values["outcome"], values["diagnostic"]
+                    ),
+                )
+            )
         raw = drafts.envelope_bytes(draft, values["outcome"], values["diagnostic"])
         publishing = (
             replace(
@@ -2377,19 +2451,6 @@ def _oracle_paths(inspected, slice_id):
     )
 
 
-def _other_oracle_paths(inspected, slice_id):
-    """Oracle and support paths of every other designed slice: work that is not under review."""
-    if inspected is None or isinstance(inspected.result, Refused):
-        return ()
-    slices = (inspected.result.value.design or {}).get("slices") or {}
-    return tuple(
-        path
-        for other in slices
-        if other != slice_id
-        for path in _oracle_paths(inspected, other).value
-    )
-
-
 def _oracle_files(ports, root, inspected, slice_id):
     """The slice's oracle and supports as (path, bytes or None) pairs read from the checkout."""
     paths = _oracle_paths(inspected, slice_id)
@@ -2446,7 +2507,85 @@ def _refuse_committed_oracles(args, ports, scope):
     return None
 
 
-def _review_evidence(root, directory, files=None, others=()):
+def _judged_paths(root, scope):
+    """The paths the review judges: the declared design, judged with the facts git and the disk
+    show of each declared path. An undeclared, empty or unprovable scope is refused."""
+    inspected = handoff.inspect_handoff(scope.handoff_bytes)
+    if isinstance(inspected.result, Refused):
+        return inspected.result
+    design = inspected.result.value.design
+    declared = drafts.scope_declarations(design, scope.key.scope)
+    if isinstance(declared, Refused):
+        return declared
+    facts = _path_facts(root, declared.value)
+    if isinstance(facts, Refused):
+        return facts
+    return drafts.scope_paths(design, scope.key.scope, facts.value)
+
+
+def _path_facts(root, declared):
+    """(declared path, kind) pairs the checkout shows: symlinks, directories and git-ignored paths.
+    Only spellings that name a repository-relative file reach git or the disk."""
+    spelled = tuple(path for path in declared if drafts.spelling_problem(path) is None)
+    linked = frozenset(path for path in spelled if _behind_symlink(root, path))
+    ignored = _ignored_paths(
+        root, tuple(path for path in spelled if path not in linked)
+    )
+    if isinstance(ignored, Refused):
+        return ignored
+    facts = []
+    for path in spelled:
+        if path in linked:
+            facts.append((path, "symlink"))
+        elif (Path(root) / path).is_dir():
+            facts.append((path, "directory"))
+        if path in ignored.value:
+            facts.append((path, "ignored"))
+    return Built(tuple(facts))
+
+
+def _behind_symlink(root, path):
+    """True when the declared path or a directory above it is a symbolic link: git status never
+    reports a change behind a link, and check-ignore refuses such a path outright."""
+    parts = PurePosixPath(path).parts
+    return any(
+        Path(root, *parts[:depth]).is_symlink() for depth in range(1, len(parts) + 1)
+    )
+
+
+def _ignored_paths(root, paths):
+    """The declared paths git reports as ignored. NUL-separated in and out, so git never quotes a
+    non-ASCII or unusual name; no paths means no git call."""
+    if not paths:
+        return Built(frozenset())
+    feed = b"".join(path.encode("utf-8", "surrogateescape") + b"\0" for path in paths)
+    result = run_git(
+        root,
+        ("check-ignore", "-z", "--stdin"),
+        env=scrubbed_env(os.environ),
+        stdin=feed,
+    )
+    if isinstance(result, Unreadable) or result.code not in (0, 1):
+        return checked(
+            None,
+            (
+                Defect(
+                    "InputUnreadable: git check-ignore",
+                    failure_reason(result),
+                    "Run from the candidate git checkout with git on PATH before recording or reviewing evidence.",
+                ),
+            ),
+        )
+    return Built(
+        frozenset(
+            name
+            for name in result.stdout.decode("utf-8", "surrogateescape").split("\0")
+            if name
+        )
+    )
+
+
+def _review_evidence(root, directory, judged, files=None):
     head = _review_git(root, ("rev-parse", "--verify", "HEAD^{commit}"))
     status = _review_git(
         root, ("status", "--porcelain", "-z", "--untracked-files=all", "--no-renames")
@@ -2461,7 +2600,7 @@ def _review_evidence(root, directory, files=None, others=()):
         return checked(None, problems)
     return Built(
         drafts.review_evidence(
-            head.value.strip(), _status_entries(status.value), directory, files, others
+            head.value.strip(), _status_entries(status.value), directory, judged, files
         )
     )
 
@@ -3282,7 +3421,12 @@ def _git_worktree(root):
 def _record_close(kind, name, values, context):
     args = context.args
     if not _git_worktree(args.repo_root):
-        return _record_role_scoped(kind, name, values, context, None)
+        return _reported_close(
+            kind,
+            values,
+            context,
+            _record_role_scoped(kind, name, values, context, None),
+        )
     actor = commits.recording_role(kind, values.get("subject"), values.get("role"))
     if isinstance(actor, Refused):
         return _commit_failure(actor)
@@ -3335,7 +3479,32 @@ def _record_close(kind, name, values, context):
             )
             if isinstance(counted, Refused):
                 return _refusal(counted.defects)
-        return result
+        return _reported_close(kind, values, context, result)
+
+
+def _reported_close(kind, values, context, result):
+    """Print the uncarried-decision warnings after an accepted design close; never refuses."""
+    if result == 0 and kind == "design" and values["outcome"] == "accepted":
+        _report_uncarried_decisions(
+            context.args.repo_root, context.destinations.handoff
+        )
+    return result
+
+
+def _report_uncarried_decisions(root, handoff_path):
+    """Name each Confirmed product decision the closed design does not carry; never refuses."""
+    stored = json.loads((Path(root) / handoff_path).read_text(encoding="utf-8"))
+    for text in handoff.uncarried_confirmed_decisions(stored):
+        print(
+            "WARNING WHAT: the design does not carry the confirmed product decision "
+            + repr(text)
+            + " as a shared constraint."
+            + "\nWHY: the design closed, so the decision may have been replaced without a recorded owner release."
+            + "\nHOW: run, in order, nwdes design open --from-current; nwdes design constraint add --shared --text "
+            + shlex.quote(text)
+            + "; nwdes design close --outcome accepted --diagnostic 'Carries the confirmed product decision.' Or record why the product owner released it.",
+            file=sys.stdout,
+        )
 
 
 def _retire_workspaces(root, locations, handoff):

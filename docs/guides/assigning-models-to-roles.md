@@ -106,7 +106,7 @@ nwave-ai rigor --show
 
 **Done:** `--show` lists the overridden role with your model and source `project`.
 
-The `--hosts` answer decides whether any host file changes. Which hosts write, which refuse, and which formats are unverified is in the [rigor entry](../reference/cli.md#nwave-ai-rigor). Dynamic mode (`/nw-dynamic`) reads only the examine level among these settings; see [Which routes read these settings](../reference/cli.md#which-routes-read-these-settings).
+The `--hosts` answer decides whether any host file changes. Which hosts write, which refuse, and which formats are unverified is in the [rigor entry](../reference/cli.md#nwave-ai-rigor).
 
 ## Keep your edits across upgrades
 

@@ -15,7 +15,7 @@ skills:
 <!-- GENERATED:role-skill-loading START — source of truth: role-skill-loading.yaml (build-time registry, not shipped); do not hand-edit (docgen renders this region) -->
 Conditional skills, not preloaded. Before answering, check every row against the current task. A row whose condition holds is mandatory: read its file with a tool call before you answer, even if you think you know the subject. Skip rows whose condition does not hold. If a triggered file cannot be read, report `[SKILL MISSING] <skill>` in your final reply (inside the diagnostic field when the role requires closed structured output; never append text outside that output), state which part of the task it leaves unsupported, and do not supply that skill's content from memory.
 - Read `~/.claude/skills/nw-cross-cutting-invariants/SKILL.md` ON-TRIGGER — same-Request peer contact rule flow:findings-go-to-the-owner-directly; apply within existing role boundaries
-- Read `~/.claude/skills/nw-rigor/SKILL.md` ON-TRIGGER — provider, model, competence, or global/project model configuration
+- Read `~/.claude/skills/nw-rigor/SKILL.md` ON-TRIGGER — review rounds, examine level, provider, model, competence, documents, hosts, or global/project rigor configuration
 <!-- GENERATED:role-skill-loading END -->
 # nw-nwave-buddy
 

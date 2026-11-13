@@ -356,6 +356,17 @@ a project root.
 
 ---
 
+### `tests` (object, optional)
+
+What the project declares to `nwave-ai tests run` and `nwave-ai tests select`:
+the classes, the ceiling and the wait limit of the account's test queue, the test commands run by
+name, how to read the candidate's identity, how to check where the tool under
+test resolves, and the rules of the test selection with the depth of each use.
+The project's block replaces the global block whole. Every key and its default
+is in the [Test Queue and Test Selector Reference](test-queue-and-selector.md).
+
+---
+
 ## Rigor profile cascade table
 
 Density/prompt inherited when `rigor.profile` is set and

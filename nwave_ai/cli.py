@@ -2154,6 +2154,8 @@ def _print_usage(version: str) -> int:
         "  status         Show this project's effective configuration and host assets"
     )
     print("  completion     Print a shell-completion script (bash/zsh)")
+    print("  tests run      Run a test command through the test queue of this account")
+    print("  tests select   List the tests a change selects (--use NAME PATH ...)")
     print("  update --check Discover the latest stable public release")
     print("  update consent <check|install> <on|off> Set separate startup permissions")
     print("        install on requires --confirm-old-sessions-closed the first time;")
@@ -2614,6 +2616,10 @@ def main() -> int:
         from nwave_ai.outcomes.cli import handle_outcomes
 
         return handle_outcomes(sys.argv[2:])
+    elif command == "tests":
+        from nwave_ai.testrun.cli import main as tests_main
+
+        return tests_main(sys.argv[2:])
     elif command == "plugin":
         return _handle_plugin(sys.argv[2:])
     elif command == "model":

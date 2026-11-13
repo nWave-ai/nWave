@@ -303,6 +303,21 @@ def load_public_commands(nwave_dir: Path) -> set[str]:
     }
 
 
+def load_unlisted_commands(nwave_dir: Path) -> set[str]:
+    """Return catalog command names marked ``listed: false`` (hyphen spelling).
+
+    Such a command is installed like any public command but named by no
+    generated documentation page and by no published listing line. A missing
+    catalog names no command (non-strict, as the documentation callers read it).
+    """
+    catalog = _load_catalog(nwave_dir, strict=False) or {}
+    return {
+        name.replace("_", "-")
+        for name, metadata in catalog.get("commands", {}).items()
+        if metadata.get("listed") is False
+    }
+
+
 def load_private_agents(nwave_dir: Path) -> set[str]:
     """Read framework-catalog.yaml and return agents where ``public`` is ``False``.
 

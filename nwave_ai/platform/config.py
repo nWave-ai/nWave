@@ -108,6 +108,21 @@ class VerificationReusePolicy:
     workspace: dict[str, Any] | None
 
 
+@dataclass(frozen=True)
+class DeclaredTests:
+    """The raw ``tests`` block of the configuration and where it was read.
+
+    ``value`` is ``None`` when no tier declares it. ``unreadable`` names every
+    tier file that exists but is not a readable JSON object: its declaration is
+    unknown, so a caller that acts on ``value`` alone would act on a default the
+    project never chose.
+    """
+
+    value: object | None
+    source: Path | None
+    unreadable: tuple[Path, ...]
+
+
 class NWaveConfig:
     """
     Configuration loader for DES settings.
@@ -1138,6 +1153,30 @@ class NWaveConfig:
             large_min_consumers=self.blast_radius_large_min_consumers,
             boundary_globs=self.blast_radius_boundary_globs,
         )
+
+    def tests_declaration(self) -> DeclaredTests:
+        """Return the ``tests`` block via cascade: project -> global -> absent.
+
+        Full-block override, the discipline of ``_blast_radius``: a project
+        ``tests`` key shadows the entire global block.
+        """
+        unreadable = tuple(
+            path
+            for path, is_unreadable in (
+                (self._config_path, self._config_tier_unreadable),
+                (self._global_config_path, self._global_tier_unreadable),
+            )
+            if is_unreadable
+        )
+        if "tests" in self._config_data:
+            return DeclaredTests(
+                self._config_data["tests"], self._config_path, unreadable
+            )
+        if "tests" in self._global_config_data:
+            return DeclaredTests(
+                self._global_config_data["tests"], self._global_config_path, unreadable
+            )
+        return DeclaredTests(None, None, unreadable)
 
     # --- Observability (NWave unified logging) ---
 

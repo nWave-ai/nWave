@@ -3741,6 +3741,16 @@ class InvocationRefused(Refused):
     output: RoleInput | None = None
 
 
+def _not_accepted_remedy(kind):
+    """The HOW of a refused non-accepted output. An examine close publishes only with --outcome accepted."""
+    if kind == "examine":
+        return (
+            "Close with --outcome accepted: nwdes publishes the outcome the verdicts derive. "
+            "To change it, change a verdict first."
+        )
+    return "Resolve the role's diagnostic, record corrected values with its verbs and close with --outcome accepted."
+
+
 def inspect_output(kind, data, *, policy=None, resolution=EMPTY):
     parsed = parse_json(data, kind)
     if isinstance(parsed, Refused):
@@ -3783,7 +3793,7 @@ def inspect_output(kind, data, *, policy=None, resolution=EMPTY):
                 Defect(
                     f"RoleNotAccepted: {kind}",
                     str(envelope.get("diagnostic", "")),
-                    "Resolve the role's diagnostic, record corrected values with its verbs and close with --outcome accepted.",
+                    _not_accepted_remedy(kind),
                 ),
             )
             if outcome in ("rejected", "indeterminate")
@@ -4116,6 +4126,32 @@ def examination_outcome(verdicts):
     return "accepted"
 
 
+def examination_close_refusal(draft, outcome, diagnostic):
+    """The refusal of an examine close that asks for an outcome nwdes does not publish.
+
+    An examination publishes whatever its verdicts derive: a close with --outcome accepted
+    publishes that derived outcome and prints it. A close asking for another outcome is refused
+    here, naming the outcome the verdicts derive and the one close that publishes it. The
+    author's supplied diagnostic is carried in the refusal, never dropped.
+    """
+    derived = examination_outcome(draft.get("verdicts") or {})
+    why = (
+        f"--outcome {outcome} was given; nwdes publishes only the outcome the verdicts derive, "
+        f"and the verdicts derive {derived}."
+    )
+    if diagnostic:
+        why += " The author's diagnostic, verbatim, one quoted line per row:" + "".join(
+            f"\n  | {line}" for line in diagnostic.splitlines()
+        )
+    return Defect(
+        "RoleNotAccepted: examine",
+        why,
+        "Close with --outcome accepted. nwdes publishes the outcome the verdicts derive, "
+        f"which is {derived}, and prints it as the last line of the close output. To change that outcome, "
+        "change a verdict first: met, unmet or not_examined.",
+    )
+
+
 def _acceptance_statement_problems(payload, slice):
     if not isinstance(payload, (tuple, list)):
         return ()
@@ -4388,6 +4424,35 @@ def _design_commands(payload):
             for command in verification_commands(own, f"design.slices.{identity}")
         ),
         *_owed_commands(payload),
+    )
+
+
+def confirmed_decision_texts(product, facts):
+    """The text of each Confirmed product decision, resolved through the facts it names."""
+    return tuple(
+        (facts or {}).get(row.get("text"), row.get("text"))
+        for row in ((product or EMPTY).get("decisions") or ())
+        if (row.get("status") or EMPTY).get("kind") == "Confirmed"
+    )
+
+
+def uncarried_confirmed_decisions(stored):
+    """Texts of Confirmed product decisions that no shared design constraint carries verbatim.
+
+    A report, not a gate: the design still closes. Both sides are resolved through the stored
+    facts, so interned identities compare as their text.
+    """
+    facts = stored.get("facts") or {}
+    carried = {
+        facts.get(row.get("text"), row.get("text"))
+        for row in (
+            ((stored.get("design") or {}).get("shared") or {}).get("constraints") or ()
+        )
+    }
+    return tuple(
+        text
+        for text in confirmed_decision_texts(stored.get("product"), facts)
+        if text not in carried
     )
 
 

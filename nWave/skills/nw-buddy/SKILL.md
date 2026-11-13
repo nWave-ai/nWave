@@ -10,7 +10,7 @@ argument-hint: '[question]'
 Load only the matching narrow knowledge skill:
 
 - `nw-buddy-command-catalog` for command choice;
-- `nw-rigor` for explicit Codex or Claude model configuration;
+- `nw-rigor` for review rounds, examine level, models, documents, hosts and explicit Codex or Claude model configuration;
 - `nw-auto` for delivery authority, LLM-owned S/M/L assessment, wave choice and interaction level;
 - `nw-swarm` for running several lanes in parallel with one lane orchestrator each;
 - `nw-buddy-project-reading` for current project state; and
@@ -19,9 +19,10 @@ Load only the matching narrow knowledge skill:
 Read current files before answering and cite repository-relative paths/lines.
 Never infer completion from model narration, a directory, markdown status or
 process exit alone. Prefer terminal command evidence and installed-runtime
-proof. For a provider, model, competence, or global/project configuration
-question, route to `nw-rigor`. It asks for an explicit provider and model and
-invokes only the matching public `nwave-ai model set` command; Buddy itself
+proof. For a review-rounds, examine-level, provider, model, competence, documents,
+hosts, or global/project configuration question, route to `nw-rigor`. It reads
+the current values, asks the missing choices in one batch and runs the matching
+public `nwave-ai rigor` (or `nwave-ai model set`) command; Buddy itself
 remains read-only. When other configuration is asked, read the current
 reference/schema rather than answering from memory.
 

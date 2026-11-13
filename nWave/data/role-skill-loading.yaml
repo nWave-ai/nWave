@@ -69,6 +69,7 @@ roles:
       nw-certainty-by-construction: invalid-state or preservation claim
       nw-type-level-design: design proposes or reviews a valid-state model, opaque construction boundary, evidence-preserving result, or finite state/capability API; use advanced Haskell material only for a GHC target
       nw-stress-analysis: external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
+      nw-devops: the design declares an auto-deploy target or closes a DEVOPS operational constraint; load before any accepted design close
     paradigm:
       object_oriented: nw-code-design-oo
       functional: nw-code-design-fp
@@ -156,7 +157,7 @@ roles:
       nw-ab-optimize-skill: reviewing a claimed optimized existing skill
   nw-nwave-buddy:
     on_demand:
-      nw-rigor: provider, model, competence, or global/project model configuration
+      nw-rigor: review rounds, examine level, provider, model, competence, documents, hosts, or global/project rigor configuration
   nw-ux-designer:
     on_demand:
       nw-css-implementation-recipes: building a web prototype using the existing frontend conventions

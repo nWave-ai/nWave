@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import posixpath
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -24,6 +25,7 @@ class ReviewSubject(Enum):
     ORACLE = "oracle"
     SLICE = "slice"
     CANDIDATE = "candidate"
+    DESIGN = "design"
 
 
 REVIEW_SUBJECT = h.enum(*(subject.value for subject in ReviewSubject))
@@ -92,23 +94,131 @@ def candidate_scope(scope):
     return isinstance(scope, _CandidateScope)
 
 
-def review_evidence(commit, status_entries, destinations, files=None, others=()):
-    """Clean-tree evidence; an oracle review judges its own files by content instead.
-
-    The oracle and supports of the feature's other slices (others) are test files of work that
-    is not under review: they are not dirty evidence for this review and are not bound.
-    """
-    owned = (
-        frozenset()
-        if files is None
-        else frozenset(path for path, _ in files) | frozenset(others)
+def declared_paths(own):
+    """The oracle, supports and target paths one slice declares in its design record."""
+    if not isinstance(own, Mapping):
+        return ()
+    supports = own.get("supports") or ()
+    targets = own.get("targets") or ()
+    return (
+        *(path for path in (own.get("oracle"), *supports) if isinstance(path, str)),
+        *(
+            row["path"]
+            for row in targets
+            if isinstance(row, Mapping) and isinstance(row.get("path"), str)
+        ),
     )
+
+
+def scope_declarations(design, scope):
+    """The raw declared paths the review's scope names: one slice's, or every designed slice's
+    for a candidate review (or a legacy replay naming no slice). An undeclared slice is refused.
+    """
+    slices = design.get("slices") if isinstance(design, Mapping) else None
+    slices = slices if isinstance(slices, Mapping) else {}
+    named = (
+        scope.slice if isinstance(scope, (_OracleScope, _SliceScope, Legacy)) else None
+    )
+    if named is not None and named not in slices:
+        return checked(
+            (),
+            (
+                Defect(
+                    f"DanglingReference: --slice {named}",
+                    f"The design declares no slice {named}, so there is no scope to judge.",
+                    "Repeat the review with --slice naming a slice the design declares.",
+                ),
+            ),
+        )
+    identities = sorted(slices) if named is None else [named]
+    return Built(
+        tuple(
+            path
+            for identity in identities
+            for path in declared_paths(slices.get(identity))
+        )
+    )
+
+
+UNPROVABLE_FACTS = {
+    "directory": "is a directory, so its files are not judged one by one",
+    "symlink": "is a symlink, so the judged bytes are those of a file outside the declaration",
+    "ignored": "is git-ignored, so git status never reports its changes",
+}
+
+
+def _unprovable(path, reason):
+    return Defect(
+        f"UnprovableScope: {path}",
+        f"The declared path {path} {reason}; the review could not prove its clean state.",
+        "Declare a regular, git-visible file path relative to the repository root, POSIX-"
+        "spelled, not a directory, symlink, path under a symlinked directory or git-ignored, "
+        "in the design, then review again.",
+    )
+
+
+def spelling_problem(path):
+    if "\\" in path:
+        return "is spelled with a backslash"
+    if path.startswith("/") or path[1:2] == ":":
+        return "is an absolute path"
+    if path.endswith("/"):
+        return "ends in a slash, so it names a directory"
+    normalised = posixpath.normpath(path)
+    if normalised in (".", "..") or normalised.startswith("../"):
+        return "leaves the repository or names its root"
+    return None
+
+
+def scope_paths(design, scope, facts=()):
+    """The normalised paths a review judges, or its refusal.
+
+    facts holds (declared path, kind) pairs the shell observed on disk and in git; a kind named
+    in UNPROVABLE_FACTS makes that declaration unjudgeable. An empty resolved scope is refused:
+    it would make every changed path invisible and publish a review that judged nothing.
+    """
+    declared = scope_declarations(design, scope)
+    if isinstance(declared, Refused):
+        return declared
+    kinds = dict(facts)
+    judged = set()
+    problems = []
+    for raw in declared.value:
+        spelling = spelling_problem(raw)
+        if spelling is not None:
+            problems.append(_unprovable(raw, spelling))
+        elif kinds.get(raw) in UNPROVABLE_FACTS:
+            problems.append(_unprovable(raw, UNPROVABLE_FACTS[kinds[raw]]))
+        else:
+            judged.add(posixpath.normpath(raw))
+    if not declared.value:
+        problems.append(
+            Defect(
+                "MissingFact: review scope",
+                "The reviewed scope declares no oracle, supports or target path, so a "
+                "review would judge nothing and publish an accepted record.",
+                "Declare the slice's oracle and targets in the design, then review again.",
+            )
+        )
+    return checked(tuple(sorted(judged)), problems)
+
+
+def review_evidence(commit, status_entries, destinations, scope=(), files=None):
+    """Clean-scope evidence: the changed paths the review names, and nothing else.
+
+    A changed path outside the scope is not part of what the review judged, so it never refuses
+    the close. An oracle review judges its own files by content instead of by their dirty state.
+    """
+    owned = frozenset() if files is None else frozenset(path for path, _ in files)
+    judged = frozenset(scope)
     return ReviewEvidence(
         commit,
         tuple(
             path
             for code, path in status_entries
-            if evidence_dirty(((code, path),), destinations) and path not in owned
+            if path in judged
+            and path not in owned
+            and evidence_dirty(((code, path),), destinations)
         ),
         None if files is None else content_digest(files),
     )
@@ -143,6 +253,32 @@ def _content_field(evidence):
     return {} if evidence.content is None else {"content": evidence.content}
 
 
+def _stale_why(evidence):
+    dirty = (
+        "; the reviewed scope has dirty paths " + ", ".join(evidence.dirty)
+        if evidence.dirty
+        else ""
+    )
+    return (
+        "The observation was not recorded on clean HEAD "
+        + evidence.commit
+        + " with no dirty path in the reviewed scope and the same oracle content"
+        + dirty
+        + "."
+    )
+
+
+def _stale_how(evidence, how):
+    if not evidence.dirty:
+        return how
+    return (
+        "Commit or revert "
+        + ", ".join(evidence.dirty)
+        + ", then record the observation again with nwdes review observation add on the clean commit. "
+        + how
+    )
+
+
 def review_record(draft, evidence, outcome, diagnostic):
     observations = draft.get("observations", ())
     how = (
@@ -167,10 +303,8 @@ def review_record(draft, evidence, outcome, diagnostic):
         *(
             Defect(
                 "StaleObservation: " + row["id"],
-                "The observation was not recorded on clean HEAD "
-                + evidence.commit
-                + " with no other dirty path and the same oracle content.",
-                how,
+                _stale_why(evidence),
+                _stale_how(evidence, how),
             )
             for row in observations
             if row.get("commit") != evidence.commit
@@ -281,11 +415,16 @@ class _CandidateScope:
 
 
 @dataclass(frozen=True)
+class _DesignScope:
+    pass
+
+
+@dataclass(frozen=True)
 class Legacy:
     slice: str | None
 
 
-ReviewScope = _OracleScope | _SliceScope | _CandidateScope | Legacy
+ReviewScope = _OracleScope | _SliceScope | _CandidateScope | _DesignScope | Legacy
 
 
 def review_scope(
@@ -329,11 +468,16 @@ def review_scope(
             (
                 Defect(
                     "PartInvalid: --slice",
-                    "A candidate review names the complete feature, not an individual slice.",
-                    "Repeat the review verb with --subject candidate without --slice.",
+                    "A "
+                    + selected.value
+                    + " review names the complete feature, not an individual slice.",
+                    "Repeat the review verb with --subject "
+                    + selected.value
+                    + " without --slice.",
                 ),
             )
-            if selected is ReviewSubject.CANDIDATE and slice_id is not None
+            if selected in (ReviewSubject.CANDIDATE, ReviewSubject.DESIGN)
+            and slice_id is not None
             else ()
         ),
     )
@@ -346,6 +490,8 @@ def review_scope(
             return Built(_SliceScope(parsed_slice.value))
         case ReviewSubject.CANDIDATE:
             return Built(_CandidateScope())
+        case ReviewSubject.DESIGN:
+            return Built(_DesignScope())
 
 
 @dataclass(frozen=True)
@@ -366,6 +512,8 @@ class DraftKey:
                 suffix = ".slice." + slice_id
             case _CandidateScope():
                 suffix = ".candidate"
+            case _DesignScope():
+                suffix = ".design"
             case Legacy(slice_id):
                 suffix = "." + slice_id if slice_id else ""
             case slice_id:
@@ -948,6 +1096,22 @@ def _problems(spec, value, path):
     return h._check(spec, value, path)
 
 
+def _kept_adr_members(value):
+    """The optional members of an ADR row that a set neither names nor replaces.
+
+    The row type declares them: its selector pair (key or supersedes, exclusive) and
+    its prefix. A set that names one selector replaces the other of the pair, so a
+    row never holds two; a set that names none keeps the prior selector.
+    """
+    named = set(value)
+    replaced = set(h.ADR_ROW.exclusive) if named & set(h.ADR_ROW.exclusive) else set()
+    return tuple(
+        name
+        for name, _ in h.ADR_ROW.members
+        if name not in h.ADR_ROW.required and name not in named | replaced
+    )
+
+
 def prepare_edit(kind, verb, values, previous=None, policy=None):
     row = _row_for(kind, verb)
     if row is None:
@@ -1019,6 +1183,10 @@ def prepare_edit(kind, verb, values, previous=None, policy=None):
                 and child.members[0].kind in ("record", "choice")
             )
             if spec.kind == "record"
+            else ()
+        ) + (
+            _kept_adr_members(value)
+            if kind == "design" and row.name == "adr" and isinstance(value, Mapping)
             else ()
         )
         selected_value = (

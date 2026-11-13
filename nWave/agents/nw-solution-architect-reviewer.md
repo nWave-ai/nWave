@@ -22,6 +22,7 @@ Conditional skills, not preloaded. Before answering, check every row against the
 - Read `~/.claude/skills/nw-diagram/SKILL.md` ON-TRIGGER — the design contains or changes an architecture diagram, or documents.readable_brief is enabled
 - Read `~/.claude/skills/nw-doc-as-artifact/SKILL.md` ON-TRIGGER — documents.readable_brief is enabled, or the documentarist sends its one round of questions about a design decision or diagram
 - Read `~/.claude/skills/nw-stress-analysis/SKILL.md` ON-TRIGGER — external/nondeterministic boundary; recovery/degradation; contagion; substrate uncertainty; high-uncertainty socio-technical boundary; or explicit --residuality force-on
+- Read `~/.claude/skills/nw-devops/SKILL.md` ON-TRIGGER — the design declares an auto-deploy target or closes a DEVOPS operational constraint; load before any accepted design close
 - Read `~/.claude/skills/nw-design/SKILL.md` ON-TRIGGER — judging whether feature scope, shared decisions or slice scope are adequate
 <!-- GENERATED:role-skill-loading END -->
 # nw-solution-architect-reviewer

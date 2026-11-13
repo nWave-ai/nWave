@@ -1,61 +1,101 @@
 ---
 name: nw-rigor
-description: Configure explicit Codex or Claude model facts for nWave defaults or published roles, consumed by the native host where supported. Never derives a model from a competence label.
+description: Use when the user wants to see or change how much rigor a project gets (review rounds, examine level), which provider/model a role uses, or whether readable documents are written. The LLM reads the current settings, asks only the missing choices in plain words, and runs `nwave-ai rigor` or `nwave-ai model set` itself. Never derives a model from a competence label.
 user-invocable: true
-argument-hint: '[desired competence, provider, model, scope, optional role]'
+argument-hint: '[review rounds, examine level, provider, model, scope, optional role]'
 ---
 
 # NW-RIGOR
 
-Public provider/model configuration guidance.
+The user collaborates with you. You run every command; the user never types
+terminal commands. nwdes does not execute models, and the CLI neither maps
+competence to a model, checks availability, nor falls back.
 
-Use the public `nwave-ai model` command to record explicit provider/model facts
-for native-host role invocation where supported. nwdes does not execute models.
-The command neither maps competence to a model, checks availability, nor falls back.
+## 1. Read what is already set
 
-## Read known selections first
+Run `nwave-ai rigor --show` (read only) and read its values and their sources.
+Also read the project `.nwave/config.json` and the global `.nwave/config.json`
+(under a valid absolute `NWAVE_AGENTS_HOME`, otherwise the home directory).
+Reuse anything the user already said in this conversation; never ask them to
+repeat a known value or type an identifier already available.
 
-Before asking questions, read the current repository's `.nwave/config.json`
-and the global `.nwave/config.json` under the configured agents-home location.
-Respect a valid absolute `NWAVE_AGENTS_HOME` when it is set; otherwise
-the global file is under the current home directory. Read only: there is no
-public `nwave-ai model show` command.
+## 2. Ask once, in one batch
 
-Also reuse a provider, model, scope, or role that the user already selected in
-this conversation. Do not ask the user to repeat a valid known value or type a
-model identifier that is already available from one of those sources.
+Ask ONE batched question set in plain words (short sentences, everyday words),
+not one round trip per item. Say what each item changes for the user's work.
+Keep tool names (option names, `producers`, `reviewers`, `executors`, role
+names, `charter`, `slice`, `lane`, `handoff`) in your commands only, never in
+a sentence the user reads. Cover only what is missing or what the user wants
+to change. Each item gives: the current value and source as the suggested
+answer, the cost and benefit of the options, and your recommendation. End with
+one direct question ("keep these, or change which?").
 
-For the requested role, present the effective complete provider/model pair, if
-one is declared, as a suggestion. A project role override wins over a global
-default. If the user asks for a different competence level, explain that the
-CLI has no competence profile or automatic mapping; keep the current pair as a
-candidate until the user selects a different pair.
+1. **Review rounds (1-5).** How many times a second person, not the author,
+   may check the same piece of work. Cost: one more check per round. Benefit:
+   fewer mistakes stay unseen. Too few rounds can miss mistakes; many rounds
+   can keep finding small things and never stop.
+2. **Examine level.** A final check of the finished work, by someone who has
+   not read the code; it finds what automatic tests miss. Explain "examination"
+   as one such check and "repair round" as one chance to fix what it found.
+   Present the tool's own text, copied here once and pinned by a test:
 
-## Resolve only missing decisions
+   | Level | gives | not covered at this level |
+   |---|---|---|
+   | `quick` | 1 examination, no repair round | any repair round |
+   | `standard` (default) | 2 examinations, 1 repair round | more than 1 repair round |
+   | `extended` | 3 examinations, 2 repair rounds | more than 2 repair rounds |
 
-Ask only for missing material choices:
+   Not covered at any level: security, load or checks on other machines.
+   The tool also says: a row not examined is never green. A longer level is not safer.
+3. **Which AI model does which kind of work.** Say it as: a stronger model for
+   hard work, a faster one for routine work, for all work of one kind or for one
+   named helper. Offer the model already in effect or known from the config or
+   the conversation; keeping it is the default. Map the answer to
+   `--model-set` with a group (`producers`, `reviewers`, `executors`) or an
+   exact published role name.
+4. **Readable summary pages.** A web page in plain language, for people who do
+   not read code, written when a piece of work is finished: yes or no. When
+   yes, also the language (a code such as `en`, `de`, `it`).
+5. **Other AI tools on this computer.** Whether they should also get the model
+   choices. Writing changes files in the user's home folder; a backup copy
+   is kept next to each. Two tools (`codex`, `devin`) cannot take a model per
+   kind of work and refuse. Default: change nothing.
 
-1. What work and competence level is needed, including any quality, cost, or
-   latency preference?
-2. Which scope and target should change: global or current project, and default
-   or one published role?
-3. Which `codex` or `claude` provider/model pair should be used, when no
-   selected pair is already known?
+Rounds and levels bound the rework loops. A finding still open at the limit
+returns to its owner; reaching the limit is never an approval and nothing
+passes silently.
 
-The competence answer helps choose a pair; it is not an input the CLI can map
-to a provider or model. A current effective pair, or an identifier from
-trustworthy verified provider information, may be offered as a **suggestion**.
-Name its source and let the user accept or change it. Once accepted, that known
-identifier supplies the CLI input; it need not have been typed by the user.
-Never invent an identifier, an automatic competence mapping, or a fallback.
+## 3. Apply with ONE command
 
-If a role is requested, use its exact published name. `nwave-ai` refuses an
-unreadable or unpublished role before it writes configuration.
+The command takes every chosen value together. State it before running, run it,
+report the result, then run `nwave-ai rigor --show` and show the new values.
+Use `current` or `keep` for what does not change, and `--yes`: the user's
+answers are the confirmation. Give each option once.
 
-## Apply the selected setting
+```bash
+nwave-ai rigor --yes --review-rounds 3 --examine-level extended --models keep --documents yes --document-language en --hosts keep
+```
 
-After the needed decisions are known or accepted, run exactly one matching
-command:
+That example sets 3 rounds, the extended level and English documents, and
+changes no models or host file. Adapt only the values. The options:
+
+- `--show`: print the values in effect; writes nothing.
+- `--yes`: the user's answers are the confirmation.
+- `--review-rounds`: `1` to `5`, or `current`.
+- `--examine-level`: `quick`, `standard`, `extended`, or `current`.
+- `--models`: `keep`; or use `--model-set` once per target, as
+  `--model-set reviewers=PROVIDER/MODEL`.
+- `--documents`: `yes`, `no` or `keep`; `--document-language LANG` only with `yes`.
+- `--hosts`: host names separated by commas, `none` or `keep`.
+
+After a refusal, report its WHAT/WHY/HOW and ask the user; never substitute
+another value, provider, model or scope.
+
+## Provider/model selection
+
+Model facts for native-host role invocation are set per target: `--model-set`
+above (groups `producers`, `reviewers`, `executors`, or a published role name)
+or, for the default or one role, `nwave-ai model set`:
 
 | Scope and target | Command |
 |---|---|
@@ -64,11 +104,12 @@ command:
 | Global published-role override | `nwave-ai model set --provider PROVIDER --model MODEL --role ROLE` |
 | Current-project published-role override | `nwave-ai model set --provider PROVIDER --model MODEL --role ROLE --project` |
 
-Replace `PROVIDER` with the selected `codex` or `claude`, `MODEL` with the
-accepted exact model string, and `ROLE` only with the selected published role.
-State the command before executing it and report its result. Do not substitute
-the other provider, a default model, or a different scope after a refusal.
-
-Global settings are written to the nWave global configuration. `--project`
-writes the current repository's `.nwave/config.json`; a project role override
-takes precedence over a global default at runtime.
+- Suggest the effective current pair (project role override beats global
+  default) with its source; the user accepts or changes it.
+- A requested competence level helps the user choose a pair; the CLI has no
+  competence profile or mapping. Keep the current pair until the user selects
+  another.
+- `PROVIDER` is `codex` or `claude`; `MODEL` the accepted exact string; `ROLE`
+  only an exact published role name. Never invent an identifier, a competence
+  mapping or a fallback; the stored value is not checked, so a wrong name shows
+  only when the role runs.

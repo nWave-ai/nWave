@@ -29,7 +29,7 @@ current options. Use `nwdes <verb> [<action>] --help` before composing an argv.
 | Record examiner verdicts | `nwdes examine verdict set/close` |
 | Implement and verify | Native installed crafter records with `nwdes craft file add/command add/close`; the host runs each declared RED/GREEN command once, and the root consumes its attributed evidence |
 | Isolate and integrate feature work | `nwdes lane open`, `compose`, `integrate` (fast-forwards trunk, then removes the lane) |
-| Configure provider/model facts | `nw-rigor`, then `nwave-ai model set`; the host invokes models |
+| Set review rounds, examine level, models, documents, hosts | `nw-rigor`, then one `nwave-ai rigor --show` / `--yes --review-rounds` / `--examine-level` / `--models` / `--model-set` / `--documents` / `--document-language` / `--hosts`; provider/model alone: `nwave-ai model set`; the host invokes models |
 | Diagnose an installation | `nwave-ai doctor` |
 | Commit authorized changes | `git commit`; `nwave-ai attribution` governs the trailer |
 
