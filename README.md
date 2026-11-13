@@ -69,6 +69,7 @@ yourself, once, to learn the command flow.
 - [First feature with nwdes](https://github.com/nWave-ai/nWave/tree/main/docs/guides/tutorial-nwdes-first-feature/) — a safe walk through the command flow in a throwaway repository.
 - [Deliver a feature](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/deliver-feature.md) — the real route, end to end.
 - [Fix a bug](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwdes/fix-bug.md) — the single-defect route.
+- [nWave Cookbook](https://github.com/nWave-ai/nWave/tree/main/docs/guides/nwave-cookbook/) — copy-paste recipes for applying nWave's skills and agents to your own project.
 
 Per-wave lessons (discovery, discuss, design, distill, deliver, devops and more) live under `docs/guides/tutorial-*`.
 
