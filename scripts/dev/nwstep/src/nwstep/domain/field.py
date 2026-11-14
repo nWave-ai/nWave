@@ -6,10 +6,12 @@ from pathlib import Path
 
 from nwstep.domain.case_result import CaseResult
 from nwstep.domain.case_spec import CaseSpec
+from nwstep.domain.command_bound import CommandBound
 from nwstep.domain.command_line import CommandLine, Operator, UnquotedOperator
 from nwstep.domain.command_outcome import CommandOutcome
 from nwstep.domain.edge_category import EdgeCategory
 from nwstep.domain.fault import Fault
+from nwstep.domain.declared_path import DeclaredPath
 from nwstep.domain.field_kind import FieldKind
 from nwstep.domain.prefixed_item import PrefixedItem
 from nwstep.domain.refusal import Refusal
@@ -64,6 +66,8 @@ class Field:
         names_tests: bool = False,
         compare_baseline: bool = False,
         fallback: str | None = None,
+        report: str | None = None,
+        bound: str | None = None,
         required_sizes: tuple[Size, ...] = (),
     ) -> None:
         if (
@@ -152,9 +156,9 @@ class Field:
             raise ValueError(
                 f"field '{name}': must_fail applies to a runs_on=pre-feature command"
             )
-        if names_tests and (kind is not FieldKind.LIST or covers is None):
+        if names_tests and kind is not FieldKind.LIST:
             raise ValueError(
-                f"field '{name}': names_tests applies to list fields with covers"
+                f"field '{name}': names_tests applies to list fields: their names must occur in the declared test files"
             )
         if compare_baseline and (kind is not FieldKind.COMMAND or expect is not None):
             raise ValueError(
@@ -175,6 +179,12 @@ class Field:
                 raise ValueError(
                     f"field '{name}': runs_on is 'pre-feature' with expect=fail, or 'refactor' with expect=pass, and applies to command fields"
                 )
+        if report is not None and (
+            kind is not FieldKind.COMMAND or not report.isidentifier()
+        ):
+            raise ValueError(
+                f"field '{name}': report names the paths field that holds the command's report and applies to command fields"
+            )
         if generated and (kind is not FieldKind.LIST or contract != "law"):
             raise ValueError(f"field '{name}': generated applies to law list fields")
         if predicted_by is not None and kind is not FieldKind.CASES:
@@ -231,6 +241,8 @@ class Field:
         self.compare_baseline = compare_baseline
         self.fallback = fallback
         self.required_sizes = frozenset(required_sizes)
+        self.report = report
+        self.bound = bound
 
     @staticmethod
     def _parse_reference(reference: str | None, option: str) -> tuple[str, str] | None:
@@ -316,8 +328,10 @@ class Field:
             fault=Fault.SHELL_OPERATOR,
         )
 
-    def accept_items(self, items: list[str], root: Path) -> list[str]:
-        """Check a list, paths, cases or scenarios field. Paths resolve against root and must exist."""
+    def accept_items(
+        self, items: list[str], root: Path, written_by_run: bool = False
+    ) -> list[str]:
+        """Check a list, paths, cases or scenarios field. Paths resolve against root and must exist, except a report a command writes when it runs."""
         if not items:
             if self.required:
                 raise self.refuse_missing()
@@ -340,7 +354,15 @@ class Field:
             )
         if self.kind is FieldKind.SCENARIOS:
             self._check_scenarios(items)
-        if self.kind is FieldKind.PATHS:
+        if written_by_run:
+            for item in items:
+                try:
+                    DeclaredPath.parse(item)
+                except ValueError as error:
+                    raise self.refuse(
+                        str(error), rejected=(item,), fault=Fault.ABSENT_PATH
+                    ) from None
+        if self.kind is FieldKind.PATHS and not written_by_run:
             absent = tuple(
                 item for item in items if not self._resolve(item, root).exists()
             )
@@ -442,11 +464,62 @@ class Field:
             fault=Fault.COMMAND,
         )
 
+    def timed_out(self, seconds: int) -> Refusal:
+        """The refusal of a command the tool stopped at its bound: it gave no exit and wrote no report, so nothing is proven."""
+        how = (
+            f"declare a longer bound for this record with --{self.bound} SECONDS (at most {CommandBound.CEILING_SECONDS}), "
+            "or make the command faster; then record this step again"
+            if self.bound is not None
+            else "make the command faster; this field declares no bound"
+        )
+        return Refusal(
+            what=f"command for '{self.name}' was stopped after {seconds} seconds, its time bound",
+            why=f"the bound is the command's own running time (the wait for a place is not counted), and a command stopped at its bound gives no exit and no report, so it proves nothing; the default bound is {CommandBound.DEFAULT_SECONDS} seconds",
+            how=how,
+            field=self.name,
+            fault=Fault.COMMAND,
+        )
+
+    def no_report(
+        self, report: str, where: Path, exit_code: int | None, *, copied: bool
+    ) -> Refusal:
+        """The refusal of a command that wrote no report. A command that ran and exited non-zero is said to have run; the tool cannot tell its compile error from a runner that cannot write this format, so the HOW names the directory it ran in."""
+        if exit_code not in (0, None):
+            where_copied = (
+                " (the declared test files are copied there first; the directory stays until the next RED run)"
+                if copied
+                else ""
+            )
+            return Refusal(
+                what=f"'{self.name}' ran and exited {exit_code}, but wrote no report at '{report}'",
+                why="the tool reads only the report the command writes, and cannot tell a compile error from a runner that cannot write this report format, so no test is judged",
+                how=f"run the command by hand in '{where}'{where_copied} and read what it prints: if it prints failing tests, make the runner write an open JUnit XML report at '{report}' (a reporter option, a configuration file, or a converter step inside the command); if it prints a compile or setup error, fix that error; then record this step again",
+                field=self.name,
+                fault=Fault.COMMAND,
+            )
+        if exit_code == 0:
+            return Refusal(
+                what=f"'{self.name}' exited 0, and wrote no report at '{report}'",
+                why="the tool cannot tell whether the tests ran and passed or never ran, because it reads only the report the command writes, so no test is judged",
+                how=f"run the command by hand in '{where}' and read what it prints; make the runner write an open JUnit XML report at '{report}' (a reporter option, a configuration file, or a converter step inside the command); then record this step again",
+                field=self.name,
+                fault=Fault.COMMAND,
+            )
+        return Refusal(
+            what=f"'{self.name}' wrote no report at '{report}': the tests did not run (a compile error, a missing tool or a setup stop ends the run before any test)",
+            why="without a report no test ran, so no failure in it shows the change",
+            how=f"run the command by hand in '{where}', read its first error line, and make it write the report at '{report}'",
+            field=self.name,
+            fault=Fault.COMMAND,
+        )
+
     def check_outcome(
         self, outcome: CommandOutcome, kept_at: Path | None = None
     ) -> None:
         """A refused command keeps its last output lines in the refusal, and names the file its full output was kept in."""
         kept = "" if kept_at is None else f"; full output kept in {kept_at}"
+        if outcome.timed_out_after is not None:
+            raise self.timed_out(outcome.timed_out_after)
         if outcome.problem is not None:
             raise self.refuse(
                 f"command for '{self.name}' did not finish: {outcome.problem}",
@@ -619,9 +692,9 @@ class Field:
         if self.contract == "message":
             return "MSG1 | <input> | <what> | <why> | <how> | test=test_name"
         if self.contract == "invariant":
-            return "INV1 | <invariant> | witness=path.py:Symbol | bypass=none"
+            return "INV1 | <invariant> | witness=<file>:<symbol> | bypass=none"
         if self.contract == "model":
-            return "INV1 | <model invariant name> | witness=path.py:Symbol"
+            return "INV1 | <model invariant name> | witness=<file>:<symbol>"
         if self.contract == "stateless":
             return "<reason of at least 30 characters>"
         if self.ids:

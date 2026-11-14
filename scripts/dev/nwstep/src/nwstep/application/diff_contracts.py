@@ -1,23 +1,23 @@
 """Checks contract items against the change from BASE.
 
-Before craft (oracle, design, model), an item is checked against the working tree, including uncommitted and
-untracked files. A witness symbol, a reason's trigger naming and an invariant's witness are only declared then:
-they are verified after craft by `verify`, against the committed change. A law or message field declared
-after_craft is only parsed before craft: its generator and test names are verified after craft, by selfreview.
+Before craft (oracle, design, model), an item is checked against the working tree, including uncommitted and untracked
+files. A witness symbol, a reason's trigger naming and an invariant's witness are only declared then: they are verified
+after craft by `verify`, against the committed change. A law or message field declared after_craft is only parsed before
+craft: its generator and test names are verified after craft, by selfreview, against the test files the oracle declared.
 Self-review uses `check_locators` and `verify` on the committed change from BASE to HEAD.
 
-When the change cannot be read (no baseline, no git), the parse-level rules still apply and the
-diff-level checks are reported as could-not-verify, never as passed.
+A symbol is found as a whole word in the text of a file the change touched, whatever the file's language. A generated
+law's generation cannot be observed in every language, so it is stated as could-not-verify, never as passed.
+When the change cannot be read (no baseline, no git), the parse-level rules still apply and the diff-level checks are
+reported as could-not-verify, never as passed.
 """
 
 from __future__ import annotations
 
-import re
 from pathlib import Path, PurePosixPath
 
 from nwstep.domain.baseline import Baseline
 from nwstep.domain.contract_outcome import ContractOutcome
-from nwstep.domain.definitions import Definitions
 from nwstep.domain.field import Field
 from nwstep.domain.invariant_item import InvariantItem
 from nwstep.domain.law_item import LawItem
@@ -26,38 +26,28 @@ from nwstep.domain.message_item import MessageItem
 from nwstep.domain.model_witness_item import ModelWitnessItem
 from nwstep.domain.prefixed_item import PrefixedItem
 from nwstep.domain.self_review_verdict import SelfReviewVerdict
+from nwstep.domain.state_trigger import StateTrigger
+from nwstep.domain.symbol_text import SymbolText
 from nwstep.infrastructure.git_diff import GitDiff, GitDiffError
 
 # Contracts whose diff-level part waits for the committed change (after craft).
 _DEFERRED = frozenset({"invariant", "model", "stateless"})
 
-# Each keyword a no-state reason must name when the added lines use it.
-_TRIGGERS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    (
-        "open(",
-        re.compile(r"\bopen\([^,)]*,\s*(?:mode\s*=\s*)?[\"'][^\"']*[wxa+][^\"']*[\"']"),
-    ),
-    ("os.replace", re.compile(r"\bos\.replace\(")),
-    ("flock", re.compile(r"\bflock\b")),
-    ("fcntl", re.compile(r"\bfcntl\b")),
-    ("msvcrt", re.compile(r"\bmsvcrt\b")),
-    ("threading", re.compile(r"\bthreading\b")),
-    ("subprocess", re.compile(r"\bsubprocess\b")),
-    ("signal", re.compile(r"\b(?:import|from)\s+signal\b|\bsignal\.[A-Za-z_]")),
-    ("sqlite", re.compile(r"\bsqlite3?\b")),
-    ("write_text", re.compile(r"\.write_text\(")),
-)
-
 
 class DiffContracts:
-    DIFF_LINT = "diff_lint"
     NO_STATE_MIN_CHARS = 30
 
     def __init__(self, baseline: Baseline) -> None:
         self._baseline = baseline
 
-    def check(self, field: Field, items: list[str], root: Path) -> ContractOutcome:
-        """A contract field recorded before craft, against the working tree. Deferred parts wait for `verify`; an after_craft field is only parsed."""
+    def check(
+        self,
+        field: Field,
+        items: list[str],
+        root: Path,
+        tests: list[str] | tuple[str, ...] = (),
+    ) -> ContractOutcome:
+        """A contract field recorded before craft, against the working tree and the test files the oracle declares. Deferred parts wait for `verify`; an after_craft field is only parsed."""
         return self._run(
             field.name,
             field.contract or "",
@@ -65,14 +55,27 @@ class DiffContracts:
             root,
             committed=False,
             deferred=field.after_craft,
+            tests=tuple(tests),
         )
 
     def verify(
-        self, contract: str, items: list[str], root: Path, *, generated: bool = False
+        self,
+        contract: str,
+        items: list[str],
+        root: Path,
+        *,
+        generated: bool = False,
+        tests: list[str] | tuple[str, ...] = (),
     ) -> ContractOutcome:
-        """A contract's items after craft, against the committed change from BASE to HEAD."""
+        """A contract's items after craft, against the committed change from BASE to HEAD and the test files the oracle declared."""
         return self._run(
-            contract, contract, items, root, committed=True, generated=generated
+            contract,
+            contract,
+            items,
+            root,
+            committed=True,
+            generated=generated,
+            tests=tuple(tests),
         )
 
     def check_locators(
@@ -115,34 +118,20 @@ class DiffContracts:
         )
 
     def artifact(self, artifact: str, root: Path) -> ContractOutcome:
-        """A probe case's artifact: a function or class the committed change defines in a changed Python file."""
+        """A probe case's artifact: a name that occurs as a whole word in a file the committed change touched."""
         label = f"artifact {artifact}"
         diff, reason = self._diff(root, committed=True)
         if diff is None:
             return ContractOutcome((), self._warnings(label, reason, True))
         try:
-            defined = self._defined_in(diff)
+            texts = self._texts(diff)
         except GitDiffError as error:
             return ContractOutcome((), self._warnings(label, str(error), True))
-        if artifact in defined:
+        if any(SymbolText.mentions(text, artifact) for text in texts.values()):
             return ContractOutcome(())
         return ContractOutcome(
-            (
-                f"artifact '{artifact}' is not a function or class defined in a Python file changed from BASE to HEAD",
-            )
+            (f"artifact '{artifact}' occurs in no file changed from BASE to HEAD",)
         )
-
-    def _defined_in(self, diff: GitDiff) -> frozenset[str]:
-        names: set[str] = set()
-        for path in sorted(name for name in diff.names() if name.endswith(".py")):
-            source = diff.text(path)
-            if source is None:
-                continue
-            try:
-                names |= Definitions(source).names()
-            except ValueError:
-                continue
-        return frozenset(names)
 
     def _run(
         self,
@@ -154,20 +143,20 @@ class DiffContracts:
         committed: bool,
         deferred: bool = False,
         generated: bool = False,
+        tests: tuple[str, ...] = (),
     ) -> ContractOutcome:
         if not committed and (contract in _DEFERRED or deferred):
-            problems, _ = self._problems(contract, items, None)
+            problems, _ = self._problems(contract, items, None, generated, tests)
             return ContractOutcome(tuple(problems))
         diff, reason = self._diff(root, committed)
         try:
-            problems, lint = self._problems(contract, items, diff, generated)
+            problems, found = self._problems(contract, items, diff, generated, tests)
         except GitDiffError as error:
             reason = str(error)
-            problems, lint = self._problems(contract, items, None)
-        if contract == "message" and diff is None:
-            lint = {"checked": False, "reason": reason}
+            problems, found = self._problems(contract, items, None, generated, tests)
         return ContractOutcome(
-            tuple(problems), self._warnings(label, reason, committed), lint
+            tuple(problems),
+            (*self._warnings(label, reason, committed), *found),
         )
 
     def _diff(self, root: Path, committed: bool) -> tuple[GitDiff | None, str | None]:
@@ -194,19 +183,19 @@ class DiffContracts:
         items: list[str],
         diff: GitDiff | None,
         generated: bool = False,
-    ) -> tuple[list[str], dict[str, object] | None]:
+        tests: tuple[str, ...] = (),
+    ) -> tuple[list[str], tuple[str, ...]]:
         if contract == "invariant":
-            return self._invariants(items, diff), None
+            return self._invariants(items, diff), ()
         if contract == "model":
-            return self._model_witnesses(items, diff), None
+            return self._model_witnesses(items, diff), ()
         if contract == "stateless":
-            return self._stateless(items, diff), None
+            return self._stateless(items, diff), ()
         if contract == "law":
-            return self._generators(items, diff, LawItem, "law", generated), None
+            return self._generators(items, diff, LawItem, "law", generated, tests)
         if contract == "message":
-            problems = self._generators(items, diff, MessageItem, "message")
-            return problems, None if diff is None else self._lint(diff)
-        return [], None
+            return self._generators(items, diff, MessageItem, "message", False, tests)
+        return [], ()
 
     def _invariants(self, items: list[str], diff: GitDiff | None) -> list[str]:
         problems: list[str] = []
@@ -218,23 +207,15 @@ class DiffContracts:
                 problems.append(f"'{item}' is not a valid invariant: {error}")
         if diff is None:
             return problems
-        changed = diff.names()
         for invariant in parsed:
-            path, symbol = invariant.witness_path, invariant.witness_symbol
-            if path is None or symbol is None:
+            if invariant.witness_path is None or invariant.witness_symbol is None:
                 continue
-            if path not in changed:
-                problems.append(
-                    f"{invariant.identifier}: witness path '{path}' is not changed from BASE to HEAD"
-                )
-            elif not path.endswith(".py"):
-                problems.append(
-                    f"{invariant.identifier}: witness '{path}' is not a .py file, so its symbol cannot be checked"
-                )
-            else:
-                problems += self._symbol_problems(
-                    invariant.identifier, path, symbol, diff
-                )
+            problems += self._witness_problems(
+                invariant.identifier,
+                invariant.witness_path,
+                invariant.witness_symbol,
+                diff,
+            )
         return problems
 
     def _model_witnesses(self, items: list[str], diff: GitDiff | None) -> list[str]:
@@ -247,25 +228,32 @@ class DiffContracts:
                 problems.append(f"'{item}' is not a valid model witness: {error}")
         if diff is None:
             return problems
-        changed = diff.names()
         for witness in parsed:
-            path = witness.witness_path
-            if path not in changed:
-                problems.append(
-                    f"{witness.identifier}: witness path '{path}' is not changed from BASE to HEAD"
-                )
-            elif not path.endswith(".py"):
-                problems.append(
-                    f"{witness.identifier}: witness '{path}' is not a .py file, so its symbol cannot be checked"
-                )
-            else:
-                problems += self._symbol_problems(
-                    witness.identifier, path, witness.witness_symbol, diff
-                )
+            problems += self._witness_problems(
+                witness.identifier,
+                witness.witness_path,
+                witness.witness_symbol,
+                diff,
+            )
         return problems
 
+    def _witness_problems(
+        self, identifier: str, path: str, symbol: str, diff: GitDiff
+    ) -> list[str]:
+        """A witness path must be changed from BASE, and its symbol must occur as a whole word in its text at HEAD."""
+        if path not in diff.names():
+            return [
+                f"{identifier}: witness path '{path}' is not changed from BASE to HEAD"
+            ]
+        source = diff.text(path)
+        if source is None:
+            return [f"{identifier}: witness path '{path}' has no text at HEAD"]
+        if SymbolText.mentions(source, symbol):
+            return []
+        return [f"{identifier}: symbol '{symbol}' does not occur in '{path}' at HEAD"]
+
     def _stateless(self, items: list[str], diff: GitDiff | None) -> list[str]:
-        """A reason that the change has no state must be long enough; if the added lines use a trigger, the reason must name it. No reason means nothing to verify."""
+        """A reason that the change has no state must be long enough; each trigger word the added lines of any changed file use must be named in it."""
         if not items:
             return []
         problems = [
@@ -275,40 +263,24 @@ class DiffContracts:
         ]
         if diff is None:
             return problems
-        text = " ".join(items).lower()
+        text = " ".join(items)
         found: dict[str, str] = {}
-        for path in sorted(name for name in diff.names() if name.endswith(".py")):
+        for path in sorted(diff.names()):
             source = diff.text(path)
             if source is None:
                 continue
             lines = source.splitlines()
             for number in sorted(diff.added_lines(path)):
-                if number > len(lines):
+                if not 1 <= number <= len(lines):
                     continue
-                line = lines[number - 1]
-                for label, pattern in _TRIGGERS:
-                    if label not in found and pattern.search(line):
-                        found[label] = f"{path}:{number}"
-        for label, location in found.items():
-            if label.lower() not in text:
+                for word in sorted(StateTrigger.in_text(lines[number - 1])):
+                    found.setdefault(word, f"{path}:{number}")
+        for word, location in found.items():
+            if not StateTrigger.named_by(text, word):
                 problems.append(
-                    f"{location} adds '{label}': a reason that the change has no state must name '{label}' and say what the change does not do with it"
+                    f"{location} adds '{word}': a reason that the change has no state must name '{word}' and say what the change does not do with it"
                 )
         return problems
-
-    def _symbol_problems(
-        self, identifier: str, path: str, symbol: str, diff: GitDiff
-    ) -> list[str]:
-        source = diff.text(path)
-        if source is None:
-            return [f"{identifier}: witness path '{path}' has no text at HEAD"]
-        try:
-            defined = Definitions(source).names()
-        except ValueError as error:
-            return [f"{identifier}: '{path}' at HEAD {error}"]
-        if all(part in defined for part in symbol.split(".")):
-            return []
-        return [f"{identifier}: symbol '{symbol}' is not defined in '{path}' at HEAD"]
 
     def _generators(
         self,
@@ -316,9 +288,12 @@ class DiffContracts:
         diff: GitDiff | None,
         parser: type,
         label: str,
-        generated: bool = False,
-    ) -> list[str]:
+        generated: bool,
+        tests: tuple[str, ...],
+    ) -> tuple[list[str], tuple[str, ...]]:
+        """A generator or test must occur in a declared test file the change contains. A generated law whose generation cannot be seen is could-not-verify."""
         problems: list[str] = []
+        warnings: list[str] = []
         parsed: list[LawItem | MessageItem] = []
         for item in items:
             try:
@@ -326,74 +301,30 @@ class DiffContracts:
             except ValueError as error:
                 problems.append(f"'{item}' is not a valid {label}: {error}")
         if diff is None:
-            return problems
-        tests = self._test_functions(diff)
-        properties = self._property_tests(diff) if generated else frozenset()
+            return problems, ()
+        changed = diff.names()
+        declared = [
+            diff.text(path)
+            for path in tests
+            if path in changed and diff.text(path) is not None
+        ]
         for entry in parsed:
-            test = entry.generator if isinstance(entry, LawItem) else entry.test
-            if test is not None and test not in tests:
+            name = entry.generator if isinstance(entry, LawItem) else entry.test
+            if name is None:
+                continue
+            if not any(SymbolText.mentions(text, name) for text in declared):
                 problems.append(
-                    f"{entry.identifier}: test '{test}' is not a test function in a test file changed from BASE"
+                    f"{entry.identifier}: test '{name}' occurs in no declared test file the change contains"
                 )
-            elif generated and test is not None and test not in properties:
-                problems.append(
-                    f"{entry.identifier}: test '{test}' is not a property test: decorate it with @given so that its inputs are generated"
+            elif generated:
+                warnings.append(
+                    f"{entry.identifier}: could-not-verify: the tool cannot see whether '{name}' draws generated inputs "
+                    "in this repository's language, so generation is not stated as checked; "
+                    "what: the law's observation and mutant are recorded; "
+                    "why: a generated law has no language-neutral construction yet; "
+                    "how: keep the property test of this repository, which the review reads"
                 )
-        return problems
-
-    def _test_functions(self, diff: GitDiff) -> frozenset[str]:
-        names: set[str] = set()
-        for path in self._test_files(diff):
-            source = diff.text(path)
-            if source is None:
-                continue
-            try:
-                names |= Definitions(source).functions()
-            except ValueError:
-                continue
-        return frozenset(names)
-
-    def _property_tests(self, diff: GitDiff) -> frozenset[str]:
-        names: set[str] = set()
-        for path in self._test_files(diff):
-            source = diff.text(path)
-            if source is None:
-                continue
-            try:
-                names |= Definitions(source).property_functions()
-            except ValueError:
-                continue
-        return frozenset(names)
-
-    @staticmethod
-    def _test_files(diff: GitDiff) -> list[str]:
-        return sorted(
-            path
-            for path in diff.names()
-            if path.endswith(".py")
-            and (Path(path).name.startswith("test_") or "tests" in Path(path).parts)
-        )
-
-    def _lint(self, diff: GitDiff) -> dict[str, object]:
-        """Assert messages on added lines of changed test files that look interpolated but are plain literals. Recorded, never a gate."""
-        files: list[str] = []
-        findings: list[str] = []
-        for path in self._test_files(diff):
-            source = diff.text(path)
-            if source is None:
-                continue
-            try:
-                definitions = Definitions(source)
-            except ValueError:
-                continue
-            files.append(path)
-            added = diff.added_lines(path)
-            for line, text in definitions.placeholder_asserts():
-                if line in added:
-                    findings.append(
-                        f"{path}:{line}: assert message is a plain literal with a replacement field: {text!r}"
-                    )
-        return {"checked": True, "files": files, "findings": findings}
+        return problems, tuple(warnings)
 
     def _locators(
         self, locator_ids: tuple[str, ...], items: list[str], diff: GitDiff | None
@@ -428,3 +359,12 @@ class DiffContracts:
                         f"{identifier}: locator '{locator.text}' is not an added line of the diff"
                     )
         return problems
+
+    @staticmethod
+    def _texts(diff: GitDiff) -> dict[str, str]:
+        found: dict[str, str] = {}
+        for path in sorted(diff.names()):
+            source = diff.text(path)
+            if source is not None:
+                found[path] = source
+        return found

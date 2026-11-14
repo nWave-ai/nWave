@@ -7,15 +7,14 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import stat
 import subprocess
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from nwstep.domain.commit_hooks import HOOK_TYPES
-
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from nwstep.domain.delivery_root import MARKER_KEY
+from nwstep.domain.source_hooks import SourceHook
 
 
 TIMEOUT_S = 300
@@ -59,6 +58,46 @@ def hook_file_contents(root: Path) -> tuple[bytes | None, ...]:
     return tuple(_read_or_none(directory / name) for name in HOOK_TYPES)
 
 
+def read_hooks(directory: Path) -> tuple[SourceHook, ...]:
+    """Every regular file in directory with its permission bits and bytes; a directory that does not exist holds none."""
+    if not directory.is_dir():
+        return ()
+    try:
+        return tuple(
+            SourceHook(
+                name=path.name,
+                mode=stat.S_IMODE(path.stat().st_mode),
+                content=path.read_bytes(),
+            )
+            for path in sorted(directory.iterdir())
+            if path.is_file()
+        )
+    except OSError as error:
+        raise GitHooksError(
+            f"the hook directory {directory} cannot be read: {error.strerror or error}"
+        ) from None
+
+
+def write_hooks(hooks: tuple[SourceHook, ...], directory: Path) -> None:
+    """Writes each hook as a new file with its permission bits. A file already there is refused, never replaced; when a write fails, the files this call wrote are removed."""
+    written: list[Path] = []
+    current = directory
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        for hook in hooks:
+            current = directory / hook.name
+            with current.open("xb") as handle:
+                written.append(current)
+                handle.write(hook.content)
+            current.chmod(hook.mode)
+    except OSError as error:
+        for path in written:
+            path.unlink(missing_ok=True)
+        raise GitHooksError(
+            f"{current} cannot be written: {error.strerror or error}"
+        ) from None
+
+
 def installer_available() -> bool:
     return importlib.util.find_spec("pre_commit") is not None
 
@@ -90,6 +129,45 @@ def clone(source: str, destination: Path) -> None:
     if completed.returncode != 0:
         detail = completed.stderr.decode("utf-8", errors="replace").strip()
         raise GitHooksError(detail or "git clone exited without a message")
+
+
+def toplevel(root: Path) -> Path | None:
+    """The resolved toplevel of the work tree holding root, or None when root is not inside one."""
+    completed = _git(root, "rev-parse", "--show-toplevel")
+    if completed.returncode != 0:
+        return None
+    return Path(completed.stdout.decode("utf-8").strip()).resolve()
+
+
+def is_linked_worktree(top: Path) -> bool:
+    """True when top is a linked worktree: its git directory is not the common directory the primary checkout uses."""
+    completed = _git(top, "rev-parse", "--git-dir", "--git-common-dir")
+    _require(completed, f"the git directories of {top} cannot be read")
+    lines = completed.stdout.decode("utf-8").splitlines()
+    if len(lines) != 2:
+        raise GitHooksError(
+            f"the git directories of {top} cannot be read: git printed {len(lines)} lines, expected 2"
+        )
+    git_dir, common_dir = ((top / line).resolve() for line in lines)
+    return git_dir != common_dir
+
+
+def clone_marker(top: Path) -> str | None:
+    """The delivery marker the clone command wrote in top, or None when none was written."""
+    completed = _git(top, "config", "--local", "--get", MARKER_KEY)
+    if completed.returncode == 1:
+        return None
+    _require(completed, f"the delivery marker of {top} cannot be read")
+    return completed.stdout.decode("utf-8").strip()
+
+
+def mark_clone(root: Path) -> None:
+    """Writes the delivery marker, the toplevel path, into the local config of the work tree holding root."""
+    top = toplevel(root)
+    if top is None:
+        raise GitHooksError(f"{root} is not inside a git work tree")
+    completed = _git(top, "config", "--local", MARKER_KEY, str(top))
+    _require(completed, f"the delivery marker of {top} cannot be written")
 
 
 def remove_tree(path: Path) -> None:

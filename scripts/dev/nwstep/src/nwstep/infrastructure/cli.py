@@ -13,6 +13,7 @@ from nwstep.application import jev_protocol, refactor_currency, review_lines, re
 from nwstep.application.answer_recorder import AnswerRecorder
 from nwstep.application.briefer import Briefer
 from nwstep.application.commit_hooks import clone_with_hooks, ensure_hooks
+from nwstep.application.delivery_root import require_delivery_root
 from nwstep.application.how_line import HowLine
 from nwstep.application.initializer import Initializer
 from nwstep.application.next_block import NextKind, next_block, next_state
@@ -65,6 +66,8 @@ HOOK_STATUS: dict[HookOutcome, str] = {
     HookOutcome.INSTALLED_KEEPING_FOREIGN: "hooks: installed the commit-msg and pre-commit hooks in {root}; a hook already there was moved to its .legacy name by pre-commit",
     HookOutcome.NOT_DECLARED: "WARNING: no commit hooks installed in {root}: it has no .pre-commit-config.yaml, so it declares no commit hooks and its commits are not checked by them",
     HookOutcome.GIT_UNAVAILABLE: "WARNING: no commit hooks checked in {root}: git cannot be run here, so no commit can be made from it in this environment",
+    HookOutcome.OWN_HOOKS_PRESENT: "hooks: {root} already has its own commit hooks and no .pre-commit-config.yaml; they check its commits, and nwstep installs none there",
+    HookOutcome.COPIED_FROM_SOURCE: "hooks: copied the source's own commit hooks into {root}: {names}",
 }
 WORKSPACE_ENVIRONMENT = "NWSTEP_HOME"
 RECORD_USAGE = (
@@ -174,12 +177,13 @@ class Cli:
             dest="command", required=True, metavar="COMMAND"
         )
         init = commands.add_parser(
-            "init", help="create a workspace from a schema and its pre-feature baseline"
+            "init",
+            help="create a workspace from a schema and its pre-feature baseline; run it in a delivery clone made by nwstep clone or in a git linked worktree",
         )
         init.add_argument(
             "--schema",
             required=True,
-            help="a shipped schema name such as dynamic-v11, or the path of a schema file",
+            help="a shipped schema name such as dynamic-v12, or the path of a schema file",
         )
         init.add_argument("--workspace")
         init.add_argument(
@@ -239,6 +243,15 @@ class Cli:
         prompt = commands.add_parser(
             "prompt",
             help="print the dynamic-mode prompt for a workspace, a clone and a request",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=(
+                "Prints the executor prompt for the workspace, the clone and the request.\n"
+                "The printed text is given to the executor UNCHANGED, as one block.\n"
+                "Giving the executor the path of the file that holds the printed text is allowed,\n"
+                "because the bytes stay identical. Any other change is not allowed: no summary,\n"
+                "no shortened line, no replaced block and no added note, because the executor's\n"
+                "work and its quality can be relied on only for the exact text the template renders."
+            ),
         )
         prompt.add_argument("--workspace")
         prompt.add_argument(
@@ -405,6 +418,7 @@ class Cli:
         initializer = Initializer(self._how)
         schema_source = self._schema_source(schema_path)
         workspace = Workspace(directory)
+        self._admit_root(Path.cwd(), "init")
         prepared = initializer.prepare(
             schema_source,
             workspace,
@@ -447,6 +461,7 @@ class Cli:
                 how=self._how.command("next", "--workspace", str(workspace.directory)),
             )
         root = Path(arguments.root).resolve() if arguments.root else Path.cwd()
+        self._admit_root(root, "record", workspace)
         result = Recorder(workspace).record(arguments.step, arguments.submission, root)
         print(f"recorded {result.record.step} revision {result.record.revision}")
         self._print_closed(result)
@@ -557,6 +572,7 @@ class Cli:
     def _prompt(self, arguments, workspace: Workspace, schema: Schema) -> int:
         template = self._template_file(arguments, workspace)
         root = Path(arguments.root).resolve()
+        self._admit_root(root, "prompt", workspace)
         consent = self._consent(arguments.jev, root)
         examine = ExamineLevelBinding(workspace.directory).bound_to(
             self._examine_level(root)
@@ -667,19 +683,28 @@ class Cli:
 
     def _clone(self, source: str, dest: str) -> int:
         destination = Path(dest).resolve()
-        outcome = clone_with_hooks(source, destination)
+        cloned = clone_with_hooks(source, destination)
         print(f"cloned {source} to {destination}")
-        self._report_hooks(destination, outcome)
+        self._report_hooks(destination, cloned.outcome, cloned.copied)
         return 0
+
+    def _admit_root(
+        self, root: Path, command: str, workspace: Workspace | None = None
+    ) -> None:
+        """Refuses a root the delivery may not write in, before any write, hook installation or record."""
+        anchor = None if workspace is None else BaselineStore(workspace).read().top
+        require_delivery_root(root, anchor=anchor, command=command)
 
     def _guard_hooks(self, root: Path) -> None:
         self._report_hooks(root, ensure_hooks(root))
 
     @staticmethod
-    def _report_hooks(root: Path, outcome: HookOutcome) -> None:
+    def _report_hooks(
+        root: Path, outcome: HookOutcome, copied: tuple[str, ...] = ()
+    ) -> None:
         text = HOOK_STATUS.get(outcome)
         if text is not None:
-            print(text.format(root=root), file=sys.stderr)
+            print(text.format(root=root, names=", ".join(copied)), file=sys.stderr)
 
     def _replay(
         self,
@@ -689,6 +714,7 @@ class Cli:
         journal: Journal,
     ) -> int:
         root = Path(root_option).resolve() if root_option else Path.cwd()
+        self._admit_root(root, "replay", workspace)
         replayed = Recorder(workspace).replay(root)
         held = rework.stale_steps(
             schema, JsonlJournal(workspace).snapshot(), review_store.read(workspace)
@@ -730,6 +756,7 @@ class Cli:
 
     def _review(self, arguments, workspace: Workspace) -> int:
         root = Path(arguments.root).resolve() if arguments.root else Path.cwd()
+        self._admit_root(root, arguments.command, workspace)
         desk = rework.Desk(workspace, root, self._how)
         if arguments.command == "finding":
             return self._finding(desk, arguments)

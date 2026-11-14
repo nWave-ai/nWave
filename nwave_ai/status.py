@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -13,7 +14,76 @@ from nwave_ai.platform.config import NWaveConfig
 from nwave_ai.platform.documentation_density import resolve_density
 from nwave_ai.platform.locations import NWaveLocations
 from nwave_ai.platform.result import Failure
+from nwdes import jev_access
+from nwdes.prompts import resolved_jev
+from nwdes.shell import machine_config
 from scripts.shared.version import VersionResolutionError
+
+
+_PROJECT_TIER = "project .nwave/config.json"
+_MACHINE_TIER = "machine-wide ~/.nwave/config.json"
+
+
+def jev_consent_source(repo_value: str | None, global_value: str | None) -> str:
+    """Pure: the tier that decides Jev consent, in the order nwdes reads the tiers."""
+    if repo_value is not None:
+        return _PROJECT_TIER
+    if global_value is not None:
+        return _MACHINE_TIER
+    return "default: nothing declared"
+
+
+def jev_status_lines(
+    repo_value: str | None, global_value: str | None, key_set: bool
+) -> list[str]:
+    """Pure: Jev consent and key state; the key's value is never part of the output."""
+    consent = resolved_jev(None, repo_value, global_value)
+    source = jev_consent_source(repo_value, global_value)
+    access = jev_access.resolve_access(consent, key_present=key_set)
+    if access is jev_access.JevAccess.UNAUTHORIZED:
+        return [f"Jev: unauthorized ({source})"]
+    state = "set" if key_set else "MISSING"
+    lines = [f"Jev: authorized ({source}) | key: {state}"]
+    warning = jev_access.warning(access)
+    if warning is not None:
+        lines.append(jev_access.render(warning))
+    return lines
+
+
+def _declared_jev(path: Path, tier: str) -> tuple[str | None, str | None]:
+    """Shell: the jev value one config file declares, or the reason nwdes would refuse it."""
+    if not path.is_file():
+        return None, None
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None, f"{tier} is not readable JSON"
+    if not isinstance(document, dict):
+        return None, f"{tier} is not a JSON object"
+    value = document.get("jev")
+    if value is None or value in (jev_access.AUTHORIZED, jev_access.UNAUTHORIZED):
+        return value, None
+    return None, f"{tier} declares jev {value!r}, which is not a Jev choice"
+
+
+def _jev_status_lines(cwd: Path) -> list[str]:
+    """Shell: read the two tiers nwdes reads for Jev consent, then report them."""
+    repo_value, repo_problem = _declared_jev(
+        cwd / ".nwave" / "config.json", _PROJECT_TIER
+    )
+    global_value, global_problem = _declared_jev(
+        machine_config.machine_config_path(Path.home()), _MACHINE_TIER
+    )
+    problems = [
+        problem for problem in (repo_problem, global_problem) if problem is not None
+    ]
+    if problems:
+        return [
+            f"Jev: invalid ({'; '.join(problems)}); nwdes refuses Jev until that value is "
+            "authorized or unauthorized."
+        ]
+    key_set = jev_access.key_is_set(os.environ.get(jev_access.KEY_VARIABLE))
+    return jev_status_lines(repo_value, global_value, key_set)
 
 
 def render_status(cwd: Path) -> str:
@@ -67,6 +137,7 @@ def render_status(cwd: Path) -> str:
         f"Attribution: {credit} ({sources['attribution']}); "
         f"nWave co-author credit {'applies to supported commits' if active and effective['attribution'] else 'will not be added here'}.",
         f"Verbosity: {effective['verbosity']} ({sources['verbosity']}).",
+        *_jev_status_lines(cwd),
         f"Claude Code: {'framework files found' if claude_assets else 'framework files not detected'}.",
         f"Codex: {'installation manifests found' if codex_assets else 'installation manifests not detected'}.",
     ]

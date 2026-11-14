@@ -108,3 +108,20 @@ def detect_running_interpreter_owner(interpreter: Path | None = None) -> PMBacke
     if "/pipx/venvs/" in exe:
         return "pipx"
     return "unknown"
+
+
+def upgrade_hint(owner: PMBackend) -> str:
+    """Return the command that moves an install owned by ``owner`` to the latest release.
+
+    ``uv tool upgrade`` skips a tool pinned to an exact version and only prints
+    a hint, so the uv command reinstalls instead. Both commands also move an
+    unpinned install. An unidentified owner gets both, never a guess.
+    """
+    if owner == "uv":
+        return "Update with: uv tool install --reinstall nwave-ai"
+    if owner == "pipx":
+        return "Update with: pipx upgrade nwave-ai"
+    return (
+        "Update with the manager that installed nwave-ai: "
+        "uv tool install --reinstall nwave-ai (uv) or pipx upgrade nwave-ai (pipx)"
+    )

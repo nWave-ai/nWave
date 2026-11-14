@@ -4,6 +4,7 @@ description: "Load before designing or changing domain/application code: owners,
 ---
 
 # Code design (OO, ports and adapters)
+File and folder placement of the types this skill designs follows the File layout section of nw-code-craftsmanship.
 
 ## 1. Decide before writing
 

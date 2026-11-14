@@ -1,24 +1,24 @@
 """Which tests a diff selects: a pure function of the diff and the project.
 
-Given the changed files, what the project declares (``SelectionRules``), the tree as
-read once (``ProjectSnapshot``) and the dependency adapters this version has, the
-result is the list of tests, or an explicit ``Indeterminate`` widened as the project
-declares. Nothing here names a language, a test runner or a version-control tool:
-how a file's dependencies are computed is an adapter's business, behind
-``DependencyAdapter``.
+Given the changed files, what the project declares (``SelectionRules``), the tree
+(``Project.files``) and the dependency relation the project's declared command gives
+(``relation``), the result is the list of tests, or an explicit ``Indeterminate``
+widened as the project declares. Nothing here names a language, a test runner or a
+version-control tool: which file depends on which is the declared command's answer.
 
 Rules, per changed path (their union decides the path):
 
 * a test file selects itself;
 * another file inside a test root selects the tests of its directory;
 * a path under a declared asset prefix selects the tests the project maps it to;
-* a path whose file type has an adapter selects the tests that depend on it;
+* a path the declared dependents command covers selects the tests that depend on it;
 * a path under a declared ``no_tests`` prefix selects nothing, by declaration;
 * a path no rule decides makes the selection indeterminate: nothing is guessed.
 
 Depth bounds the dependency hops from a changed file outside the test roots. A
 changed file inside a test root is followed to every test that depends on it: test
-code's own dependents are cheap and exact.
+code's own dependents are cheap and exact. When the relation cannot be read, every
+path that needs it is undecided and says why.
 """
 
 from __future__ import annotations
@@ -26,64 +26,32 @@ from __future__ import annotations
 import fnmatch
 import posixpath
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from types import MappingProxyType
+from typing import TYPE_CHECKING
 
+from nwave_ai.testrun.dependents.closure import collect_edges, dependents_index, reach
 from nwave_ai.testrun.refusal import Refusal
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
 
     from nwave_ai.testrun.declaration import Depth, SelectionRules
+    from nwave_ai.testrun.dependents.edge import DependencyEdge
 
 
-# Up to this many files are looked up one by one with the adapter's cheap textual
-# pre-check; beyond it every dependency is computed once and indexed. Either way the
-# answer is the same: the pre-check only skips files that cannot hold a dependency.
-_ONE_BY_ONE = 12
-
-
-class DependencyAdapter(Protocol):
-    """How the files of one language depend on each other."""
-
-    def dependencies(
-        self,
-        path: str,
-        text: str,
-        files: frozenset[str],
-        settings: Mapping[str, object],
-    ) -> frozenset[str] | None:
-        """The files ``path`` depends on; ``None`` when its text cannot be read."""
-
-    def may_reference(
-        self, path: str, text: str, target: str, settings: Mapping[str, object]
-    ) -> bool:
-        """False only when ``path`` cannot depend on ``target``; cheap."""
-
-    def setting_defects(self, settings: Mapping[str, object]) -> tuple[str, ...]:
-        """Every declared setting the adapter does not know or cannot use."""
-
-
-@dataclass(frozen=True)
-class ProjectSnapshot:
-    """The tree as read once: every file path, and the text of the readable ones."""
-
-    files: frozenset[str]
-    texts: Mapping[str, str]
+NO_RULE_REASON = (
+    "no rule decides this file: no selection.dependents pattern covers it, and no "
+    "selection.assets prefix or selection.no_tests prefix names it"
+)
 
 
 @dataclass(frozen=True)
 class Project:
-    """A project as the selector knows it: its rules, its tree, the adapters at hand."""
+    """A project as the selector knows it: its declared rules and its tree."""
 
     rules: SelectionRules
-    snapshot: ProjectSnapshot
-    adapters: Mapping[str, DependencyAdapter]
-
-    def adapter_of(self, path: str) -> DependencyAdapter | None:
-        """The adapter that reads this file's dependencies, if declared and at hand."""
-        name = self.rules.adapters.get(_extension(path))
-        return None if name is None else self.adapters.get(name)
+    files: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -137,12 +105,10 @@ class Unusable:
 
     ``outside``: changed paths that do not stay inside the project tree.
     ``not_tests``: paths given to add that are not tests of the project.
-    ``settings``: declared adapter settings the adapter cannot use.
     """
 
     outside: tuple[str, ...]
     not_tests: tuple[str, ...]
-    settings: tuple[str, ...] = ()
 
     def refusal(self) -> Refusal:
         defects = (
@@ -151,15 +117,14 @@ class Unusable:
                 for path in self.outside
             ),
             *(f"'{path}' is not a test of this project" for path in self.not_tests),
-            *(f"{defect}" for defect in self.settings),
         )
         return Refusal(
             what="; ".join(defects),
-            why="the selector decides only on files of the tree, adds only tests the "
-            "project has, and computes dependencies only with settings it understands",
+            why="the selector decides only on files of the tree and adds only tests the "
+            "project has",
             how="give changed paths relative to the project root and inside the tree; "
             "with --add give only test files that the declared test_roots and "
-            "test_files match; correct the adapter settings in the declaration",
+            "test_files match",
         )
 
 
@@ -178,17 +143,22 @@ def _under(path: str, directory: str) -> bool:
     )
 
 
+def _matches(path: str, patterns: Iterable[str]) -> bool:
+    """A pattern with a slash matches the whole path; one without matches the name."""
+    name = posixpath.basename(path)
+    return any(
+        fnmatch.fnmatchcase(path if "/" in pattern else name, pattern)
+        for pattern in patterns
+    )
+
+
 def _in_test_tree(path: str, rules: SelectionRules) -> bool:
     return any(_under(path, root) for root in rules.test_roots)
 
 
 def _named_as_test(path: str, rules: SelectionRules) -> bool:
     """A file the project names as a test, wherever it sits."""
-    name = posixpath.basename(path)
-    return any(
-        fnmatch.fnmatchcase(path if "/" in pattern else name, pattern)
-        for pattern in rules.test_files
-    )
+    return _matches(path, rules.test_files)
 
 
 def is_test(path: str, rules: SelectionRules) -> bool:
@@ -196,9 +166,9 @@ def is_test(path: str, rules: SelectionRules) -> bool:
     return _in_test_tree(path, rules) and _named_as_test(path, rules)
 
 
-def project_tests(snapshot: ProjectSnapshot, rules: SelectionRules) -> frozenset[str]:
+def project_tests(files: frozenset[str], rules: SelectionRules) -> frozenset[str]:
     """Every test the project has: this is how the project lists its tests."""
-    return frozenset(path for path in snapshot.files if is_test(path, rules))
+    return frozenset(path for path in files if is_test(path, rules))
 
 
 def _tests_under(tests: frozenset[str], directories: Iterable[str]) -> frozenset[str]:
@@ -221,95 +191,34 @@ def _asset_tests(
     )
 
 
-class _Dependents:
-    """Who depends on a file. Each file's dependencies are computed at most once."""
-
-    def __init__(self, project: Project, known: frozenset[str]) -> None:
-        self._texts = project.snapshot.texts
-        self._rules = project.rules
-        self._known = known
-        self._readable = {
-            path: adapter
-            for path in sorted(project.snapshot.texts)
-            if (adapter := project.adapter_of(path)) is not None
-        }
-        self._forward: dict[str, frozenset[str] | None] = {}
-        self._asked: dict[str, frozenset[str]] = {}
-        self._index: dict[str, set[str]] | None = None
-
-    def _settings(self, path: str) -> Mapping[str, object]:
-        return self._rules.settings_of(self._rules.adapters[_extension(path)])
-
-    def _dependencies(self, path: str) -> frozenset[str] | None:
-        if path not in self._forward:
-            self._forward[path] = self._readable[path].dependencies(
-                path, self._texts[path], self._known, self._settings(path)
-            )
-        return self._forward[path]
-
-    def _depends(self, path: str, target: str) -> bool:
-        if path == target:
-            return False
-        may = self._readable[path].may_reference(
-            path, self._texts[path], target, self._settings(path)
-        )
-        if not may:
-            return False
-        found = self._dependencies(path)
-        # An unreadable file may depend on anything its text can name.
-        return True if found is None else target in found
-
-    def _indexed(self) -> dict[str, set[str]]:
-        if self._index is None:
-            index: dict[str, set[str]] = {}
-            for path in self._readable:
-                for target in self._dependencies(path) or ():
-                    index.setdefault(target, set()).add(path)
-            self._index = index
-        return self._index
-
-    def of(self, target: str) -> frozenset[str]:
-        """The files that depend directly on ``target``."""
-        if target not in self._asked:
-            if len(self._asked) < _ONE_BY_ONE and self._index is None:
-                found = {path for path in self._readable if self._depends(path, target)}
-            else:
-                found = set(self._indexed().get(target, ()))
-                found.update(
-                    path
-                    for path, known in self._forward.items()
-                    if known is None and self._depends(path, target)
-                )
-                found.discard(target)
-            self._asked[target] = frozenset(found)
-        return self._asked[target]
-
-    def reach(self, start: str, hops: int | None) -> frozenset[str]:
-        """Every file within ``hops`` dependency hops of ``start``, itself included."""
-        seen, frontier, hop = {start}, {start}, 0
-        while frontier and (hops is None or hop < hops):
-            frontier = {
-                path for target in sorted(frontier) for path in self.of(target)
-            } - seen
-            seen |= frontier
-            hop += 1
-        return frozenset(seen)
+def _no_tests(path: str, rules: SelectionRules) -> bool:
+    return any(path.startswith(prefix) for prefix in rules.no_tests)
 
 
-def _extension(path: str) -> str:
-    return posixpath.splitext(path)[1]
+def _covered(path: str, rules: SelectionRules) -> bool:
+    """A file the declared dependents command answers for."""
+    return rules.dependents is not None and _matches(path, rules.dependents.covers)
 
 
-def _why_undecided(path: str, rules: SelectionRules) -> str:
-    extension = _extension(path)
-    kind = f"'{extension}' files" if extension else "files without an extension"
-    declared = rules.adapters.get(extension)
-    if declared is None:
-        return f"no dependency adapter is declared for {kind}"
-    return (
-        f"the dependency adapter '{declared}' declared for {kind} is not "
-        "available in this version"
+def _asset_directories(path: str, rules: SelectionRules) -> tuple[str, ...] | None:
+    return next(
+        (mapped for prefix, mapped in rules.assets if path.startswith(prefix)), None
     )
+
+
+def _needs_relation(path: str, rules: SelectionRules) -> bool:
+    """A path decided by a rule whose reach to dependents is read from the relation."""
+    if _no_tests(path, rules):
+        return False
+    return (
+        _in_test_tree(path, rules)
+        or _covered(path, rules)
+        or _asset_directories(path, rules) is not None
+    )
+
+
+def _could_not_verify(refusal: Refusal) -> str:
+    return f"WHAT: {refusal.what}; WHY: {refusal.why}; HOW: {refusal.how}"
 
 
 def _decided(
@@ -317,50 +226,64 @@ def _decided(
     depth: Depth,
     project: Project,
     tests: frozenset[str],
-    dependents: _Dependents,
+    index: Mapping[str, frozenset[str]],
 ) -> frozenset[str] | Undecided | Uncovered:
     """The tests one changed path selects, or why it selects none or is not decided."""
     rules = project.rules
-    if any(path.startswith(prefix) for prefix in rules.no_tests):
+    if _no_tests(path, rules):
         return frozenset()
     selected: set[str] = set()
     inside = _in_test_tree(path, rules)
-    asset_directories = next(
-        (mapped for prefix, mapped in rules.assets if path.startswith(prefix)), None
-    )
-    if not (inside or project.adapter_of(path) or asset_directories is not None):
-        return Undecided(path, _why_undecided(path, rules))
+    asset_directories = _asset_directories(path, rules)
+    if not (inside or _covered(path, rules) or asset_directories is not None):
+        return Undecided(path, NO_RULE_REASON)
     if inside and not is_test(path, rules):
         # A helper, a fixture or data beside tests conditions the tests around it.
         selected |= _tests_under(tests, [posixpath.dirname(path)])
     if asset_directories is not None:
-        selected |= _asset_tests(project.snapshot.files, rules, asset_directories)
-    selected |= dependents.reach(path, None if inside else depth.hops) & tests
+        selected |= _asset_tests(project.files, rules, asset_directories)
+    selected |= reach(path, index, None if inside else depth.hops) & tests
     if not selected and not inside and asset_directories is None:
         return Uncovered(path, "no test depends on it")
     return frozenset(selected)
 
 
+_NO_EDGES: Mapping[str, frozenset[str]] = MappingProxyType({})
+
+
 def select_tests(
-    changed: Iterable[str], added: Iterable[str], depth: Depth, project: Project
+    changed: Iterable[str],
+    added: Iterable[str],
+    depth: Depth,
+    project: Project,
+    relation: Callable[[frozenset[str]], frozenset[DependencyEdge] | Refusal],
 ) -> Selected | Indeterminate | Unusable:
-    """The tests to run for ``changed``, united with ``added``; nothing is removed."""
+    """The tests to run for ``changed``, united with ``added``; nothing is removed.
+
+    ``relation`` answers the direct dependents of the files it is asked about, in
+    rounds, and only for the paths that need dependents.
+    """
     rules = project.rules
     spelled = {path: normal_path(path) for path in changed}
     extra = {path: normal_path(path) for path in added}
-    tests = project_tests(project.snapshot, rules)
+    tests = project_tests(project.files, rules)
     outside = tuple(sorted(path for path, normal in spelled.items() if normal is None))
     not_tests = tuple(sorted(path for path, test in extra.items() if test not in tests))
-    settings = tuple(
-        f"selection.{name}.{defect}"
-        for name in sorted(set(rules.adapters.values()) & set(project.adapters))
-        for defect in project.adapters[name].setting_defects(rules.settings_of(name))
-    )
-    if outside or not_tests or settings:
-        return Unusable(outside, not_tests, settings)
+    if outside or not_tests:
+        return Unusable(outside, not_tests)
     paths = sorted(set(spelled.values()))
-    dependents = _Dependents(project, project.snapshot.files | set(paths))
-    decisions = [_decided(path, depth, project, tests, dependents) for path in paths]
+    needing = frozenset(path for path in paths if _needs_relation(path, rules))
+    hops = None if any(_in_test_tree(path, rules) for path in needing) else depth.hops
+    universe = project.files | frozenset(paths)
+    answer = collect_edges(needing, hops, relation, universe)
+    failure = answer if isinstance(answer, Refusal) else None
+    index = _NO_EDGES if failure is not None else dependents_index(answer)
+    decisions = [
+        Undecided(path, _could_not_verify(failure))
+        if failure is not None and path in needing
+        else _decided(path, depth, project, tests, index)
+        for path in paths
+    ]
     undecided = tuple(item for item in decisions if isinstance(item, Undecided))
     uncovered = tuple(item for item in decisions if isinstance(item, Uncovered))
     joined = tuple(sorted(set(extra.values())))

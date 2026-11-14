@@ -20,6 +20,12 @@ paste and who runs what.
 | [Resolve an outcomes collision](./howto-resolve-outcomes-collision.md) | Triage an `nwave-ai outcomes check` flag against an existing outcome | Intermediate |
 | [Invoke reviewer agents](./invoke-reviewer-agents/) | Request peer reviews from reviewer agents | Intermediate |
 
+## Recipes
+
+| Guide | Description | Level |
+|-------|-------------|-------|
+| [nWave Cookbook](./nwave-cookbook/) | Copy-paste recipes for architecture, refactoring, docs, tests and feature delivery, grounded in this repository | Beginner |
+
 ## Install and set up
 
 | Guide | Description | Level |
@@ -35,6 +41,7 @@ paste and who runs what.
 | [Assign models to roles](./assigning-models-to-roles.md) | Run one role on a different model, per host | Beginner |
 | [Set review rounds and examine level](./setting-project-rigor.md) | See and change how much checking a project gets; your assistant asks and sets it | Beginner |
 | [Configure documentation density](./configuring-doc-density.md) | Set how much documentation nWave produces | Beginner |
+| [Configure Jev](./configuring-jev.md) | Turn Jev on or off per project, and set the `TYPESAFE_API_KEY` variable | Beginner |
 | [Read architecture diagrams and the readable brief](./readable-brief-and-diagrams.md) | Turn on the readable output, check that a diagram is accessible, and see what the documentarist does | Beginner |
 
 ## Upgrade and recover

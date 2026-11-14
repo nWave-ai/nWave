@@ -1,4 +1,4 @@
-"""Makes a working clone carry the commit-msg and pre-commit hooks: the check behind prompt and init, and the clone command.
+"""Makes a working clone carry its commit hooks: the commit-msg and pre-commit hooks a declaring config installs, or the hooks its source runs when it declares none.
 
 The decisions are in nwstep.domain.commit_hooks; this module sequences the effects and turns every failure into a
 Refusal that says WHAT broke, WHY it matters and HOW to fix it.
@@ -7,7 +7,7 @@ Refusal that says WHAT broke, WHY it matters and HOW to fix it.
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from nwstep.domain.commit_hooks import (
     HookFile,
@@ -19,17 +19,13 @@ from nwstep.domain.commit_hooks import (
     plan_hooks,
 )
 from nwstep.domain.refusal import Refusal
+from nwstep.domain.source_hooks import CloneHooks, runnable
 from nwstep.infrastructure import commit_hooks_git as git_hooks
 from nwstep.infrastructure.commit_hooks_git import GitHooksError, GitUnavailable
 
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
-
 NO_HOOKS_OUTCOMES = (
     HookOutcome.NOT_A_WORK_TREE,
-    HookOutcome.NOT_DECLARED,
     HookOutcome.GIT_UNAVAILABLE,
 )
 
@@ -50,10 +46,8 @@ def ensure_hooks(root: Path) -> HookOutcome:
         ) from None
 
 
-def clone_with_hooks(source: str, destination: Path) -> HookOutcome:
-    """Clones source into destination and installs the hooks; a clone this call created is removed when that fails."""
-    if not git_hooks.installer_available():
-        raise _installer_refusal(f"the clone at {destination} was not created")
+def clone_with_hooks(source: str, destination: Path) -> CloneHooks:
+    """Clones source into destination and gives the clone its commit hooks; a clone this call created is removed when that fails."""
     created = not destination.exists()
     try:
         git_hooks.clone(source, destination)
@@ -64,25 +58,74 @@ def clone_with_hooks(source: str, destination: Path) -> HookOutcome:
             how=f"check that {source} is a repository git can clone, then run the clone command again",
         ) from None
     try:
+        git_hooks.mark_clone(destination)
+    except GitHooksError as error:
+        raise _without_clone(
+            Refusal(
+                what=f"the clone at {destination} cannot be marked as a delivery clone: {error}",
+                why="every delivery command refuses a clone without the delivery marker, so a clone that cannot carry it cannot be used for a delivery",
+                how=f"check that git can write the config of {destination}, then run the clone command again",
+            ),
+            destination,
+            created,
+        ) from None
+    try:
         outcome = ensure_hooks(destination)
     except Refusal as refusal:
         raise _without_clone(refusal, destination, created) from None
+    if outcome in (HookOutcome.NOT_DECLARED, HookOutcome.OWN_HOOKS_PRESENT):
+        return _take_source_hooks(source, destination, outcome, created)
     if outcome in NO_HOOKS_OUTCOMES:
         raise _without_clone(
-            _no_hooks(outcome, source, destination), destination, created
+            _no_work_tree(outcome, source, destination), destination, created
         ) from None
-    return outcome
+    return CloneHooks(outcome)
+
+
+def _take_source_hooks(
+    source: str, destination: Path, outcome: HookOutcome, created: bool
+) -> CloneHooks:
+    """Copies the source's own runnable hooks into the clone; a source with none leaves the clone's outcome as it is."""
+    try:
+        taken = runnable(git_hooks.read_hooks(git_hooks.hooks_directory(Path(source))))
+        if not taken:
+            return CloneHooks(outcome)
+        hooks_path = git_hooks.hooks_path_value(destination)
+        if hooks_path is not None:
+            raise _hooks_path_refusal(destination, hooks_path)
+        git_hooks.write_hooks(taken, git_hooks.hooks_directory(destination))
+    except GitHooksError as error:
+        raise _without_clone(
+            _copy_refusal(source, destination, error), destination, created
+        ) from None
+    except Refusal as refusal:
+        raise _without_clone(refusal, destination, created) from None
+    return CloneHooks(
+        HookOutcome.COPIED_FROM_SOURCE, tuple(hook.name for hook in taken)
+    )
+
+
+def _copy_refusal(source: str, destination: Path, error: GitHooksError) -> Refusal:
+    return Refusal(
+        what=f"the commit hooks of {source} cannot be copied into the clone at {destination}: {error}",
+        why="a clone that does not carry the commit rules of its source would commit without them, so the clone must not be handed over that way",
+        how=f"make {source} a readable local git repository (git -C {source} rev-parse --git-path hooks must succeed); where a git template supplies a hook of the same name, remove that template hook; then run the clone command again",
+    )
 
 
 def _check(root: Path) -> HookOutcome:
     declared = git_hooks.declares_hooks(root)
     before = _states(root) if declared else ()
     hooks_path = git_hooks.hooks_path_value(root)
+    own_hooks = not declared and bool(
+        runnable(git_hooks.read_hooks(git_hooks.hooks_directory(root)))
+    )
     plan = plan_hooks(
         before,
         declared=declared,
         hooks_path_set=hooks_path is not None,
         installer_available=git_hooks.installer_available(),
+        own_hooks=own_hooks,
     )
     return _act(root, before, plan, hooks_path)
 
@@ -95,6 +138,8 @@ def _act(
 ) -> HookOutcome:
     if plan is HookPlan.NOT_DECLARED:
         return HookOutcome.NOT_DECLARED
+    if plan is HookPlan.OWN_HOOKS:
+        return HookOutcome.OWN_HOOKS_PRESENT
     if plan is HookPlan.ALREADY_INSTALLED:
         return HookOutcome.ALREADY_INSTALLED
     if plan is HookPlan.HOOKS_PATH_SET:
@@ -125,13 +170,7 @@ def _states(root: Path) -> tuple[HookFile, ...]:
     return tuple(classify(content) for content in git_hooks.hook_file_contents(root))
 
 
-def _no_hooks(outcome: HookOutcome, source: str, destination: Path) -> Refusal:
-    if outcome is HookOutcome.NOT_DECLARED:
-        return Refusal(
-            what=f"the clone at {destination} would carry no commit hooks: {source} has no .pre-commit-config.yaml",
-            why="the commit-msg and pre-commit hooks are declared by that config; without it they cannot be installed and commits would not be checked",
-            how="clone a repository that declares its commit hooks in .pre-commit-config.yaml, then run the clone command again",
-        )
+def _no_work_tree(outcome: HookOutcome, source: str, destination: Path) -> Refusal:
     return Refusal(
         what=f"the clone at {destination} is not a git work tree ({outcome.value})",
         why="a clone that is not a work tree cannot carry commit hooks",

@@ -42,7 +42,7 @@ def _parsed(document: object | None, source: str) -> Sourced | Refusal:
                 f"{'; '.join(declaration.defects)}"
             ),
             why=_WHY,
-            how=f"correct these fields in {source}",
+            how="; ".join((f"correct these fields in {source}", *declaration.hints)),
         )
     return Sourced(declaration, source)
 

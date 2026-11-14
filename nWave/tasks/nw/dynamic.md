@@ -29,7 +29,10 @@ before code. You are the host: you prepare the run and relay; you do not do the 
    It prints the executor prompt. Keep specifics in the request file, not in the prompt.
 5. Give the printed text, unchanged, to ONE executor agent: the nWave crafter
    agent, or the functional crafter when the project paradigm is functional.
-   Do not edit or summarise it.
+   Do not edit or summarise it. Giving the executor the path of the file that holds the
+   printed text is allowed, because the bytes stay identical. Any other change is not
+   allowed: no summary, no shortened line, no replaced block and no added note, because
+   the executor works only from the exact text the template renders.
 6. The executor records its steps with `nwstep`. `nwstep status --workspace <dir>`
    shows progress; `nwstep brief --kind summary --workspace <dir>` renders the summary.
 

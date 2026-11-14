@@ -37,6 +37,14 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
+# The shared access message is a sibling module. The skill directory is put on the path so the
+# client runs from any working directory, including a host skill copied without the repository.
+_SKILL_DIR = Path(__file__).resolve().parent
+if str(_SKILL_DIR) not in sys.path:
+    sys.path.insert(0, str(_SKILL_DIR))
+import jev_access  # noqa: E402
+
+
 _ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 _REQUIRED = {"state", "model", "questions"}
 # Floating-point slack on top of the wire rounding bound.
@@ -356,13 +364,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     questions = _decode(body)["questions"]
     key = os.environ.get("TYPESAFE_API_KEY")
-    if not key:
-        print(
-            "typesafe: unavailable (TYPESAFE_API_KEY is absent from this process "
-            "environment. A tool kernel, such as a Python eval kernel, may not inherit "
-            "the session environment: run this client from a shell command instead)",
-            file=sys.stderr,
-        )
+    if not jev_access.key_is_set(key):
+        # A call is made only when Jev is authorized, so the access state here is active without a key.
+        access = jev_access.resolve_access(jev_access.AUTHORIZED, key_present=False)
+        print(jev_access.render(jev_access.warning(access)), file=sys.stderr)
         return 3
 
     request = Request(

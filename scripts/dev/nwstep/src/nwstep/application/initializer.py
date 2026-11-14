@@ -10,6 +10,7 @@ import shutil
 from typing import TYPE_CHECKING
 
 from nwstep.application.kit_snapshot import KitInputs, KitSnapshot, is_source_file
+from nwstep.domain.fault import Fault
 from nwstep.domain.refusal import Refusal
 from nwstep.infrastructure.baseline_export import BaselineExport
 from nwstep.infrastructure.baseline_store import BaselineStore
@@ -67,7 +68,11 @@ class Initializer:
         try:
             schema = TomlSchemaReader().read(schema_source)
         except Refusal as refusal:
-            raise refusal.with_how(init_how) from None
+            raise (
+                refusal
+                if refusal.fault is Fault.RETIRED
+                else refusal.with_how(init_how)
+            ) from None
         try:
             snapshot = KitSnapshot.take(
                 KitInputs(

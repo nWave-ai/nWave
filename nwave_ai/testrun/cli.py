@@ -1,8 +1,8 @@
 """``nwave-ai tests``: run a test command through the account's queue, select tests.
 
 The only place that reads the process (arguments, environment, working directory)
-and writes to its streams. ``run`` hands the work to ``queued_run``; ``select`` reads
-the tree once and hands it to the pure ``selection.select_tests``.
+and writes to its streams. ``run`` hands the work to ``queued_run``; ``select`` hands
+the project to ``project_selection.select_in_project``, which reads the tree once.
 
 Exit codes of ``run``: the command's own when it ended; 2 when the run was refused;
 75 when the run left the queue at its declared wait limit and nothing ran
@@ -23,8 +23,7 @@ from pathlib import Path
 
 from nwave_ai.testrun import execution, selection_report
 from nwave_ai.testrun.declaration_source import load_declaration
-from nwave_ai.testrun.dependency_adapters import ADAPTERS
-from nwave_ai.testrun.project_tree import read_project
+from nwave_ai.testrun.project_selection import select_in_project
 from nwave_ai.testrun.queued_run import (
     NOTICE_PREFIX,
     Command,
@@ -33,7 +32,7 @@ from nwave_ai.testrun.queued_run import (
     queued_run,
 )
 from nwave_ai.testrun.refusal import Refusal
-from nwave_ai.testrun.selection import Project, Unusable, select_tests
+from nwave_ai.testrun.selection import Unusable
 
 
 EXIT_REFUSED = 2
@@ -242,11 +241,8 @@ def _select(words: list[str]) -> int:
     use = selection_report.declared_use(rules, parsed.last("--use"))
     if isinstance(use, Refusal):
         return _refuse(use)
-    result = select_tests(
-        parsed.rest,
-        parsed.options.get("--add", []),
-        use.depth,
-        Project(rules, read_project(root, rules), ADAPTERS),
+    result = select_in_project(
+        root, rules, parsed.rest, parsed.options.get("--add", []), use.depth
     )
     if isinstance(result, Unusable):
         return _refuse(result.refusal())

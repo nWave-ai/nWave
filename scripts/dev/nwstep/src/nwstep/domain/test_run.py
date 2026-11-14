@@ -1,10 +1,16 @@
-"""The counts and timings of a pytest run, read from its own output so that no count is typed by the executor."""
+"""The counts and timings of a run, read from its declared report so that no count is typed by the executor.
+
+The counts are the report's testcases by status and add up to the testcase total; the seconds are the sum of the
+testcase times the report gives. A report with no testcase is a run that names no test, which the record refuses.
+"""
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Any
+
+from nwstep.domain.report_case import ReportCase
+from nwstep.domain.report_status import ReportStatus
 
 
 @dataclass(frozen=True)
@@ -20,36 +26,27 @@ class TestRun:
     seconds: float
     slowest: tuple[SlowTest, ...]
 
-    _SUMMARY = re.compile(
-        r"^(?:=+ )?((?:\d+ \w+(?:, )?)+) in (\d+(?:\.\d+)?)s(?: \([\d:]+\))?(?: =+)?$"
-    )
-    _COUNT = re.compile(r"(\d+) (\w+)")
-    _SLOWEST = re.compile(r"^\s*(\d+(?:\.\d+)?)s (call|setup|teardown)\s+(\S+)")
     SLOWEST_KEPT = 10
+    CALL = "call"
 
     @classmethod
-    def parse(cls, output: str) -> TestRun | None:
-        """The last pytest summary line of the output, with the --durations lines that follow it; None when there is no summary."""
-        summary = None
-        slowest: list[SlowTest] = []
-        for line in output.splitlines():
-            found = cls._SUMMARY.match(line.strip())
-            if found is not None:
-                summary = found
-            timing = cls._SLOWEST.match(line)
-            if timing is not None:
-                slowest.append(
-                    SlowTest(float(timing.group(1)), timing.group(2), timing.group(3))
-                )
-        if summary is None:
-            return None
-        counts = tuple(
-            (word, int(number)) for number, word in cls._COUNT.findall(summary.group(1))
+    def of(cls, cases: tuple[ReportCase, ...]) -> TestRun:
+        statuses = [case.status for case in cases]
+        counts = (
+            ("tests", len(cases)),
+            ("passed", statuses.count(ReportStatus.PASSED)),
+            ("failures", statuses.count(ReportStatus.FAILURE)),
+            ("errors", statuses.count(ReportStatus.ERRORED)),
+            ("skipped", statuses.count(ReportStatus.SKIPPED)),
         )
+        ranked = sorted(cases, key=lambda case: case.seconds, reverse=True)
         return cls(
             counts=counts,
-            seconds=float(summary.group(2)),
-            slowest=tuple(slowest[: cls.SLOWEST_KEPT]),
+            seconds=sum(case.seconds for case in cases),
+            slowest=tuple(
+                SlowTest(case.seconds, cls.CALL, case.name)
+                for case in ranked[: cls.SLOWEST_KEPT]
+            ),
         )
 
     def as_value(self) -> dict[str, Any]:

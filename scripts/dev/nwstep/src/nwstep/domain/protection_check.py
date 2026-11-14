@@ -1,12 +1,14 @@
-"""Whether a preserve case protects a changed file that its candidate run really executed."""
+"""Whether a preserve case protects a file the change touched.
+
+A protection is never stated as executed: no language-neutral observation shows that a run executed a file, so a
+protected file of the change is reported could-not-verify with its reason.
+"""
 
 from __future__ import annotations
 
 
 class ProtectionCheck:
     NOT_APPLICABLE = "not-applicable"
-    EXECUTED = "executed"
-    NOT_EXECUTED = "not-executed"
     NOT_CHANGED = "not-changed"
     COULD_NOT_VERIFY = "could-not-verify"
 
@@ -18,14 +20,6 @@ class ProtectionCheck:
     @classmethod
     def not_applicable(cls) -> ProtectionCheck:
         return cls(cls.NOT_APPLICABLE, None)
-
-    @classmethod
-    def executed(cls, path: str, lines: int) -> ProtectionCheck:
-        return cls(cls.EXECUTED, path, f"{lines} line(s) ran")
-
-    @classmethod
-    def not_executed(cls, path: str) -> ProtectionCheck:
-        return cls(cls.NOT_EXECUTED, path, "no line of it ran in the candidate run")
 
     @classmethod
     def not_changed(cls, path: str) -> ProtectionCheck:

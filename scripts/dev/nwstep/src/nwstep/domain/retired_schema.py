@@ -21,6 +21,9 @@ RETIRED_SCHEMA_DIGESTS = {
     "dynamic-v6": "2736358d511e09a2ba5e5294de66b01a64f27dd67a02ae2cffe15fa3f29ed797",
     "dynamic-v7": "48ba490aad83f0c7b7416f9137a40fbef795872b5f752874d35f77042ecf2438",
     "dynamic-v8": "06c8dcd5727ea0347ccd02f0f6a7a68249bcbfd70ef7bbc9cd780d1097bdf444",
+    "dynamic-v9": "5ecdec0753e7b0e266052a0577a32e356bd4cd82e021e2a7489baa85f11dae3b",
+    "dynamic-v10": "493d47f17732c4b4ebfa2c3efbc1f1b9e2fab211464a7c031117449f2b251780",
+    "dynamic-v11": "c4c1c5ed31acf0c1a3858922901c84b946a9998488e684a819a1836781e2af4d",
 }
 
 

@@ -24,6 +24,12 @@ class ModelProvider(str, Enum):
     CODEX = "codex"
 
 
+#: The one declared set of providers nWave can run. Every provider check and
+#: refusal reads it; a new provider needs a member above and the host adapter
+#: that launches it.
+SUPPORTED_PROVIDERS: tuple[str, ...] = tuple(member.value for member in ModelProvider)
+
+
 @dataclass(frozen=True, slots=True)
 class RoleRuntime:
     provider: ModelProvider
@@ -65,6 +71,20 @@ def _base_role_id(role_id: str) -> str:
     return role_id.split(_COMPETENCE_SEPARATOR, 1)[0]
 
 
+def _unsupported_provider(provider: object, *, source: str) -> ModelRuntimeConfigError:
+    supported = " or ".join(SUPPORTED_PROVIDERS)
+    return ModelRuntimeConfigError(
+        f"WHAT: {source}.provider is {provider!r}, which nWave cannot run. "
+        "WHY: a role runs only on a provider nWave can launch, and this release "
+        f"launches {', '.join(SUPPORTED_PROVIDERS)} only. "
+        f"HOW: set provider to {supported} (supported providers: "
+        f"{', '.join(SUPPORTED_PROVIDERS)}), for example "
+        "nwave-ai model set --provider claude --model MODEL, or remove this "
+        "declaration. Adding a provider needs a ModelProvider member and a host "
+        "adapter that launches it."
+    )
+
+
 def _runtime(value: object, *, source: str) -> RoleRuntime:
     if not isinstance(value, dict):
         raise ModelRuntimeConfigError(
@@ -76,14 +96,9 @@ def _runtime(value: object, *, source: str) -> RoleRuntime:
         )
     provider = value["provider"]
     model = value["model"]
-    if not isinstance(provider, str):
-        raise ModelRuntimeConfigError(f"{source}.provider must be claude or codex")
-    try:
-        selected_provider = ModelProvider(provider)
-    except ValueError as exc:
-        raise ModelRuntimeConfigError(
-            f"{source}.provider must be claude or codex, got {provider!r}"
-        ) from exc
+    if not isinstance(provider, str) or provider not in SUPPORTED_PROVIDERS:
+        raise _unsupported_provider(provider, source=source)
+    selected_provider = ModelProvider(provider)
     if not isinstance(model, str) or not model.strip():
         raise ModelRuntimeConfigError(f"{source}.model must be a non-empty string")
     return RoleRuntime(selected_provider, model)

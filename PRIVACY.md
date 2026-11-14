@@ -96,11 +96,16 @@ is the machine-wide switch, used by a project that declares no value of its own.
 The project value wins over the machine-wide value, and the `--jev` flag wins
 over both for one nwdes call. nwdes reads the key and never writes it.
 
-With no `jev` key in any of these places, Jev is authorized. The
-`TYPESAFE_API_KEY` environment variable is a technical prerequisite for the
-service to accept requests; it is not the authorization, and without it nothing
-is sent. When authorized and the service is available, supported semantic
-questions use Jev under the shared skill. This does not disable the rest of nWave.
+Jev is on for a project that declares no `jev` value in any of these places. Set
+`"jev": "unauthorized"` to turn it off for that project. Jev also needs the
+`TYPESAFE_API_KEY` environment variable: a technical prerequisite that the service
+uses to accept requests. It is not the authorization. The key comes from your
+Jev provider. nWave only checks that the variable is set. It never issues, stores
+or logs the key; it sends the key only in the request header to Jev. When Jev is
+on and the key is missing, nWave warns during
+install, enable and status, and continues without Jev. Nothing is sent without the
+key, and each role records `typesafe: unavailable` and continues locally. The
+[configuring Jev guide](docs/guides/configuring-jev.md) shows how to set the key.
 
 
 ## Does nWave See My Code?

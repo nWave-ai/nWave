@@ -143,7 +143,7 @@ nwdes prompt --repo-root . --role nw-user-examiner --task expectations --handoff
 
 Or run the wrapper: `python tutorial_cli.py prompt-expectations` (it captures the file for you).
 
-Jev, the remote judgment service, is authorized by default; this fixture-only lesson asks no Jev question, and the `TYPESAFE_API_KEY` environment variable is only its technical prerequisite. To refuse Jev, pass `--jev unauthorized` or declare `"jev": "unauthorized"` in `~/.nwave/config.json` — see [Understanding Jev](../understanding-jev.md).
+Jev, the remote judgment service, is authorized by default; this fixture-only lesson asks no Jev question. The `TYPESAFE_API_KEY` environment variable is only its technical prerequisite: nwdes only checks that it is set. To refuse Jev, pass `--jev unauthorized` or declare `"jev": "unauthorized"` in `~/.nwave/config.json` — see [Understanding Jev](../understanding-jev.md) and [Configure Jev](../configuring-jev.md).
 
 The command writes one complete inline bundle to the file. Open it: it lists the public promises (P1 with its text) and the current fixed expectations — `None.` before the first fixation — and ends with the generated verb reference the role uses to record.
 

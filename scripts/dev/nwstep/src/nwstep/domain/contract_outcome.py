@@ -1,4 +1,7 @@
-"""What a contract check reports: its problems, the could-not-verify warnings, and the diff lint it recorded."""
+"""What a contract check reports: its problems, and the warnings for each property it could not verify.
+
+A warning is a could-not-verify statement: loud, with what, why and how, and never a pass.
+"""
 
 from __future__ import annotations
 
@@ -9,4 +12,3 @@ from dataclasses import dataclass
 class ContractOutcome:
     problems: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
-    lint: dict[str, object] | None = None

@@ -31,6 +31,7 @@ from nwave_ai.doctor.formatter import render_human, render_json  # noqa: E402
 from nwave_ai.doctor.runner import run_doctor  # noqa: E402
 from nwave_ai.platform.locations import NWaveLocations  # noqa: E402
 from nwave_ai.platform.result import Failure, Success  # noqa: E402
+from nwave_ai.platform.roles import SUPPORTED_PROVIDERS  # noqa: E402
 from scripts.install.attribution_utils import (  # noqa: E402
     cleanup_legacy_attribution_hook,
     migrate_legacy_hook,
@@ -48,10 +49,58 @@ def _refuse_version_resolution(exc: VersionResolutionError) -> int:
     return 1
 
 
+_HELP_FLAGS = ("--help", "-h")
+_UPDATE_FORMS = (
+    ("--check", "Report the installed and latest stable versions. Changes nothing."),
+    (
+        "--yes --root PATH",
+        "Apply the latest stable release; PATH is the project root, for example $PWD.",
+    ),
+    (
+        "--recover --yes --confirm-stopped",
+        "Resume an interrupted update after every updater and affected session has stopped.",
+    ),
+    (
+        "consent <check|install> <on|off>",
+        "Set the automatic check or install permission. install on needs "
+        "--confirm-old-sessions-closed the first time.",
+    ),
+    (
+        "consent controlled-launch on --confirm-controlled-launch | off",
+        "Record the controlled-launch commitment, or revoke it.",
+    ),
+    (
+        "sessions [close KEY --confirm-closed]",
+        "List registered host sessions, or remove the record of one you attest has ended.",
+    ),
+)
+
+
+def _print_update_help() -> int:
+    """Describe each update form and the pinned-install commands; changes nothing."""
+    from nwave_ai.platform.package_manager import upgrade_hint
+
+    print("Usage: nwave-ai update <form>")
+    print()
+    print("Forms:")
+    for form, meaning in _UPDATE_FORMS:
+        print(f"  nwave-ai update {form}")
+        print(f"      {meaning}")
+    print()
+    print(
+        "An installation pinned to an exact version moves to the latest release with:"
+    )
+    print(f"  {upgrade_hint('uv')}")
+    print(f"  {upgrade_hint('pipx')}")
+    return 0
+
+
 def _handle_update(
     args: list[str], *, wrapper_registration=None, replacement_lease=None
 ) -> int:
     """Observe releases or apply an owner-bound update with explicit consent."""
+    if any(arg in _HELP_FLAGS for arg in args):
+        return _print_update_help()
     if args[:2] == ["consent", "controlled-launch"]:
         return _handle_controlled_launch_consent(args[2:])
     if args[:1] == ["sessions"]:
@@ -205,6 +254,13 @@ def _handle_update(
         print(f"Installed version: {current_version}")
         print(f"Latest stable release: {latest_version}")
         print(f"Status: {state}")
+        if state == "update-available":
+            from nwave_ai.platform.package_manager import (
+                detect_running_interpreter_owner,
+                upgrade_hint,
+            )
+
+            print(upgrade_hint(detect_running_interpreter_owner()))
         return 0
 
     from nwave_ai.update.activity import ReplacementLease
@@ -641,6 +697,38 @@ def _read_machine_jev(writer) -> tuple[str | None, str | None]:
         return None, str(error)
 
 
+def _project_consent(writer) -> str | None:
+    """Shell: the jev value the project's file holds now, or None when it cannot be read.
+
+    An unreadable file is refused by nwdes when it reads consent, so no warning is due here.
+    """
+    from nwave_ai.platform.config_writer import ConfigMigrationError
+
+    try:
+        return writer.repo_jev()
+    except ConfigMigrationError:
+        return None
+
+
+def _warn_without_jev_key(consent: str | None) -> None:
+    """Shell: print the shared missing-key message on stderr when Jev is on and no key is set.
+
+    Advice only: it never blocks, never changes an exit code and never shows the key's value.
+    """
+    from nwave_ai.platform.config_writer import ConfigWriter
+    from nwdes import jev_access
+
+    if consent not in ConfigWriter.JEV_VALUES:
+        return
+    access = jev_access.resolve_access(
+        consent,
+        key_present=jev_access.key_is_set(os.environ.get(jev_access.KEY_VARIABLE)),
+    )
+    warning = jev_access.warning(access)
+    if warning is not None:
+        print(jev_access.render(warning), file=sys.stderr)
+
+
 def _declare_project_jev(
     project_root: Path, home_dir: Path, *, interactive: bool
 ) -> None:
@@ -659,6 +747,7 @@ def _declare_project_jev(
     writer = ConfigWriter(home_dir=home_dir, repo_root=project_root)
     try:
         if writer.repo_declares_jev():
+            _warn_without_jev_key(_project_consent(writer))
             return
         machine, problem = _read_machine_jev(writer)
         default, why = _machine_jev_rule(machine, problem)
@@ -693,6 +782,7 @@ def _declare_project_jev(
         )
     if declared:
         print(_jev_notice(writer.repo_path, _jev_origin(how, choice, why)))
+    _warn_without_jev_key(_project_consent(writer))
 
 
 def _handle_install(args: list[str]) -> int:
@@ -1356,7 +1446,7 @@ def _handle_plugin(args: list[str]) -> int:
 
 
 _MODEL_USAGE = (
-    "Usage: nwave-ai model set --provider {codex,claude} --model MODEL "
+    f"Usage: nwave-ai model set --provider {'|'.join(SUPPORTED_PROVIDERS)} --model MODEL "
     "[--role ROLE [--competence COMPETENCE]] [--project]"
 )
 
@@ -1423,12 +1513,15 @@ def _handle_model(args: list[str]) -> int:
         return 2
 
     if (
-        provider not in {"codex", "claude"}
+        provider not in SUPPORTED_PROVIDERS
         or not isinstance(model, str)
         or not model.strip()
     ):
         print(
-            "WHAT: model selection requires provider codex|claude and a non-empty model. "
+            "WHAT: model selection requires provider "
+            f"{'|'.join(SUPPORTED_PROVIDERS)} and a non-empty model. "
+            "WHY: nWave can run only those providers; any other value would be "
+            "written to the config and refused later when a role resolves. "
             f"HOW: {_MODEL_USAGE}",
             file=sys.stderr,
         )
@@ -2439,8 +2532,20 @@ def _handle_mode(args: list[str]) -> int:
     return 0
 
 
+_STATUS_HELP = (
+    "Usage: nwave-ai status\n"
+    "\n"
+    "Show this project's effective settings: activation, Jev consent and key state, "
+    "and installed host assets.\n"
+    "Read-only: it fetches nothing and writes no configuration."
+)
+
+
 def _handle_status(args: list[str]) -> int:
     """Show the selected project's effective settings without writes or network."""
+    if any(arg in _HELP_FLAGS for arg in args):
+        print(_STATUS_HELP)
+        return 0
     from nwave_ai.status import render_status
 
     try:

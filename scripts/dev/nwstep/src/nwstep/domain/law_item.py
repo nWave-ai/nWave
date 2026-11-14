@@ -1,6 +1,6 @@
 """One oracle law: 'LAW id | law text | generator=TEST_ID | observation=TEXT | mutant=TEXT', or 'LAW0 | none: reason'.
 
-A generator written as a pytest node id ('tests/test_x.py::test_y') is read as its test name: the name is what the
+A generator written with a path prefix ('dir/file.ext::test_y') is read as its test name: the name is what the
 tool checks against the change, so the path form is accepted rather than refused.
 """
 
@@ -46,3 +46,12 @@ class LawItem:
                 "the generator is a test function name, written 'generator=TEST_ID'"
             )
         return cls(identifier, test, None)
+
+    def could_not_verify_notice(self) -> str | None:
+        """What the tool says about a recorded law: no tool can check that its generator generates, in any language."""
+        if self.generator is None:
+            return None
+        return (
+            f"{self.identifier}: could-not-verify: no tool can check, in any language, that the generator "
+            f"'{self.generator}' generates inputs; the law is recorded as stated, and the review judges it"
+        )

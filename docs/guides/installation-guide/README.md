@@ -499,10 +499,15 @@ Upgrade the package with the manager that owns it, then rerun the installer
 for the **same selected host**:
 
 ```bash
-uv tool upgrade nwave-ai        # or: pipx upgrade nwave-ai
+uv tool install --reinstall nwave-ai   # or: pipx upgrade nwave-ai
 nwave-ai install --platform claude-code
 nwave-ai doctor
 ```
+
+`uv tool upgrade nwave-ai` does not move a tool installed with an exact version pin
+(for example `uv tool install nwave-ai==4.4.0`): uv reports "Nothing to upgrade" and
+prints a hint. `uv tool install --reinstall nwave-ai` moves a pinned or an unpinned
+install to the latest release and removes the pin.
 
 For Codex, use `install --platform codex` instead; its final validation is
 the Codex-specific check, whereas doctor checks Claude. Restart the host

@@ -47,8 +47,6 @@ class CaseResult:
         path = self.protection.path
         if self.protection.status == ProtectionCheck.NOT_CHANGED:
             return f"'{path}' is not among the files changed from BASE to HEAD"
-        if self.protection.status == ProtectionCheck.NOT_EXECUTED:
-            return f"no line of '{path}' ran in the candidate run"
         return None
 
     def unverified_reason(self) -> str | None:

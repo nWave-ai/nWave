@@ -356,7 +356,7 @@ COMMANDS = (
             ),
         ),
         (*ROOT_REFUSALS, *REFERENCE_REFUSAL),
-        "nwdes slice set --feature search --observation Find --paradigm functional --oracle tests/search.py --stimulus Search --expected Found --falsifier Missing --command 'python tests/search.py' --promise 'The search result is returned' --extend src/search.py",
+        "nwdes slice set --feature order --observation Parse --paradigm functional --oracle parser/order_test.go --stimulus Parse --expected Parsed --falsifier Missing --command 'make test' --promise 'The order is parsed' --extend parser/order.go",
     ),
     Command(
         "work",
@@ -772,8 +772,8 @@ def _role_example(kind, verb, scope=("feature", "search"), role=None, subject=No
         "promise": "P1",
         "covers": "P1",
         "observation": "O1",
-        "command": "python -V",
-        "verification": "python -V",
+        "command": "make test",
+        "verification": "make test",
         "subject": subject or "candidate",
     }
 

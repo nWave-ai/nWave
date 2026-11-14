@@ -65,8 +65,9 @@ writes no runtime copy. Two consequences:
   a call, or `"jev": "unauthorized"` in `~/.nwave/config.json` (the flag
   wins; nwdes never writes the key). The service works only when the
   `TYPESAFE_API_KEY` environment variable is set — that variable is a
-  technical prerequisite, not the authorization. See
-  [Understanding Jev](../understanding-jev.md).
+  technical prerequisite, not the authorization. nwdes only checks that
+  it is set. See [Understanding Jev](../understanding-jev.md) and
+  [Configure Jev](../configuring-jev.md).
 - **Cursor and Devin are install platforms.** `nwave-ai install --platform
   cursor` wires Cursor through global user hooks; `--platform devin` installs
   the skills-only Devin integration.

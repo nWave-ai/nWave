@@ -44,7 +44,7 @@ narrative.
    current design payload; do not create a parallel operational authority.
 7. When independent operational review is selected, follow `nw-role-invocation`'s selected-review branch: the native caller invokes `nw-platform-architect-reviewer` on the current constructed authority, bound facts, scope and observations, then consumes its actual result. Keep review outside the closed constructor JSON. Required revisions return to the platform authority owner; construction alone is not completion of an enabled selected review. No unselected review turn or live rollout is implied.
 
-DEVOPS does not author a handover, feature workspace, rollout ledger or CI
+DEVOPS does not author a handover, feature directory, rollout ledger or CI
 status copy. A downstream operational contradiction returns to the platform
 authority; software re-derives any needed execution facts.
 

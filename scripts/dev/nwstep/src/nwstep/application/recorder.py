@@ -16,7 +16,12 @@ from nwstep.application.record_how import RecordHow
 from nwstep.application.recorded import Recorded
 from nwstep.application.red_run import RedRun
 from nwstep.application.refactoring_check import Refactoring
-from nwstep.application.test_names import TestNames, test_name_of
+from nwstep.application.test_names import DeclaredTestNames
+from nwstep.domain.command_bound import CommandBound
+from nwstep.domain.law_item import LawItem
+from nwstep.domain.report_outcome import NoReport, ReadReport, UnreadableReport
+from nwstep.domain.test_name import TestName
+from nwstep.infrastructure.report_file import ReportFile
 from nwstep.domain import prereview, review, run_mode
 from nwstep.domain.case_result import CaseResult
 from nwstep.domain.case_spec import CaseSpec
@@ -50,6 +55,8 @@ from nwstep.infrastructure.toml_schema_reader import TomlSchemaReader
 from nwstep.infrastructure.workspace import Workspace
 from nwstep.infrastructure.workspace_mode import WorkspaceMode
 
+from nwstep.domain.declared_path import TEST_FILES
+
 
 class Recorder:
     def __init__(self, workspace: Workspace) -> None:
@@ -71,7 +78,6 @@ class Recorder:
             CommandRunner(timeout_s=prereview.COMMAND_TIMEOUT_S),
             CandidateGit(workspace.directory),
         )
-        self._test_names = TestNames(workspace.directory)
         self._how = HowLine()
         declaration = SizeStore(workspace).current()
         self._size = (
@@ -143,25 +149,37 @@ class Recorder:
                 continue
             if field.runs_on == Field.RUNS_ON_PRE_FEATURE:
                 values[field.name] = self._red.observe(
-                    field, argv, root, self._expected_failures(field, values)
+                    field,
+                    argv,
+                    root,
+                    self._expected_failures(field, values),
+                    self._report_path(step, field, values),
+                    self._declared_tests(values),
+                    CommandBound.resolve(field, values),
                 )
             elif field.runs_on == Field.RUNS_ON_REFACTOR:
                 values[field.name] = self._refactoring.receipts(
                     field, argv, values, root, journal
                 )
             elif field.compare_baseline:
-                values[field.name] = self._compared.observe(field, argv, root)
+                values[field.name] = self._compared.observe(
+                    field, argv, root, CommandBound.resolve(field, values)
+                )
             else:
-                outcome = self._runner.run(argv, root)
+                outcome = self._run_declared(step, field, argv, root, values)
                 checker = field
-                primary_problem = outcome.problem
+                primary_problem = (
+                    None if outcome.timed_out_after is not None else outcome.problem
+                )
                 if primary_problem is not None and field.fallback in commanded:
                     checker = step.field(field.fallback)
                     fallback_notes.append(
                         f"'{field.name}' could not start ({primary_problem}): its declared fallback "
                         f"'{checker.name}' ran instead; the record says so"
                     )
-                    outcome = self._runner.run(commanded[checker.name], root)
+                    outcome = self._run_declared(
+                        step, checker, commanded[checker.name], root, values
+                    )
                 kept = self._keep_output(step, checker, outcome)
                 if implemented and checker.expect == "fail" and outcome.exit_code == 0:
                     superseded.append(checker.name)
@@ -349,16 +367,23 @@ class Recorder:
     ) -> tuple[dict[str, Any], list[tuple[Field, list[str]]]]:
         values: dict[str, Any] = {}
         commands: list[tuple[Field, list[str]]] = []
+        targets = frozenset(field.report for field in step.fields if field.report)
         for field in step.fields:
             if field.kind.is_multi:
-                self._accept_multi(field, submission, root, values)
+                self._accept_multi(
+                    field, submission, root, values, field.name in targets
+                )
             else:
                 self._accept_single(field, submission, values, commands)
         return values, commands
 
     @staticmethod
     def _accept_multi(
-        field: Field, submission: Submission, root: Path, values: dict[str, Any]
+        field: Field,
+        submission: Submission,
+        root: Path,
+        values: dict[str, Any],
+        written_by_run: bool,
     ) -> None:
         if submission.scalar(field.name) is not None:
             raise field.refuse(
@@ -367,7 +392,7 @@ class Recorder:
             )
         items = submission.items_of(field.name)
         if items or field.required:
-            values[field.name] = field.accept_items(items, root)
+            values[field.name] = field.accept_items(items, root, written_by_run)
 
     @staticmethod
     def _accept_single(
@@ -427,6 +452,8 @@ class Recorder:
             if field.name not in values:
                 continue
             value = values[field.name]
+            if field.names_tests and isinstance(value, list):
+                self._check_test_names(field, value, values, root)
             if field.covers is not None:
                 available, source = self._reference(step, journal, values, field.covers)
                 if not available:
@@ -435,8 +462,6 @@ class Recorder:
                 field.check_coverage(
                     value, required, f"{field.covers[0]}.{field.covers[1]}"
                 )
-                if field.names_tests:
-                    self._check_test_names(field, value, root)
             elif field.ids:
                 field.check_coverage(
                     value, field.ids, f"the fixed ids {', '.join(field.ids)}"
@@ -502,25 +527,80 @@ class Recorder:
     def _expected_failures(field: Field, values: dict[str, Any]) -> list[str]:
         """The test names the oracle maps to promises: each must fail on the pre-feature tree, or it proves no change."""
         names = [
-            test_name_of(str(item))
+            TestName.of(str(item)).text
             for source in field.must_fail
             for item in values.get(source) or []
         ]
         return [name for name in names if name]
 
-    def _check_test_names(self, field: Field, value: list[str], root: Path) -> None:
-        """A test a mapping names must be defined by the clone's own test files now: a misspelt name is refused at record time."""
-        defined = self._test_names.defined_in(root)
-        missing = [
-            name
-            for name in (test_name_of(str(item)) for item in value)
-            if name and name not in defined
-        ]
+    @staticmethod
+    def _declared_tests(values: dict[str, Any]) -> list[str]:
+        """The test files the oracle declares in its tests field: the RED copies them and the mapped names are searched in them."""
+        return [str(path) for path in values.get(TEST_FILES) or []]
+
+    def _check_test_names(
+        self, field: Field, value: list[str], values: dict[str, Any], root: Path
+    ) -> None:
+        """A test a mapping names must occur in a test file the same record declares: a misspelt or undeclared test is refused at record time."""
+        missing = DeclaredTestNames.absent(
+            root, self._declared_tests(values), (str(item) for item in value)
+        )
         if missing:
             raise field.refuse(
-                f"field '{field.name}' names test(s) that no test file of the clone defines: {', '.join(dict.fromkeys(missing))}",
+                f"field '{field.name}' names test(s) that no declared test files holds: {', '.join(dict.fromkeys(missing))}",
                 fault=Fault.COVERAGE,
             )
+
+    @staticmethod
+    def _report_path(step: Step, field: Field, values: dict[str, Any]) -> str:
+        """The report path a command field declares: the paths field its report option names, which the record gives."""
+        if field.report is None:
+            raise field.refuse(
+                f"'{field.name}' declares no report: a RED is accepted only through the JUnit XML report its command writes, and this schema names none",
+                fault=Fault.SYNTAX,
+            )
+        target = step.field(field.report)
+        if target is None:
+            raise field.refuse(
+                f"field '{field.name}' names report field '{field.report}', which the step does not declare",
+                fault=Fault.SYNTAX,
+            )
+        given = values.get(target.name)
+        if not given:
+            raise target.refuse_missing()
+        return str(given[0])
+
+    def _run_declared(
+        self,
+        step: Step,
+        field: Field,
+        argv: list[str],
+        root: Path,
+        values: dict[str, Any],
+    ) -> CommandOutcome:
+        """Runs a command field within its bound. When the field declares a report, the report is removed first and read after the run; a run stopped at its bound is refused before any report is read."""
+        bound = CommandBound.resolve(field, values)
+        if field.report is None:
+            return self._runner.run(argv, root, timeout_s=bound)
+        path = self._report_path(step, field, values)
+        ReportFile.remove(root, path)
+        outcome = self._runner.run(argv, root, timeout_s=bound)
+        if outcome.timed_out_after is not None:
+            raise field.timed_out(outcome.timed_out_after)
+        report = ReportFile.read(root, path)
+        if isinstance(report, NoReport):
+            raise field.no_report(path, root, outcome.exit_code, copied=False)
+        if isinstance(report, UnreadableReport):
+            raise field.refuse(
+                f"'{field.name}' wrote '{path}', which is not a readable report: {report.reason}",
+                fault=Fault.COMMAND,
+            )
+        if isinstance(report, ReadReport) and not report.cases:
+            raise field.refuse(
+                f"'{field.name}' wrote '{path}', which names no test: no test ran, so the run proves nothing",
+                fault=Fault.COMMAND,
+            )
+        return outcome.with_report(report)
 
     def _keep_output(self, step: Step, field: Field, outcome: CommandOutcome) -> Path:
         """The full output of the last run of each command field, kept in the workspace so that a refusal can name it."""
@@ -661,8 +741,18 @@ class Recorder:
             if field.name not in values:
                 continue
             if field.contract is not None:
-                outcome = self._contracts.check(field, values[field.name], root)
+                declared = [
+                    str(path)
+                    for path in values.get(TEST_FILES)
+                    or journal.latest_value("oracle", TEST_FILES)
+                    or []
+                ]
+                outcome = self._contracts.check(
+                    field, values[field.name], root, declared
+                )
                 warnings += self._apply(field, outcome, values)
+                if field.contract == "law":
+                    warnings += self._law_notices(values[field.name])
             if field.locator_ids:
                 outcome = self._contracts.check_locators(
                     field, values[field.name], root
@@ -671,6 +761,19 @@ class Recorder:
             for reference in field.verifies:
                 warnings += self._verify(step, field, reference, journal, root, values)
         return warnings
+
+    @staticmethod
+    def _law_notices(items: list[str]) -> list[str]:
+        """The could-not-verify notice of each recorded law: no tool here can check that a law's generator generates."""
+        notices: list[str] = []
+        for item in items:
+            try:
+                notice = LawItem.parse(item).could_not_verify_notice()
+            except ValueError:
+                continue
+            if notice is not None:
+                notices.append(notice)
+        return notices
 
     @staticmethod
     def _apply(
@@ -682,8 +785,6 @@ class Recorder:
                 + "; ".join(outcome.problems),
                 fault=Fault.COMMAND,
             )
-        if outcome.lint is not None:
-            values[DiffContracts.DIFF_LINT] = outcome.lint
         return list(outcome.warnings)
 
     def _verify(
@@ -704,8 +805,13 @@ class Recorder:
                 fault=Fault.SYNTAX,
             )
         items = journal.latest_value(source_step, source_field) or []
+        tests = journal.latest_value("oracle", TEST_FILES) or []
         outcome = self._contracts.verify(
-            contract_field.contract, items, root, generated=contract_field.generated
+            contract_field.contract,
+            items,
+            root,
+            generated=contract_field.generated,
+            tests=[str(path) for path in tests],
         )
         if outcome.problems:
             raise Refusal(
@@ -722,8 +828,6 @@ class Recorder:
                 field=field.name,
                 fault=Fault.COMMAND,
             )
-        if outcome.lint is not None:
-            values[DiffContracts.DIFF_LINT] = outcome.lint
         return list(outcome.warnings)
 
     def _run_cases(
@@ -746,7 +850,14 @@ class Recorder:
                         fault=Fault.COMMAND,
                     )
                 warnings += list(outcome.warnings)
-            results = self._differential.judge(specs, root)
+            results = self._differential.judge(
+                specs,
+                root,
+                [
+                    str(path)
+                    for path in journal.latest_value("oracle", TEST_FILES) or []
+                ],
+            )
             failing = [result for result in results if not result.held]
             if failing:
                 raise field.refuse_cases(failing)

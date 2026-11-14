@@ -3,6 +3,7 @@
 The queue is the one of `nwave-ai tests run` (nwave_ai.testrun, in the repository that
 ships this nwstep): the hooks and the executors wait in the same line. The time limit
 bounds the command only; the wait for a place is not counted in it, nor in the duration.
+A run stopped at its limit says so in its outcome, with the limit it was stopped at.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from nwstep.domain.command_bound import CommandBound
 from nwstep.domain.command_outcome import CommandOutcome
 from nwstep.infrastructure.package_paths import PackagePaths
 
@@ -21,11 +23,11 @@ if TYPE_CHECKING:
 
 
 class CommandRunner:
-    TIMEOUT_S = 300
+    TIMEOUT_S = CommandBound.DEFAULT_SECONDS
     TAIL_LINES = 40
 
     def __init__(self, timeout_s: int = TIMEOUT_S) -> None:
-        """A command field is bounded by TIMEOUT_S; another caller states its own bound. No run is unbounded."""
+        """A command runs within TIMEOUT_S unless the caller states its own bound for the run. No run is unbounded."""
         self._timeout_s = timeout_s
 
     def run(
@@ -33,7 +35,9 @@ class CommandRunner:
         argv: list[str],
         cwd: Path,
         environment: Mapping[str, str] | None = None,
+        timeout_s: int | None = None,
     ) -> CommandOutcome:
+        bound = self._timeout_s if timeout_s is None else timeout_s
         try:
             queued_run = self._queue()
         except ImportError as error:
@@ -53,39 +57,41 @@ class CommandRunner:
                 environment=dict(os.environ if environment is None else environment),
                 account_home=Path.home(),
             ),
-            self._limits(queued_run),
+            self._limits(queued_run, bound),
             lambda line: print(
                 f"{queued_run.NOTICE_PREFIX}{line}", file=sys.stderr, flush=True
             ),
         )
         receipt = done.receipt
+        stopped = receipt.outcome == queued_run.execution.TIMED_OUT
         return self._outcome(
             argv,
             receipt.duration_seconds,
             receipt.exit,
             done.output or b"",
-            self._problem(queued_run, receipt),
+            self._problem(queued_run, receipt, bound),
+            timed_out_after=bound if stopped else None,
         )
 
-    def _limits(self, queued_run):
-        """The class and the bound of this runner's commands.
+    def _limits(self, queued_run, bound: int):
+        """The class and the bound of one command.
 
-        A command field is bounded by TIMEOUT_S: it belongs to the class the project
-        declares first, the one that goes first. A caller that states a longer bound
-        belongs to the class declared last.
+        A command within TIMEOUT_S belongs to the class the project declares first, the one that goes first. A longer
+        bound belongs to the class declared last.
         """
-        short = self._timeout_s <= self.TIMEOUT_S
+        short = bound <= self.TIMEOUT_S
         choice = queued_run.ClassChoice
         return queued_run.Limits(
             run_class=choice.FIRST if short else choice.LAST,
-            time_limit_seconds=self._timeout_s,
+            time_limit_seconds=bound,
             capture_output=True,
         )
 
-    def _problem(self, queued_run, receipt) -> str | None:
+    @staticmethod
+    def _problem(queued_run, receipt, bound: int) -> str | None:
         """What stopped the command from giving an exit of its own, if anything did."""
         if receipt.outcome == queued_run.execution.TIMED_OUT:
-            return f"timed out after {self._timeout_s}s"
+            return f"timed out after {bound}s"
         if receipt.refusal is None:
             return None
         if receipt.outcome == queued_run.execution.NOT_STARTED:
@@ -109,6 +115,7 @@ class CommandRunner:
         exit_code: int | None,
         output: bytes,
         problem: str | None,
+        timed_out_after: int | None = None,
     ) -> CommandOutcome:
         text = output.decode("utf-8", errors="replace")
         lines = text.splitlines()
@@ -119,4 +126,5 @@ class CommandRunner:
             output_tail=tuple(lines[-self.TAIL_LINES :]),
             problem=problem,
             output=text,
+            timed_out_after=timed_out_after,
         )

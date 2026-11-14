@@ -28,7 +28,7 @@ class Report:
 def no_selection_refusal(source: str) -> Refusal:
     return Refusal(
         what=f"no selection of tests is declared in {source}",
-        why="where the tests are, which adapter reads which files and how "
+        why="where the tests are, which command says what depends on what and how "
         "deep each use goes are the project's to declare; none is assumed",
         how="declare tests.selection in .nwave/config.json, or pass --declaration FILE",
     )
@@ -62,8 +62,8 @@ def _no_widest_refusal(result: Indeterminate) -> Refusal:
         f"{undecided}",
         why="a list computed from the decided paths alone would silently "
         "leave out tests of the undecided ones",
-        how="declare selection.widest, or a rule for these paths: an "
-        "adapter, an asset prefix or a no_tests prefix",
+        how="declare selection.widest, or a rule for these paths: a selection.dependents "
+        "command that covers them, a selection.assets prefix or a selection.no_tests prefix",
     )
 
 

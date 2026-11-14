@@ -1,61 +1,35 @@
-"""Observes the RED command on the pre-feature tree and names the failing tests the tool saw.
+"""Observes the RED command on the pre-feature tree and accepts it only through the report the command writes.
 
-The tool, not the executor, runs the oracle's tests against the code that existed before the change: the
-pre-feature tree exported at init, with every test file the working tree changes copied over it. A RED with no
-failing test id (an import error, a collection error or a setup error only) proves no behaviour and is refused,
-and the refusal names the probable cause and the repair. So is a RED in which a test the oracle maps to a promise
-passes before the change: that test is vacuous, whatever its assertion.
+The tool, not the executor, runs the oracle's declared tests against the code that existed before the change: the
+pre-feature tree exported at init, with the declared test files copied over it. The report is removed before the run
+and read after it. A RED is accepted when every mapped test is reported failed; each other reading is refused with
+what, why and how: no report (a compile error, a missing tool or a setup stop), an unreadable report, a mapped test
+absent from the report, a mapped name that selects more than one case, a mapped test that errored, or a mapped test
+that did not fail.
 """
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
-from nwstep.application.how_line import HowLine
-from nwstep.application.red_tree import RedTree, changed_tests
+from nwstep.application.red_tree import RedTree
 from nwstep.domain.baseline import Baseline
 from nwstep.domain.fault import Fault
 from nwstep.domain.field import Field
+from nwstep.domain.red_kind import RedKind
+from nwstep.domain.red_verdict import Refused, judge
 from nwstep.domain.refusal import Refusal
+from nwstep.domain.report_outcome import ReadReport
+from nwstep.domain.report_status import ReportStatus
+from nwstep.domain.test_name import TestName
+from nwstep.domain.test_run import TestRun
 from nwstep.infrastructure.command_runner import CommandRunner
 from nwstep.infrastructure.git_diff import GitDiff, GitDiffError
+from nwstep.infrastructure.report_file import ReportFile
 from nwstep.infrastructure.workspace import Workspace
 
 
-NOTHING_PRINTED = "the command printed nothing"
-
-
-def probable_cause(output: str) -> str:
-    """The message of the first ERROR line, else the last printed line, else that nothing was printed.
-
-    Pytest reports setup and collection errors as 'ERROR <test id> - <message>'; that message is the cause the
-    refusal states. A line without the separator is stated whole, so the cause is never empty.
-    """
-    lines = [line.strip() for line in output.splitlines() if line.strip()]
-    for line in lines:
-        if line.startswith("ERROR "):
-            message = line.partition(" - ")[2].strip()
-            return message or line
-    return lines[-1] if lines else NOTHING_PRINTED
-
-
-def setup_repair(
-    tree: Path, cause: str, has_repository: bool, init_command: str
-) -> str:
-    """The runnable repair for a RED that failed at setup; a baseline is fixed at init, so the repair is a new workspace."""
-    if not has_repository:
-        return f"init a new workspace with git on the PATH: {init_command}"
-    return (
-        f"make '{cause}' true of the pre-feature tree {tree}: commit what the setup reads to the repository, "
-        f"or let the test create it under tmp_path; then init a new workspace: {init_command}"
-    )
-
-
 class RedRun:
-    _FAILED = re.compile(r"^FAILED (\S+)", re.MULTILINE)
-    _ERROR = re.compile(r"^ERROR (\S+)", re.MULTILINE)
-
     def __init__(
         self, runner: CommandRunner, workspace: Workspace, baseline: Baseline
     ) -> None:
@@ -64,7 +38,14 @@ class RedRun:
         self._baseline = baseline
 
     def observe(
-        self, field: Field, argv: list[str], root: Path, expected: list[str]
+        self,
+        field: Field,
+        argv: list[str],
+        root: Path,
+        expected: list[str],
+        report: str,
+        declared: list[str],
+        timeout_s: int,
     ) -> dict[str, object]:
         reason = self._baseline.unverifiable_for(root)
         if reason is not None:
@@ -72,67 +53,122 @@ class RedRun:
                 f"'{field.name}' cannot run on the pre-feature tree: {reason}",
                 fault=Fault.COMMAND,
             )
-        outcome = self._runner.run(argv, self._overlay(field, root))
-        field.check_outcome(outcome)
-        failing = self._unique(self._FAILED, outcome.output)
-        if not failing:
-            raise self._setup_refusal(field, outcome.output)
-        functions = {re.sub(r"\[.*$", "", node.split("::")[-1]) for node in failing}
-        passing = [name for name in expected if name not in functions]
-        if passing:
+        changed = self._changed(field)
+        unchanged = [path for path in declared if path not in changed]
+        if unchanged:
             raise field.refuse(
-                f"test(s) {', '.join(passing)} did not fail on the pre-feature tree: a test that passes there, "
-                "or does not exist, proves no change of behaviour",
-                fault=Fault.COVERAGE,
+                f"'{field.name}' declares test file(s) that are not part of the change from BASE: {', '.join(unchanged)}",
+                rejected=tuple(unchanged),
+                fault=Fault.COMMAND,
             )
+        tree = RedTree(self._baseline, self._workspace.directory).build(root, declared)
+        ReportFile.remove(tree, report)
+        outcome = self._runner.run(argv, tree, timeout_s=timeout_s)
+        field.check_outcome(outcome)
+        written = ReportFile.read(tree, report)
+        verdict = judge(
+            written,
+            tuple(TestName.of(item) for item in expected),
+            command_failed=outcome.exit_code not in (0, None),
+        )
+        if isinstance(verdict, Refused):
+            raise self._refusal(field, report, verdict, outcome.exit_code, tree)
+        cases = written.cases if isinstance(written, ReadReport) else ()
         value: dict[str, object] = dict(outcome.as_value())
-        value["failing"] = failing
-        value["errors"] = self._unique(self._ERROR, outcome.output)
+        value["tests"] = TestRun.of(cases).as_value()
+        value["failing"] = list(verdict.failing)
+        value["evidence"] = [
+            {
+                "test": item.name,
+                "case": item.case,
+                "status": item.status,
+                "kind": item.kind,
+                "message": item.message,
+            }
+            for item in verdict.evidence
+        ]
+        value["errors"] = [
+            case.name for case in cases if case.status == ReportStatus.ERRORED
+        ]
         value["pre_feature_sha"] = self._baseline.sha
         return value
 
-    def _setup_refusal(self, field: Field, output: str) -> Refusal:
-        errors = self._unique(self._ERROR, output)
-        tree = self._baseline.tree()
-        has_repository = (tree / ".git").exists()
-        cause = probable_cause(output)
-        if not has_repository:
-            cause = f"the pre-feature tree {tree} has no .git: {cause}"
-        init_command = HowLine().command(
-            "init",
-            "--schema",
-            str(self._workspace.schema_path),
-            "--workspace",
-            f"{self._workspace.directory}-next",
-        )
-        return Refusal(
-            what=(
-                f"'{field.name}' names no failing test on the pre-feature tree "
-                f"({len(errors)} error(s) only): probable cause: {cause}"
-            ),
-            why="a RED that fails at import, collection or setup proves no behaviour; only a test that fails on its own assertion shows the change",
-            how=setup_repair(tree, cause, has_repository, init_command),
-            field=field.name,
-            fault=Fault.COMMAND,
-        )
-
-    def _overlay(self, field: Field, root: Path) -> Path:
-        return RedTree(self._baseline, self._workspace.directory).build(
-            root, self._changed_tests(field)
-        )
-
-    def _changed_tests(self, field: Field) -> list[str]:
+    def _changed(self, field: Field) -> frozenset[str]:
         try:
-            names = GitDiff(
-                str(self._baseline.top), str(self._baseline.sha), working=True
-            ).names()
+            return frozenset(
+                GitDiff(
+                    str(self._baseline.top), str(self._baseline.sha), working=True
+                ).names()
+            )
         except GitDiffError as error:
             raise field.refuse(
                 f"'{field.name}' cannot read the change from BASE: {error}",
                 fault=Fault.COMMAND,
             ) from None
-        return changed_tests(names)
 
-    @staticmethod
-    def _unique(pattern: re.Pattern[str], text: str) -> list[str]:
-        return list(dict.fromkeys(pattern.findall(text)))
+    def _refusal(
+        self,
+        field: Field,
+        report: str,
+        verdict: Refused,
+        exit_code: int | None,
+        where: Path,
+    ) -> Refusal:
+        names = ", ".join(verdict.names)
+        if verdict.kind == RedKind.NO_REPORT:
+            return field.no_report(report, where, exit_code, copied=True)
+        if verdict.kind == RedKind.UNREADABLE:
+            return Refusal(
+                what=f"'{field.name}' wrote '{report}', which is not a readable report: {verdict.cause}",
+                why="only a report of the test run can show which tests failed, so an unreadable one proves nothing",
+                how=f"make the command write a well-formed JUnit XML report at '{report}'",
+                field=field.name,
+                fault=Fault.COMMAND,
+            )
+        if verdict.kind == RedKind.MISMATCH:
+            return Refusal(
+                what=f"mapped test(s) {names} name a qualifier that no case of that test in the report carries: {verdict.cause}",
+                why="a case of another qualifier is another test, so a RED on it proves nothing about the test the mapping names",
+                how="map the test to the qualified name its case has in the report (the module, class or suite, two colons, then the name), or correct the mapping to the test it means; then record the oracle again",
+                field=field.name,
+                fault=Fault.COMMAND,
+            )
+        if verdict.kind == RedKind.AMBIGUOUS:
+            return Refusal(
+                what=f"mapped test(s) {names} each select more than one case of the report: {verdict.cause}",
+                why="when the selected cases differ in outcome, the verdict would rest on whichever one the name reached, so no verdict is given",
+                how="map each test to the full name of its case as the report writes it (the module, class or suite, two colons, then the name, and any parameters), then record the oracle again",
+                field=field.name,
+                fault=Fault.COMMAND,
+            )
+        if verdict.kind == RedKind.ABSENT:
+            return Refusal(
+                what=f"test(s) {names} absent from the report '{report}': they did not run",
+                why="a test the report does not name did not run, so it shows no change of behaviour",
+                how="make the test run and appear in the report, or correct the mapping to the name the test has",
+                field=field.name,
+                fault=Fault.COMMAND,
+            )
+        if verdict.kind == RedKind.ERRORED:
+            return Refusal(
+                what=f"test(s) {names} errored in setup, before their assertion ran: {verdict.cause}",
+                why="a setup error proves no behaviour; only a test that fails on its own assertion shows the change",
+                how="fix the setup the message names so that the test reaches its assertion",
+                field=field.name,
+                fault=Fault.COMMAND,
+            )
+        if verdict.kind == RedKind.UNVERIFIED:
+            return Refusal(
+                what=f"could not verify test(s) {names}: the command failed, yet the report gives neither a failure nor an error element for them",
+                why="a failed command whose report says nothing about a test cannot show that the test failed, so the RED is not stated as checked",
+                how="make the command report each mapped test with its failure element, or correct the mapping; then record the oracle again",
+                field=field.name,
+                fault=Fault.COMMAND,
+            )
+        return Refusal(
+            what=f"test(s) {names} did not fail on the pre-feature tree",
+            why="a test that passes there, or that is absent, proves no change of behaviour",
+            how="make the test assert the promised outcome so that it fails on the pre-feature tree",
+            field=field.name,
+            fault=Fault.COMMAND,
+        )

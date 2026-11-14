@@ -6,8 +6,10 @@
 project declares in the ``tests`` block of its configuration and name no language,
 runner or version-control tool themselves.
 
-Layout: ``queue_policy``, ``declaration`` and ``selection`` decide (pure);
-``account_queue``, ``capacity``, ``execution``, ``orphan_guard``, ``project_tree``
-and ``declaration_source`` act; ``python_dependencies`` is the first dependency
-adapter; ``queued_run`` is the entry other code calls; ``cli`` is the command line.
+Layout: ``queue_policy``, ``declaration``, ``selection``, ``dependents`` and the
+closure of ``dependents`` decide (pure); ``account_queue``, ``capacity``, ``execution``,
+``orphan_guard``, ``project_tree``, ``dependents.command`` and ``declaration_source``
+act; ``project_selection`` wires them for every caller; ``queued_run`` is the entry
+other code calls; ``cli`` is the command line. The language rules of a repository are
+its own declared command (for nWave: ``scripts/hooks/python_dependents.py``).
 """

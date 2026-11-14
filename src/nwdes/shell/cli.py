@@ -23,11 +23,14 @@ from nwdes import (
     drafts,
     grammar,
     handoff,
+    jev_access,
     lanes,
     measurement,
     packets,
     prompts,
 )
+from nwdes.citation.judge import judge
+from nwdes.citation.observation import Absent, FolderAt, NotText, OutsideRoot, TextFile
 from nwdes.contracts import (
     Built,
     Defect,
@@ -46,7 +49,7 @@ from nwdes.destinations import (
     readable_setting,
     resolve,
 )
-from nwdes.shell import host_sessions, probe
+from nwdes.shell import host_sessions, machine_config, probe
 from nwdes.shell.asset_tree import decode_utf8, read_asset
 from nwdes.shell.filesystem import (
     check_paths,
@@ -426,7 +429,9 @@ def _installed_root():
 
 def _document_ports(args):
     root = _installed_root()
-    global_config = args.global_config or str(Path.home() / ".nwave/config.json")
+    global_config = args.global_config or str(
+        machine_config.machine_config_path(Path.home())
+    )
     return DocumentPorts(
         configuration=lambda tier, scope: read_configuration_tier(
             args.project_root,
@@ -693,22 +698,26 @@ def _resolve_references(root, sites):
     return {site: _reference_resolves(root, *site) for site in sites}
 
 
-def _test_resolves(root, locator):
-    """The shell's answer for one test locator a row binds: its file lies under the root and its name occurs in it as a whole word."""
-    path, separator, name = locator.partition("::")
+def _observe(root, citation):
+    """What lies at a citation's file under the root: read as text, or the reason it is not text."""
     base = Path(os.path.normpath(Path(root).absolute()))
-    location = Path(os.path.normpath(base / path))
-    if not separator or not name.strip() or not location.is_relative_to(base):
-        return False
+    location = Path(os.path.normpath(base / citation.test_path))
+    if not location.is_relative_to(base):
+        return OutsideRoot()
+    if location.is_dir():
+        return FolderAt()
+    if not location.exists():
+        return Absent()
     try:
-        text = location.read_text(encoding="utf-8")
+        return TextFile(location.read_text(encoding="utf-8"))
     except (OSError, UnicodeError):
-        return False
-    return re.search(r"\b" + re.escape(name) + r"\b", text) is not None
+        return NotText()
 
 
-def _resolve_coverage(root, locators):
-    return {locator: _test_resolves(root, locator) for locator in locators}
+def _resolve_coverage(root, citations):
+    return {
+        citation: judge(citation, _observe(root, citation)) for citation in citations
+    }
 
 
 def _load_policy():
@@ -760,7 +769,7 @@ def _prepare_transition(args, previous, raw):
     programs = resolve_programs(args.repo_root, commands)
     coverage = _resolve_coverage(
         args.repo_root,
-        handoff.coverage_locators(args.verb, output, previous),
+        handoff.coverage_citations(args.verb, output, previous),
     )
     return handoff.prepare_invocation(
         args.invocation, previous, output, programs=programs, resolution=coverage
@@ -1075,7 +1084,9 @@ def _consent_tiers(args, previous):
     project root is named. The handoff's own feature or epic tier is read as well, so a
     scoped jev is refused there instead of being ignored.
     """
-    global_config = args.global_config or str(Path.home() / ".nwave/config.json")
+    global_config = args.global_config or str(
+        machine_config.machine_config_path(Path.home())
+    )
     root = args.project_root or args.repo_root
     scope = _handoff_scope(previous)
     named = [("global", None), ("repository", None)]
@@ -1200,6 +1211,19 @@ def _refuse_changed_oracle(args, previous):
         ),
         "rebuild this prompt",
     )
+
+
+def _jev_access_notice(consent: prompts.JevAuthorization) -> str | None:
+    """Shell: one line naming the missing key when Jev is on and TYPESAFE_API_KEY is unset.
+
+    A refusal and a working key print nothing; the jev line itself is printed elsewhere, unchanged.
+    """
+    access = jev_access.resolve_access(
+        consent.value,
+        key_present=jev_access.key_is_set(os.environ.get(jev_access.KEY_VARIABLE)),
+    )
+    warning = jev_access.warning(access)
+    return None if warning is None else f"jev_access: {jev_access.one_line(warning)}"
 
 
 def _prompt(args):
@@ -1346,6 +1370,9 @@ def _prompt(args):
     if isinstance(rendered, Refused):
         return _refusal(rendered.defects)
     sys.stdout.write(rendered.value)
+    notice = _jev_access_notice(prepared.value.inputs.jev)
+    if notice is not None:
+        print(notice, file=sys.stderr)
     return 0
 
 
@@ -1413,7 +1440,9 @@ def _stale_candidate(recorded, head):
 
 def _lane(args):
     configuration = (
-        read_lane_configuration(args.repo_root, str(Path.home() / ".nwave/config.json"))
+        read_lane_configuration(
+            args.repo_root, str(machine_config.machine_config_path(Path.home()))
+        )
         if args.repo_root
         else ConfigurationRead({}, (), False)
     )

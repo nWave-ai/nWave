@@ -27,15 +27,19 @@ class BaselineCompare:
         self._runner = runner
         self._baseline = baseline
 
-    def observe(self, field: Field, argv: list[str], root: Path) -> dict[str, Any]:
-        candidate = self._runner.run(argv, root)
+    def observe(
+        self, field: Field, argv: list[str], root: Path, timeout_s: int
+    ) -> dict[str, Any]:
+        candidate = self._runner.run(argv, root, timeout_s=timeout_s)
         field.check_outcome(candidate)
         value: dict[str, Any] = dict(candidate.as_value())
         reason = self._baseline.unverifiable_for(root)
         if reason is not None:
             value["verdict"] = f"could not compare with the pre-feature tree: {reason}"
             return value
-        before = self._runner.run(argv, self._baseline.tree())
+        before = self._runner.run(argv, self._baseline.tree(), timeout_s=timeout_s)
+        if before.timed_out_after is not None:
+            raise field.timed_out(before.timed_out_after)
         before_lines = {self._normal(line) for line in self._lines(before.output)}
         candidate_lines = self._lines(candidate.output)
         new = list(

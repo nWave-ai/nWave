@@ -6,9 +6,7 @@
 default = "dynamic.v1"
 
 [versions]
-v9 = []
-v10 = []
-v11 = ["dynamic.v11a", "dynamic.v11b", "dynamic.v11c", "dynamic.v11d", "dynamic.v11e"]
+v12 = ["dynamic.v11a", "dynamic.v11b", "dynamic.v11c", "dynamic.v11d", "dynamic.v11e"]
 
 [retired]
 templates = ["dynamic.v2q", "dynamic.v3p", "dynamic.v4", "dynamic.v5", "dynamic.v6"]

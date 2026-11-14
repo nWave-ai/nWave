@@ -1,4 +1,4 @@
-"""A citation of one line of a file: 'src/app.py:12', found anywhere in an evidence text."""
+"""A citation of one line of a file: 'src/<file>:12', found anywhere in an evidence text."""
 
 from __future__ import annotations
 

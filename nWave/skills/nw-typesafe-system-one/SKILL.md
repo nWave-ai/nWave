@@ -105,7 +105,7 @@ do not relabel it as service unavailability.
 |---|---|---|
 | 0 | Response recorded | Inspect the answer; do not equate recording with acceptance |
 | 2 | Caller/schema defect, including HTTP 400/422 | Repair the named request defect; never call it service absence |
-| 3 | Missing key, network timeout/failure, HTTP 408/429/5xx | Record unavailability and continue locally; no blind retry |
+| 3 | Missing key (stderr holds the shared WHAT/WHY/HOW message that names how to set TYPESAFE_API_KEY), network timeout/failure, HTTP 408/429/5xx | Record `typesafe: unavailable` with that stderr as the reason, and continue locally; no blind retry |
 | 5 | HTTP 401/403 access or configuration failure | Record access limitation; fix known configuration without exposing credentials |
 | 4 | Invalid service response or otherwise unclassified HTTP failure | Preserve the distinction; do not invent a judgment or caller-defect diagnosis |
 

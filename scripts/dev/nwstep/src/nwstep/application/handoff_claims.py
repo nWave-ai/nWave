@@ -1,18 +1,21 @@
 """Checks the handoff summary's sentences against the committed change from BASE to HEAD.
 
-A sentence that states a guarantee (every, never, shows, holds, ...) must name a test function of the change: a
-guarantee with no named test has no evidence in the diff. A backticked file must be changed from BASE to HEAD and a
-backticked symbol must be defined in the change. A sentence that fails either rule is not shown as a claim: it goes
-to the 'not backed' list with its reasons. Without a readable change, nothing is checked and the report says so.
+A sentence that states a guarantee (every, never, shows, holds, ...) must name a test of the change: a test the oracle
+mapped to a promise and whose name occurs as a whole word in a declared test file the change contains. A backticked
+file must be changed from BASE to HEAD, and a backticked symbol must occur as a whole word in the text of a changed
+file. A sentence that fails either rule is not shown as a claim: it goes to the 'not backed' list with its reasons.
+Without a readable change, nothing is checked and the report says so.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from nwstep.domain.baseline import Baseline
-from nwstep.domain.definitions import Definitions
+from nwstep.domain.symbol_text import SymbolText
+from nwstep.domain.test_name import TestName
 from nwstep.infrastructure.git_diff import GitDiff, GitDiffError
 
 
@@ -30,12 +33,18 @@ class HandoffClaims:
         re.IGNORECASE,
     )
     CODE = re.compile(r"`([^`]+)`")
-    NAME = re.compile(r"[A-Za-z_]\w*")
     SYMBOL = re.compile(r"[A-Za-z_][\w.]*\(?\)?")
     SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 
-    def __init__(self, baseline: Baseline) -> None:
+    def __init__(
+        self,
+        baseline: Baseline,
+        mapped: Iterable[str] = (),
+        declared: Iterable[str] = (),
+    ) -> None:
         self._baseline = baseline
+        self._mapped = tuple(dict.fromkeys(TestName.of(item).key for item in mapped))
+        self._declared = tuple(declared)
 
     def judge(self, text: str) -> ClaimsReport:
         sentences = self.split(text)
@@ -69,22 +78,23 @@ class HandoffClaims:
     def _facts(
         self, diff: GitDiff, changed: frozenset[str]
     ) -> tuple[frozenset[str], frozenset[str]]:
-        tests: set[str] = set()
+        """The tests of the change (mapped names found in the declared files) and the words the changed files hold."""
+        declared_texts = [
+            text
+            for path in self._declared
+            if path in changed and (text := diff.text(path)) is not None
+        ]
+        tests = frozenset(
+            name
+            for name in self._mapped
+            if any(SymbolText.mentions(text, name) for text in declared_texts)
+        )
         symbols: set[str] = set()
-        for path in sorted(name for name in changed if name.endswith(".py")):
+        for path in sorted(changed):
             source = diff.text(path)
-            if source is None:
-                continue
-            try:
-                definitions = Definitions(source)
-            except ValueError:
-                continue
-            symbols |= definitions.names()
-            if self._is_test_file(path):
-                tests |= {
-                    name for name in definitions.functions() if name.startswith("test")
-                }
-        return frozenset(tests), frozenset(symbols)
+            if source is not None:
+                symbols |= SymbolText.identifiers(source)
+        return tests, frozenset(symbols)
 
     def _reasons(
         self,
@@ -95,22 +105,15 @@ class HandoffClaims:
     ) -> list[str]:
         reasons: list[str] = []
         for token in self.CODE.findall(sentence):
-            if "/" in token or token.endswith(".py"):
+            if "/" in token:
                 if token.removeprefix("./") not in changed:
                     reasons.append(f"file `{token}` is not changed from BASE to HEAD")
             elif self.SYMBOL.fullmatch(token):
                 name = token.rstrip("()").split(".")[-1]
                 if name not in symbols and name not in tests:
                     reasons.append(f"symbol `{token}` is not defined in the change")
-        if self.GUARANTEE.search(sentence) and not (
-            set(self.NAME.findall(sentence)) & tests
+        if self.GUARANTEE.search(sentence) and not any(
+            SymbolText.mentions(sentence, name) for name in tests
         ):
-            reasons.append("a guarantee names no test function of the change")
+            reasons.append("a guarantee names no test of the change")
         return reasons
-
-    @staticmethod
-    def _is_test_file(path: str) -> bool:
-        return (
-            path.rsplit("/", 1)[-1].startswith("test_")
-            or "tests" in path.split("/")[:-1]
-        )

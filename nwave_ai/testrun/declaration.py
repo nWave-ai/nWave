@@ -12,6 +12,12 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
+from nwave_ai.testrun.dependents.declared import (
+    CEILING_TIMEOUT_SECONDS,
+    DEFAULT_TIMEOUT_SECONDS,
+    DEPENDENTS_FORMAT,
+    DeclaredDependents,
+)
 from nwave_ai.testrun.queue_policy import CapacityLimits
 
 
@@ -20,7 +26,6 @@ if TYPE_CHECKING:
 
 
 TRANSITIVE = "transitive"
-_NO_SETTINGS: Mapping[str, object] = MappingProxyType({})
 
 
 @dataclass(frozen=True)
@@ -74,21 +79,17 @@ class ToolResolution:
 
 @dataclass(frozen=True)
 class SelectionRules:
-    """Where the tests are, who computes dependencies, and the depth of each use."""
+    """Where the tests are, which command says what depends on what, and each use's depth."""
 
     test_roots: tuple[str, ...]
     test_files: tuple[str, ...]
-    adapters: Mapping[str, str]
-    adapter_settings: Mapping[str, Mapping[str, object]]
+    dependents: DeclaredDependents | None
     assets: tuple[tuple[str, tuple[str, ...]], ...]
     no_tests: tuple[str, ...]
     widest: tuple[str, ...]
     local_ceiling: int | None
     uses: Mapping[str, Depth]
     ignore: tuple[str, ...]
-
-    def settings_of(self, adapter: str) -> Mapping[str, object]:
-        return self.adapter_settings.get(adapter, _NO_SETTINGS)
 
 
 @dataclass(frozen=True)
@@ -108,9 +109,10 @@ class Declaration:
 
 @dataclass(frozen=True)
 class Malformed:
-    """A declaration that cannot be used, with every defect it has."""
+    """A declaration that cannot be used, with every defect it has and how to repair it."""
 
     defects: tuple[str, ...]
+    hints: tuple[str, ...] = ()
 
 
 _ROOT_KEYS = ("queue", "commands", "candidate", "tool_resolution", "selection")
@@ -124,10 +126,11 @@ _QUEUE_KEYS = (
 )
 _COMMAND_KEYS = ("argv", "class", "timeout_seconds")
 _RESOLUTION_KEYS = ("argv", "repair")
+_DEPENDENT_KEYS = ("argv", "covers", "timeout_seconds")
 _SELECTION_KEYS = (
     "test_roots",
     "test_files",
-    "adapters",
+    "dependents",
     "assets",
     "no_tests",
     "widest",
@@ -160,7 +163,12 @@ def parse_declaration(document: object | None) -> Declaration | Malformed:
         *selection_defects,
     )
     if defects:
-        return Malformed(tuple(defects))
+        hints = (
+            (DEPENDENTS_FORMAT,)
+            if any(d.startswith("selection") for d in defects)
+            else ()
+        )
+        return Malformed(tuple(defects), hints)
     return Declaration(queue, commands, candidate, resolution, selection)
 
 
@@ -348,6 +356,36 @@ def _depth(value: object) -> Depth | None:
     return None
 
 
+def _dependents(block: object) -> tuple[DeclaredDependents | None, tuple[str, ...]]:
+    """The declared dependents command, or every defect in its block, named."""
+    if block is None:
+        return None, ()
+    if not isinstance(block, dict):
+        return None, (f"selection.dependents must be an object, got {_shown(block)}",)
+    defects = list(_unknown_keys("selection.dependents.", block, _DEPENDENT_KEYS))
+    argv = _strings(block.get("argv"), allow_empty=False)
+    if argv is None:
+        defects.append(
+            "selection.dependents.argv must be a list of one or more words, "
+            f"got {_shown(block.get('argv'))}"
+        )
+    covers = _strings(block.get("covers"), allow_empty=False)
+    if covers is None:
+        defects.append(
+            "selection.dependents.covers must be a list of one or more path patterns, "
+            f"got {_shown(block.get('covers'))}"
+        )
+    bound = block.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)
+    if not _is_number(bound) or not 0 < bound <= CEILING_TIMEOUT_SECONDS:
+        defects.append(
+            "selection.dependents.timeout_seconds must be a number above 0 and at most "
+            f"{CEILING_TIMEOUT_SECONDS:g} seconds, got {_shown(bound)}"
+        )
+    if defects or argv is None or covers is None:
+        return None, tuple(defects)
+    return DeclaredDependents(argv, covers, float(bound)), ()
+
+
 def _selection(block: object) -> tuple[SelectionRules | None, tuple[str, ...]]:
     if block is None:
         return None, ()
@@ -368,32 +406,9 @@ def _selection(block: object) -> tuple[SelectionRules | None, tuple[str, ...]]:
             return ()
         return found
 
-    adapters = block.get("adapters", {})
-    if not isinstance(adapters, dict) or not all(
-        isinstance(extension, str)
-        and extension.startswith(".")
-        and isinstance(name, str)
-        and name
-        for extension, name in adapters.items()
-    ):
-        defects.append(
-            "selection.adapters must map a file extension such as '.py' to an "
-            f"adapter name, got {_shown(adapters)}"
-        )
-        adapters = {}
-    settings = {}
-    for name in sorted(set(adapters.values())):
-        if name in block:
-            if isinstance(block[name], dict):
-                settings[name] = MappingProxyType(dict(block[name]))
-            else:
-                defects.append(
-                    f"selection.{name} must be an object of settings for the "
-                    f"'{name}' adapter, got {_shown(block[name])}"
-                )
-    defects.extend(
-        _unknown_keys("selection.", block, (*_SELECTION_KEYS, *sorted(settings)))
-    )
+    defects.extend(_unknown_keys("selection.", block, _SELECTION_KEYS))
+    dependents, dependent_defects = _dependents(block.get("dependents"))
+    defects.extend(dependent_defects)
     assets = block.get("assets", {})
     asset_rules: list[tuple[str, tuple[str, ...]]] = []
     if not isinstance(assets, dict):
@@ -434,8 +449,7 @@ def _selection(block: object) -> tuple[SelectionRules | None, tuple[str, ...]]:
     rules = SelectionRules(
         test_roots=strings("test_roots", required=True),
         test_files=strings("test_files", required=True),
-        adapters=MappingProxyType(dict(adapters)),
-        adapter_settings=MappingProxyType(settings),
+        dependents=dependents,
         assets=tuple(sorted(asset_rules, key=lambda rule: -len(rule[0]))),
         no_tests=strings("no_tests", required=False),
         widest=strings("widest", required=False),

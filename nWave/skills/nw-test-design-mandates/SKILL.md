@@ -26,6 +26,7 @@ Examples are Python; write in the project's own language. Rules on private impor
    A real driven-internal adapter appears only in the walking skeleton or a declared adapter-integration test. No test double is defined or used inside domain or application code. Every in-memory fake rejects each input the real adapter rejects (None, empty string, out-of-range number, invalid enum). A port you cannot classify: ask.
 7. Put business logic in pure functions first; parametrize fixtures only for the thin adapter layer.
 8. When DESIGN declares a seam, name that exact seam, drive it through the real entry point and assert its observable effect. When DESIGN declares a contract-test obligation, feed real producer output to the real consumer (no mock echo, no hand-written producer record). When it declares an architectural-test obligation, write one check that fails the law over its whole governed scope, at the declared locator.
+9. Normal tests are scenarios through the public port. A test that exercises a type directly is the exceptional minority and follows the file system layout of nw-code-craftsmanship (File layout section).
 
 ## 2. Write the scenario
 

@@ -4,6 +4,7 @@ description: FP code-design SSOT — the WHAT-to-design catalog (algebra-driven 
 ---
 
 # FP Code Design
+File and folder placement of the types this catalog designs follows the File layout section of nw-code-craftsmanship.
 
 Design-time catalog for functional work. The architect loads this to design the
 domain algebra, the type-level model, and the error/effect tracks BEFORE DISTILL

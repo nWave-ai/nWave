@@ -6,10 +6,10 @@ import shlex
 from typing import Any
 
 from nwstep.application.change_facts import ChangeFacts
-from nwstep.application.exploration_brief import ExplorationBrief
-from nwstep.application.handoff_claims import ClaimsReport, HandoffClaims
 from nwstep.application.coverage_brief import CoverageBrief
 from nwstep.application.definition_of_done import DefinitionOfDone
+from nwstep.application.exploration_brief import ExplorationBrief
+from nwstep.application.handoff_claims import ClaimsReport, HandoffClaims
 from nwstep.application.owner_questions import OwnerQuestions
 from nwstep.application.progress import Progress
 from nwstep.application.review_lines import summary_lines
@@ -19,10 +19,12 @@ from nwstep.domain.field import Field
 from nwstep.domain.field_kind import FieldKind
 from nwstep.domain.journal import Journal
 from nwstep.domain.kit import KitState, UnknownKit
+from nwstep.domain.law_item import LawItem
 from nwstep.domain.record import Record
-from nwstep.domain.schema import Schema
 from nwstep.domain.review import ReviewLog
+from nwstep.domain.schema import Schema
 from nwstep.domain.step import Step
+
 
 DECISION_TOKENS = frozenset({"decision", "decisions", "reason"})
 UPSTREAM_STALE = "an earlier step was recorded again after it; record it again or say why it still holds"
@@ -67,7 +69,15 @@ class Briefer:
         lines += ChangeFacts(self._baseline).lines()
         lines += summary_lines(self._review, journal, self._green)
         stale = self._stale(journal)
-        claims = HandoffClaims(self._baseline)
+        claims = HandoffClaims(
+            self._baseline,
+            mapped=[
+                str(item) for item in journal.latest_value("oracle", "mapping") or []
+            ],
+            declared=[
+                str(path) for path in journal.latest_value("oracle", "tests") or []
+            ],
+        )
         checked: list[ClaimsReport] = []
         for record in self._current(journal):
             step = self._step(record)
@@ -250,12 +260,26 @@ class Briefer:
                 )
             return lines
         if field.kind.is_multi:
-            return [f"- **{field.name}**:", *(f"  - {item}" for item in value)]
+            lines = [f"- **{field.name}**:"]
+            for item in value:
+                lines.append(f"  - {item}")
+                if field.contract == "law":
+                    lines += [f"    - {notice}" for notice in Briefer._law_notice(item)]
+            return lines
         return [f"- **{field.name}**: {value}"]
 
     @staticmethod
+    def _law_notice(item: str) -> list[str]:
+        """The could-not-verify notice of a recorded law, beside it in the brief; a law that states none has no notice."""
+        try:
+            notice = LawItem.parse(item).could_not_verify_notice()
+        except ValueError:
+            return []
+        return [] if notice is None else [notice]
+
+    @staticmethod
     def _test_lines(tests: dict[str, Any]) -> list[str]:
-        """The counts and timings the tool read from the pytest summary of this command: never typed by the executor."""
+        """The counts and timings the tool read from the report this command declares: never typed by the executor."""
         counted = ", ".join(
             f"{number} {word}" for word, number in tests["counts"].items()
         )

@@ -116,8 +116,12 @@ def load_section_content(
 
 
 def _build_block(content: str) -> str:
-    """Wrap the content body between the BEGIN/END markers."""
-    return f"{BEGIN_MARKER}\n\n{content.strip()}\n\n{END_MARKER}\n"
+    """Wrap the content body between the BEGIN/END markers.
+
+    The block ends with a blank line, the form the committed CLAUDE.md and AGENTS.md
+    already carry. Writing the same bytes keeps a local install from dirtying the tree.
+    """
+    return f"{BEGIN_MARKER}\n\n{content.strip()}\n\n{END_MARKER}\n\n"
 
 
 def _atomic_write(path: Path, text: str) -> None:

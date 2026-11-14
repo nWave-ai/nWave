@@ -333,6 +333,12 @@ class ConfigWriter:
             self.repo_path, label="project config"
         )
 
+    def repo_jev(self) -> str | None:
+        """The jev value the project's own file holds now, or None when it declares none."""
+        return self._read_declared_object(self.repo_path, label="project config").get(
+            self.JEV_KEY
+        )
+
     def machine_jev(self) -> str | None:
         """The jev value the machine-wide file declares, or None when it declares none.
 

@@ -20,37 +20,37 @@
 cover = "target"
 ask = "Each code target a slice creates or extends needs a reuse decision: record it with {verb}, or record a reasoned not-applicable with {not_applicable}."
 shape = "--symbol NAME --locator PATH:LINE --decision Reuse|Extend|Replace|CreateNew --reason TEXT"
-example = "src/a.py:12"
+example = "src/a.rs:12"
 
 [member.impact]
 cover = "target"
 ask = "Each code target a slice creates or extends needs an impact decision: record it with {verb}, or record a reasoned not-applicable with {not_applicable}."
 shape = "--kind TEXT --locator PATH:LINE --decision Changed|Migrated|UnchangedCompatible --reason TEXT"
-example = "src/a.py:12"
+example = "src/a.ts:12"
 
 [member.agreement]
 cover = "design"
 ask = "Each shared contract the change touches needs an agreement analysis: record every producer and every consumer of it with {verb}, each with its locator, party, closed decision and reason; or record a reasoned not-applicable with {not_applicable}."
 shape = "--contract LINE --locator PATH:LINE --party Producer|Consumer --decision Migrated|UnchangedCompatible|Incompatible --reason TEXT"
-example = "src/a.py:12"
+example = "src/a.go:12"
 
 [member.architectural_tests]
 cover = "design"
 ask = "The design needs architectural tests: record one with {verb}, or record a reasoned not-applicable with {not_applicable}."
 shape = "--obligation TEXT --oracle PATH --command COMMAND"
-example = "tests/a/test_a.py"
+example = "tests/a_test.go"
 
 [member.contract_tests]
 cover = "design"
 ask = "The design needs contract tests: record one with {verb}, or record a reasoned not-applicable with {not_applicable}."
 shape = "--obligation TEXT --contract LINE --producer LINE --consumer LINE --observation TEXT --oracle PATH --command COMMAND"
-example = "tests/a/test_a.py"
+example = "tests/A.java"
 
 [member.prefactoring]
 cover = "slice"
 ask = "Each slice with a code target needs a prefactoring decision: record it with {verb}, or record a reasoned not-applicable with {not_applicable}."
 shape = "--move TEXT --preserved TEXT --existing-oracle PATH --verification COMMAND"
-example = "tests/a/test_a.py"
+example = "tests/a.rs"
 
 [role.nw-solution-architect]
 asks = ["reuse", "impact", "agreement", "architectural_tests", "contract_tests", "prefactoring"]

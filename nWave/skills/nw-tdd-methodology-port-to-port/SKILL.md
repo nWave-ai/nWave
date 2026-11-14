@@ -6,6 +6,7 @@ disable-model-invocation: true
 ---
 
 # Port-to-Port Testing and the Layered Universe
+File and folder placement of test files follows the File layout section of nw-code-craftsmanship; this skill decides only the test boundary.
 
 **Trigger**: deciding a test's entry/exit boundary and what it asserts on — at any layer (unit, acceptance, integration, WS/E2E) of a hexagonal system.
 

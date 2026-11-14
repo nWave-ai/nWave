@@ -2305,6 +2305,57 @@ def show_title_panel(logger: Logger, dry_run: bool = False) -> None:
     logger.print_styled("")
 
 
+# Reloadable hosts in display order: (platform, label, what the reopen loads).
+_RELOAD_HOSTS: tuple[tuple[str, str, str], ...] = (
+    ("claude_code", "Claude Code", "agents, skills, and commands"),
+    ("codex", "Codex", "agents and skills"),
+    ("opencode", "OpenCode", "agents, skills, and commands"),
+    ("cursor", "Cursor", "hooks"),
+    ("copilot", "GitHub Copilot", "hooks"),
+    ("devin", "Devin", "skills"),
+)
+
+
+def restart_hint_lines(target_platforms: set[str] | frozenset[str] | None) -> list[str]:
+    """Return the restart and next-step lines for the hosts actually installed.
+
+    Each installed reloadable host gets its own reopen line, and Claude Code is
+    named only when ``claude_code`` is among the targets. ``None`` is the legacy
+    single-target call without a platform list, which always meant a Claude Code
+    install, so it keeps that default.
+    """
+    if target_platforms is None:
+        hosts = frozenset({"claude_code"})
+    else:
+        hosts = frozenset(target_platforms)
+    lines: list[str] = []
+    for platform, label, loads in _RELOAD_HOSTS:
+        if platform in hosts:
+            lines.append(f"  ⚠️  Quit and reopen {label} to load the new {loads}.")
+    if hosts == frozenset({"codex"}):
+        lines.append("  💡 In the activated project, ask $nw-buddy what to do first.")
+    elif {"claude_code", "codex"} <= hosts:
+        lines.append(
+            "  💡 In the activated project, ask /nw-buddy in Claude Code or $nw-buddy in Codex."
+        )
+    elif "claude_code" in hosts or hosts == frozenset({"omp"}):
+        lines.append("  💡 In the activated project, ask /nw-buddy what to do first.")
+    if "omp" in hosts:
+        lines.append(
+            "  ⚠️  Quit and reopen OMP to load agents, skills, commands and the tool_call guard extension."
+        )
+        lines.append(
+            "  💡 In OMP, dispatch nw-* task agents via Task, or invoke /skill:nw-<name>."
+        )
+        lines.append(f"  ⚠️  {OMP_GUARD_CEILING}")
+    if "pi" in hosts:
+        lines.append("  ⚠️  Restart pi to load the nWave tool_call guard extension.")
+        lines.append(
+            "  ⚠️  The pi guard has not been run in a live pi session here; check one blocked write after pi loads it."
+        )
+    return lines
+
+
 def show_installation_summary(
     logger: Logger,
     target_dir: Path | None = None,
@@ -2353,39 +2404,8 @@ def show_installation_summary(
     project_cli = shlex.quote(str(cli_entry)) if cli_entry.is_file() else "nwave-ai"
     logger.info(f"  💡 In the target Git project, run: {project_cli} project enable")
     logger.info(f"  💡 Check activation: {project_cli} project status")
-    omp_selected = bool(target_platforms and "omp" in target_platforms)
-    pi_only = target_platforms == frozenset({"pi"})
-    if codex_only:
-        logger.info("  ⚠️  Quit and reopen Codex to load the new agents and skills.")
-        logger.info("  💡 In the activated project, ask $nw-buddy what to do first.")
-    elif mixed_hosts:
-        logger.info(
-            "  ⚠️  Quit and reopen Claude Code to load the new agents, skills, and commands."
-        )
-        logger.info("  ⚠️  Quit and reopen Codex to load the new agents and skills.")
-        logger.info(
-            "  💡 In the activated project, ask /nw-buddy in Claude Code or $nw-buddy in Codex."
-        )
-    elif omp_selected and target_platforms == frozenset({"omp"}):
-        logger.info("  💡 In the activated project, ask /nw-buddy what to do first.")
-    elif not pi_only:
-        logger.info(
-            "  ⚠️  Quit and reopen Claude Code to load the new agents, skills, and commands."
-        )
-        logger.info("  💡 In the activated project, ask /nw-buddy what to do first.")
-    if omp_selected:
-        logger.info(
-            "  ⚠️  Quit and reopen OMP to load agents, skills, commands and the tool_call guard extension."
-        )
-        logger.info(
-            "  💡 In OMP, dispatch nw-* task agents via Task, or invoke /skill:nw-<name>."
-        )
-        logger.info(f"  ⚠️  {OMP_GUARD_CEILING}")
-    if target_platforms and "pi" in target_platforms:
-        logger.info("  ⚠️  Restart pi to load the nWave tool_call guard extension.")
-        logger.info(
-            "  ⚠️  The pi guard has not been run in a live pi session here; check one blocked write after pi loads it."
-        )
+    for line in restart_hint_lines(target_platforms):
+        logger.info(line)
     logger.info("  📚 Docs: https://github.com/nWave-ai/nWave")
 
 

@@ -21,3 +21,5 @@ class Fault(Enum):
     # The named value is wrong as written and is a fact the executor edits (a path, a name);
     # the HOW keeps it, so running the HOW reproduces the refusal and the named item is corrected.
     AS_WRITTEN = "as_written"
+    # A schema the tool no longer reads: its HOW names the successor, which init must not replace with a repeat of itself.
+    RETIRED = "retired"

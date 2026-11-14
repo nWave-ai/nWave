@@ -13,6 +13,8 @@ from types import MappingProxyType
 
 from nwdes import policy as role_policy
 from nwdes import prose
+from nwdes.citation.citation import Citation
+from nwdes.citation.verdict import CouldNotVerify, Resolved, Unresolved
 from nwdes.contracts import Built, Defect, Refused, checked
 
 
@@ -760,7 +762,8 @@ ACCEPTANCE_ROW = record(
     user_result=TEXT,
     disposition=choice(
         Tested=record(
-            ("test",),
+            ("test_path",),
+            test_path=LINE,
             test=LINE,
             still_passes_if=TEXT,
             obligations=array(OBLIGATION),
@@ -1686,6 +1689,48 @@ def _stored_requirements(raw, facts):
         *_design_requirements(raw.get("design")),
         *_acceptance_requirements(raw.get("acceptance"), facts),
         *_disposition_requirements(raw, facts),
+        *_retired_citation_defects(raw.get("acceptance")),
+    )
+
+
+def _retired_citation_defects(acceptance):
+    """A Tested row still in the retired path::name form. No verb opens a published record in that form,
+    so the refusal names the one manual edit that makes the row current; nwdes cannot make it."""
+    if not isinstance(acceptance, Mapping):
+        return ()
+    return tuple(
+        Defect(
+            f"RetiredCitation: acceptance.{identity}[{index}].disposition.test",
+            "The Tested row names its test in the retired path::name form, which this version does not read. "
+            "nwdes cannot open or repair a published record in that form, so the edit is made by hand.",
+            f"Edit the published handoff file: in acceptance.{identity}[{index}].disposition replace the test "
+            'value with test_path (the text before "::") and test (the text after "::"), keep still_passes_if, '
+            "then run nwdes acceptance open --from-current again.",
+        )
+        for identity, rows in acceptance.items()
+        if isinstance(rows, (tuple, list))
+        for index, row in enumerate(rows)
+        if _is_retired_citation(row)
+    )
+
+
+def _is_retired_citation(row):
+    disposition = row.get("disposition") if isinstance(row, Mapping) else None
+    return (
+        isinstance(disposition, Mapping)
+        and disposition.get("kind") == "Tested"
+        and "test_path" not in disposition
+        and isinstance(disposition.get("test"), str)
+        and "::" in disposition["test"]
+    )
+
+
+def _retired_row_gaps(acceptance):
+    """The generic MissingFact of each retired row's own test_path. The RetiredCitation of that row states
+    the repair, so only this gap is left out; an unrelated row's gap is reported as before."""
+    return frozenset(
+        "MissingFact: " + defect.what.removeprefix("RetiredCitation: ") + "_path"
+        for defect in _retired_citation_defects(acceptance)
     )
 
 
@@ -1764,19 +1809,29 @@ def _binds_obligations(row):
     )
 
 
-def coverage_locators(verb, output, previous):
-    """The test locators the coverage rule reads: those of the Tested rows that bind obligations, stored and newly produced."""
+def citation_of(row):
+    """The citation a Tested row names: its test file and, when given, its test name; None for other rows."""
+    disposition = _mapping(row.get("disposition"))
+    test_path = disposition.get("test_path")
+    if disposition.get("kind") != "Tested" or not isinstance(test_path, str):
+        return None
+    test = disposition.get("test")
+    return Citation(test_path, test if isinstance(test, str) else None)
+
+
+def coverage_citations(verb, output, previous):
+    """The citations the coverage rule reads: those of the Tested rows that bind obligations, stored and newly produced."""
     if verb != "acceptance":
         return ()
     stored = previous.part("acceptance") if isinstance(previous, HandoffInput) else None
     row_sets = (*_mapping(stored).values(), _sequence(getattr(output, "payload", None)))
-    locators = (
-        _mapping(row.get("disposition")).get("test")
+    citations = (
+        citation_of(row)
         for rows in row_sets
         for row in _tested_rows(rows)
         if _binds_obligations(row)
     )
-    return tuple(dict.fromkeys(a for a in locators if isinstance(a, str)))
+    return tuple(dict.fromkeys(c for c in citations if c is not None))
 
 
 def _coverage_records(design):
@@ -1952,18 +2007,37 @@ def _obligation_defects(design, previous, acceptance, slice, resolution):
                     f"Record a Tested row of {slice} whose obligations list {key}, with the test that observes it.",
                 )
             )
-        elif _generative_key(index, key) and not any(
-            resolution.get(_mapping(row.get("disposition")).get("test")) is True
-            for _, row, _ in bound
-        ):
-            defects.append(
-                Defect(
-                    f"UnresolvedTest: {key} cites {_mapping(bound[0][1].get('disposition')).get('test')}",
-                    f"{key} is a broad law and no test bound to it resolves to a generative test that exists.",
-                    f"Cite a test of the form path::name whose name occurs as a whole word in a readable file under the repository root, and record it in the Tested row binding {key}.",
-                )
-            )
+        elif _generative_key(index, key):
+            verdicts = tuple(resolution.get(citation_of(row)) for _, row, _ in bound)
+            # An unverifiable citation blocks the close whatever the other rows resolve to (DEC2).
+            if any(
+                isinstance(verdict, CouldNotVerify) for verdict in verdicts
+            ) or not any(isinstance(verdict, Resolved) for verdict in verdicts):
+                defects.append(_citation_defect(key, verdicts))
     return tuple(defects)
+
+
+def _citation_defect(key, verdicts):
+    """The refusal for a Broad law whose bound citations are not confirmed: could-not-verify when the
+    tool cannot read a cited file, otherwise unresolved with the verdict's reason."""
+    unverifiable = next((v for v in verdicts if isinstance(v, CouldNotVerify)), None)
+    if unverifiable is not None:
+        return Defect(
+            f"CouldNotVerify: {key} cites {unverifiable.citation.describe()}",
+            f"the tool cannot read the cited file as text under the repository root: {unverifiable.reason}. "
+            "A citation the tool cannot read is neither a missing test nor a confirmed one, so the close waits for it.",
+            f"Cite a test_path that is a UTF-8 text file under the repository root, with its test name as the test field, "
+            f"in the Tested row binding {key}.",
+        )
+    verdict = next((v for v in verdicts if isinstance(v, Unresolved)), None)
+    cited = "no cited file" if verdict is None else verdict.citation.describe()
+    reason = "no citation of it was checked" if verdict is None else verdict.reason
+    return Defect(
+        f"UnresolvedTest: {key} cites {cited}",
+        f"{key} is a broad law and no test bound to it is confirmed: {reason}.",
+        f"Cite the file that declares the generated test as test_path and its name as test, the name "
+        f"occurring as a whole word in that file; record both in the Tested row binding {key}.",
+    )
 
 
 def _generative_key(index, key):
@@ -5043,6 +5117,7 @@ def inspect_handoff(data: bytes):
             )
         )
     )
+    retired_gaps = _retired_row_gaps(raw.get("acceptance"))
     part_problems = (
         *tuple(
             defect
@@ -5055,6 +5130,7 @@ def inspect_handoff(data: bytes):
                 True,
                 facts._index if isinstance(raw.get("facts"), Record) else None,
             )
+            if defect.what not in retired_gaps
         ),
         *_stored_requirements(raw, facts),
     )

@@ -58,6 +58,26 @@ disable-model-invocation: true
 36. Every refusal or check you add gets one assertion that fails on a constructed violation; probe once by re-injecting the violation, then restore.
 37. A count assertion names its population and compares to it (`len(found) == len(expected_ids)`); a partition asserts that its parts sum to the whole; "nothing found" differs in output from a broken case.
 
+## File layout
+1. One type per file. A file holds one type and the methods that belong to it. A file with several types is split, so that the file system is the map of the code.
+2. Folders group types by concept inside the hexagonal layout: domain, application, and infrastructure with ports and adapters. A folder names a concept, never a mechanism such as `Utils`, `Helpers` or `Managers`.
+3. File, folder and type names follow the convention of the language of the file (table below). A file named after one type carries that type's exact name.
+4. A sum type and its variants stay in one file. Variants are not split into separate files.
+5. A use case lives in a folder named after its feature, in the ubiquitous language the feature builds with DDD, BDD and ATDD, readable by a person who is not an engineer.
+6. The layout does not change the paradigm: data is immutable, the methods of a type are pure functions, and effects stay in adapters.
+7. Test files follow the same convention. Which tests may reach a type directly is decided in nw-test-design-mandates, not here.
+
+| Language | One type per file | Folder or package | Evidence in tests/polyglot-pilot |
+|---|---|---|---|
+| Python | snake_case.py, named after its module | snake_case package | src/codefact/python_ast.py |
+| TypeScript | kebab-case.ts | kebab-case folder | typescript/src/app.ts, typescript/tests/common/state-delta.ts |
+| Rust | snake_case.rs, one module per file | snake_case module folder with mod.rs | rust/src/common/state_delta.rs |
+| Go | snake_case.go, package named after its directory | lowercase directory without separators | go/common/statedelta/state_delta.go |
+| Java | TypeName.java, named exactly as its public type | package directories, lowercase | java/src/test/java/common/StateDelta.java |
+| C# | TypeName.cs, named as its type | directories matching the namespace | csharp/tests/Common/StateDelta.cs |
+| Kotlin | TypeName.kt, named as its type | package directories, lowercase | kotlin/src/test/kotlin/common/StateDelta.kt |
+| C++ | snake_case.hpp with snake_case.cpp | lowercase directory | cpp/common/statedelta/state_delta.hpp |
+
 ## Comments, docs, closing statement
 38. Comments and docstrings give the reason for a choice or a dated incident; no "this module reads X", no numbers the code can derive.
 39. A document you change agrees with the code; fix the wrong side in the same change. Commands in a README or runbook run as written. Every nontrivial claim in a changed document is backed by a check the reader can rerun, or marked `not measured`.

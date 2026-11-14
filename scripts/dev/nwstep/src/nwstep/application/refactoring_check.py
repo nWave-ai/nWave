@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from nwstep.domain.baseline import Baseline
+from nwstep.domain.command_bound import CommandBound
+from nwstep.domain.declared_path import TEST_FILES
 from nwstep.domain.document_paths import is_document_only
 from nwstep.domain.fault import Fault
 from nwstep.domain.field import Field
@@ -94,9 +96,21 @@ class Refactoring:
         )
         if not pairing.before_feature:
             self._refuse_prefactored(field, commits, journal)
+        declared = frozenset(
+            str(path) for path in journal.latest_value("oracle", TEST_FILES) or []
+        )
         receipts: list[dict[str, object]] = []
         for commit in commits:
-            receipts.append(self._receipt(field, git, commit, argv))
+            receipts.append(
+                self._receipt(
+                    field,
+                    git,
+                    commit,
+                    argv,
+                    declared,
+                    CommandBound.resolve(field, values),
+                )
+            )
         return {"commits": receipts}
 
     def _ordered(
@@ -171,7 +185,13 @@ class Refactoring:
             )
 
     def _receipt(
-        self, field: Field, git: GitRefs, commit: str, argv: list[str]
+        self,
+        field: Field,
+        git: GitRefs,
+        commit: str,
+        argv: list[str],
+        declared: frozenset[str],
+        bound: int,
     ) -> dict[str, object]:
         try:
             parent = git.parent(commit)
@@ -186,14 +206,14 @@ class Refactoring:
                 f"refactor commit {commit[:12]} is a root commit: it has no pre-change tree to compare with",
                 fault=Fault.COMMAND,
             )
-        tests = [name for name in files if self._is_test(name)]
+        tests = [name for name in files if name in declared]
         if tests:
             raise field.refuse(
                 f"refactor commit {commit[:12]} edits test files ({', '.join(tests)}): a behaviour-preserving refactor leaves the oracle unchanged",
                 fault=Fault.COMMAND,
             )
-        before = self._run_on(field, git, parent, "before", commit, argv)
-        after = self._run_on(field, git, commit, "after", commit, argv)
+        before = self._run_on(field, git, parent, "before", commit, argv, bound)
+        after = self._run_on(field, git, commit, "after", commit, argv, bound)
         if before["exit_code"] != 0 or after["exit_code"] != 0:
             raise field.refuse(
                 f"refactor commit {commit[:12]}: the check exited {before['exit_code']} before and "
@@ -216,6 +236,7 @@ class Refactoring:
         label: str,
         commit: str,
         argv: list[str],
+        bound: int,
     ) -> dict[str, Any]:
         target = self._workspace.directory / "refactor" / f"{commit[:12]}-{label}"
         try:
@@ -225,11 +246,7 @@ class Refactoring:
                 f"'{field.name}' cannot export {tree[:12]}: {error}",
                 fault=Fault.COMMAND,
             ) from None
-        return dict(self._runner.run(argv, directory).as_value())
-
-    @staticmethod
-    def _is_test(path: str) -> bool:
-        pure = Path(path)
-        return pure.suffix == ".py" and (
-            pure.name.startswith("test_") or "tests" in pure.parts
-        )
+        outcome = self._runner.run(argv, directory, timeout_s=bound)
+        if outcome.timed_out_after is not None:
+            raise field.timed_out(outcome.timed_out_after)
+        return dict(outcome.as_value())

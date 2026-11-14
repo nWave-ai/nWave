@@ -174,8 +174,8 @@ Rules, per changed path; a path may match several, and their union decides it:
 2. another file inside a test root selects the tests of its directory and below;
 3. a path under a declared `assets` prefix selects the tests of the mapped
    directories;
-4. a path whose file type has a dependency adapter selects the tests that depend on
-   it, through any number of files, up to the depth of the use;
+4. a path the `dependents` command covers selects the tests that depend on it, through
+   any number of files, up to the depth of the use;
 5. a path under a declared `no_tests` prefix selects nothing, by declaration;
 6. a path no rule decides makes the selection **INDETERMINATE**.
 
@@ -198,27 +198,50 @@ Standard error carries what the list alone does not say:
 `undecided` (`path`, `reason`), `uncovered`, `local_ceiling` and
 `over_local_ceiling`.
 
-### Dependency adapters
+### The dependents command
 
-How the files of one language depend on each other is an adapter, named per file
-extension in `selection.adapters`. This version ships one, `python`:
+Which files depend on which is answered by a command the project declares, in
+`selection.dependents`: `{"argv": [...], "covers": [...]}`. `argv` runs from the project
+root, without a shell. `covers` lists the path patterns the command answers for: a
+pattern with a slash matches the whole path, one without matches the file name.
 
-- imports, absolute and relative, with the packages on the way;
-- a module named in text (`importlib.import_module("a.b")`, a patch target);
-- a module started as a separate process (`python -m a` reaches `a/__main__.py`)
-  and a script started by its path;
-- a project file named by its path, as text or built with `/`;
-- the files declared `implicit` (for example `conftest.py`) in the file's directory
-  and above.
+The selector asks the command in rounds, and only when a path needs dependents: each
+round names the files it must answer for. The command gets one JSON object on standard
+input, `{"files": [...], "targets": [...]}`: the tree-relative paths of the project and
+the targets. It prints one line per dependency on a target, `TARGET<TAB>DEPENDENT`, where
+DEPENDENT depends directly on TARGET. The selector follows those lines through any
+number of files, up to the depth of the use.
 
-Settings, under `selection.python`: `import_roots` (default `["."]`) and `implicit`
-(default none). A module name or a path assembled at run time is not seen. A file
-that does not parse is treated as depending on every file its text names.
+Exit status 0 is an answer. Any other status, a command that cannot start, or a line
+that is not of that form is **could-not-verify**: the affected paths are INDETERMINATE,
+with what, why and how on standard error, and the widest group is listed. A changed
+file that no `covers` pattern, `assets` prefix or test root decides is undecided: the
+selector does not know its language and does not guess.
 
-An extension with no adapter, or with an adapter name this version does not have,
-is not guessed: its files are undecided. To add a language, add a module with the
-two functions of `nwave_ai.testrun.selection.DependencyAdapter` and name it in
-`nwave_ai/testrun/dependency_adapters.py`; the selector itself does not change.
+This repository declares its own Python command, `scripts/hooks/python_dependents.py`
+(imports, modules started with `-m`, paths named in text, the `implicit` files). The
+selector names no language; another repository declares its own command, in any
+language, and needs no change to the tool.
+
+
+Each call of the command is bounded by `selection.dependents.timeout_seconds`: default
+120 seconds, ceiling 600. A call still running at its bound is killed, with the whole
+process group it started, and gives no answer: every path that needs it is
+INDETERMINATE with a `TIMEOUT` refusal, and the widest group is listed. A timeout is
+reported as a timeout, not as a failure of the command's answer.
+
+The command answers for every listed file, and refuses (non-zero exit, so the paths
+that need it are INDETERMINATE) when a listed file cannot be read, or when a target
+names no path of the tree. A deleted target is not refused: its dependents are found by
+its name. A non-Python file is a dependent when it names the target by its path, or by
+the target's file name inside the target's own directory.
+
+What the command does not see, accepted limits: a name built at run time (a dynamic
+import, a path assembled in a string), and symbolic links (none exist in this tree). A
+file that names a target only in a way the command does not match is not a dependent,
+and nothing says so: the selection is then short. nWave's declaration covers `*.py`
+only; every other changed file is mapped (`assets`) or declared `no_tests`, by search of
+the test sources, and any other file widens loudly.
 
 ## The declaration
 
@@ -249,8 +272,7 @@ defect, and all defects are reported together.
     "selection": {
       "test_roots": ["tests"],
       "test_files": ["test_*.py"],
-      "adapters": {".py": "python"},
-      "python": {"import_roots": ["src", "."], "implicit": ["conftest.py"]},
+      "dependents": {"argv": ["<command>", "<arguments>"], "covers": ["<path pattern>"]},
       "assets": {"<path prefix>": ["<test directory>"]},
       "no_tests": ["docs/"],
       "widest": ["tests"],
@@ -277,8 +299,7 @@ defect, and all defects are reported together.
 | `selection.test_roots` | required | directories that hold the tests |
 | `selection.test_files` | required | name patterns of test files |
 | `selection.uses` | required | depth per use: a whole number of hops or `"transitive"` |
-| `selection.adapters` | none | adapter name per file extension |
-| `selection.<adapter name>` | none | settings of that adapter |
+| `selection.dependents` | none | the command that answers which files depend on a file: `argv` and `covers` (see below) |
 | `selection.assets` | none | path prefix to the test directories that assert on it |
 | `selection.no_tests` | none | path prefixes from which no test derives |
 | `selection.widest` | none | directories of the widest group, the fallback when indeterminate |

@@ -42,8 +42,10 @@ Jev is authorized by default, and the switch is yours, per project:
 - **The key is a technical prerequisite, not the authorization.** What
   authorizes Jev is the default policy above plus your refusal switch. The
   `TYPESAFE_API_KEY` environment variable only lets the service accept
-  requests; without it nothing is sent and the caller records
-  `typesafe: unavailable` — nwdes never reads the variable.
+  requests. nwdes only checks that the variable is set; it never reads,
+  stores or logs the key. Without the key, nothing is sent and the caller
+  records `typesafe: unavailable`. [Configuring Jev](./configuring-jev.md)
+  shows how to set it.
 
 nWave's skill policy treats the default authorization as standing for
 supported task-level questions.
@@ -69,6 +71,7 @@ to show the local record.
 | Topic | Page |
 |---|---|
 | Data handling and privacy | [Privacy Policy](../../PRIVACY.md) |
+| Turn Jev on or off, and set the key | [Configure Jev](./configuring-jev.md) |
 | The `jev` configuration key | [nwdes reference — configuration](nwdes/reference/index.md#configuration) |
 | The full policy text | [nw-typesafe-system-one skill](../reference/skills/nw-typesafe-system-one.md) |
 | What changed in v4 | [What's new in v4](whats-new-v4/) |

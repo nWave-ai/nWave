@@ -22,7 +22,7 @@ SCHEMA_FILE_NAME = "schema.toml"
 
 
 def is_source_file(name: str) -> bool:
-    return name.endswith(".py") and "__pycache__" not in name.split("/")
+    return "__pycache__" not in name.split("/") and not name.endswith(".pyc")
 
 
 @dataclass(frozen=True)

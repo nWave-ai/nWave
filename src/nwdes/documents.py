@@ -1563,14 +1563,24 @@ def path_index(rows):
     )
 
 
-def _acceptance_row(row, test=None):
+def _test_label(disposition):
+    """The file a Tested row names, and the test name it gives when there is one."""
+    test = disposition.get("test")
+    if test is None:
+        return disposition["test_path"]
+    return disposition["test_path"] + " " + test
+
+
+def _acceptance_row(row, label=None):
     disposition = row["disposition"]
-    return (
-        (
-            inline(disposition["test"] if test is None else test)
+    if label is None:
+        label = (
+            inline(_test_label(disposition))
             if disposition["kind"] == "Tested"
             else "NotTested owner " + inline(disposition["owner"])
         )
+    return (
+        label
         + " "
         + (",".join(map(escaped, row.get("covers", ()))) or "None.")
         + (
@@ -1582,31 +1592,34 @@ def _acceptance_row(row, test=None):
     )
 
 
-def _test_prefix(row):
+def _test_path_key(row):
+    """The file a Tested row names when it also names a test; rows sharing it are listed under it."""
     disposition = row["disposition"]
-    if disposition["kind"] != "Tested":
+    if disposition["kind"] != "Tested" or disposition.get("test") is None:
         return None
-    prefix, separator, suffix = disposition["test"].rpartition("::")
-    return prefix + separator if separator and suffix else None
+    return disposition["test_path"]
 
 
-def _acceptance_group(prefix, rows):
-    if prefix is None or len(rows) == 1:
+def _name_stem(names):
+    """The stem the names of one file share, cut at a word boundary; empty when a name is the stem."""
+    common = posixpath.commonprefix(names)
+    stem = common[: common.rfind("_") + 1]
+    return stem if all(len(name) > len(stem) for name in names) else ""
+
+
+def _acceptance_group(test_path, rows):
+    if test_path is None or len(rows) == 1:
         return "".join(map(_acceptance_row, rows))
-    common = posixpath.commonprefix(tuple(row["disposition"]["test"] for row in rows))
-    candidate = common[: max(len(prefix), common.rfind("_") + 1)]
-    prefix = (
-        prefix
-        if any(row["disposition"]["test"] == candidate for row in rows)
-        else candidate
-    )
+    names = tuple(row["disposition"]["test"] for row in rows)
+    stem = _name_stem(names)
+    heading = test_path if not stem else test_path + " " + stem
     return (
-        "Test prefix "
-        + inline(prefix)
+        "Test file "
+        + inline(heading)
         + ":\n"
         + "".join(
-            "  " + _acceptance_row(row, row["disposition"]["test"][len(prefix) :])
-            for row in rows
+            "  " + _acceptance_row(row, inline(name[len(stem) :]))
+            for row, name in zip(rows, names, strict=True)
         )
     )
 
@@ -1615,8 +1628,8 @@ def acceptance_rows(rows):
     """Print locator/owner and covers only; narrative stays in the acceptance document."""
     return (
         "".join(
-            _acceptance_group(prefix, tuple(group))
-            for prefix, group in groupby(rows, _test_prefix)
+            _acceptance_group(test_path, tuple(group))
+            for test_path, group in groupby(rows, _test_path_key)
         )
         if rows
         else "Rows: None.\n"

@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+from nwstep.domain.fault import Fault
 from nwstep.domain.field import Field
 from nwstep.domain.field_kind import FieldKind
 from nwstep.domain.refusal import Refusal
@@ -67,6 +68,8 @@ FIELD_KEYS = frozenset(
         "names_tests",
         "compare_baseline",
         "fallback",
+        "report",
+        "bound",
         "required_sizes",
     }
 )
@@ -164,6 +167,8 @@ class TomlSchemaReader:
                 names_tests=self._flag(entry, "names_tests", default=False),
                 compare_baseline=self._flag(entry, "compare_baseline", default=False),
                 fallback=self._optional_text(entry, "fallback"),
+                report=self._optional_text(entry, "report"),
+                bound=self._optional_text(entry, "bound"),
                 required_sizes=self._sizes(entry, "required_sizes") or (),
             )
         except ValueError as error:
@@ -239,9 +244,10 @@ class TomlSchemaReader:
     @staticmethod
     def _retired(name: str) -> Refusal:
         return Refusal(
-            what=f"the schema {name} of this workspace is no longer distributed",
-            why="the older schema versions were removed from the checkout; only the shipped schemas are read",
-            how=f"read this workspace with an earlier nwave-ai release that still ships {name}, or redo the delivery with dynamic-v10.toml: nwstep init --schema <checkout>/scripts/dev/nwstep/schemas/dynamic-v10.toml --workspace <new directory>",
+            what=f"the schema {name} is retired: nwstep refuses to read a workspace or a schema that it no longer checks",
+            why=f"{name} records the RED by its console output, which the tool no longer reads; a record written against it would claim a check the tool does not run",
+            how=f"redo the delivery with the successor schema: nwstep init --schema <checkout>/scripts/dev/nwstep/schemas/dynamic-v12.toml --workspace <new directory>, or read this workspace with an earlier nwave-ai release that still ships {name}",
+            fault=Fault.RETIRED,
         )
 
     @staticmethod

@@ -6,6 +6,7 @@ disable-model-invocation: true
 ---
 
 # Tactical DDD
+File and folder placement of aggregates and value objects follows the File layout section of nw-code-craftsmanship.
 
 Implementation patterns within a bounded context. Tactical DDD answers: "How do we structure the domain model?"
 

@@ -25,11 +25,14 @@ class HookPlan(Enum):
     HOOKS_PATH_SET = "hooks-path-set"
     INSTALLER_MISSING = "installer-missing"
     NOT_DECLARED = "not-declared"
+    OWN_HOOKS = "own-hooks"
 
 
 class HookOutcome(Enum):
     NOT_A_WORK_TREE = "not-a-work-tree"
     NOT_DECLARED = "not-declared"
+    OWN_HOOKS_PRESENT = "own-hooks-present"
+    COPIED_FROM_SOURCE = "copied-from-source"
     GIT_UNAVAILABLE = "git-unavailable"
     ALREADY_INSTALLED = "already-installed"
     INSTALLED = "installed"
@@ -54,9 +57,10 @@ def plan_hooks(
     declared: bool,
     hooks_path_set: bool,
     installer_available: bool,
+    own_hooks: bool = False,
 ) -> HookPlan:
     if not declared:
-        return HookPlan.NOT_DECLARED
+        return HookPlan.OWN_HOOKS if own_hooks else HookPlan.NOT_DECLARED
     if hooks_path_set:
         return HookPlan.HOOKS_PATH_SET
     if is_installed(files):
