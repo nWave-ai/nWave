@@ -1,0 +1,14 @@
+# The prompt templates of this checkout, by the schema version each belongs to. nwexpress reads this file.
+#
+# A template is in use when its schema version has a schema in schemas/ and it is listed here; the default
+# is always in use. Every shipped schema version has a key here, empty when it has no template of its own.
+# A name under [retired] is a template removed from the checkout: it is refused as retired. Git history keeps it.
+# current_schema names the one shipped schema file a run starts from when init is given no --schema; it must be a file in schemas/.
+current_schema = "express-v12.toml"
+default = "dynamic.v1"
+
+[versions]
+v12 = ["dynamic.v11a", "dynamic.v11b", "dynamic.v11c", "dynamic.v11d", "dynamic.v11e"]
+
+[retired]
+templates = ["dynamic.v2q", "dynamic.v3p", "dynamic.v4", "dynamic.v5", "dynamic.v6"]

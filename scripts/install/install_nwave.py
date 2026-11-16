@@ -191,6 +191,7 @@ try:
         Logger,
         ManifestWriter,
         PathUtils,
+        retention_config_key_present,
     )
     from scripts.install.installation_verifier import InstallationVerifier
     from scripts.install.output_formatter import format_error
@@ -216,7 +217,9 @@ try:
     )
     from scripts.install.plugins.nwave_hooks_plugin import HooksPlugin
     from scripts.install.plugins.nwdes_plugin import NwdesPlugin
-    from scripts.install.plugins.nwstep_launcher_plugin import NwstepLauncherPlugin
+    from scripts.install.plugins.nwexpress_launcher_plugin import (
+        NwexpressLauncherPlugin,
+    )
     from scripts.install.plugins.omp_agents_plugin import OmpAgentsPlugin
     from scripts.install.plugins.omp_commands_plugin import OmpCommandsPlugin
     from scripts.install.plugins.omp_skills_plugin import OmpSkillsPlugin
@@ -255,6 +258,7 @@ except ImportError:
         Logger,
         ManifestWriter,
         PathUtils,
+        retention_config_key_present,
     )
     from installation_verifier import InstallationVerifier
     from output_formatter import format_error
@@ -279,7 +283,7 @@ except ImportError:
     )
     from plugins.nwave_hooks_plugin import HooksPlugin
     from plugins.nwdes_plugin import NwdesPlugin
-    from plugins.nwstep_launcher_plugin import NwstepLauncherPlugin
+    from plugins.nwexpress_launcher_plugin import NwexpressLauncherPlugin
     from plugins.omp_agents_plugin import OmpAgentsPlugin
     from plugins.omp_commands_plugin import OmpCommandsPlugin
     from plugins.omp_skills_plugin import OmpSkillsPlugin
@@ -325,6 +329,16 @@ def _legacy_copy_present(snapshot: Path) -> bool:
     except OSError:
         return True
     return True
+
+
+def _backup_is_complete(backup_dir: Path, sources: list[Path]) -> bool:
+    """True when the new backup folder exists and holds every source folder that existed.
+
+    Retention runs only on a complete new backup, so an interrupted copy never prunes the older ones.
+    """
+    return backup_dir.is_dir() and all(
+        (backup_dir / source.name).exists() for source in sources
+    )
 
 
 def _kept_marker(name: str, root: Path, this_run: str) -> str:
@@ -465,8 +479,10 @@ def _install_omp_hooks_extension(context) -> "PluginResult":
     import subprocess
 
     from scripts.shared.install_paths import (
+        hook_interpreter_warning,
         omp_extensions_dir,
         resolve_python_command_for_spawn,
+        resolve_python_path_for_shell,
     )
 
     name = "omp-nwave-hooks"
@@ -490,6 +506,9 @@ def _install_omp_hooks_extension(context) -> "PluginResult":
             check=True,
         )
         python = probe_result.stdout.strip()
+        warning = hook_interpreter_warning(resolve_python_path_for_shell())
+        if warning is not None:
+            context.logger.warn_once(warning)
     except (OSError, subprocess.SubprocessError) as error:
         message = (
             f"WHAT: Python >={PYTHON_FLOOR_TEXT} could not be resolved for the OMP hooks extension. "
@@ -631,6 +650,7 @@ class NWaveInstaller:
         dry_run: bool = False,
         platform_override: set[str] | None = None,
         dev_mode: bool = False,
+        verbose: bool = False,
     ):
         """Initialize installer.
 
@@ -638,6 +658,7 @@ class NWaveInstaller:
             dry_run: When True, show what would be done without making changes.
             platform_override: Override auto-detected platforms. None means auto-detect.
             dev_mode: When True, install ALL agents/skills (not just public).
+            verbose: When True, print every install line; otherwise only the summary.
         """
         self.dry_run = dry_run
         self.dev_mode = dev_mode
@@ -695,7 +716,7 @@ class NWaveInstaller:
         # refusal must leave every user-controlled byte untouched, including
         # an unrelated pre-existing Claude log.
         self._install_log_file = self.claude_config_dir / "nwave-install.log"
-        self.logger = Logger(None)
+        self.logger = Logger(None, quiet=not verbose)
         self.backup_manager = BackupManager(self.logger, "install")
         # Public observability contract for restore_backup: after a successful
         # restore, this attribute exposes the path of the backup that was
@@ -747,25 +768,22 @@ class NWaveInstaller:
         ``main()`` and any other caller automatically gets retention without
         having to remember to call ``apply_retention`` themselves.
 
-        Retention is intentionally NOT applied in dry-run mode: dry-run must
-        not delete anything from disk. In live runs, retention runs even when
-        ``create_backup`` returns ``None`` (no prior install) — older
-        accumulated backups from previous runs may still need pruning, and
-        ``apply_retention`` is a no-op when the cap is not exceeded.
-
-        Raises:
-            ConfigValidationError: when ``~/.nwave/config.json``
-                provides an invalid ``backups.max_count`` value. Bubbled up
-                so ``main()`` aborts the install BEFORE ``install_framework``
-                runs — see scope.md S9 ("no backup is touched if config is
-                invalid"); equivalently, no install proceeds either.
+        Retention keeps the newest three backups per backup root and removes the older ones the
+        installer made. It runs only after this run has written a new backup and that backup is
+        complete: an install that writes no backup removes nothing. Dry-run never removes anything,
+        and a removal that fails is named with WHAT, WHY and HOW without failing the install; the
+        short summary says how many were removed and kept. A ``backups.max_count`` key in
+        ~/.nwave/config.json is not read; its presence is named with a warning.
         """
-        # Read-only, but still an isolation boundary: `apply_retention` below
-        # reads `config.json`'s `backups.max_count` regardless of
-        # platform, and a sentinel byte-diff test cannot observe a READ the
-        # way it observes a write. Computed once, for both branches.
         install_root = self._locations.agents_home
         target_platforms = self.effective_target_platforms
+        if retention_config_key_present(install_root / ".nwave"):
+            self.logger.warn(
+                "WHAT: ~/.nwave/config.json sets backups.max_count, which the installer no longer "
+                "reads. WHY: the backups kept are fixed at the newest three per backup root, so "
+                "that value would be overruled without a word. HOW: delete the backups.max_count "
+                "key from ~/.nwave/config.json; the installer keeps three."
+            )
 
         # Each selected platform gets its own snapshot at its own existing
         # supported location -- Claude under claude_config_dir/backups, Codex
@@ -794,16 +812,24 @@ class NWaveInstaller:
         claude_backup_root = self.claude_config_dir / "backups"
         codex_backup_root = install_root / ".nwave" / "backups"
 
+        retention_outcomes = []
         if "claude_code" in target_platforms:
             self.backup_manager.backup_root = claude_backup_root
             self.backup_manager.backup_dir = (
                 claude_backup_root / f"nwave-{backup_type}-{timestamp}"
             )
-            self.backup_manager.create_backup(dry_run=self.dry_run)
-            if not self.dry_run:
-                self.backup_manager.apply_retention(
-                    max_count=None, nwave_config_dir=install_root / ".nwave"
-                )
+            written = self.backup_manager.create_backup(dry_run=self.dry_run)
+            claude_sources = [
+                self.claude_config_dir / name
+                for name in ("agents", "commands", "skills")
+                if (self.claude_config_dir / name).exists()
+            ]
+            if (
+                not self.dry_run
+                and written is not None
+                and _backup_is_complete(written, claude_sources)
+            ):
+                retention_outcomes.append(self.backup_manager.apply_retention())
 
         if "codex" in target_platforms:
             codex_dir = self._locations.codex_config_dir
@@ -821,10 +847,38 @@ class NWaveInstaller:
                 holds_complete = self._release_and_hold_codex_snapshots(
                     codex_backup_root
                 )
-                if holds_complete:
-                    self.backup_manager.apply_retention(
-                        max_count=None, nwave_config_dir=install_root / ".nwave"
+                codex_sources = [
+                    path
+                    for path in (
+                        install_root / ".agents" / "skills",
+                        codex_dir / "agents",
                     )
+                    if path.exists()
+                ]
+                if (
+                    holds_complete
+                    and self._codex_backup_dir is not None
+                    and _backup_is_complete(
+                        self._codex_backup_dir / "codex", codex_sources
+                    )
+                ):
+                    retention_outcomes.append(self.backup_manager.apply_retention())
+        self._report_retention(retention_outcomes)
+
+    def _report_retention(self, outcomes: list) -> None:
+        """One summary line: how many backups were removed and how many are kept, per run."""
+        if not outcomes:
+            return
+        removed = sum(len(outcome.removed) for outcome in outcomes)
+        kept = sum(len(outcome.kept) for outcome in outcomes)
+        failed = sum(len(outcome.failed) for outcome in outcomes)
+        cap = outcomes[0].cap_applied
+        tail = (
+            f"; {failed} could not be removed (see the warning above)" if failed else ""
+        )
+        self.logger.summary(
+            f"  Backups: removed {removed}, kept {kept} (the newest {cap} per backup root){tail}"
+        )
 
     def _release_and_hold_codex_snapshots(self, backup_root: Path) -> bool:
         """Release retired legacy holds, then hold snapshots that carry a legacy Codex copy.
@@ -1526,6 +1580,30 @@ class NWaveInstaller:
             skills_dir.mkdir(parents=True, exist_ok=True)
             shutil.copytree(backup_skills, skills_dir, dirs_exist_ok=True)
             self.logger.info("  ✅ Skills restored")
+        # Settings and the 3.x runtime come back from the list the backup saves.
+        import shutil
+
+        from scripts.install.install_utils import (
+            BACKED_UP_CLAUDE_FILES,
+            BACKED_UP_NWAVE_HOME_ITEMS,
+        )
+        from scripts.shared.install_paths import nwave_config_dir
+
+        for name in BACKED_UP_CLAUDE_FILES:
+            source = latest_backup / name
+            if source.is_file():
+                shutil.copy2(source, self.claude_config_dir / name)
+                self.logger.info(f"  ✅ {name} restored")
+        for item in BACKED_UP_NWAVE_HOME_ITEMS:
+            source = latest_backup / item
+            target = nwave_config_dir() / item
+            if source.is_dir():
+                shutil.copytree(source, target, dirs_exist_ok=True)
+                self.logger.info(f"  ✅ nWave {item} restored")
+            elif source.is_file():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+                self.logger.info(f"  ✅ nWave {item} restored")
 
         self.logger.info(f"  🍾 Restoration complete from {latest_backup}")
         return True
@@ -1616,11 +1694,11 @@ class NWaveInstaller:
         if target_platforms and "devin" in target_platforms:
             registry.register(DevinSkillsPlugin())
         registry.register(NwdesPlugin())
-        # The nwstep launcher is private development tooling, so only a development
+        # The nwexpress launcher is private development tooling, so only a development
         # install names it in the registry. Its priority (99 < 100) runs it before the
         # dev launchers, whose environment verdict must not suppress this write.
         if self.dev_mode:
-            registry.register(NwstepLauncherPlugin())
+            registry.register(NwexpressLauncherPlugin())
         if self.dev_mode and not self.dry_run:
             registry.register(DevLaunchersPlugin())
         return registry
@@ -1632,6 +1710,30 @@ class NWaveInstaller:
         recorded value reaches the plugin context metadata in install_framework.
         """
         self._codex_legacy_witness = present
+
+    def planned_install_areas(self) -> tuple:
+        """The areas this run writes, decided from facts read before any write.
+
+        A backup is planned only for a Claude installation that already exists, the
+        same condition create_backup applies. Guidance and the Jev declaration come from
+        the caller's project, the one the install is run from.
+        """
+        from scripts.install.install_areas import planned_areas, project_facts
+
+        claude_installed = any(
+            (self.claude_config_dir / name).exists()
+            for name in ("agents", "commands", "skills")
+        )
+        is_project, jev_pending = project_facts(
+            self.user_project_root, self._locations.agents_home
+        )
+        return planned_areas(
+            target_platforms=self.effective_target_platforms,
+            is_nwave_project=is_project,
+            jev_pending=jev_pending,
+            backup_needed="claude_code" in self.effective_target_platforms
+            and claude_installed,
+        )
 
     def install_framework(self) -> bool:
         """Install framework files using plugin-based orchestration.
@@ -1891,11 +1993,11 @@ class NWaveInstaller:
             # Execute all plugins through registry
             results = registry.install_all(context)
 
-        # A non-dev install removes the dev-only nwstep launcher a previous dev install
+        # A non-dev install removes the dev-only nwexpress launcher a previous dev install
         # wrote (review N4). The launcher is not in the production registry, so this one
         # call runs it outside the registry, as the OMP guard extension below does.
         if not self.dev_mode:
-            results["nwstep-launcher"] = NwstepLauncherPlugin().install(context)
+            results["nwexpress-launcher"] = NwexpressLauncherPlugin().install(context)
 
         # The OMP guard extension is installed outside the registry: its kept
         # template needs the resolved interpreter and host-neutral runtime.
@@ -2227,7 +2329,7 @@ class NWaveInstaller:
         if missing or plugin_failures:
             self.logger.error("  ❌ Codex deployment validation failed")
             return False
-        self.logger.info("  🍾 Codex deployment validated")
+        self.logger.summary("  🍾 Codex deployment validated")
         return True
 
     def create_manifest(self) -> None:
@@ -2364,11 +2466,11 @@ def show_installation_summary(
     """Display installation summary panel at end of successful install."""
     codex_only = target_platforms == {"codex"}
     logger.info("")
-    logger.info(f"  🎉 nWave v{_get_version()} installed and healthy!")
+    logger.summary(f"  🎉 nWave v{_get_version()} installed and healthy!")
     if target_dir is not None and (
         target_platforms is None or target_platforms == {"claude_code"}
     ):
-        logger.info(f"  📂 Installed to: {target_dir}")
+        logger.summary(f"  📂 Installed to: {target_dir}")
     logger.info("")
     logger.info("  📖 Quick start")
     command_prefix = "$" if codex_only else "/"
@@ -2456,6 +2558,10 @@ def _explicit_platform_names() -> str:
 
 def show_help():
     """Show help message."""
+    from scripts.install.plugins.utilities_plugin import UtilitiesPlugin
+
+    utility_scripts = ", ".join(UtilitiesPlugin.UTILITY_SCRIPTS)
+
     B, N = _ANSI_BLUE, _ANSI_NC
 
     print()
@@ -2484,6 +2590,7 @@ def show_help():
                        Also surfaces Codex ownership-collision refusals safely,
                        before a real install -- run this first if unsure.
     --dev              Install ALL agents, skills and OMP commands (including private)
+    --verbose          Print every install line; by default only the summary is printed
     --help             Show this help message
 
 {B}EXAMPLES:{N}
@@ -2496,6 +2603,8 @@ def show_help():
     - nWave agents, skills and /nw-* commands for the methodology waves
       (DISCOVER\u2192DISCUSS\u2192DESIGN\u2192DEVOP\u2192DISTILL\u2192DELIVER), per host
     - nWave hook registrations for claude-code, codex, cursor and copilot
+    - claude-code also installs the utility scripts {utility_scripts} into ~/.claude/scripts/
+    - attribution: a prepare-commit-msg git hook adds the nWave commit credit; the preference is kept in ~/.nwave/config.json
     - nwdes is not installed: the installer checks that `python -m nwdes --help` runs
 
 {B}INSTALLATION LOCATION:{N}
@@ -2519,6 +2628,23 @@ def show_help():
 For more information: https://github.com/nWave-ai/nWave
 """
     print(help_text)
+
+
+def platform_refusal(platform_flag: str) -> str | None:
+    """WHAT, WHY and HOW for a --platform value that names no choice; None when it does.
+
+    The choices are the single table _PLATFORM_CHOICES. The HOW names a preview of
+    one real choice, so the command it names runs as written.
+    """
+    names = [flag for flag, _targets, _meaning in _PLATFORM_CHOICES]
+    if platform_flag in names:
+        return None
+    return (
+        f"WHAT: --platform {platform_flag!r} is not an install target.\n"
+        "WHY: nWave installs only for the hosts it lists.\n"
+        f"HOW: rerun with one of {', '.join(names)}, for example: "
+        "nwave-ai install --platform claude-code --dry-run"
+    )
 
 
 def _resolve_platform_override(platform_flag: str) -> set[str] | None:
@@ -2558,6 +2684,11 @@ def main():
         action="store_true",
         help="Install ALL agents and skills (not just public). For local dev only.",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print every install line; by default only the summary is printed",
+    )
     # Retired (Ruling B): accepted only so that a run passing it is refused with
     # a WHAT/WHY/HOW report. Hidden from --help.
     parser.add_argument(
@@ -2585,6 +2716,7 @@ def main():
         dry_run=args.dry_run,
         platform_override=platform_override,
         dev_mode=args.dev,
+        verbose=args.verbose,
     )
 
     # Auto-detection must never guess a host.  In particular, defaulting an
@@ -2704,8 +2836,21 @@ def _run_install(args: argparse.Namespace, installer: "NWaveInstaller") -> int:
     if not installer.validate_codex_ownership_preflight():
         return 1
 
+    # The areas are decided once, before any write, from the facts both runs read.
+    from scripts.install.install_areas import areas_line
+
+    areas = installer.planned_install_areas()
+    hosts = ", ".join(
+        flag
+        for flag, target, _what in _HOST_PLATFORMS
+        if target in installer.effective_target_platforms
+    )
     if args.dry_run:
-        return 0 if installer.install_framework() else 1
+        if not installer.install_framework():
+            return 1
+        installer.logger.summary(f"  Target hosts: {hosts}")
+        installer.logger.summary(f"  Would change areas: {areas_line(areas)}")
+        return 0
 
     # A native-only target (Codex, Copilot, OpenCode, or any combination of
     # them without Claude) has no Claude activation surface -- persistent
@@ -2723,7 +2868,6 @@ def _run_install(args: argparse.Namespace, installer: "NWaveInstaller") -> int:
     outcome = run_legacy_cleanup(str(Path.home()), sys.stdout, sys.stderr, real_port())
     if outcome.exit_code != 0:
         return 1
-
     installer.record_codex_legacy_witness(outcome.codex_witness is not None)
     if not installer.install_framework():
         return 1
@@ -2736,20 +2880,11 @@ def _run_install(args: argparse.Namespace, installer: "NWaveInstaller") -> int:
     if "claude_code" in installer.effective_target_platforms:
         installer.create_manifest()
 
-    # Dry-run preview: install_framework + create_manifest already returned
-    # without side effects (each plugin honors context.dry_run). Skip the
-    # post-install verifier — it asserts real installation state which by
-    # definition does not exist in a dry-run preview. Fix for v1.1.14+
-    # regression where --dry-run exited 1 with "DES config not found".
-    if installer.dry_run:
-        installer.logger.info("")
-        installer.logger.info(
-            "  🍾 Dry-run preview complete (no changes made, verifier skipped)"
-        )
-        return 0
-
+    # A real run reaches this point only after the install has written its files.
     if installer.validate_installation():
         installer.report_kept_snapshots()
+        installer.logger.summary(f"  Target hosts: {hosts}")
+        installer.logger.summary(f"  Changed areas: {areas_line(areas)}")
         # Record install provenance (machine-scoped ~/.nwave by default) so
         # the doctor VersionSyncCheck can later detect a package upgraded
         # without re-running install. Best-effort; never fails the run.

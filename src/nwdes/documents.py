@@ -1903,7 +1903,7 @@ def project_outputs(previous, handoffs, destinations, brand):
 
 
 OVERVIEW_NAME = "overview"
-PRODUCT_FILES = ("vision.md", "roadmap.md", "backlog.md")
+PRODUCT_FILES = ("vision.md", "backlog.md")
 NOT_STATED = "not stated"
 _TITLE_IDENTIFIER = re.compile(r"(?:ADR-)?(?:[A-Z][A-Z0-9]*-)?[0-9]{3}:?\s+")
 _STATUS_LINE = re.compile(r"\*{0,2}Status\*{0,2}:\s*(.+)")
@@ -1923,10 +1923,9 @@ def _status_heading(line):
 
 @dataclass(frozen=True)
 class ProductSources:
-    """The three product texts in the order of PRODUCT_FILES; None marks an absent file."""
+    """The two product texts in the order of PRODUCT_FILES; None marks an absent file."""
 
     vision: str | None
-    roadmap: str | None
     backlog: str | None
 
 
@@ -2057,11 +2056,7 @@ def _overview_markdown(sources, decisions, directory, adr_directory):
     )
     sections = "".join(
         f"## {heading}\n\n{_deepen(normalize(text))}\n\n"
-        for heading, text in (
-            ("Vision", sources.vision),
-            ("Roadmap", sources.roadmap),
-            ("Backlog", sources.backlog),
-        )
+        for heading, text in (("Vision", sources.vision), ("Backlog", sources.backlog))
     )
     return (
         "# Project overview\n\n"
@@ -2074,9 +2069,7 @@ def _overview_markdown(sources, decisions, directory, adr_directory):
 
 
 def _overview_defects(sources, entries, directory, adr_directory):
-    files = zip(
-        PRODUCT_FILES, (sources.vision, sources.roadmap, sources.backlog), strict=True
-    )
+    files = zip(PRODUCT_FILES, (sources.vision, sources.backlog), strict=True)
     defects = [
         defect
         for name, text in files

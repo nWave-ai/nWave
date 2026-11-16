@@ -41,6 +41,11 @@ Two tiers, deliberately separated:
   and final validation report. No dedicated end-to-end install test covers
   them, so install-time evidence on those hosts is the installer's report
   rather than an independent test run.
+- **Copilot** has one observation beyond the installer's report: on 16 Nov 2026
+  the real Copilot CLI 1.0.103 loaded the hook file the installer wrote and ran
+  its hook (the command exits 0 and the tool runs), in a session with an
+  isolated `COPILOT_HOME`. Only the CLI was observed: VS Code and Visual Studio
+  were not, and nothing here says they load the file.
 
 `nwave-ai doctor` checks the Claude Code installation. On a host-only
 install it can report missing Claude assets without anything being broken;

@@ -29,7 +29,7 @@ module counter {
 |---|---|
 | Typecheck | `quint typecheck M.qnt` |
 | Counterexample search | `quint run M.qnt --invariant=inRange --max-steps=20 --max-samples=1000` |
-| Exhaustive safety | `quint verify M.qnt --init=init --step=step --invariant=inRange` |
+| Bounded symbolic safety check (Apalache): no violation within `--max-steps` steps, not a proof for all depths | `quint verify M.qnt --init=init --step=step --invariant=inRange --max-steps=N` |
 | Liveness | `quint verify M.qnt --init=init --step=step --temporal=PROP --backend tlc` |
 
 If the sandbox refuses the backend server: `quint compile --target json M.qnt > M.qnt.json`, then `apalache-mc check --init=init --next=step --inv=inRange --length=10 M.qnt.json` (safety only).

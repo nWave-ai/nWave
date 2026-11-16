@@ -25,9 +25,9 @@ packages = ["nwave_ai"]
 "scripts/validate_step_file.py" = "scripts/validate_step_file.py"
 "src/nwdes" = "nwdes"
 "src/codefact" = "codefact"
-"scripts/dev/nwstep/src" = "scripts/dev/nwstep/src"
-"scripts/dev/nwstep/templates" = "scripts/dev/nwstep/templates"
-"scripts/dev/nwstep/schemas" = "scripts/dev/nwstep/schemas"
+"scripts/dev/nwexpress/src" = "scripts/dev/nwexpress/src"
+"scripts/dev/nwexpress/templates" = "scripts/dev/nwexpress/templates"
+"scripts/dev/nwexpress/schemas" = "scripts/dev/nwexpress/schemas"
 "src/nwave_capture" = "nwave_capture"
 
 [tool.hatch.build.hooks.custom]
@@ -35,7 +35,7 @@ path = "scripts/release/offline_wheelhouse_hook.py"
 
 [project]
 name = "nwave-ai"
-version = "4.6.0"
+version = "4.7.0"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -71,9 +71,9 @@ classifiers = [
 
 dependencies = [
     "rich>=13.7.0",
-    "typer>=0.29.0",
+    "typer>=0.29.1",
     "pydantic>=2.14.3",
-    "pydantic-settings>=2.16.2",
+    "pydantic-settings>=2.16.3",
     "httpx>=0.27.0",
     "platformdirs>=4.14.5",
     "pyyaml>=6.0",
@@ -86,7 +86,7 @@ dependencies = [
 test = [
     "pytest>=9.2.0",
     "pytest-cov>=4.1.0",
-    "pytest-asyncio>=1.4.1.post1",
+    "pytest-asyncio>=1.5.0",
     "pytest-xdist>=3.5.0",
     "pytest-bdd>=9.0.1",
     "respx>=0.20.0",
@@ -100,7 +100,7 @@ dev = [
     # Testing
     "pytest>=9.2.0",
     "pytest-cov>=4.1.0",
-    "pytest-asyncio>=1.4.1.post1",
+    "pytest-asyncio>=1.5.0",
     "pytest-xdist>=3.5.0",
     "pytest-bdd>=9.0.1",
     "pytest-html>=4.0.0",
@@ -118,7 +118,7 @@ dev = [
     "mutmut==3.8.1",
     # Linting & formatting
     "mypy>=2.4.1",
-    "ruff==0.17.4",
+    "ruff==0.17.5",
     "bandit[toml]>=1.9.4",
     "detect-secrets>=1.4.0",
     # Git & release
@@ -167,7 +167,7 @@ Repository = "https://github.com/nWave-ai/nWave"
 Issues = "https://github.com/nWave-ai/nWave/issues"
 
 [project.scripts]
-nwstep = "scripts.shared.nwstep_entry:main"
+nwexpress = "scripts.shared.nwexpress_entry:main"
 nwave-ai = "nwave_ai.cli:main"
 nwdes = "nwdes.shell.cli:main"
 code-fact = "codefact.shell.cli:main"
@@ -339,7 +339,7 @@ src = ["src", "tests"]
 # experimental code copied as is; it predates this contract and is not
 # rewritten to satisfy it (format has no per-file-ignores mechanism, so a
 # whole-tree exclude is the only switch that covers both check and format).
-extend-exclude = ["scripts/dev/nwstep"]
+extend-exclude = ["scripts/dev/nwexpress"]
 [tool.ruff.lint]
 select = [
     "E",      # pycodestyle errors
@@ -451,7 +451,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "4.6.0"
+version = "4.7.0"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",
@@ -470,6 +470,7 @@ update_changelog_on_bump = true
 # Run with: `uv run poe <task>` (or `poe <task>` inside an activated .venv).
 # Testing (alphabetical)
 mutation-test    = "mutmut run"
+actions-minutes  = "python scripts/ci/actions_minutes.py"
 test             = "python -m pytest tests/ --tb=short --color=yes"
 test-fast        = "python -m pytest tests/ -n 4 --dist loadgroup --tb=short --color=yes"
 test-acceptance  = "python -m pytest tests/installer/acceptance/ tests/plugins/plugin-architecture/acceptance/ tests/bugs/ --tb=short --color=yes"
@@ -509,6 +510,6 @@ verify-hooks     = "python scripts/validation/verify_hooks.py"  # fails loudly u
 # the web board.
 board            = "python scripts/dev/nwboard.py kanban"
 # Development tool (dev only): run it with `uv run poe <task>`.
-[tool.poe.tasks.nwstep]
-cmd = "python -m nwstep"
-env = { PYTHONPATH = "scripts/dev/nwstep/src" }
+[tool.poe.tasks.nwexpress]
+cmd = "python -m nwexpress"
+env = { PYTHONPATH = "scripts/dev/nwexpress/src" }

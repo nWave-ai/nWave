@@ -36,7 +36,7 @@ from scripts.shared.agent_catalog import (
     load_private_skills,
     load_public_agents,
 )
-from scripts.shared.dynamic_command_skill import dynamic_skill_entry
+from scripts.shared.express_command_skill import express_skill_entry
 from scripts.shared.install_paths import devin_config_dir, devin_skills_dir
 from scripts.shared.skill_distribution import (
     enumerate_skills,
@@ -220,7 +220,7 @@ class DevinSkillsPlugin(InstallationPlugin):
             # The dynamic command skill is rendered from its one source, staged in
             # a temporary directory that the finally removes even on failure.
             dynamic_staging = Path(tempfile.mkdtemp(prefix="nwave-dynamic-skill-"))
-            dynamic_entry = dynamic_skill_entry(
+            dynamic_entry = express_skill_entry(
                 context.project_root / "nWave", dynamic_staging
             )
             if dynamic_entry is not None:

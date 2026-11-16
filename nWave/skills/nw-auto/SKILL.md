@@ -114,6 +114,17 @@ another operation.
 A finding names an observation and possible owner, not an automatic correction.
 No role's sentence alone establishes the requested behavior.
 
+A valid finding names a defect against an existing approved obligation or an
+applicable rule and goes to its owner. A proposed new outcome, constraint or
+completion condition stays a proposal until the user explicitly accepts it; an earlier
+agent record, a reviewer severity, a rejection or a passing check is not that
+acceptance. Before you record, dispatch or resume work for an added obligation, did
+you name its real source of authority (the user's words, an approved record, an
+applicable rule), or only an earlier agent artifact that cites it? If only the latter,
+treat it as a proposal. This holds for delegation,
+review, acceptance preparation and resumed work
+(`scope:proposal-is-not-an-obligation-until-the-user-accepts` in `nw-cross-cutting-invariants`).
+
 
 **Classify before correcting.** Keep the original evidence and choose the local
 owner from the observed state; recording a finding changes neither the contract

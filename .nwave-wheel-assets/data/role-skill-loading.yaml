@@ -38,6 +38,8 @@ roles:
       nw-algebraic-design-protocol: a law or observation is contested or must be found before choosing constructors
       nw-certainty-by-construction: any rule the code enforces about data -- a range, a duration, a required pairing, a state that excludes another; decide construction vs validation BEFORE writing the check
       nw-type-level-design: API needs a valid-state model, opaque smart constructor, evidence-preserving result, or a finite state/capability transition; use advanced Haskell material only for a GHC target
+      nw-fp-hexagonal-architecture: designing the functional core and effect shell of a codebase, deciding which functions are pure, where effects and I/O live, and how ports and adapters bound them
+      nw-fp-usable-design: naming or designing the API surface of functional code, including function and type names, argument order and ergonomics for callers
   nw-software-crafter-reviewer:
     reviewer_of:
       - nw-software-crafter

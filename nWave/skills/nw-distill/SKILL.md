@@ -25,6 +25,7 @@ successor, or create a separate cycle for an internal technical fragment.
 
 The source-blind examiner fixes public expectations once per feature before
 the first acceptance designer. Keep oracle and expectations authorship independent.
+The examiner runs the project's declared public commands, read from `.nwave/examine.json` or the project's launcher manifest at HEAD (`nw-nwdes`, Examine declaration); with neither, examine is refused.
 The acceptance designer supplies each stimulus, expected observation, user result,
 covered obligation and disposition. `Tested` names executable coverage, not a
 passed run; keep execution results separate. `NotTested` names its reason and owner;
@@ -67,7 +68,7 @@ Native oracle selection follows `nw-test-design-mandates`, not the builder's
 implementation. Keep semantic expectation, executable oracle and source-blind
 public observations distinct. Preserve applicable architectural/contract check
 obligations from the generated DESIGN grammar (`nw-design`) across primary-oracle
-realignment; deliberately migrate their locators/verification, never drop them
+realignment; each declared architectural test is covered by a check over its whole governed scope that was seen failing on a violating example (`nw-test-design-mandates`); deliberately migrate their locators/verification, never drop them
 by override. Prefactoring preservation remains a separate before/after
 intermediate observation, not final feature GREEN relabeled.
 

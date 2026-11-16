@@ -452,37 +452,44 @@ def resolve_python_command() -> str:
 
 
 def resolve_python_command_for_spawn() -> str:
-    """Return an absolute forward-slash path to the current Python interpreter.
+    """Return the absolute forward-slash path of the installing interpreter.
 
     Use when the consuming code spawns the interpreter without a shell:
     TypeScript Bun.spawn, Node child_process.spawn, Python subprocess.run
     without shell=True, posix_spawn/CreateProcess directly.
 
-    Cross-platform safety: uses Path.as_posix() so the result contains no
-    backslashes on any platform. This lets the path embed safely into a
-    TypeScript double-quoted string literal without triggering escape-
-    sequence interpretation (e.g. \\U unicode escape, \\n newline).
-    Windows APIs accept forward-slash paths since Windows 2000.
+    The path is the interpreter this installer runs under: it can import nwave_ai. It is never
+    'python3': a hook runs under the PATH of its own session, not of the install, and python3 there
+    may be another interpreter (card t-0425). A path outside HOME is machine specific; the caller
+    warns with hook_interpreter_warning().
 
-    The .venv fallback is preserved: when the installer runs from a
-    project-local virtual environment (development, CI), returns 'python3'
-    to avoid leaking development paths into user-installed artifacts.
-
-    For shell-execution contexts (settings.json hook commands, bash
-    scripts where $HOME is expanded), use resolve_python_path_for_shell()
-    instead.
-    For markdown templates consumed by various runtimes, use
-    resolve_python_command() (basename-only) instead.
+    Cross-platform safety: uses Path.as_posix() so the result contains no backslashes on any
+    platform, and embeds safely into a TypeScript double-quoted string literal.
     """
     python_path = sys.executable
-    if not is_durable_interpreter_path(python_path):
-        return "python3"
-    if "/.venv/" in python_path or "\\.venv\\" in python_path:
-        return "python3"
     return (
         PureWindowsPath(python_path).as_posix()
         if "\\" in python_path
         else Path(python_path).as_posix()
+    )
+
+
+def hook_interpreter_warning(spelled: str) -> str | None:
+    """The warning for a hook interpreter that is machine specific, or None when it is portable.
+
+    A spelling under HOME ("$HOME/...") is portable across machines that share the layout; any
+    other absolute path names this machine's folder, so a file synchronised to another machine, or
+    copied out of this home, will not find it. The warning has WHAT, WHY and HOW.
+    """
+    if spelled.startswith("$HOME"):
+        return None
+    return (
+        f"WHAT: nWave hooks name {spelled}, this machine's interpreter path, because the "
+        "interpreter is outside your home folder. "
+        "WHY: a file synchronised to another machine, or copied out of this home, will not find "
+        "that path there; the hook works on this machine only. "
+        "HOW: move the environment under your home folder and reinstall; or change the hook lines "
+        "by hand to a python3 that can import nwave_ai (a reinstall writes the path again)."
     )
 
 
@@ -499,44 +506,21 @@ def resolve_des_lib_path_for_spawn() -> str:
 
 
 def resolve_python_path_for_shell(*, windows: bool | None = None) -> str:
-    """Resolve the Python interpreter path for shell-execution contexts
-    (settings.json hook commands, git hook shims).
+    """The installing interpreter, spelled for the shell that runs hook commands.
 
-    Captures sys.executable and makes it portable by replacing the home
-    directory prefix with $HOME (expanded by the shell at invocation time,
-    unlike resolve_python_command_for_spawn's non-shell forward-slash form).
+    A path under HOME is spelled "$HOME/..." and expanded by the shell at hook time. Any other path
+    is the absolute path of the installing interpreter, as it is on this machine; the caller warns
+    with hook_interpreter_warning(). It is never 'python3': a hook runs under the PATH of its own
+    session, not of the install (card t-0425), so a bare python3 may not import nwave_ai there.
 
-    Two independent guards fall back to 'python3':
-    - Durability: the interpreter is rooted under a known-ephemeral
-      location (tempfile.gettempdir()) and could be reaped before a
-      hook ever fires. See is_durable_interpreter_path().
-    - Portability: the current Python is a project-local .venv (e.g.
-      during development) -- that exact path would not exist on a
-      different machine, so it must not leak into a persisted artifact.
-
-    This is the single source of truth for what were two independently
-    hand-maintained, byte-identical copies of this logic:
-    scripts/install/plugins/des_plugin.py DESPlugin._resolve_python_path
-    (settings.json hook commands) and scripts/install/attribution_utils.py
-    _resolve_python_path (git prepare-commit-msg shim) -- both now delegate
-    here instead of reimplementing (D3-code-duplication-resolve-python-path,
-    techdebt.md).
+    The single source of truth for the spelling of an interpreter in a hook command, a git hook
+    shim, and any other shell-run command nWave writes (D3-code-duplication-resolve-python-path).
     """
     windows = os.name == "nt" if windows is None else windows
-    python_path = sys.executable
-
-    # Durability: reject interpreters rooted in a known-ephemeral location
-    if not is_durable_interpreter_path(python_path):
-        return "python3"
-
-    # Portability: project-local .venv must not leak into a persisted artifact
-    if "/.venv/" in python_path or "\\.venv\\" in python_path:
-        return "python3"
-
-    # Spell both sides in the shell's form before the $HOME prefix test: a
-    # Windows backslash path never starts with a POSIX-spelled home otherwise.
-    spelled = interpreter_for_shell(python_path, windows=windows)
+    # Spell both sides in the shell's form before the $HOME prefix test: a Windows backslash path
+    # never starts with a POSIX-spelled home otherwise.
+    spelled = interpreter_for_shell(sys.executable, windows=windows)
     home = interpreter_for_shell(str(Path.home()), windows=windows)
-    if spelled.startswith(home):
-        spelled = "$HOME" + spelled[len(home) :]
+    if spelled == home or spelled.startswith(home + "/"):
+        return "$HOME" + spelled[len(home) :]
     return spelled

@@ -21,7 +21,9 @@ Before dispatching `nw-diverger`, the host writes
 verbatim, in quoted blocks. The line above each block marks its source:
 `source: requester-verbatim` (copied from the requester's own turn text or a
 requester-authored file, quoted or cited by path) or `source: host-summary`
-(anything the host paraphrased). The source label is host-attested: the
+(anything the host paraphrased; `docs/product/vision.md`, DISCOVER evidence and other
+agent-written artifacts are `host-summary` unless the requester wrote them). The source
+label is host-attested: the
 reviewer verifies quotes against the blocks it marks, not the label itself.
 The diverger and its reviewer read this file;
 neither creates nor edits it. If it is missing, the diverger returns
@@ -62,10 +64,11 @@ dissent: <second-place direction phrased by mechanism> -- <why it might win unde
 ssot: <docs/product/jobs.yaml updated>
 ```
 
-The recommended and dissent lines use the mechanism in the requester's
-vocabulary; coined handles and their name_origin stay in the scoring table
-inside taste-evaluation.md. New terms carry the `[new]` marker per
-`nw-requester-words`. Relay this wording to the requester as returned.
+The recommended and dissent lines copy the wording of the reviewed
+`## For the requester` section of recommendation.md verbatim; handles and their
+name_origin stay in the scoring table inside taste-evaluation.md. New terms carry the
+`[new]` marker per `nw-requester-words`. Relay that section to the requester as written,
+from recommendation.md, not from this block.
 
 ## Human-readable authority
 

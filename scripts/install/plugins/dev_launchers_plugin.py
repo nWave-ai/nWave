@@ -329,7 +329,7 @@ class DevLaunchersPlugin(InstallationPlugin):
                     return failure
                 verdict = self._judge_path(checkout, name)
                 if isinstance(verdict, Active):
-                    context.logger.info(f"{name.value} launcher activated")
+                    context.logger.summary(f"{name.value} launcher activated")
                 return verdict
 
     def install(self, context: InstallContext) -> PluginResult:

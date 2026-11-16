@@ -130,6 +130,32 @@ fact waits for host relay, or a related change inside the approved behavior wait
 per-file permission its owners could settle directly; or direct contact lets a non-owner edit
 the artifact or contaminates an independent assessment.
 
+## `scope:proposal-is-not-an-obligation-until-the-user-accepts` — a recommendation never becomes a requirement by being recorded
+
+Does a finding name a defect against an existing approved obligation or an applicable
+rule? It is a valid finding: send it to its owner and fix it by the normal route. Does it
+propose a NEW outcome, constraint or completion condition (extra assurance work, a wider
+census, more tests that no approved obligation or applicable rule requires)? It is a
+proposal for the user: state it as a proposal, keep it out of acceptance, design and
+handoff records as an obligation, and add no work or completion condition for it until the
+user explicitly accepts it.
+
+Neither an earlier agent record, a reviewer severity, a rejection nor a successful
+verification is evidence that the user approved. Before you record or act on an added
+obligation, did you read its real source of authority (the user's words, an approved
+record, an applicable rule), or only an earlier agent-generated artifact that cites it?
+If only the latter, treat it as a proposal. When the user rejects or narrows an addition,
+stop the added work and correct the records that carry it; do not replace it with other
+added assurance.
+
+The distinction applies wherever a role decides: delegation, review, acceptance
+preparation and resumed work, not only the DESIGN handoff. It asks for no weaker tests, no
+ignored valid finding, no extra approval stage and no authority ledger.
+
+**Falsifier:** a record, dispatch or completion condition whose only support for an
+obligation is an agent-authored artifact, a severity label or a passing check; or a valid
+finding against an approved obligation held back as a mere proposal.
+
 ## `construction:design-paradigm-projection` — DESIGN owns the crafter paradigm
 
 Before handing a supported durable DESIGN authority to DISTILL, supply its

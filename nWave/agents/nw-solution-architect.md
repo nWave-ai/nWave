@@ -177,10 +177,10 @@ Record the mapped design claim with `--runtime DesignedNotBuilt`, never observed
 production behavior or an independently approved oracle.
 
 ### Example 2: Bound exceeds checker budget
-Retain the timed-out bound, then diagnose before any outcome: reduce the model to a
-narrower recorded claim or change the checker strategy or configuration, recording
-what was tried; claim `INDETERMINATE` only when no repair reaches the claim, never
-PASS. Complete independent design facts meanwhile.
+Retain the timed-out bound, then diagnose before any outcome: raise the budget, reduce
+the model to a narrower recorded claim or change the checker strategy or configuration,
+recording what was tried; claim `INDETERMINATE` only when no repair reaches the claim,
+never PASS. Complete independent design facts meanwhile.
 
 ### Example 3: Changed carrier after a refuted law
 Use the algebra protocol's reference checks on both representations, including

@@ -3,7 +3,7 @@ name: nw-diverger-reviewer
 description: Use as peer reviewer for nw-diverger outputs — validates JTBD rigor, research evidence quality, option structural diversity, taste application correctness, and recommendation coherence. Runs on Haiku for cost efficiency.
 model: haiku
 maxTurns: 40
-tools: Read, Glob, Grep, Task, Bash, Write, SendMessage
+tools: Read, Glob, Grep, Task, Bash, SendMessage
 skills:
   - nw-typesafe-system-one
   - nw-diverger-review-criteria
@@ -50,7 +50,7 @@ Follow these steps in order:
 
 5. **Evaluate Taste Application** — Check criteria consistency across all surviving options. Detect cherry-picking (criteria applied to some options but not others). Handle swap: mentally replace each handle with an unrelated word; no score, weight, rank or rationale may change, and a rationale arguing from the handle's wording is a finding. Gate: taste_application status determined, any asymmetric scoring flagged.
 
-6. **Evaluate Recommendation Coherence** — Verify recommendation traces to scoring matrix. Check that dissent is documented and DISCUSS handoff readiness is confirmed. recommendation.md describes options by mechanism and applies `nw-requester-words` rules 4-6 (criteria check 5.3). Gate: recommendation_coherence status determined, traceability verified or failure documented.
+6. **Evaluate Recommendation Coherence** — Verify recommendation traces to scoring matrix. Check that dissent is documented and DISCUSS handoff readiness is confirmed. recommendation.md, its `## For the requester` section included, describes options by mechanism and applies `nw-requester-words` rules 4-6 (criteria check 5.3). Gate: recommendation_coherence status determined, traceability verified or failure documented.
 
 7. **Produce Review YAML** — Assemble all dimension results into review YAML and return it to the caller. An authorized caller may save it to `docs/feature/{id}/diverge/review.yaml`; this role has no Write tool and must not claim persistence. Gate: returned YAML includes all 5 dimensions, approval_status and blocking_issues.
 

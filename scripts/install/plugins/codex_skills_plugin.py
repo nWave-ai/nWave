@@ -28,7 +28,7 @@ from scripts.install.plugins.base import (
 )
 from scripts.shared.agent_catalog import detect_command_skills, load_public_agents
 from scripts.shared.codex_model_wording import rewrite_claude_model_names
-from scripts.shared.dynamic_command_skill import dynamic_skill_entry
+from scripts.shared.express_command_skill import express_skill_entry
 from scripts.shared.frontmatter import parse_frontmatter_file
 from scripts.shared.platform_contracts import CODEX_SKILL_FORBIDDEN_FIELDS
 from scripts.shared.skill_distribution import (
@@ -564,7 +564,7 @@ class CodexSkillsPlugin(InstallationPlugin):
             # The dynamic command skill is rendered from its one source, staged in
             # a temporary directory that the finally removes even on failure.
             dynamic_staging = Path(tempfile.mkdtemp(prefix="nwave-dynamic-skill-"))
-            dynamic_entry = dynamic_skill_entry(
+            dynamic_entry = express_skill_entry(
                 context.project_root / "nWave", dynamic_staging
             )
             if dynamic_entry is not None:

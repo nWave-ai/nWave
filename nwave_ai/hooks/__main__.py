@@ -47,6 +47,7 @@ from nwave_ai.hooks.hosts import (
 )
 from nwave_ai.hooks.lifecycle import handle_session_end, register_session_start
 from nwave_ai.hooks.notice import emit_admission_warning, handle_session_start
+from nwave_ai.hooks.registration import EVENT_NAMES
 from nwave_ai.hooks.run_context import DES_TASK_ACTIVE_FILE, SystemTimeProvider
 from nwave_ai.hooks.run_context import remove_signal as _remove_task_signal
 from nwave_ai.hooks.skill_tracking import maybe_track_skill_loads
@@ -57,7 +58,7 @@ from nwave_ai.platform.locations import NWaveLocations, resolve_nwave_root
 from nwave_ai.platform.result import Failure
 
 
-EVENTS = ("PreToolUse", "SubagentStop", "SessionStart", "SessionEnd")
+EVENTS = EVENT_NAMES
 HOSTS = ("claude", "codex", "cursor", "copilot", "omp", "opencode", "pi")
 _EVENT_ACTIONS = {
     "SubagentStop": "subagent-stop",

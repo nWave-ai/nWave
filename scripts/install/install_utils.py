@@ -18,7 +18,15 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-from scripts.shared.install_paths import agents_home, codex_config_dir
+from scripts.shared.install_paths import agents_home, codex_config_dir, nwave_config_dir
+
+
+# What a backup saves and a restore brings back, one list for both. settings.json and
+# the manifest live in the Claude config dir; the 3.x runtime lives in the nWave home and
+# is kept at the root of the backup under the same name. The run log is saved for reading.
+BACKED_UP_CLAUDE_FILES: tuple[str, ...] = ("settings.json", "nwave-manifest.txt")
+BACKED_UP_RUN_LOG = "nwave-install.log"
+BACKED_UP_NWAVE_HOME_ITEMS: tuple[str, ...] = ("runtime", "active-runtime")
 
 
 class Logger:
@@ -45,19 +53,27 @@ class Logger:
     # Regex to strip Rich markup tags for file logging
     _MARKUP_RE = re.compile(r"\[/?[a-z][a-z0-9_ ]*\]")
 
-    def __init__(self, log_file: Path | None = None, silent: bool = False):
+    def __init__(
+        self, log_file: Path | None = None, silent: bool = False, quiet: bool = False
+    ):
         """Initialize logger with optional log file.
 
         Args:
             log_file: Path to log file. If None, only console logging is enabled.
             silent: If True, suppress console output (log to file only).
+            quiet: If True, the console shows warnings, errors and summary lines only;
+                every line still reaches the log file. The default summary of an install
+                is printed this way; --verbose prints every line.
         """
         self.log_file = log_file
         self.silent = silent
+        self.quiet = quiet
         # One-shot latch for the file-sink degrade (see `_write_to_file`): a
         # broken sink is broken for the whole run, so it is announced once
         # rather than once per line.
         self._log_sink_failure_reported = False
+        # The texts warn_once has printed in this run.
+        self._warned: set[str] = set()
 
         # Disable colors on Windows if not in terminal
         self._use_colors = True
@@ -123,10 +139,17 @@ class Logger:
                     file=sys.stderr,
                 )
 
-    def _log(self, level: str, message: str, color: str = "") -> None:
-        """Internal logging method for info/warn/error/step."""
+    def _log(
+        self, level: str, message: str, color: str = "", *, summary: bool = False
+    ) -> None:
+        """Internal logging method for info/warn/error/step.
+
+        In quiet mode only warnings, errors and summary lines reach the console; every
+        line reaches the log file.
+        """
+        shows = summary or not self.quiet or level in ("WARN", "ERROR")
         # Console: pretty-print with Rich or ANSI fallback
-        if not self.silent:
+        if not self.silent and shows:
             if self._rich_console:
                 style = self._ANSI_TO_RICH.get(color)
                 self._rich_console.print(
@@ -147,12 +170,27 @@ class Logger:
         """Log info message."""
         self._log("INFO", message)
 
+    def summary(self, message: str) -> None:
+        """Log a summary line: printed even in quiet mode, and written to the log file."""
+        self._log("INFO", message, summary=True)
+
     def warn(self, message: str) -> None:
         """Log warning message."""
         self._log("WARN", message, self._YELLOW)
 
     def warning(self, message: str) -> None:
         """Log warning message (stdlib logging.Logger-compatible name)."""
+        self.warn(message)
+
+    def warn_once(self, message: str) -> None:
+        """Log a warning unless this run has already logged the same text.
+
+        Several producers can state one machine-specific fact (the hook interpreter path); the user
+        reads it once. Different texts are never merged, so a repeated line for a different fact stays.
+        """
+        if message in self._warned:
+            return
+        self._warned.add(message)
         self.warn(message)
 
     def error(self, message: str) -> None:
@@ -455,12 +493,24 @@ class BackupManager:
             )
             self.logger.info("  ✅ Skills backed up")
 
-        # Backup config files
-        for config_file in ["nwave-manifest.txt", "nwave-install.log"]:
+        # Restorable state first, then the run log, which is saved for reading only.
+        for config_file in (*BACKED_UP_CLAUDE_FILES, BACKED_UP_RUN_LOG):
             src = self.claude_config_dir / config_file
             if src.exists():
                 shutil.copy2(src, self.backup_dir / config_file)
                 self.logger.info(f"  ✅ {config_file} backed up")
+
+        # The 3.x runtime lives in the nWave home, outside the Claude config dir.
+        for item in BACKED_UP_NWAVE_HOME_ITEMS:
+            src = nwave_config_dir() / item
+            destination = self.backup_dir / item
+            if src.is_dir():
+                shutil.copytree(src, destination, ignore_dangling_symlinks=True)
+                self.logger.info(f"  ✅ nWave {item} backed up")
+            elif src.is_file():
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, destination)
+                self.logger.info(f"  ✅ nWave {item} backed up")
 
         # Create manifest
         self._create_manifest()
@@ -540,179 +590,129 @@ Backup contents: {files_count} framework files
     # See ``docs/feature/backup-retention-policy/discuss/scope.md`` for the
     # locked decisions D1-D5 that drive the semantics below.
 
-    DEFAULT_MAX_BACKUP_COUNT = 10
-    """Default cap when ~/.nwave/config.json:backups.max_count is unset (D4)."""
+    KEEP_NEWEST = 3
+    """The number of newest backups kept per backup root. Fixed by decision: not configurable."""
 
-    BACKUP_GLOB = "nwave-*"
-    """Pattern identifying nWave-managed backup directories.
+    BACKUP_NAME = re.compile(r"^nwave-(install|update|uninstall)-\d{8}-\d{6}$")
+    """The installer's own backup folder naming, and nothing else.
 
-    Pool semantics (D1): the same glob captures install / uninstall / update
-    backups so they share a single retention pool.
+    A folder that does not match exactly is foreign and is never removed, whatever it contains.
     """
 
-    def apply_retention(
-        self,
-        max_count: int | None = None,
-        nwave_config_dir: Path | None = None,
-    ) -> "RetentionResult":
-        """Prune oldest nwave-* backup directories until count <= max_count.
+    def apply_retention(self) -> "RetentionResult":
+        """Keep the newest KEEP_NEWEST backups of this root and remove the older ones.
 
-        Pool semantics (D1): sums across types — ``nwave-install-*``,
-        ``nwave-uninstall-*``, ``nwave-update-*`` share one pool.
-
-        Sort semantics (D2): lex-sort on full backup dirname, no timestamp
-        parsing (mirrors ``restore_backup`` in install_nwave.py).
-
-        Foreign directories (anything not matching ``nwave-*``) are never
-        touched.
-
-        Args:
-            max_count: Cap to enforce. If None, reads from global config or
-                falls back to DEFAULT_MAX_BACKUP_COUNT.
-            nwave_config_dir: Where to read ``config.json`` from when
-                resolving the config-driven cap. Forwarded verbatim to
-                ``read_backup_retention_config`` (None there defaults to
-                ``Path.home() / ".nwave"``) -- an isolated caller (e.g. a K4
-                harness campaign arm with NWAVE_AGENTS_HOME pinned) must pass
-                its own pinned dir here, or this read-only config lookup
-                still reaches the operator's real home even though nothing
-                gets WRITTEN there. Byte-diff sentinel tests cannot see a
-                read; this parameter is the fix, not a test technique.
+        Only folders named by the installer (``BACKUP_NAME``), that are real directories and
+        not symlinks, are candidates. A folder that holds a legacy Codex copy is the only copy
+        of that data and is held, never removed. Age is the timestamp in the name, across backup
+        types (``backup_age_key``): the newest backups are the ones kept.
+        A removal that fails is named with WHAT, WHY and HOW and does not stop the caller.
+        Callers run this only after the new backup is written and verified complete.
 
         Returns:
-            RetentionResult with the list of pruned directory names and the
-            list of surviving backup directory names.
-
-        Raises:
-            ConfigValidationError: when the global config provides an invalid
-                max_count (negative, non-integer, etc.) — see scenario S9.
+            RetentionResult with the folders removed, the folders kept, and the folders that
+            could not be removed.
         """
-        cap = (
-            max_count
-            if max_count is not None
-            else read_backup_retention_config(nwave_config_dir)
+        cap = self.KEEP_NEWEST
+        if not self.backup_root.is_dir():
+            return RetentionResult(cap_applied=cap)
+
+        entries = sorted(
+            (
+                entry
+                for entry in self.backup_root.iterdir()
+                if self.BACKUP_NAME.match(entry.name)
+                and entry.is_dir()
+                and not entry.is_symlink()
+            ),
+            key=backup_age_key,
         )
-        # Defensive: positional args bypass config validation. Validate again
-        # so explicit max_count=-1 from a caller gets the same treatment as
-        # config-driven invalid values.
-        if not isinstance(cap, int) or isinstance(cap, bool) or cap < 0:
-            raise ConfigValidationError(
-                f"Invalid max_count {cap!r} — backups.max_count must be a "
-                f"non-negative integer."
-            )
-
-        if not self.backup_root.exists():
-            return RetentionResult(pruned=[], retained=[], cap_applied=cap)
-
-        # D2: lex-sort on full dirname. Oldest = lex-smallest.
-        existing = sorted(
-            p for p in self.backup_root.glob(self.BACKUP_GLOB) if p.is_dir()
-        )
-
-        if len(existing) <= cap:
-            return RetentionResult(
-                pruned=[],
-                retained=[p.name for p in existing],
-                cap_applied=cap,
-            )
-
-        prune_count = len(existing) - cap
-        to_prune = existing[:prune_count]
-        survivors = existing[prune_count:]
-
-        pruned_names: list[str] = []
-        for victim in to_prune:
-            shutil.rmtree(victim)
-            pruned_names.append(victim.name)
-            self.logger.info(f"  🗑  Pruned old backup {victim.name}")
-
+        pool = [entry for entry in entries if not _holds_legacy_copy(entry)]
+        remove = pool[: max(len(pool) - cap, 0)]
+        removed: list[str] = []
+        failed: list[str] = []
+        for folder in remove:
+            if folder.parent.resolve() != self.backup_root.resolve():
+                failed.append(folder.name)
+                self._warn_removal_failed(
+                    folder, "it is not directly under the backup root"
+                )
+                continue
+            try:
+                shutil.rmtree(folder)
+            except OSError as error:
+                failed.append(folder.name)
+                self._warn_removal_failed(folder, str(error))
+                continue
+            removed.append(folder.name)
+        kept = [entry.name for entry in pool if entry.name not in removed]
         return RetentionResult(
-            pruned=pruned_names,
-            retained=[p.name for p in survivors],
-            cap_applied=cap,
+            removed=removed, kept=kept, failed=failed, cap_applied=cap
         )
+
+    def _warn_removal_failed(self, folder: Path, why: str) -> None:
+        self.logger.warn(
+            f"WHAT: the old nWave backup {folder.name} could not be removed. "
+            f"WHY: {why}. "
+            f'HOW: remove it by hand with rm -r "{folder}", or leave it; the install itself '
+            "succeeded and keeps running."
+        )
+
+
+def backup_age_key(folder: Path) -> tuple[str, str]:
+    """Sort key of a backup folder: its timestamp, read from the installer's own name, then the name.
+
+    The name is nwave-<type>-YYYYMMDD-HHMMSS. Sorting by the whole name would put every install
+    before every uninstall, whatever their times; the timestamp is what makes a folder newer.
+    """
+    stamp = folder.name.rsplit("-", 2)
+    return (stamp[-2] + stamp[-1], folder.name)
+
+
+def _holds_legacy_copy(folder: Path) -> bool:
+    """True while the folder holds a legacy Codex copy (of any kind, or unreadable): never removed."""
+    try:
+        os.lstat(folder / "legacy-codex-dev")
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    return True
 
 
 class RetentionResult:
-    """Outcome of a retention pass — what was pruned, what survives.
+    """Outcome of a retention pass: what was removed, what was kept, and what could not go.
 
-    Minimal observable shape for acceptance tests. ``pruned`` is the list of
-    backup directory names that were removed (sorted oldest-first).
-    ``retained`` is the list of backup directory names still on disk (sorted
-    oldest-first). ``cap_applied`` is the integer cap that was enforced.
+    ``removed``, ``kept`` and ``failed`` name backup folders, oldest first. ``cap_applied`` is the
+    number of newest backups the pass kept.
     """
 
     def __init__(
         self,
-        pruned: list[str] | None = None,
-        retained: list[str] | None = None,
+        removed: list[str] | None = None,
+        kept: list[str] | None = None,
+        failed: list[str] | None = None,
         cap_applied: int | None = None,
     ):
-        self.pruned = pruned or []
-        self.retained = retained or []
+        self.removed = removed or []
+        self.kept = kept or []
+        self.failed = failed or []
         self.cap_applied = cap_applied
 
 
-class ConfigValidationError(ValueError):
-    """Raised when ~/.nwave/config.json:backups.max_count is invalid.
+def retention_config_key_present(config_dir: Path) -> bool:
+    """True when ~/.nwave/config.json names backups.max_count, which the installer no longer reads.
 
-    Inherits from ValueError so existing handlers that catch ValueError
-    continue to work; specialised callers can pattern-match on this subclass.
-    """
-
-
-def read_backup_retention_config(
-    nwave_config_dir: Path | None = None,
-) -> int:
-    """Resolve ``backups.max_count`` from ~/.nwave/config.json.
-
-    Pure helper (Mandate 4): the validation logic lives here, isolated from
-    the I/O of pruning. Returns the validated cap, or
-    ``BackupManager.DEFAULT_MAX_BACKUP_COUNT`` when no override exists.
-
-    Args:
-        nwave_config_dir: Override for the config directory. When None,
-            defaults to ``Path.home() / ".nwave"``.
-
-    Returns:
-        Integer cap >= 0.
-
-    Raises:
-        ConfigValidationError: when max_count is present but not a
-            non-negative integer.
+    An unreadable or non-object config does not name it; the readers of that file report it.
     """
     import json
 
-    config_dir = nwave_config_dir or (Path.home() / ".nwave")
-    config_file = config_dir / "config.json"
-
-    if not config_file.exists():
-        return BackupManager.DEFAULT_MAX_BACKUP_COUNT
-
     try:
-        config = json.loads(config_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as err:
-        raise ConfigValidationError(
-            f"Could not parse {config_file} — backups.max_count cannot be "
-            f"resolved: {err}"
-        ) from err
-
-    backups_section = config.get("backups") if isinstance(config, dict) else None
-    if not isinstance(backups_section, dict) or "max_count" not in backups_section:
-        return BackupManager.DEFAULT_MAX_BACKUP_COUNT
-
-    raw_value = backups_section["max_count"]
-    # ``bool`` is a subclass of ``int`` — reject it explicitly so True/False
-    # do not silently pass as 1/0.
-    if isinstance(raw_value, bool) or not isinstance(raw_value, int):
-        raise ConfigValidationError(
-            f"backups.max_count must be a non-negative integer; got {raw_value!r}."
-        )
-    if raw_value < 0:
-        raise ConfigValidationError(
-            f"backups.max_count must be >= 0; got {raw_value!r}."
-        )
-    return raw_value
+        config = json.loads((config_dir / "config.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    backups = config.get("backups") if isinstance(config, dict) else None
+    return isinstance(backups, dict) and "max_count" in backups
 
 
 class VersionUtils:

@@ -1067,6 +1067,16 @@ def _missing_executable(path, build):
     )
 
 
+def _windows_not_program(path, build):
+    renamed = posixpath.splitext(path)[0] + ".exe"
+    return Defect(
+        "InputUnreadable: " + path,
+        "the declared name is a regular file that does not end in .exe; on Windows the file-name suffix decides what can be run",
+        f'rename {path} to {renamed} (or build {renamed}), set the "path" field of the command whose path is "{path}" '
+        f'in {DECLARATION_FILE} to "{renamed}", commit {DECLARATION_FILE}, then rebuild the examine prompt.',
+    )
+
+
 def _not_executable(path, build):
     return Defect(
         "InputUnreadable: " + path,
@@ -1135,6 +1145,16 @@ def _no_descriptor_walk(path, build):
     )
 
 
+def _reparse_point_executable(path, build):
+    return Defect(
+        "InputUnreadable: " + path,
+        "a name on the declared path is a symbolic link, junction or mount point, so the examiner cannot tell "
+        "which file it would run",
+        f"Remove the link or junction on the path to {path} and make the declared file a regular file in its place, "
+        f"then {_rebuild(build)}, so that {path} is the built executable, then rebuild the examine prompt.",
+    )
+
+
 def _not_readable(path, build):
     return Defect(
         "InputUnreadable: " + path,
@@ -1154,6 +1174,8 @@ _EXECUTABLE_REFUSALS = {
     "no_access": _no_access_executable,
     "not_readable": _not_readable,
     "no_descriptor_walk": _no_descriptor_walk,
+    "reparse_point": _reparse_point_executable,
+    "windows_not_program": _windows_not_program,
     "unreadable": _unreadable_executable,
 }
 
@@ -1252,6 +1274,72 @@ def same_file(first: FileIdentity, second: FileIdentity) -> bool:
     return first == second
 
 
+def on_windows() -> bool:
+    """Whether the examiner runs on Windows. Read at call time, so the platform facts can be injected in a test."""
+    return sys.platform == "win32"
+
+
+class PathFlavour(Enum):
+    """How the host spells a path: Windows takes either separator and ignores letter case; POSIX does neither."""
+
+    POSIX = "posix"
+    WINDOWS = "windows"
+
+
+def host_flavour() -> PathFlavour:
+    """The spelling of paths on this host, read at call time from the same platform name as on_windows."""
+    return PathFlavour.WINDOWS if on_windows() else PathFlavour.POSIX
+
+
+@dataclass(frozen=True)
+class ComponentFact:
+    """One name on a declared path, as Windows reports it: a reparse point, a directory, a regular file."""
+
+    is_reparse: bool
+    is_directory: bool
+    is_regular: bool
+
+
+@dataclass(frozen=True)
+class WindowsFacts:
+    """The facts of a declared path on Windows: each directory before the last name, and the last name."""
+
+    directories: tuple[ComponentFact, ...]
+    final: ComponentFact
+    final_is_program: bool
+
+
+def windows_declared_status(facts: WindowsFacts) -> str:
+    """The status of a declared path on Windows, decided from its facts alone: a reparse point refuses first."""
+    if (
+        any(directory.is_reparse for directory in facts.directories)
+        or facts.final.is_reparse
+    ):
+        return "reparse_point"
+    if not all(directory.is_directory for directory in facts.directories):
+        return "not_directory"
+    if not facts.final.is_regular:
+        return "missing"
+    if not facts.final_is_program:
+        return "windows_not_program"
+    return "ok"
+
+
+WINDOWS_GUARANTEE = (
+    "The examiner checks each name of a declared command's path for a reparse point and refuses one, requires the "
+    "declared file to be a regular file ending in .exe, keeps that file held open for the run, and compares its identity "
+    "with the path just before it starts the program by its path. The file is not pinned: the window between that "
+    "comparison and the process creation remains, in which a process with write access may rewrite the file and a "
+    "directory on the path may be renamed. The examiner sets no share mode that denies other processes write or "
+    "delete access during the run; that behaviour of Windows is not verified here."
+)
+
+
+def windows_probe_note(path):
+    """The outcome line for a declared file the Windows probe starts, carrying the Windows guarantee."""
+    return f"nwdes examine probe: {path} is started by path on Windows. {WINDOWS_GUARANTEE}\n"
+
+
 def executable_changed(path, build):
     """The refusal for a declared file that is no longer the file verified before its descriptor start."""
     return Defect(
@@ -1302,7 +1390,27 @@ def public_projection(entries, blobs, declared, candidate, executables):
     )
 
 
-def _under(path, root):
+def windows_name_key(name):
+    """The letter-case key of a Windows name: each character is replaced by its own upper-case form, and a character
+    whose upper-case form is longer than one character keeps itself. The key has the length of the name, so a folder
+    whose name differs in length (STRASSE for straße) can never share its key. This is the simple one-to-one upper-case
+    mapping, an approximation of the NTFS upper-case table, which this code does not reproduce."""
+    return "".join(_one_for_one(character) for character in name)
+
+
+def _one_for_one(character):
+    upper = character.upper()
+    return upper if len(upper) == 1 else character
+
+
+def contained(path, root, flavour):
+    """Whether path is root or lies under it. The spelling of the host decides: on Windows both separators are
+    separators and names are compared by windows_name_key, which folds letter case one character for one character;
+    on POSIX the paths are compared as written, exactly as they always were. Lexical: the adapters pass the resolved
+    paths, so no short name is expanded here, and a spelling that does not place the path under the root is refused."""
+    if flavour is PathFlavour.WINDOWS:
+        path = windows_name_key(path.replace("\\", "/"))
+        root = windows_name_key(root.replace("\\", "/"))
     return path == root or path.startswith(root.rstrip("/") + "/")
 
 
@@ -1345,7 +1453,10 @@ def inspect_workspace(projection, workspace, checkout_roots, entries):
                 ),
                 *(
                     ("workspace",)
-                    if any(_under(workspace, root) for root in checkout_roots)
+                    if any(
+                        contained(workspace, root, host_flavour())
+                        for root in checkout_roots
+                    )
                     else ()
                 ),
             )
@@ -1424,7 +1535,7 @@ def prepare_probe(
         or posixpath.isabs(
             arg.split("=", 1)[1] if arg.startswith("--") and "=" in arg else arg
         )
-        or not _under(resolved, workspace.path)
+        or not contained(resolved, workspace.path, host_flavour())
     )
     commands = {command.name: command.target for command in projection.commands}
     if not argv or argv[0] not in commands or bad:
@@ -1461,7 +1572,11 @@ def prepare_probe(
 
 def prepare_read(workspace, path, resolved, symlink):
     public = workspace.path + "/public"
-    if posixpath.isabs(path) or not _under(resolved, public) or symlink:
+    if (
+        posixpath.isabs(path)
+        or not contained(resolved, public, host_flavour())
+        or symlink
+    ):
         return checked(
             None,
             (
@@ -1496,4 +1611,5 @@ def render_workspace(workspace):
         + "Probe: nwdes examine probe --workspace "
         + quoted
         + " -- COMMAND ARGS\n"
+        + (("Windows guarantee: " + WINDOWS_GUARANTEE + "\n") if on_windows() else "")
     )

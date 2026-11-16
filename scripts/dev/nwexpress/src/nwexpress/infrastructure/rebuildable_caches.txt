@@ -1,0 +1,6 @@
+# The rebuildable cache folders, by exact name. A name is matched whole: a folder that only resembles one is user content
+# and is judged as work. The list is data read by infrastructure/rebuildable_caches.py; the proof takes it as a value.
+__pycache__
+.pytest_cache
+.ruff_cache
+.hypothesis

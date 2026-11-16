@@ -46,7 +46,7 @@ Follow these steps in order:
 1. **JTBD Analysis** — Read the host-written `docs/feature/{feature-id}/diverge/request.md` (requester's words in blocks marked `requester-verbatim` or `host-summary`); never create or edit it. If it is missing, stop and return `{CLARIFICATION_NEEDED: true, questions: [...]}` asking the host for it; this is the DIVERGE-RESULT `verdict: NEEDS_INPUT` case. Extract job from that request and any DISCOVER/vision evidence. Navigate abstraction layers. Produce job statements (functional + emotional + social). Generate ODI outcome statements. Identify under-served outcomes. Gate: job at strategic or physical level, no feature references in job statement, minimum 3 ODI outcome statements.
 2. **Competitive Research** — Invoke `nw-researcher` via Task tool for evidence-grounded research. Map how existing products serve the validated job. Identify 3+ solutions including non-obvious alternatives. Document what each does well and where it fails the job. Note key assumptions each competitor makes about user behavior. Gate: 3+ real products named, at least one non-obvious alternative (different category, same job), no generic market claims.
 3. **Brainstorming** — Frame HMW question (no embedded solution). Apply all 7 SCAMPER lenses, stating a probability per candidate and deliberately keeping tail candidates (verbalized sampling; stated estimates, not measurements). Generate Crazy 8s supplements. Name options per the `nw-brainstorming` name_origin rule. Curate to 6 structurally diverse options. Apply 3-point diversity test plus the head-clustering read of the stated probabilities restated as one distribution over the six. Gate: 6 curated options, each passes diversity test (different mechanism, assumption, cost), two tail candidates among the six or one whose mechanism differs from every head candidate, name_origin marked on every option, no evaluation language in options-raw.md.
-4. **Taste Evaluation** — Apply DVF filter (eliminate < 6 total). Lock weights before scoring. Score all surviving options on 4 taste criteria. Produce weighted ranking. Write recommendation with dissenting case. Gate: all surviving options scored on all criteria, weights documented, recommendation traceable to scores, dissenting case included, decision statement for DISCUSS wave explicit.
+4. **Taste Evaluation** — Apply DVF filter (eliminate < 6 total). Lock weights before scoring. Score all surviving options on 4 taste criteria. Produce weighted ranking. Write recommendation with dissenting case and its `## For the requester` section, before peer review. Gate: all surviving options scored on all criteria, weights documented, recommendation traceable to scores, dissenting case included, decision statement for DISCUSS wave explicit.
 
 ## Peer Review Protocol
 
@@ -68,7 +68,7 @@ Before peer review, validate all phases complete:
 - [ ] G1: Job at strategic/physical level, ODI outcome statements produced
 - [ ] G2: 3+ real competitors researched, non-obvious alternative included
 - [ ] G3: 6 diverse options (two tail candidates among the six, or one whose mechanism differs from every head candidate; head-clustering read of the restated distribution documented), name_origin marked per option (every user-words name equal to its quoted span, per `nw-requester-words`), SCAMPER coverage documented, options-raw.md generated
-- [ ] G4: DVF filter applied, all criteria scored, weighted ranking complete, recommendation with dissenting case; recommendation.md and requester-facing text mark new terms `[new]` and attribute nothing to the requester that is not theirs (`nw-requester-words`)
+- [ ] G4: DVF filter applied, all criteria scored, weighted ranking complete, recommendation with dissenting case and `## For the requester` section; recommendation.md (that section included) marks new terms `[new]` and attributes nothing to the requester that is not theirs (`nw-requester-words`)
 
 If any gate incomplete, display failures and remediation. Do not proceed to peer review.
 
@@ -90,7 +90,7 @@ All artifacts in `docs/feature/{feature-id}/diverge/` (beside the host-written `
 - `competitive-research.md` — prior art, competitor analysis, non-obvious alternatives
 - `options-raw.md` — all generated options (unfiltered, no evaluation)
 - `taste-evaluation.md` — DVF filter, weights, scoring matrix
-- `recommendation.md` — top 3, dissenting case, decision for DISCUSS
+- `recommendation.md` — top 3, dissenting case, decision for DISCUSS, `## For the requester` section
 
 ## Commands
 
@@ -140,7 +140,7 @@ Product-owner receives clear direction, not open question.
 3. Follow the scoring matrix for the recommendation. Weight adjustments are allowed but must be documented explicitly.
 4. Obtain peer review approval before handoff. The reviewer is the quality gate.
 5. End the recommendation with an explicit decision statement phrased by mechanism in the requester's vocabulary. "Both options are viable" is not a decision.
-6. Apply `nw-requester-words` (new terms, `[new]` marking, handles, attribution) to recommendation.md, the DIVERGE-RESULT block and any summary for the requester.
+6. Write any summary for the requester only as the `## For the requester` section of recommendation.md; the DIVERGE-RESULT lines reuse its wording. Apply `nw-requester-words` (new terms, `[new]` marking, handles, attribution) to recommendation.md and to that block.
 
 ## Constraints
 

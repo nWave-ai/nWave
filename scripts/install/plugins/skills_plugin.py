@@ -29,7 +29,7 @@ from scripts.shared.agent_catalog import (
     detect_command_skills,
     load_public_agents,
 )
-from scripts.shared.dynamic_command_skill import dynamic_skill_entry
+from scripts.shared.express_command_skill import express_skill_entry
 from scripts.shared.install_paths import (
     PYTHON_CMD_SUBSTITUTION,
     resolve_python_command,
@@ -312,7 +312,7 @@ class SkillsPlugin(InstallationPlugin):
         # temporary directory that the finally removes even when the install fails.
         dynamic_staging = Path(tempfile.mkdtemp(prefix="nwave-dynamic-skill-"))
         try:
-            dynamic_entry = dynamic_skill_entry(
+            dynamic_entry = express_skill_entry(
                 context.project_root / "nWave", dynamic_staging
             )
             if dynamic_entry is not None:

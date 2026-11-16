@@ -411,7 +411,7 @@ COMMANDS = (
             ),
             Argument(
                 "--overview",
-                "the project overview: the vision, roadmap and backlog with the decision list, written to docs/product/overview.md and overview.html; takes no --feature or --handoff",
+                "the project overview: the vision and backlog with the decision list, written to docs/product/overview.md and overview.html; a docs/product/roadmap.md is not read; takes no --feature or --handoff",
             ),
         ),
         (

@@ -847,19 +847,19 @@ class NWaveUninstaller:
         )
 
     def remove_dev_launcher(self) -> None:
-        """Remove the stable nwstep launcher when nWave wrote it; a foreign
+        """Remove the stable nwexpress launcher when nWave wrote it; a foreign
         file at that path is left untouched and reported."""
         if self.dry_run:
-            self.logger.info("  🚨 [DRY RUN] Would remove the nwstep launcher")
+            self.logger.info("  🚨 [DRY RUN] Would remove the nwexpress launcher")
             return
         try:
-            from scripts.install.plugins.nwstep_launcher_plugin import (
-                NwstepLauncherPlugin,
+            from scripts.install.plugins.nwexpress_launcher_plugin import (
+                NwexpressLauncherPlugin,
             )
         except ImportError:
-            from plugins.nwstep_launcher_plugin import NwstepLauncherPlugin
+            from plugins.nwexpress_launcher_plugin import NwexpressLauncherPlugin
 
-        result = NwstepLauncherPlugin().uninstall(self._plugin_context())
+        result = NwexpressLauncherPlugin().uninstall(self._plugin_context())
         if result.success:
             self.logger.info(f"  🗑️ {result.message}")
         else:

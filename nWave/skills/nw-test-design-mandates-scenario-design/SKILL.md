@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 **Trigger**: you are shaping or judging a scenario's SHAPE — what to drive (boundary), what language to use, whether it is a complete user journey, and whether fixtures are parameterized correctly. Mandates 1-4 + the 3 Pillars + Walking Skeleton Strategy.
 
-Numbering is an SSOT-internal index defined in the recomposing core `nw-test-design-mandates`; refer to mandates by descriptive name externally. Language-convention frame (non-Python target adaptation) lives in the core — read it before applying any code example below.
+Numbering is an SSOT-internal index defined in the recomposing core `nw-test-design-mandates`; refer to mandates by descriptive name externally. The language-convention frame (adapting to the project's own language and runner) lives in the core — read it before applying any code example below.
 
 ## Mandate 1: Hexagonal Boundary Enforcement
 

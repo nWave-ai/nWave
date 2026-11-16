@@ -22,6 +22,8 @@ Conditional skills, not preloaded. Before answering, check every row against the
 - Read `~/.claude/skills/nw-fp-algebra-driven-design/SKILL.md` ON-TRIGGER — implementing algebraic operations or preserving a declared law; judging whether an implementation preserves its declared algebraic operations and laws
 - Read `~/.claude/skills/nw-fp-domain-modeling/SKILL.md` ON-TRIGGER — implementing domain state, validated construction or error and effect boundaries
 - Read `~/.claude/skills/nw-algebraic-design-protocol/SKILL.md` ON-TRIGGER — a law or observation is contested or must be found before choosing constructors
+- Read `~/.claude/skills/nw-fp-hexagonal-architecture/SKILL.md` ON-TRIGGER — designing the functional core and effect shell of a codebase, deciding which functions are pure, where effects and I/O live, and how ports and adapters bound them
+- Read `~/.claude/skills/nw-fp-usable-design/SKILL.md` ON-TRIGGER — naming or designing the API surface of functional code, including function and type names, argument order and ergonomics for callers
 - Read `~/.claude/skills/nw-at-completeness-check/SKILL.md` ON-TRIGGER — judging whether the immutable oracle covers the original Request and whether candidate-bound verification evidence is sufficient
 <!-- GENERATED:role-skill-loading END -->
 # Implementation Review

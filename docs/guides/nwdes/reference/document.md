@@ -6,7 +6,7 @@
 |---|---|
 | `--product` | Render project product documents; omitted renders the selected feature or epic |
 | `--handoff` | Repeatable feature handoff input for project aggregation; omission adds none |
-| `--overview` | Project scope only: write `docs/product/overview.md` and `overview.html` (vision, roadmap, backlog and the decision list) instead of the project brief; implies `--product`; refuses `--feature` and `--handoff` |
+| `--overview` | Project scope only: write `docs/product/overview.md` and `overview.html` (vision, backlog and the decision list) instead of the project brief; implies `--product`; refuses `--feature` and `--handoff` |
 
 Feature and epic mode use their configured handoff. Project aggregation replaces supplied feature sections and preserves other feature sections. Returns written or unchanged paths.
 

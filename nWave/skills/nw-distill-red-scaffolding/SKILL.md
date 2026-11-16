@@ -25,6 +25,11 @@ discovery. This procedure does not expand the ATD's write set or task.
 3. Execute the declared native recipe, or ask the host to execute it unchanged
    when the role ceiling lacks execution. Prove collection/build/setup succeeds
    and the promised public stimulus reaches an assertion of the business outcome.
+   Check each injected dependency, capture and observer against the real constructor
+   or factory signature and the actual caller path, with a positive control that it
+   sees a known call: a type assertion creates no injection, and an observer of an
+   external client does not see internal calls. Join concurrent operations by identity,
+   never arrival order; an acknowledgement is not completed handling.
 4. Classify authentic output: promised outcome absent/wrong is semantic RED;
    compile/import/dependency/fixture/startup/capture failure is BROKEN; insufficient
    native attribution is INDETERMINATE. Exit status, counts or an assertion-like

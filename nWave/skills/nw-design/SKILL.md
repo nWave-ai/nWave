@@ -123,8 +123,13 @@ Apply `design:simplest-design-that-delivers` in `nw-cross-cutting-invariants` th
    run and waives no distinct move. A code-target slice states this decision,
    or `nwdes design not-applicable add --in SLICE --analysis prefactoring
    --reason TEXT` (or `--shared`), never both. Any level L1 to L6 may be
-   requested; `--move` names the follow-up change it makes easier. Use
-   code-fact signals when the provider answers; else say it is unavailable
+   requested; `--move` names the follow-up change it makes easier. When the
+   slice changes a file that holds several types, declare a prefactoring move
+   for it: bring the touched types to the File layout section of
+   `nw-code-craftsmanship` as a whole, behaviour unchanged, as a separate
+   commit before the behaviour change. Files the slice does not touch are
+   neither moved nor planned; a slice with no design step leaves its files as
+   they are. Use code-fact signals when the provider answers; else say it is unavailable
    and name platform install commands. The host relays the offer; never ask
    the human or install. Read smells for the declared paradigm:
    `nw-code-design-fp`, `nw-code-design-oo`; procedural has none.
@@ -235,7 +240,15 @@ Apply `design:simplest-design-that-delivers` in `nw-cross-cutting-invariants` th
     dependency/boundary/owner law the change can reach; it falsifies that law
     over the whole scope the law governs, including members added later and
     transitive paths the law covers, not incidental AST
-    or style. A contract check applies when the parties can change apart —
+    or style. For each architecture law the slice can reach, declare an
+    architectural test or state why the law does not apply. The laws are the
+    structure of the design as a whole: dependency direction between layers,
+    effects confined to adapters, a pure core, port and adapter boundaries,
+    ownership of each fact, the exact public entry points, and the File layout
+    section of `nw-code-craftsmanship` (the file-system layout is one of these
+    laws, not the only one). The files the slice moves under a prefactoring
+    declaration are checked by that layout law.
+    A contract check applies when the parties can change apart —
     another owner, deployable or release schedule, or persisted/wire data
     outliving the producer's version. It runs the real producer output
     through the real consumer and observes the promised outcomes, errors or
@@ -349,8 +362,11 @@ source-blind EXAMINE.
 
 Default in every design: algebraic modeling with formal verification.
 Missing required checkers are an installation-or-waiver decision for the human,
-relayed by the host. State an indeterminate judgment naming missing tools,
-affected claims and platform-specific install commands; install only with authorization.
+relayed by the host. State an indeterminate judgment naming the missing tools with the
+probe (argv and output) that showed each missing, the affected claims with their source
+and checker command, and platform-specific install commands; install only with authorization.
+A tool named without its claim, source and command is not yet a blocker, and a prohibition
+on one verification method is no waiver of the claims it would check.
 Only a recorded human waiver permits continuation without that proof.
 A waived claim remains INDETERMINATE with the waiver reason, never PASS;
 native property tests or finite checks do not silently replace it.

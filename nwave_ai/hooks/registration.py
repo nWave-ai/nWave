@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 import shlex
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import PureWindowsPath
@@ -54,6 +55,28 @@ HOOK_EVENTS: tuple[HookEvent, ...] = (
 HOOK_EVENT_TYPES: frozenset[str] = frozenset(row.event for row in HOOK_EVENTS)
 
 
+#: The event names the hook CLI accepts (its argparse choices), listed once: a command takes its event from here.
+EVENT_NAMES: tuple[str, ...] = tuple(dict.fromkeys(row.event for row in HOOK_EVENTS))
+
+#: The kept events Copilot registers. Copilot spells an event key in camelCase; the command keeps the kept name.
+COPILOT_EVENTS: tuple[str, ...] = ("PreToolUse",)
+
+
+def copilot_event_key(event: str) -> str:
+    """The key Copilot reads for a kept event name: the same name with a lower-case first letter."""
+    return event[:1].lower() + event[1:]
+
+
+def _kept_event(event: str) -> str:
+    """The event name unchanged when the hook CLI accepts it; otherwise a refusal with WHAT, WHY and HOW."""
+    if event not in EVENT_NAMES:
+        raise ValueError(
+            f"WHAT: {event!r} is not an event name the hook CLI accepts. WHY: a command that names it exits 2 "
+            f"and the host denies every tool. HOW: use one of {', '.join(EVENT_NAMES)}."
+        )
+    return event
+
+
 #: Hosts that receive kept registrations (fact F419).
 HOSTS: tuple[str, ...] = ("claude", "codex", "cursor", "copilot")
 
@@ -89,25 +112,79 @@ def interpreter_for_shell(path: str, *, windows: bool) -> str:
     return spelled
 
 
-def hook_command(interpreter: str, event: str, host: str) -> str:
+def shell_word(interpreter: str) -> str:
+    """One shell word that runs the interpreter at that path.
+
+    A path under $HOME is double-quoted with the $HOME left for the shell to expand:
+    single quotes stop that expansion, so the shell would look for a literal "$HOME"
+    directory and exit 127. The rest of the path has the characters that are special
+    inside double quotes escaped, so a space in the path still reaches the shell as one
+    word.
+    Every other path is quoted as it always was.
+    """
+    home_prefix = "$HOME/"
+    if interpreter.startswith(home_prefix):
+        rest = re.sub(r'(["$`\\])', r"\\\1", interpreter[len(home_prefix) :])
+        return f'"{home_prefix}{rest}"'
+    return shlex.quote(interpreter)
+
+
+# How an interpreter path is written as a shell word: the writer uses shell_word.
+Spelling = Callable[[str], str]
+
+
+def hook_command(
+    interpreter: str, event: str, host: str, spell: Spelling = shell_word
+) -> str:
     """Shell command of one registration: interpreter, -m nwave_ai.hooks EVENT --host H."""
-    return f"{shlex.quote(interpreter)} -m nwave_ai.hooks {event} --host {host}"
+    return f"{spell(interpreter)} -m nwave_ai.hooks {event} --host {host}"
 
 
 _REGISTERED_COMMAND = re.compile(
-    r"(?P<interpreter>'[^']*'|[^\s']+)"
+    r'(?P<interpreter>"(?:[^"\\]|\\.)*"|\'[^\']*\'|[^\s\'"]+)'
     r" -m nwave_ai\.hooks (?P<event>[A-Za-z]+) --host (?P<host>[a-z]+)"
 )
 
 
-def _claude_command(row: HookEvent, interpreter: str) -> str:
+def _shell_word_value(token: str) -> str:
+    """The path a shell word names: the inverse of shell_word, read the way the shell reads it.
+
+    Inside double quotes a backslash escapes only $, backtick, double quote and backslash; the
+    quotes are removed. Inside single quotes everything is literal. Any other word is read by
+    shlex, which is correct for the unquoted words the writer never produces for an interpreter.
+    """
+    if len(token) >= 2 and token[0] == token[-1] == '"':
+        body = token[1:-1]
+        out: list[str] = []
+        index = 0
+        while index < len(body):
+            char = body[index]
+            if char == "\\" and index + 1 < len(body) and body[index + 1] in '$`"\\':
+                out.append(body[index + 1])
+                index += 2
+                continue
+            out.append(char)
+            index += 1
+        return "".join(out)
+    if len(token) >= 2 and token[0] == token[-1] == "'":
+        return token[1:-1]
+    return shlex.split(token)[0]
+
+
+def _claude_command(row: HookEvent, interpreter: str, spell: Spelling) -> str:
     """Claude command of one row; guard rows start Python only when a decision is needed."""
-    plain = hook_command(interpreter, row.event, "claude")
+    plain = hook_command(interpreter, row.event, "claude", spell)
     return build_guard_command(plain) if row.is_guard else plain
 
 
-def entries(host: str, interpreter: str) -> tuple[tuple[str, dict[str, Any]], ...]:
-    """(event key, canonical entry) for each kept registration of one host (F419)."""
+def entries(
+    host: str, interpreter: str, spell: Spelling = shell_word
+) -> tuple[tuple[str, dict[str, Any]], ...]:
+    """(event key, canonical entry) for each kept registration of one host (F419).
+
+    ``spell`` is the interpreter spelling the entries use; the writer uses shell_word.
+    """
+
     if host == "claude":
         pairs: list[tuple[str, dict[str, Any]]] = []
         for row in HOOK_EVENTS:
@@ -115,7 +192,7 @@ def entries(host: str, interpreter: str) -> tuple[tuple[str, dict[str, Any]], ..
                 "hooks": [
                     {
                         "type": "command",
-                        "command": _claude_command(row, interpreter),
+                        "command": _claude_command(row, interpreter, spell),
                     }
                 ]
             }
@@ -129,23 +206,35 @@ def entries(host: str, interpreter: str) -> tuple[tuple[str, dict[str, Any]], ..
             "hooks": [
                 {
                     "type": "command",
-                    "command": hook_command(interpreter, "PreToolUse", host),
+                    "command": hook_command(interpreter, "PreToolUse", host, spell),
                 }
             ],
         }
         return (("PreToolUse", group),)
     if host == "cursor":
-        command = hook_command(interpreter, "preToolUse", host)
+        command = hook_command(interpreter, "preToolUse", host, spell)
         entry = {"command": command, "matcher": CURSOR_MATCHER, "timeout": 30}
         return (("preToolUse", entry),)
     if host == "copilot":
-        command = hook_command(interpreter, "preToolUse", host)
-        group = {
-            "matcher": COPILOT_MATCHER,
-            "hooks": [{"type": "command", "bash": command, "timeoutSec": 30}],
-        }
-        return (("preToolUse", group),)
+        return tuple(
+            (
+                copilot_event_key(event),
+                _copilot_entry(interpreter, spell, _kept_event(event)),
+            )
+            for event in COPILOT_EVENTS
+        )
     raise ValueError(f"unknown host {host!r}")
+
+
+def _copilot_entry(
+    interpreter: str, spell: Spelling, command_event: str
+) -> dict[str, Any]:
+    """Copilot entry of one registration: the nested matcher group the spike proved (FS-1)."""
+    command = hook_command(interpreter, command_event, "copilot", spell)
+    return {
+        "matcher": COPILOT_MATCHER,
+        "hooks": [{"type": "command", "bash": command, "timeoutSec": 30}],
+    }
 
 
 def _entry_command(entry: dict[str, Any]) -> object:
@@ -161,25 +250,66 @@ def _entry_command(entry: dict[str, Any]) -> object:
     return None
 
 
+def _is_installed_spelling(interpreter: str) -> bool:
+    """True for the interpreter spellings an install writes: python3, a HOME-prefixed path, or an absolute path."""
+    if interpreter == "python3" or interpreter.startswith("$HOME"):
+        return True
+    return interpreter.startswith("/") or PureWindowsPath(interpreter).is_absolute()
+
+
+# The rejected candidate ceeb7420e spelled every interpreter with shlex.quote, so a $HOME
+# interpreter became a single-quoted literal. Its registrations are still nWave's, and a
+# reinstall replaces them; the writer's own spelling is shell_word.
+_OWNED_SPELLINGS: tuple[Spelling, ...] = (shell_word, shlex.quote)
+
+
 def owned(entry: object, event: str, host: str) -> bool:
-    """True only for an entry equal to a canonical kept entry of this event and host."""
+    """True only for an entry equal to a canonical kept entry of this event and host.
+
+    Canonical means one of the spellings nWave has written (``_OWNED_SPELLINGS``) for the
+    same interpreter; a foreign handler, or an entry that differs in any other field, is not.
+    """
     if not isinstance(entry, dict):
         return False
     command = _entry_command(entry)
     if not isinstance(command, str):
         return False
     match = _REGISTERED_COMMAND.search(command)
-    if match is None or match["event"] != event or match["host"] != host:
+    if match is None or match["host"] != host:
+        return False
+    if host != "copilot" and match["event"] != event:
         return False
     try:
-        interpreter = shlex.split(match["interpreter"])[0]
+        interpreter = _shell_word_value(match["interpreter"])
     except (ValueError, IndexError):
         return False
-    if not (interpreter.startswith("/") or PureWindowsPath(interpreter).is_absolute()):
+    if not _is_installed_spelling(interpreter):
         return False
+    if host == "copilot":
+        return _owned_copilot(entry, event, match["event"], interpreter)
     return any(
         key == event and entry == canonical
-        for key, canonical in entries(host, interpreter)
+        for spell in _OWNED_SPELLINGS
+        for key, canonical in entries(host, interpreter, spell)
+    )
+
+
+def _owned_copilot(
+    entry: dict[str, Any], key: str, command_event: str, interpreter: str
+) -> bool:
+    """True for a Copilot entry equal to a canonical one under the event key ``key``.
+
+    The command names the kept event, or the camelCase key an earlier nWave wrote (the old spelling the hook
+    CLI refuses); both are nWave's, so a reinstall replaces the old one instead of keeping it beside the new.
+    """
+    kept = next(
+        (event for event in COPILOT_EVENTS if copilot_event_key(event) == key), None
+    )
+    if kept is None or command_event not in (kept, key):
+        return False
+    return any(
+        entry == _copilot_entry(interpreter, spell, command_event)
+        for spell in _OWNED_SPELLINGS
     )
 
 
@@ -208,12 +338,46 @@ def _without_owned(existing: list[Any], event: str, host: str) -> list[Any]:
     return kept
 
 
+def _wrapped_copilot(document: dict[str, Any]) -> dict[str, Any]:
+    """The Copilot document with its event map under the top-level ``hooks`` object.
+
+    An earlier nWave wrote the event map at the top level, which Copilot rejects ("hooks must be an object").
+    Every top-level list is an event of that map: it moves under ``hooks``, before the entries already there.
+    """
+    hooks = document.get("hooks", {})
+    if not isinstance(hooks, dict):
+        raise ValueError('"hooks" in the copilot hook file is not an object')
+    legacy = {key: value for key, value in document.items() if isinstance(value, list)}
+    if not legacy:
+        return document
+    moved = dict(hooks)
+    for key, value in legacy.items():
+        present = moved.get(key, [])
+        if not isinstance(present, list):
+            raise ValueError(f"{key!r} in the copilot hook file is not a list")
+        moved[key] = value + present
+    rest = {key: value for key, value in document.items() if key not in legacy}
+    return {**rest, "hooks": moved}
+
+
+def refusal_by_host(document: dict[str, Any], host: str) -> str | None:
+    """Why the host would reject this hook document, or None. Only Copilot validates the shape of its file."""
+    if host == "copilot" and not isinstance(document.get("hooks"), dict):
+        return (
+            "Copilot rejects this file (hooks: hooks must be an object): the event map must sit "
+            'under a top-level "hooks" object'
+        )
+    return None
+
+
 def merge(document: dict[str, Any], host: str, interpreter: str) -> dict[str, Any]:
     """The host document with the kept entries replaced; every other entry is kept."""
     result: dict[str, Any] = deepcopy(document)
+    if host == "copilot":
+        result = _wrapped_copilot(result)
     if host == "cursor":
         result.setdefault("version", 1)
-    container = result if host == "copilot" else result.setdefault("hooks", {})
+    container = result.setdefault("hooks", {})
     wanted: dict[str, list[dict[str, Any]]] = {}
     for key, entry in entries(host, interpreter):
         wanted.setdefault(key, []).append(entry)
@@ -236,7 +400,9 @@ def merge(document: dict[str, Any], host: str, interpreter: str) -> dict[str, An
 def without_registrations(document: dict[str, Any], host: str) -> dict[str, Any]:
     """The host document with every kept registration removed; every other entry is kept."""
     result: dict[str, Any] = deepcopy(document)
-    container = result if host == "copilot" else result.get("hooks")
+    if host == "copilot":
+        result = _wrapped_copilot(result)
+    container = result.get("hooks")
     if not isinstance(container, dict):
         return result
     for key in sorted(container):

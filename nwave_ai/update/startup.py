@@ -41,8 +41,8 @@ def _idle_root(cwd: Path) -> tuple[Path | None, str]:
             entry.name != "logs" for entry in des_dir.iterdir()
         ):
             return None, "DES work state is present and may still be in progress"
-        feature_dir = root / "docs" / "feature"
-        if feature_dir.exists() and any(feature_dir.iterdir()):
+        feature_directory = root / "docs" / "feature"
+        if feature_directory.exists() and any(feature_directory.iterdir()):
             return (
                 None,
                 "feature work state is present and wave completion is not established",

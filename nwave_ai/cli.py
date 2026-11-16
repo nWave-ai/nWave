@@ -729,6 +729,15 @@ def _warn_without_jev_key(consent: str | None) -> None:
         print(jev_access.render(warning), file=sys.stderr)
 
 
+def _guidance_refusal(project_root: Path) -> str:
+    """Pure: the WHAT, WHY and HOW line for a folder that is not an nWave project."""
+    return (
+        f"WHAT: the guidance files CLAUDE.md and AGENTS.md were not written to {project_root}.\n"
+        "WHY: this folder is not an nWave project, and guidance is written only where nWave is enabled.\n"
+        "HOW: run nwave-ai project enable --yes in that folder, then run nwave-ai install again."
+    )
+
+
 def _declare_project_jev(
     project_root: Path, home_dir: Path, *, interactive: bool
 ) -> None:
@@ -855,6 +864,7 @@ def _handle_install(args: list[str]) -> int:
     from scripts.install.install_nwave import (
         NWaveInstaller,
         _resolve_platform_override,
+        platform_refusal,
     )
 
     platform = "auto"
@@ -863,6 +873,10 @@ def _handle_install(args: list[str]) -> int:
             platform = arg.split("=", 1)[1]
         elif arg == "--platform" and index + 1 < len(pass_through_args):
             platform = pass_through_args[index + 1]
+    refusal = platform_refusal(platform)
+    if refusal is not None:
+        print(refusal, file=sys.stderr)
+        return 2
     ownership_preflight = NWaveInstaller(
         dry_run=True, platform_override=_resolve_platform_override(platform)
     )
@@ -888,8 +902,11 @@ def _handle_install(args: list[str]) -> int:
         return result
 
     # Project guidance belongs to the caller's project for every resolved host,
-    # independently of which host-specific assets the installer provisions.
-    if sync_project_guidance:
+    # independently of which host-specific assets the installer provisions. It is
+    # written only where nWave is enabled: a folder that is not a project keeps its files.
+    if sync_project_guidance and not _observe_project_activation(caller_project_root):
+        print(_guidance_refusal(caller_project_root))
+    elif sync_project_guidance:
         try:
             _sync_project_claude_section(
                 "enable", caller_project_root, assume_yes=non_interactive
@@ -1124,10 +1141,6 @@ class _NativeHost:
     name: str
     config_dir: Path
 
-    @property
-    def is_present(self) -> bool:
-        return self.config_dir.exists()
-
     def verify(self, claude_dir: Path) -> list:
         """Run this host's verifiers and return their ``PluginResult`` list."""
         from scripts.install import verify_nwave
@@ -1142,8 +1155,25 @@ class _NativeHost:
         return [plugin.verify(context) for plugin in _verifying_plugins(self.name)]
 
 
-def _present_native_hosts() -> list[_NativeHost]:
-    """Native hosts whose configuration directory exists, in report order."""
+def _recorded_native_platforms() -> frozenset[str]:
+    """The platform names the last install recorded as selected; empty when none is recorded."""
+    install = read_global_config(_get_config_dir()).get("install")
+    if not isinstance(install, dict):
+        return frozenset()
+    platforms = install.get("target_platforms")
+    if not isinstance(platforms, list):
+        return frozenset()
+    return frozenset(str(platform) for platform in platforms)
+
+
+def _selected_native_hosts() -> list[_NativeHost]:
+    """Native hosts the last install selected, in report order.
+
+    A configuration folder that merely exists proves nothing: a host the install never
+    selected is not reported, and a selected host is reported even when its folder is
+    missing, because that is a failure the user needs to see. The selection is the
+    install's own record, install.target_platforms.
+    """
     try:
         from nwave_ai.upgrade_shell import copilot_config_dir, cursor_config_dir
         from scripts.install.plugins.opencode_common import opencode_config_dir
@@ -1155,6 +1185,7 @@ def _present_native_hosts() -> list[_NativeHost]:
     except ImportError:
         return []
 
+    selected = _recorded_native_platforms()
     hosts = (
         _NativeHost("codex", codex_config_dir()),
         _NativeHost("cursor", cursor_config_dir(Path.home())),
@@ -1163,7 +1194,7 @@ def _present_native_hosts() -> list[_NativeHost]:
         _NativeHost("opencode", opencode_config_dir()),
         _NativeHost("copilot", copilot_config_dir(Path.home())),
     )
-    return [host for host in hosts if host.is_present]
+    return [host for host in hosts if host.name in selected]
 
 
 def _report_native_platform_status(hosts: list[_NativeHost], claude_dir: Path) -> bool:
@@ -1267,7 +1298,7 @@ def _handle_doctor(args: list[str]) -> int:
         return 2
 
     context = DoctorContext.from_defaults()
-    native_hosts = _present_native_hosts()
+    native_hosts = _selected_native_hosts()
     # Claude Code files are demanded only of a Claude Code installation. With
     # no Claude profile on disk and a native host installed, they belong to a
     # host that was never installed; with nothing installed at all the doctor

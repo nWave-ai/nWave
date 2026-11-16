@@ -25,6 +25,8 @@ from nwdes.shell.ports import Unreadable
 
 
 WORKSPACE_PREFIX = "nwdes-examine-"
+# FILE_ATTRIBUTE_REPARSE_POINT: a symbolic link, junction or mount point (Windows documents the value 0x400).
+FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 
 
 def _git(root, arguments):
@@ -139,9 +141,114 @@ def _open_declared(root, relative):
     refused with no_descriptor_walk and no handle: the examiner never checks a path by name and then
     runs it by name. status is ok or the cause of the refusal; the handle is None unless ok.
     """
+    if packets.on_windows():
+        return _open_declared_windows(root, relative)
     if not _descriptor_walk_supported():
         return "no_descriptor_walk", None
     return _open_by_descriptors(root, relative)
+
+
+def _windows_name(path):
+    """A ComponentFact for one name on Windows, or the status of why the name cannot be read."""
+    try:
+        status = os.lstat(path)
+    except OSError as error:
+        return _BY_ERRNO.get(error.errno, "unreadable")
+    attributes = getattr(status, "st_file_attributes", 0)
+    return packets.ComponentFact(
+        is_reparse=bool(attributes & FILE_ATTRIBUTE_REPARSE_POINT),
+        is_directory=stat.S_ISDIR(status.st_mode),
+        is_regular=stat.S_ISREG(status.st_mode),
+    )
+
+
+def _windows_facts(root, relative):
+    """The WindowsFacts of a declared path, or the status of the first name that cannot be read."""
+    parts = relative.split("/")
+    current = Path(root)
+    directories = []
+    for part in parts[:-1]:
+        current = current / part
+        found = _windows_name(current)
+        if isinstance(found, str):
+            return found
+        if found.is_reparse:
+            return "reparse_point"
+        directories.append(found)
+    final = _windows_name(current / parts[-1])
+    if isinstance(final, str):
+        return final
+    return packets.WindowsFacts(
+        tuple(directories), final, parts[-1].lower().endswith(".exe")
+    )
+
+
+def _windows_unchanged(root, relative, first):
+    """'ok' when the path still names the file held as first, with no reparse point; else the refusal status."""
+    facts = _windows_facts(root, relative)
+    if isinstance(facts, str):
+        return facts
+    decided = packets.windows_declared_status(facts)
+    if decided != "ok":
+        return decided
+    if not packets.same_file(
+        first, packets.file_identity(os.lstat(Path(root) / relative))
+    ):
+        return "changed"
+    return "ok"
+
+
+def _open_declared_windows(root, relative):
+    """(status, handle) for a declared executable on Windows. The name is checked for reparse points and the file is
+    opened and held for the run. No share mode is set, so another process may delete or rewrite it while the run holds
+    it; this is not verified on Windows.
+    """
+    facts = _windows_facts(root, relative)
+    if isinstance(facts, str):
+        return facts, None
+    decided = packets.windows_declared_status(facts)
+    if decided != "ok":
+        return decided, None
+    try:
+        handle = os.open(
+            Path(root) / relative, os.O_RDONLY | getattr(os, "O_BINARY", 0)
+        )
+    except OSError as error:
+        return _BY_ERRNO.get(error.errno, "unreadable"), None
+    return "ok", handle
+
+
+def _run_declared_windows(root, plan):
+    """Run the declared executable on Windows: the file is held open, compared with the path just before the start,
+    and started by its path. The note says what the guarantee holds and what it does not."""
+    status, handle = _open_declared_windows(root, plan.executable)
+    if handle is None:
+        return checked(
+            None, (packets.executable_defect(plan.executable, status, plan.remedy),)
+        )
+    try:
+        first = packets.file_identity(os.fstat(handle))
+        verdict = _windows_unchanged(root, plan.executable, first)
+        if verdict == "changed":
+            return checked(
+                None, (packets.executable_changed(plan.executable, plan.remedy),)
+            )
+        if verdict != "ok":
+            return checked(
+                None,
+                (packets.executable_defect(plan.executable, verdict, plan.remedy),),
+            )
+        sys.stderr.write(packets.windows_probe_note(plan.executable))
+        sys.stderr.flush()
+        result = _start(plan, executable=str(Path(root) / plan.executable))
+    except OSError as error:
+        return checked(
+            None,
+            (packets.executable_launch_failure(plan.executable, error, plan.remedy),),
+        )
+    finally:
+        os.close(handle)
+    return _pass_through(result, plan.candidate)
 
 
 def _declared_status(root, relative):
@@ -548,6 +655,8 @@ def _run_declared(root, plan):
     is started through /dev/fd/N, the very file the descriptor walk checked. Where the system refuses
     that start for permission, the same file is verified again and started by its path; a file that
     changed or became a link in between is refused and not started."""
+    if packets.on_windows():
+        return _run_declared_windows(root, plan)
     status, handle = _open_declared(root, plan.executable)
     if handle is None:
         return checked(

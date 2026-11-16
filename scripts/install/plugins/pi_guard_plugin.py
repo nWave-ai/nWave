@@ -31,8 +31,10 @@ from scripts.install.plugins.guard_extension import (
     render_guard_extension,
 )
 from scripts.shared.install_paths import (
+    hook_interpreter_warning,
     pi_extensions_dir,
     resolve_python_command_for_spawn,
+    resolve_python_path_for_shell,
 )
 
 
@@ -71,6 +73,9 @@ class PiGuardExtensionPlugin(InstallationPlugin):
                 "HOW: restore nWave/templates/ from the nWave package and rerun the installer."
             )
         python = resolve_python_command_for_spawn()
+        warning = hook_interpreter_warning(resolve_python_path_for_shell())
+        if warning is not None:
+            context.logger.warn_once(warning)
         runtime = self._runtime_root()
         probe_failure = self._probe_runtime(python, runtime)
         if probe_failure is not None:

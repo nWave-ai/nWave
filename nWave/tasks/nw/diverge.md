@@ -83,7 +83,7 @@ Flux loads `brainstorming` skill. Frames HMW question, applies SCAMPER lenses, s
 Flux loads `taste-evaluation` skill. Applies DVF filter, scores surviving options on 4 taste criteria with locked weights, produces weighted ranking and recommendation with dissenting case. Gate G4 validates completeness and traceability.
 
 **Peer Review:**
-After Phase 4 gates pass, Flux invokes `nw-diverger-reviewer` (Prism) to validate all 5 dimensions, reading `request.md` itself. Max 2 revision iterations before handoff. Relay the returned wording to the requester as returned, `[new]` markers included.
+After Phase 4 gates pass, Flux invokes `nw-diverger-reviewer` (Prism) to validate all 5 dimensions, reading `request.md` itself. Max 2 revision iterations before handoff. Relay the reviewed `## For the requester` section of recommendation.md to the requester as written, `[new]` markers included.
 
 
 ## Success Criteria
@@ -95,6 +95,7 @@ After Phase 4 gates pass, Flux invokes `nw-diverger-reviewer` (Prism) to validat
 - [ ] All surviving options scored on all 4 taste criteria with locked weights
 - [ ] Recommendation traceable to scoring matrix (no "feels right" overrides)
 - [ ] Dissenting case documented for second-place option
+- [ ] recommendation.md carries the `## For the requester` section, reviewed before relay
 - [ ] Peer review approved by nw-diverger-reviewer
 - [ ] Handoff accepted by nw-product-owner (DISCUSS wave)
 
@@ -134,7 +135,7 @@ DISCOVER evidence present for a validated problem. Flux re-reads the returned pr
 ```
 /nw-diverger rate-limiting
 ```
-No DISCOVER artifacts. Flux works from project-brief.md and direct conversation. Extracts job via 5 Whys from "we need rate limiting" to strategic level. Creates `docs/product/jobs.yaml` (SSOT bootstrap). Proceeds through all 4 phases.
+No DISCOVER artifacts. The host writes `request.md` from the conversation and project-brief.md (`requester-verbatim` only for text the requester wrote; anything else `host-summary`); Flux works from that. Extracts job via 5 Whys from "we need rate limiting" to strategic level. Creates `docs/product/jobs.yaml` (SSOT bootstrap). Proceeds through all 4 phases.
 
 ### Example 3: Skip validation (DIVERGE not needed)
 ```

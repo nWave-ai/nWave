@@ -15,7 +15,12 @@ import os
 import sys
 from pathlib import Path
 
-from nwave_ai.hooks.registration import HOOK_FILE, interpreter_for_shell, merge
+from nwave_ai.hooks.registration import (
+    HOOK_FILE,
+    interpreter_for_shell,
+    merge,
+    refusal_by_host,
+)
 from nwave_ai.upgrade_shell import (
     Changed,
     Occupied,
@@ -28,7 +33,12 @@ from scripts.install.plugins.base import (
     InstallContext,
     PluginResult,
 )
-from scripts.shared.install_paths import codex_config_dir, is_durable_interpreter_path
+from scripts.shared.install_paths import (
+    codex_config_dir,
+    hook_interpreter_warning,
+    is_durable_interpreter_path,
+    resolve_python_path_for_shell,
+)
 
 
 _PLATFORM_HOST = {
@@ -51,9 +61,19 @@ class HooksPlugin(InstallationPlugin):
     def native_interpreter(self) -> str:
         return str(Path(self._interpreter or sys.executable).absolute())
 
-    @property
-    def interpreter(self) -> str:
-        return interpreter_for_shell(self.native_interpreter, windows=self._windows)
+    def hook_interpreter(self) -> tuple[str, str | None]:
+        """The interpreter the hook files name, and a warning when that spelling is machine specific.
+
+        The spelling is the shared one (resolve_python_path_for_shell): "$HOME/..." under HOME, the
+        absolute path of the installing interpreter elsewhere, and never python3. The warning comes
+        from hook_interpreter_warning. An explicit interpreter, given by a caller, is kept as given.
+        """
+        if self._interpreter is not None:
+            return interpreter_for_shell(
+                self.native_interpreter, windows=self._windows
+            ), None
+        spelled = resolve_python_path_for_shell(windows=self._windows)
+        return spelled, hook_interpreter_warning(spelled)
 
     def _targets(self, context: InstallContext) -> list[tuple[str, Path]]:
         home = Path.home()
@@ -75,7 +95,9 @@ class HooksPlugin(InstallationPlugin):
         ]
 
     def install(self, context: InstallContext) -> PluginResult:
-        interpreter = self.interpreter
+        interpreter, warning = self.hook_interpreter()
+        if warning is not None:
+            context.logger.warn_once(warning)
         native = self.native_interpreter
         if not is_durable_interpreter_path(native):
             message = (
@@ -137,7 +159,7 @@ class HooksPlugin(InstallationPlugin):
         )
 
     def verify(self, context: InstallContext) -> PluginResult:
-        interpreter = self.interpreter
+        interpreter, _warning = self.hook_interpreter()
         for host, path in self._targets(context):
             try:
                 if not path.is_file():
@@ -145,6 +167,9 @@ class HooksPlugin(InstallationPlugin):
                 document = json.loads(path.read_text(encoding="utf-8"))
                 if not isinstance(document, dict):
                     raise ValueError("top level is not a JSON object")
+                refused = refusal_by_host(document, host)
+                if refused is not None:
+                    raise ValueError(refused)
                 if merge(document, host, interpreter) != document:
                     raise ValueError("kept nWave hooks missing or stale")
             except (OSError, ValueError) as error:

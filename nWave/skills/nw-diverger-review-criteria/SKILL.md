@@ -202,8 +202,9 @@ Read the requester's words only from the host-written `docs/feature/{id}/diverge
 - Decision statement or recommendation.md (top-3 headings included) uses a coined handle or cites any handle as a label (`nw-requester-words` rule 5)
 - A new term left unmarked at a mention rule 4 requires
 - Any text for the requester attributes a host-summary-only or coined term to the requester (rule 6; a phrase also in a `requester-verbatim` block is the requester's)
+- recommendation.md has no `## For the requester` section
 
-**PASS signal**: Explicit decision statement phrased by mechanism: "Proceed with [the mechanism], assuming [key risk] is acceptable." Coined handles appear only in options-raw.md headings and the taste-evaluation.md scoring table; every new term is marked `[new]` at the mentions rule 4 requires.
+**PASS signal**: Explicit decision statement phrased by mechanism: "Proceed with [the mechanism], assuming [key risk] is acceptable." The `## For the requester` section passes the same checks as the rest of recommendation.md. Coined handles appear only in options-raw.md headings and the taste-evaluation.md scoring table; every new term is marked `[new]` at the mentions rule 4 requires.
 
 ---
 

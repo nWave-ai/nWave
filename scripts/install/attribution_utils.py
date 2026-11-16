@@ -152,6 +152,18 @@ def _resolve_python_path() -> str:
     return resolve_python_path_for_shell()
 
 
+def _double_quoted_body(value: str) -> str:
+    """Escape a shell value for the inside of a double-quoted word the template provides.
+
+    The characters special inside double quotes are escaped; a leading "$HOME" stays unescaped so
+    the shell expands it.
+    """
+    prefix = ""
+    if value.startswith("$HOME/"):
+        prefix, value = "$HOME", value[len("$HOME") :]
+    return prefix + re.sub(r'(["$`\\])', r"\\\1", value)
+
+
 def _resolve_hooks_dir() -> Path:
     """Resolve effective git hooks directory.
 
@@ -371,10 +383,10 @@ def install_attribution_hook(config_dir: Path, hooks_dir: Path) -> Path:
             # Rename existing user hook to .nwave-original
             shim_path.rename(original_path)
 
-    # Resolve paths for shim template, with shell-safety validation
-    python_cmd = _resolve_python_path()
-    if _SHELL_UNSAFE.search(python_cmd):
-        python_cmd = "python3"  # fallback to safe default
+    # The template double-quotes {{PYTHON_CMD}}; the value is escaped for that context, and a $HOME
+    # prefix stays for the shell to expand. There is no python3 fallback: a bare python3 may not
+    # import nwave_ai at commit time (card t-0423, t-0425).
+    python_cmd = _double_quoted_body(_resolve_python_path())
     hook_script_path = str(hook_dest)
     if _SHELL_UNSAFE.search(hook_script_path):
         hook_script_path = str(config_dir / "hooks" / _HOOK_SCRIPT_NAME)

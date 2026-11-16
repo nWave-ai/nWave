@@ -59,7 +59,7 @@ disable-model-invocation: true
 37. A count assertion names its population and compares to it (`len(found) == len(expected_ids)`); a partition asserts that its parts sum to the whole; "nothing found" differs in output from a broken case.
 
 ## File layout
-1. One type per file. A file holds one type and the methods that belong to it. A file with several types is split, so that the file system is the map of the code.
+1. One type per file. A file holds one type and the methods that belong to it. In new code each type gets its own file. An existing file with several types is brought to this whole section only when DESIGN declares a prefactoring move for it because the slice changes it; execute that move as declared, in a separate commit before the behaviour change, and leave every other existing file as it is.
 2. Folders group types by concept inside the hexagonal layout: domain, application, and infrastructure with ports and adapters. A folder names a concept, never a mechanism such as `Utils`, `Helpers` or `Managers`.
 3. File, folder and type names follow the convention of the language of the file (table below). A file named after one type carries that type's exact name.
 4. A sum type and its variants stay in one file. Variants are not split into separate files.

@@ -107,7 +107,7 @@ def merge_feature_destinations(
         )
         for wave, template in templates.items()
     }
-    feature_dir = resolved["discuss"].rsplit("/", 1)[0] + "/"
+    feature_directory = resolved["discuss"].rsplit("/", 1)[0] + "/"
     if isinstance(feature_documents, dict):
         for wave, entry in feature_documents.items():
             if (
@@ -123,11 +123,11 @@ def merge_feature_destinations(
             path = safe_relative_path(
                 entry["destination"], f"feature {feature_id} {wave} destination"
             )
-            if not path.startswith(feature_dir):
+            if not path.startswith(feature_directory):
                 raise FeatureDocumentsInvalid(
                     "FeatureDestinationOutsideFeature",
-                    f"{path} is outside this feature's directory {feature_dir}",
-                    f"place the document under {feature_dir}",
+                    f"{path} is outside the feature directory {feature_directory}",
+                    f"place the document under the feature directory {feature_directory}",
                 )
             resolved[wave] = path
     if len(set(resolved.values())) != len(resolved):

@@ -348,6 +348,10 @@
 
 - [nw-fp-haskell](nw-fp-haskell.md) — Haskell language-specific patterns, GADTs, type classes, and effect systems
 
+## nw-fp-hexagonal-architecture
+
+- [nw-fp-hexagonal-architecture](nw-fp-hexagonal-architecture.md) — Hexagonal architecture patterns with pure core and side-effect shell for functional codebases
+
 ## nw-fp-kotlin
 
 - [nw-fp-kotlin](nw-fp-kotlin.md) — Kotlin language-specific patterns with Arrow, Raise DSL, and coroutine-based effects
@@ -367,6 +371,10 @@
 ## nw-fp-typescript
 
 - [nw-fp-typescript](nw-fp-typescript.md) — TypeScript language-specific patterns with fp-ts/Effect, discriminated unions, and railway-oriented error handling
+
+## nw-fp-usable-design
+
+- [nw-fp-usable-design](nw-fp-usable-design.md) — Naming conventions, API ergonomics, and usability patterns for functional code
 
 ## nw-futuristic-color-typography
 

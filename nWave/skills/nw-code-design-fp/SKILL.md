@@ -255,6 +255,10 @@ rawInput
    closed the class WITHOUT establishing why the module had loaded twice — and a
    fix that does not depend on that answer is a design fix, not a patch.
 
+## Architectural and contract tests
+
+Apply the architectural and contract test rules of `nw-code-design-oo` (section 7) to the pure core and its effect shell, over the laws listed in `nw-design` (architectural and contract test applicability): effects stay in the shell, the core stays pure, and the layout law of `nw-code-craftsmanship` holds.
+
 ## Cross-cutting invariants (load them — they are not restated here)
 
 Paradigm- and role-independent rules live in ONE shipped home: `nw-cross-cutting-invariants`.

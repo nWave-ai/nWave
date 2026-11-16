@@ -554,7 +554,7 @@ def _project(
 
 
 def _product_sources(ports: DocumentPorts, repo_root, directory):
-    """The three product texts as the overview reads them, and the files it cannot decode."""
+    """The two product texts as the overview reads them, and the files it cannot decode."""
     unreadable = []
     texts = {}
     for name in documents.PRODUCT_FILES:

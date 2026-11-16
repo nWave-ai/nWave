@@ -168,5 +168,6 @@ Produce `docs/feature/{feature-id}/diverge/taste-evaluation.md` and `recommendat
 2. Recommended option with rationale
 3. Dissenting case (which option the scoring almost chose instead, described by mechanism, and why)
 4. Decision for DISCUSS wave: "Proceed with [the mechanism in the requester's vocabulary; new terms marked `[new]`], assuming [key risk] is acceptable"
+5. `## For the requester` — the summary the host relays as written, from recommendation.md itself: recommended and dissent directions in plain words, written before peer review so the reviewer checks the text the requester reads; the DIVERGE-RESULT recommended/dissent lines copy it verbatim
 
 **Gate**: Recommendation must be derivable from the scoring matrix. Any mismatch between scores and recommendation must be explicitly justified with weight adjustment.

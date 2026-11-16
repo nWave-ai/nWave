@@ -144,8 +144,11 @@ python scripts/install/update_nwave.py --dry-run
 Backups are managed by `BackupManager` in `install_utils.py`. Every
 `install_nwave.py` and `uninstall_nwave.py` run creates a timestamped
 `~/.claude/backups/nwave-<type>-<timestamp>/` snapshot of the existing
-agents/, commands/, and manifests. Retention keeps the most recent N
-(default 10, override via `~/.nwave/global-config.json:backups.max_count`).
+agents/, commands/, and manifests. After that backup is written completely, the install keeps
+the newest three backups of `~/.claude/backups/` and removes the older `nwave-<type>-<timestamp>`
+folders it made; a folder it cannot remove is named in a warning and does not fail the install.
+The summary line says how many were removed and kept. `backups.max_count` in
+`~/.nwave/config.json` is not read; when it is present the install names it in a warning.
 
 ```bash
 # Restore from the most recent nWave backup

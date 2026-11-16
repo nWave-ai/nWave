@@ -25,7 +25,12 @@ from scripts.install.attribution_utils import (
 )
 from scripts.install.host_attribution import (
     AttributionPreference,
+    CommitMessageFallback,
     HostAttributionPolicy,
+)
+from scripts.shared.install_paths import (
+    hook_interpreter_warning,
+    resolve_python_path_for_shell,
 )
 
 from .base import InstallationPlugin, InstallContext, PluginResult
@@ -158,15 +163,20 @@ class AttributionPlugin(InstallationPlugin):
         The mechanism is installed even while the preference is disabled (it
         checks the saved preference when a commit is made, so enabling later
         starts marking). Nothing is reported for a disabled preference, and an
-        unavailable mechanism is a warning, never an installation failure.
+        unavailable mechanism is a warning, never an installation failure. A working mechanism is
+        a summary line: it says how that host's commits get marked, which the user needs to know.
         """
         for mechanism in self._policy.mechanisms_in(repository):
             in_force = mechanism.install(config_dir)
+            if isinstance(mechanism, CommitMessageFallback):
+                shim_warning = hook_interpreter_warning(resolve_python_path_for_shell())
+                if shim_warning is not None:
+                    context.logger.warn_once(shim_warning)
             if not preference.is_enabled:
                 continue
             message = f"  {in_force.report()}"
             if in_force.works:
-                context.logger.info(message)
+                context.logger.summary(message)
                 continue
             context.logger.warn(message)
             print(message, file=sys.stderr)
