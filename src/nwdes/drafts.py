@@ -541,6 +541,7 @@ class Remove:
     path: tuple[str | int, ...]
     at: int | None = None
     identity: str | None = None
+    amendment: object = None
 
 
 @dataclass(frozen=True)
@@ -968,10 +969,18 @@ def _role_verbs(kind, policy=None):
         fields = tuple(row.role_field(group) for group in groups)
         exclusive = (("shared", "in"),) if row.place in ("records", "model") else ()
         name = row.name + " " if row.name else ""
+        # A retirement of a published promise declares its authority and reason; the write checks the published record.
         remove_fields = (
             ()
             if row.key is not None
             else (RoleField("at", INTEGER), RoleField("id", h.LINE))
+        ) + (
+            (
+                RoleField("amendment-authority", h.TEXT),
+                RoleField("amendment-reason", h.TEXT),
+            )
+            if kind == "product" and row.name == "promise"
+            else ()
         )
         return (
             RoleVerb(
@@ -1150,10 +1159,19 @@ def prepare_edit(kind, verb, values, previous=None, policy=None):
     if row.key is not None:
         path = (*path, values[row.key.name])
     if verb.endswith("remove"):
+        authority, reason = (
+            values.get("amendment-authority"),
+            values.get("amendment-reason"),
+        )
+        amendment = (
+            h.Record((("authority", authority), ("reason", reason)))
+            if authority is not None and reason is not None
+            else None
+        )
         return (
-            Remove(path)
+            Remove(path, amendment=amendment)
             if row.key is not None
-            else Remove(path, values.get("at"), values.get("id"))
+            else Remove(path, values.get("at"), values.get("id"), amendment)
         )
     required = row.required_problems(values)
     if required:
@@ -1246,7 +1264,55 @@ def _replace_at(data, path, transform):
     )
 
 
+def _selected_promise(draft, edit):
+    """The draft promise row an edit selects: the row of its --id, or the row at its one-based --at position.
+
+    A removal by position retires the row it names, so the guard and the recorder read the row here, never only
+    the identity."""
+    rows = draft.get("promises", ())
+    if edit.identity is not None:
+        return next(
+            (
+                row
+                for row in rows
+                if isinstance(row, Mapping) and row.get("id") == edit.identity
+            ),
+            None,
+        )
+    if type(edit.at) is int and 1 <= edit.at <= len(rows):
+        return rows[edit.at - 1]
+    return None
+
+
+def _with_retirement(draft, row, amendment):
+    """The draft with the removed published row kept as a retirement, carrying its authority and reason."""
+    retired = h.Record(
+        (
+            *((name, value) for name, value in row.items() if name != "amendment"),
+            ("amendment", amendment),
+        )
+    )
+    return h.Record(
+        (
+            *((name, value) for name, value in draft.items() if name != "retired"),
+            ("retired", (*tuple(draft.get("retired", ())), retired)),
+        )
+    )
+
+
 def apply_edit(draft, edit, previous=None):
+    if isinstance(edit, Replace) and edit.path == ("promises",):
+        selected = _selected_promise(draft, edit)
+        identity = selected.get("id") if selected is not None else None
+        defects = h.unauthorised_promise_change(previous, identity, edit.value)
+        if defects:
+            return checked(None, defects)
+    if isinstance(edit, Remove) and edit.path == ("promises",):
+        selected = _selected_promise(draft, edit)
+        identity = selected.get("id") if selected is not None else None
+        defects = h.unauthorised_promise_retirement(previous, identity, edit.amendment)
+        if defects:
+            return checked(None, defects)
     if isinstance(edit, Add) and edit.issued_prefix:
         number = draft[edit.counter]
         row = h.Record((("id", edit.issued_prefix + str(number)), *edit.value.items()))
@@ -1345,6 +1411,19 @@ def apply_edit(draft, edit, previous=None):
         return (*rows[:index], *rows[index + 1 :])
 
     result = _replace_at(draft, edit.path, change)
+    if isinstance(result, Refused):
+        return result
+    if (
+        isinstance(edit, Remove)
+        and edit.path == ("promises",)
+        and edit.amendment is not None
+    ):
+        selected = _selected_promise(draft, edit)
+        if (
+            selected is not None
+            and h.published_promise_content(previous, selected.get("id")) is not None
+        ):
+            return _with_retirement(result, selected, edit.amendment)
     return result
 
 

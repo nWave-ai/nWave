@@ -153,7 +153,7 @@ host-only install; that is not a defect of that install.
 
 ## Per-host guides
 
-- **Codex CLI** — agents and skills; the host drives nwdes and runs the
+- **Codex CLI** — agents, skills and hooks; the host drives nwdes and runs the
   declared verification commands; installation is not evidence that a
   delivery has passed. Explicit installation:
   `nwave-ai install --platform codex`. Details:
@@ -442,8 +442,8 @@ marketplace install.
 
 ## What Gets Installed
 
-The Claude target installs agents, commands, skills and templates under
-`~/.claude/` (or the selected Claude config directory). Those assets become
+The Claude target installs agents, commands, skills, templates and utility scripts under
+`~/.claude/` (or the selected Claude config directory), and its hook registrations in `settings.json`. Those assets become
 visible after a restart. Other targets install their native host assets; see
 the [vendor support matrix](../vendor-support.md) for the per-host list.
 

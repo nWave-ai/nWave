@@ -62,6 +62,10 @@ EVENT_NAMES: tuple[str, ...] = tuple(dict.fromkeys(row.event for row in HOOK_EVE
 COPILOT_EVENTS: tuple[str, ...] = ("PreToolUse",)
 
 
+#: The kept events Cursor registers. Cursor reads a camelCase key (preToolUse); the command keeps the kept name.
+CURSOR_EVENTS: tuple[str, ...] = ("PreToolUse",)
+
+
 def copilot_event_key(event: str) -> str:
     """The key Copilot reads for a kept event name: the same name with a lower-case first letter."""
     return event[:1].lower() + event[1:]
@@ -77,7 +81,9 @@ def _kept_event(event: str) -> str:
     return event
 
 
-#: Hosts that receive kept registrations (fact F419).
+#: Hosts that receive kept registrations (fact F419). pi and omp are not listed: their installers write TypeScript guard
+#: extensions that are fully rewritten from a template on each install, so they hold no stale nWave entry (checked by
+#: reading their code only, not by running them).
 HOSTS: tuple[str, ...] = ("claude", "codex", "cursor", "copilot")
 
 #: Matcher of the shell registration on Codex, Cursor and Copilot (fact F419).
@@ -143,6 +149,21 @@ def hook_command(
 _REGISTERED_COMMAND = re.compile(
     r'(?P<interpreter>"(?:[^"\\]|\\.)*"|\'[^\']*\'|[^\s\'"]+)'
     r" -m nwave_ai\.hooks (?P<event>[A-Za-z]+) --host (?P<host>[a-z]+)"
+)
+
+# The Claude guard wrapper of a plain command, built by the writer's own template: the plain command appears twice,
+# and a whole Claude command is owned only when both occurrences are the same plain command.
+_GUARD_SLOT = "\x00plain-command\x00"
+_GUARD_PREFIX, _GUARD_MIDDLE, _GUARD_SUFFIX = build_guard_command(_GUARD_SLOT).split(
+    _GUARD_SLOT
+)
+_GUARDED_COMMAND = re.compile(
+    re.escape(_GUARD_PREFIX)
+    + r"(?P<plain>.+)"
+    + re.escape(_GUARD_MIDDLE)
+    + r"(?P=plain)"
+    + re.escape(_GUARD_SUFFIX),
+    re.DOTALL,
 )
 
 
@@ -212,9 +233,13 @@ def entries(
         }
         return (("PreToolUse", group),)
     if host == "cursor":
-        command = hook_command(interpreter, "preToolUse", host, spell)
-        entry = {"command": command, "matcher": CURSOR_MATCHER, "timeout": 30}
-        return (("preToolUse", entry),)
+        return tuple(
+            (
+                copilot_event_key(event),
+                _cursor_entry(interpreter, spell, _kept_event(event)),
+            )
+            for event in CURSOR_EVENTS
+        )
     if host == "copilot":
         return tuple(
             (
@@ -224,6 +249,14 @@ def entries(
             for event in COPILOT_EVENTS
         )
     raise ValueError(f"unknown host {host!r}")
+
+
+def _cursor_entry(
+    interpreter: str, spell: Spelling, command_event: str
+) -> dict[str, Any]:
+    """Cursor entry of one registration: the flat command entry under the camelCase key."""
+    command = hook_command(interpreter, command_event, "cursor", spell)
+    return {"command": command, "matcher": CURSOR_MATCHER, "timeout": 30}
 
 
 def _copilot_entry(
@@ -257,60 +290,66 @@ def _is_installed_spelling(interpreter: str) -> bool:
     return interpreter.startswith("/") or PureWindowsPath(interpreter).is_absolute()
 
 
-# The rejected candidate ceeb7420e spelled every interpreter with shlex.quote, so a $HOME
-# interpreter became a single-quoted literal. Its registrations are still nWave's, and a
-# reinstall replaces them; the writer's own spelling is shell_word.
-_OWNED_SPELLINGS: tuple[Spelling, ...] = (shell_word, shlex.quote)
-
-
 def owned(entry: object, event: str, host: str) -> bool:
-    """True only for an entry equal to a canonical kept entry of this event and host.
+    """True only for an entry whose whole command is an nWave command of this host and of ``event``.
 
-    Canonical means one of the spellings nWave has written (``_OWNED_SPELLINGS``) for the
-    same interpreter; a foreign handler, or an entry that differs in any other field, is not.
+    The whole command must be ``<interpreter> -m nwave_ai.hooks EVENT --host HOST`` with the interpreter spelled the
+    way an install writes it, or, for Claude's guarded rows, the guard wrapper an install writes around that command.
+    Nothing may come before or after it. The matcher, the timeout and the interpreter path do not decide ownership:
+    an older nWave install wrote them differently, and an entry that points at a deleted environment is still nWave's.
+    A foreign command that only contains the mark text (``echo '<mark>'``, ``<mark>; echo x``) is not owned.
     """
     if not isinstance(entry, dict):
         return False
     command = _entry_command(entry)
     if not isinstance(command, str):
         return False
-    match = _REGISTERED_COMMAND.search(command)
+    plain = _plain_command(command, host)
+    if plain is None:
+        return False
+    match = _REGISTERED_COMMAND.fullmatch(plain)
     if match is None or match["host"] != host:
         return False
-    if host != "copilot" and match["event"] != event:
+    if not _is_installed_word(match["interpreter"]):
         return False
+    if host in ("copilot", "cursor"):
+        return _is_kept_camel_key(event, match["event"], host)
+    return match["event"] == event
+
+
+def _plain_command(command: str, host: str) -> str | None:
+    """The plain nWave command a whole entry command runs: itself, or for Claude the guard wrapper around it."""
+    if host == "claude":
+        guarded = _GUARDED_COMMAND.fullmatch(command)
+        if guarded is not None:
+            return guarded["plain"]
+    return command
+
+
+def _is_installed_word(token: str) -> bool:
+    """True when the interpreter word is exactly one spelling an install writes for an installed interpreter path.
+
+    The word must be the quoting of its own value by one of the writer's spellings, so a word that only resembles
+    an install's (extra quotes, a shell operator inside double quotes) is refused.
+    """
     try:
-        interpreter = _shell_word_value(match["interpreter"])
+        value = _shell_word_value(token)
     except (ValueError, IndexError):
         return False
-    if not _is_installed_spelling(interpreter):
+    if not _is_installed_spelling(value):
         return False
-    if host == "copilot":
-        return _owned_copilot(entry, event, match["event"], interpreter)
-    return any(
-        key == event and entry == canonical
-        for spell in _OWNED_SPELLINGS
-        for key, canonical in entries(host, interpreter, spell)
-    )
+    return token in {shell_word(value), shlex.quote(value)}
 
 
-def _owned_copilot(
-    entry: dict[str, Any], key: str, command_event: str, interpreter: str
-) -> bool:
-    """True for a Copilot entry equal to a canonical one under the event key ``key``.
+def _is_kept_camel_key(key: str, command_event: str, host: str) -> bool:
+    """True when ``key`` is the camelCase key of a kept event and the command names that event or that key.
 
     The command names the kept event, or the camelCase key an earlier nWave wrote (the old spelling the hook
     CLI refuses); both are nWave's, so a reinstall replaces the old one instead of keeping it beside the new.
     """
-    kept = next(
-        (event for event in COPILOT_EVENTS if copilot_event_key(event) == key), None
-    )
-    if kept is None or command_event not in (kept, key):
-        return False
-    return any(
-        entry == _copilot_entry(interpreter, spell, command_event)
-        for spell in _OWNED_SPELLINGS
-    )
+    events = COPILOT_EVENTS if host == "copilot" else CURSOR_EVENTS
+    kept = next((event for event in events if copilot_event_key(event) == key), None)
+    return kept is not None and command_event in (kept, key)
 
 
 def _without_owned(existing: list[Any], event: str, host: str) -> list[Any]:
@@ -367,6 +406,27 @@ def refusal_by_host(document: dict[str, Any], host: str) -> str | None:
             "Copilot rejects this file (hooks: hooks must be an object): the event map must sit "
             'under a top-level "hooks" object'
         )
+    return _refused_event(document)
+
+
+def _refused_event(document: object) -> str | None:
+    """A nWave command in the document that names an event the hook CLI refuses (it exits 2), or None."""
+    if isinstance(document, dict):
+        return next(
+            (found for value in document.values() if (found := _refused_event(value))),
+            None,
+        )
+    if isinstance(document, list):
+        return next(
+            (found for value in document if (found := _refused_event(value))), None
+        )
+    if isinstance(document, str):
+        match = _REGISTERED_COMMAND.search(document)
+        if match is not None and match["event"] not in EVENT_NAMES:
+            return (
+                f"the command names the event {match['event']!r}, which the hook CLI refuses (exit 2, "
+                f"every tool denied); it accepts {', '.join(EVENT_NAMES)}"
+            )
     return None
 
 

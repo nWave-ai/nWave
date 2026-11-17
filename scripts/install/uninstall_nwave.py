@@ -1137,6 +1137,12 @@ class NWaveUninstaller:
         try:
             from scripts.install.plugins.codex_agents_plugin import CodexAgentsPlugin
             from scripts.install.plugins.codex_skills_plugin import CodexSkillsPlugin
+            from scripts.install.plugins.copilot_agents_plugin import (
+                CopilotAgentsPlugin,
+            )
+            from scripts.install.plugins.copilot_skills_plugin import (
+                CopilotSkillsPlugin,
+            )
             from scripts.install.plugins.opencode_agents_plugin import (
                 OpenCodeAgentsPlugin,
             )
@@ -1149,6 +1155,8 @@ class NWaveUninstaller:
         except ImportError:
             from plugins.codex_agents_plugin import CodexAgentsPlugin
             from plugins.codex_skills_plugin import CodexSkillsPlugin
+            from plugins.copilot_agents_plugin import CopilotAgentsPlugin
+            from plugins.copilot_skills_plugin import CopilotSkillsPlugin
             from plugins.opencode_agents_plugin import OpenCodeAgentsPlugin
             from plugins.opencode_commands_plugin import OpenCodeCommandsPlugin
             from plugins.opencode_skills_plugin import OpenCodeSkillsPlugin
@@ -1157,6 +1165,8 @@ class NWaveUninstaller:
         for plugin in (
             CodexSkillsPlugin(),
             CodexAgentsPlugin(),
+            CopilotAgentsPlugin(),
+            CopilotSkillsPlugin(),
             OpenCodeSkillsPlugin(),
             OpenCodeAgentsPlugin(),
             OpenCodeCommandsPlugin(),

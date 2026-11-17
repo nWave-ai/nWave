@@ -212,6 +212,7 @@ class ManifestPluginConfig:
     noun: str
     installed_key: str
     host_name: str = "OpenCode"
+    suffix: str = ".md"
 
 
 def uninstall_with_manifest(
@@ -221,7 +222,7 @@ def uninstall_with_manifest(
     """Manifest-driven uninstall shared between OpenCode commands + agents plugins.
 
     Reads the manifest from target_dir, removes each item listed under
-    ``installed_key`` (file = ``<name>.md`` in target_dir), then deletes the
+    ``installed_key`` (file = ``<name><suffix>`` in target_dir, suffix ``.md`` unless configured), then deletes the
     manifest itself. Items not in the manifest are preserved (user-created).
 
     Args:
@@ -257,7 +258,7 @@ def uninstall_with_manifest(
         installed = manifest.get(installed_key, [])
         removed_count = 0
         for item_name in installed:
-            item_file = target_dir / f"{item_name}.md"
+            item_file = target_dir / f"{item_name}{config.suffix}"
             if item_file.exists():
                 item_file.unlink()
                 removed_count += 1
@@ -340,9 +341,9 @@ def verify_with_manifest(
         missing: list[str] = []
         verified_count = 0
         for item_name in installed:
-            item_file = target_dir / f"{item_name}.md"
+            item_file = target_dir / f"{item_name}{config.suffix}"
             if not item_file.exists():
-                missing.append(f"{item_name}.md not found")
+                missing.append(f"{item_name}{config.suffix} not found")
             else:
                 verified_count += 1
 

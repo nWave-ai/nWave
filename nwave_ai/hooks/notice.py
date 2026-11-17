@@ -344,14 +344,31 @@ def handle_session_start(registration: object | None = None) -> int:
         notice if not update_context else f"{notice}\n\n{update_context}"
     )
 
-    print(
-        json.dumps(
-            {
-                "hookSpecificOutput": {
-                    "hookEventName": HOOK_EVENT_NAME,
-                    "additionalContext": additional_context,
-                }
-            }
-        )
-    )
+    output: dict[str, object] = {
+        "hookSpecificOutput": {
+            "hookEventName": HOOK_EVENT_NAME,
+            "additionalContext": additional_context,
+        }
+    }
+    update_notice = _update_notice() if startup else ""
+    if update_notice:
+        output["systemMessage"] = update_notice
+    print(json.dumps(output))
     return 0
+
+
+def _update_notice() -> str:
+    """The one-line update notice for the user, read from the local cache only; any failure says nothing."""
+    try:
+        from datetime import date
+
+        import nwave_ai
+        from nwave_ai.update.permissions import nwave_home, update_notice_enabled
+        from nwave_ai.update.release_notice import notice_line, read_cache
+
+        home = nwave_home()
+        if home is None or not update_notice_enabled():
+            return ""
+        return notice_line(nwave_ai.__version__, read_cache(home, date.today()))
+    except Exception:
+        return ""

@@ -1,6 +1,6 @@
 # Tutorial: Delivering the Feature
 
-**Time**: ~20 minutes (9 steps)
+**Time**: ~20 minutes (8 steps)
 **Platform**: macOS, Linux, or Windows
 **Prerequisites**: Python 3.11+, Claude Code with nWave installed, [Tutorial 8](../tutorial-distill/) completed
 **What this is**: A hands-on walkthrough of `/nw-deliver` on a real multi-component feature. You will watch the delivery pipeline implement your bookmark CLI against the acceptance tests from Tutorial 8, guided by the hexagonal architecture from Tutorial 7.
@@ -41,7 +41,7 @@ A fully implemented bookmark CLI -- domain logic, CLI adapter, and SQLite storag
 
 ---
 
-## Step 1 of 9: Confirm Your Starting Point (~1 minute)
+## Step 1 of 8: Confirm Your Starting Point (~1 minute)
 
 You should be in the `bookmark-cli` project from Tutorial 8, with acceptance tests committed.
 
@@ -77,7 +77,7 @@ docs/feature/bookmark-cli/design/architecture-design.md
 
 ---
 
-## Step 2 of 9: Launch the Delivery (~1 minute)
+## Step 2 of 8: Launch the Delivery (~1 minute)
 
 In Claude Code, type:
 
@@ -103,7 +103,7 @@ The architect takes 30-60 seconds. It reads your acceptance tests to know what "
 
 ---
 
-## Step 3 of 9: Read the Architecture-Guided Roadmap (~2 minutes)
+## Step 3 of 8: Read the Architecture-Guided Roadmap (~2 minutes)
 
 While the delivery runs (or after it completes), find the roadmap:
 
@@ -163,7 +163,7 @@ This is the key difference from Tutorial 1. The architect did not invent an arbi
 
 ---
 
-## Step 4 of 9: Watch the Domain Layer Build (~5 minutes)
+## Step 4 of 8: Watch the Domain Layer Build (~5 minutes)
 
 The software crafter now executes each roadmap step through strict TDD. You will see phases scroll by:
 
@@ -197,7 +197,7 @@ the host must observe the declared RED and GREEN runs.
 
 ---
 
-## Step 5 of 9: Watch the Adapters Build (~4 minutes)
+## Step 5 of 8: Watch the Adapters Build (~4 minutes)
 
 After the domain is solid, the crafter moves to the adapter steps:
 
@@ -224,7 +224,7 @@ After the last adapter step, your walking skeleton scenario (the end-to-end test
 
 ---
 
-## Step 6 of 9: The Adversarial Review (~2 minutes)
+## Step 6 of 8: The Adversarial Review (~2 minutes)
 
 After all steps execute, the reviewer agent inspects the implementation:
 
@@ -248,35 +248,11 @@ If the reviewer requests changes, the crafter fixes them automatically. You will
 
 > **If you see "CHANGES_REQUESTED"**: This is normal. The reviewer may ask for a missing edge case test or flag a mock placed in the wrong layer. The crafter handles it. Watch for the follow-up commit.
 
-*Next: mutation testing validates that your tests catch real bugs.*
-
----
-
-## Step 7 of 9: Mutation Testing (~2 minutes)
-
-After review, the pipeline runs mutation testing:
-
-```
-● Running mutation testing...
-  Mutating src/bookmark_cli/domain/services.py
-  Mutating src/bookmark_cli/domain/bookmark.py
-  Mutating src/bookmark_cli/adapters/sqlite_repository.py
-
-  Kill rate: 87% (target: 80%)
-  Status: PASSED
-```
-
-Mutation testing makes small changes to your production code (like changing `>` to `>=`) and checks whether your tests catch them. If they do, the mutant is "killed." The quality gate requires 80% or higher.
-
-> **If kill rate is below 80%**: The pipeline asks the crafter to add tests for the surviving mutants. You will see additional test commits. This is automatic -- no action needed from you.
-
-> **If you want to inspect surviving mutants**: After the pipeline completes, check `docs/feature/bookmark-cli/deliver/mutation-report.md` for details on which mutations survived and why.
-
 *Next: you will verify the final result yourself.*
 
 ---
 
-## Step 8 of 9: Verify the Result (~2 minutes)
+## Step 7 of 8: Verify the Result (~2 minutes)
 
 The pipeline finishes with the finalize phase, archiving artifacts to `docs/evolution/`. Now verify everything yourself.
 
@@ -330,7 +306,7 @@ You should see the saved bookmark in the search results.
 
 ---
 
-## Step 9 of 9: The Complete Wave (~1 minute)
+## Step 8 of 8: The Complete Wave (~1 minute)
 
 Check the evolution document:
 
@@ -344,7 +320,7 @@ You should see:
 bookmark-cli.md
 ```
 
-This is the permanent record of the delivery -- roadmap, quality gates passed, mutation testing results.
+This is the permanent record of the delivery -- roadmap, quality gates passed, and review results.
 
 ### What You Built
 
@@ -384,8 +360,8 @@ DISCOVER         DIVERGE          DISCUSS          DESIGN           DEVOPS      
  real?"           should we go?"   we build?"       build it?"       deploy it?"      look like?"      quality gates"
 
 Evidence-based   Design explore   User stories +   Hexagonal arch   CI/CD pipeline   Acceptance       Domain-first
-validation       + recommendation acceptance       + ADRs +         + infra +        tests + walking  TDD + review +
-                 (optional)       criteria         diagrams         observability    skeleton         mutation test
+validation       + recommendation acceptance       + ADRs +         + infra +        tests + walking  TDD + review
+                 (optional)       criteria         diagrams         observability    skeleton
 
 Tutorial 4       Tutorial 5       Tutorial 6       Tutorial 7       Tutorial 10      Tutorial 8       This tutorial
 ```
@@ -400,6 +376,7 @@ Each wave constrained the next. Requirements shaped the architecture. Architectu
 - **Run it again on a different feature** -- Add a new feature to the bookmark CLI (e.g., "bookmark export to markdown") by running through tutorials 5-8 again
 - **Read the evolution document** -- `docs/evolution/bookmark-cli.md` traces every decision. Compare it to your architecture document to see how closely the implementation followed the plan
 - **[Tutorial 3: Understanding the Delivery Pipeline](../tutorial-delivery-pipeline/)** -- If you want to understand each phase in more detail
+- **[Tutorial 13: Validating Your Test Suite](../tutorial-mutation-testing/)** -- Run `/nw-mutation-test` on demand for a feature-scoped check. A project may schedule the same run in its own CI; the delivery pipeline does not run it.
 
 ---
 
@@ -413,7 +390,6 @@ Each wave constrained the next. Requirements shaped the architecture. Architectu
 | Roadmap has many more steps than expected | The architect breaks work into small, testable increments. More steps means more granularity, not more complexity. |
 | Crafter stuck on RED for more than 5 minutes | The step may be too large for one TDD cycle. Let it continue -- the crafter often needs multiple attempts. If it truly hangs, press Ctrl+C and run `/nw-deliver` again. It resumes from the last committed step. |
 | Review requests changes repeatedly (3+ rounds) | The pipeline stops after 2 rounds. Review the requested changes manually and fix them, then run `/nw-deliver` again. |
-| Mutation kill rate below 80% after retries | Check `docs/feature/bookmark-cli/deliver/mutation-report.md`. Some surviving mutants are semantically equivalent (the change does not affect behavior). If the gap is small, this may be acceptable. |
 | `pytest` cannot find tests after delivery | Make sure `pytest-bdd` is installed: `pip install pytest-bdd`. Also check that `conftest.py` exists in the test directory. |
 | Import errors when running the CLI | The module path depends on what the crafter created. Check `setup.py` or `pyproject.toml` for the package name and entry points. |
 | Want to start fresh | Run `git log --oneline` to find the commit before delivery started, then `git reset --hard <commit>` and run `/nw-deliver` again. |

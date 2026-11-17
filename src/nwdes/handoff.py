@@ -410,8 +410,11 @@ def table(item, key="S", *, total=False, key_shape=""):
 REWORK = record(("delta", "reason"), delta=TEXT, reason=TEXT)
 WORK = record(("size", "value"), size=enum("S", "M", "L"), value=TEXT, rework=REWORK)
 WORK_PATCH = replace(WORK, required=())
+# A human-authorised narrowing or change of one promise: who declared it and why. It belongs to the text it was
+# recorded with: a promise set that carries no amendment removes it.
+AMENDMENT = record(("authority", "reason"), authority=TEXT, reason=TEXT)
 PROMISE = choice(
-    Outcome=record(("text",), identity="P", text=TEXT),
+    Outcome=record(("text",), identity="P", text=TEXT, amendment=AMENDMENT),
     Scenario=record(
         ("title", "given", "when", "then"),
         identity="P",
@@ -419,6 +422,23 @@ PROMISE = choice(
         given=TEXT,
         when=TEXT,
         then=TEXT,
+        amendment=AMENDMENT,
+    ),
+)
+# A published promise retired by its owner: its last text, and the authority and reason that retired it. It carries
+# no identity, so a retired id is never a live reference; it is shown to the examiner under the promises.
+RETIRED = choice(
+    Outcome=record(
+        ("id", "text", "amendment"), id=LINE, text=TEXT, amendment=AMENDMENT
+    ),
+    Scenario=record(
+        ("id", "title", "given", "when", "then", "amendment"),
+        id=LINE,
+        title=TEXT,
+        given=TEXT,
+        when=TEXT,
+        then=TEXT,
+        amendment=AMENDMENT,
     ),
 )
 SLICE = record(
@@ -432,6 +452,7 @@ SLICE = record(
 PRODUCT = record(
     ("slices",),
     promises=array(PROMISE),
+    retired=array(RETIRED),
     scope_in=array(TEXT),
     scope_out=array(TEXT),
     decisions=array(
@@ -2917,6 +2938,65 @@ def product_promise_ids(payload, previous=None):
     rows = _project_product_promises(payload, previous)
     return (
         rows if isinstance(rows, UnavailableInput) else tuple(row["id"] for row in rows)
+    )
+
+
+def published_promise_content(previous, identity):
+    """The published content of one promise, its stored text resolved through the facts, without identity and
+    amendment; None when the promise is not published."""
+    product = previous.product if previous is not None else None
+    if not isinstance(product, Mapping):
+        return None
+    for row in product.get("promises", ()):
+        if isinstance(row, Mapping) and row.get("id") == identity:
+            resolved = expanded(PROMISE, row, previous.facts)
+            return _content(
+                {key: value for key, value in resolved.items() if key != "amendment"}
+            )
+    return None
+
+
+def unauthorised_promise_change(previous, identity, value):
+    """Refuse a change of a published promise's content that declares no amendment, so a narrowing cannot be silent.
+
+    A restatement with the published content is accepted with or without flags. The rule makes a silent change
+    impossible; it does not verify who authorised a declared one. A promise that is not published has no identity
+    yet and is never refused here.
+    """
+    published = published_promise_content(previous, identity)
+    if published is None or "amendment" in value:
+        return ()
+    proposed = _content(
+        {key: item for key, item in value.items() if key != "amendment"}
+    )
+    if published == proposed:
+        return ()
+    return (
+        Defect(
+            "MissingFact: product.promises." + identity + ".amendment",
+            identity
+            + " is published, so the examiner judges its text as published. A change to it that declares no "
+            "amendment would reach the examiner as a silent narrowing.",
+            "Repeat the change with --amendment-authority TEXT and --amendment-reason TEXT, naming who authorised "
+            "it; nwdes records the authority as typed and does not verify it.",
+        ),
+    )
+
+
+def unauthorised_promise_retirement(previous, identity, amendment):
+    """Refuse the removal of a published promise that declares no amendment: a retirement is a change to published
+    authority, and the examiner must see it. A promise that is not published is never refused here."""
+    if published_promise_content(previous, identity) is None or amendment is not None:
+        return ()
+    return (
+        Defect(
+            "MissingFact: product.promises." + identity + ".amendment",
+            identity
+            + " is published, so removing it retires a promise the examiner has seen. A retirement that declares "
+            "no amendment would remove it from the examiner's promises unseen.",
+            "Repeat the remove with --amendment-authority TEXT and --amendment-reason TEXT, naming who authorised "
+            "the retirement; nwdes records the authority as typed and does not verify it.",
+        ),
     )
 
 

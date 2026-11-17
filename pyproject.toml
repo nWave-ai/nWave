@@ -35,7 +35,7 @@ path = "scripts/release/offline_wheelhouse_hook.py"
 
 [project]
 name = "nwave-ai"
-version = "4.7.0"
+version = "4.8.0"
 description = "Modern CLI installer for nwave with rich terminal UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -309,6 +309,9 @@ show_missing = true
 # Schema note (2026-08-10): mutmut 3.6 uses array-valued `source_paths` /
 # `pytest_add_cli_args_test_selection` and has no `runner`/string `paths_to_mutate` key.
 source_paths = ["scripts/install"]
+# The mutants/ tree holds the mutated sources and tests/ only. tests/conftest.py loads scripts/ci/ files from the
+# project root, so without this the stats run dies with FileNotFoundError and no mutant is scored.
+also_copy = ["scripts/ci"]
 pytest_add_cli_args_test_selection = ["tests/"]
 
 [tool.mypy]
@@ -451,7 +454,7 @@ line-ending = "auto"
 [tool.commitizen]
 # WARNING: the tool.commitizen.version is tracking the LAST STABLE version and is updated by the pipeline!
 # DON'T TOUCH IT!
-version = "4.7.0"
+version = "4.8.0"
 version_scheme = "pep440"
 version_files = [
     "nWave/VERSION",

@@ -200,8 +200,9 @@ def _windows_unchanged(root, relative, first):
 
 def _open_declared_windows(root, relative):
     """(status, handle) for a declared executable on Windows. The name is checked for reparse points and the file is
-    opened and held for the run. No share mode is set, so another process may delete or rewrite it while the run holds
-    it; this is not verified on Windows.
+    opened and held for the run with no share mode of its own. A real Windows run observed that the holding process
+    could not rename or delete the file, and that an open for writing by that process was allowed; another process was
+    not tested (see WINDOWS_GUARANTEE in packets).
     """
     facts = _windows_facts(root, relative)
     if isinstance(facts, str):
@@ -592,8 +593,8 @@ def run(root, workspace, action, arguments):
                     (
                         Defect(
                             "ReadRefused: " + str(arguments),
-                            "The public path does not exist or is not a regular file.",
-                            "List the public directory with nwdes examine read --workspace W and choose an existing path.",
+                            "The path is not in the public projection of this workspace, or is not a regular file in it.",
+                            "List the public directory with nwdes examine read --workspace W and choose a listed path; a document outside the projection becomes readable only when the operator declares it under examine.public in the committed .nwave/config.json and rebuilds the examine prompt.",
                         ),
                     ),
                 )

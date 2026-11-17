@@ -181,6 +181,7 @@ try:
     from nwave_ai.upgrade_shell import real_port
     from scripts.install.context_detector import detect_target_platforms
     from scripts.install.host_attribution import HostAttributionPolicy
+    from scripts.install.install_areas import areas_phrase
     from scripts.install.install_lock import (
         EXIT_INSTALL_LOCK_HELD,
         InstallLockHeld,
@@ -207,6 +208,8 @@ try:
         CodexSkillsPlugin,
     )
     from scripts.install.plugins.commands_plugin import CommandsPlugin
+    from scripts.install.plugins.copilot_agents_plugin import CopilotAgentsPlugin
+    from scripts.install.plugins.copilot_skills_plugin import CopilotSkillsPlugin
     from scripts.install.plugins.dev_launchers_plugin import DevLaunchersPlugin
     from scripts.install.plugins.devin_skills_plugin import DevinSkillsPlugin
     from scripts.install.plugins.guard_extension import (
@@ -248,6 +251,7 @@ except ImportError:
     sys.path.insert(0, _project_root_entry)
     from context_detector import detect_target_platforms
     from host_attribution import HostAttributionPolicy
+    from install_areas import areas_phrase
     from install_lock import (
         EXIT_INSTALL_LOCK_HELD,
         InstallLockHeld,
@@ -273,6 +277,8 @@ except ImportError:
         CodexSkillsPlugin,
     )
     from plugins.commands_plugin import CommandsPlugin
+    from plugins.copilot_agents_plugin import CopilotAgentsPlugin
+    from plugins.copilot_skills_plugin import CopilotSkillsPlugin
     from plugins.dev_launchers_plugin import DevLaunchersPlugin
     from plugins.devin_skills_plugin import DevinSkillsPlugin
     from plugins.guard_extension import (
@@ -1665,6 +1671,14 @@ class NWaveInstaller:
             codex_agents = CodexAgentsPlugin()
             codex_agents.set_dependencies(["codex-skills"])
             registry.register(codex_agents)
+        # GitHub Copilot CLI plugins (registered when copilot is a target platform): the public skills and the public
+        # roles it reads from its own folder. The hook file is registered by the host-neutral hooks plugin (t-0466, t-0467).
+        if target_platforms and "copilot" in target_platforms:
+            copilot_skills = CopilotSkillsPlugin()
+            registry.register(copilot_skills)
+            copilot_agents = CopilotAgentsPlugin()
+            copilot_agents.set_dependencies(["copilot-skills"])
+            registry.register(copilot_agents)
         # OMP's tool_call event accepts returned refusals; Python owns decisions.
         if target_platforms and "omp" in target_platforms:
             omp_skills = OmpSkillsPlugin()
@@ -2409,12 +2423,12 @@ def show_title_panel(logger: Logger, dry_run: bool = False) -> None:
 
 # Reloadable hosts in display order: (platform, label, what the reopen loads).
 _RELOAD_HOSTS: tuple[tuple[str, str, str], ...] = (
-    ("claude_code", "Claude Code", "agents, skills, and commands"),
-    ("codex", "Codex", "agents and skills"),
-    ("opencode", "OpenCode", "agents, skills, and commands"),
-    ("cursor", "Cursor", "hooks"),
-    ("copilot", "GitHub Copilot", "hooks"),
-    ("devin", "Devin", "skills"),
+    ("claude_code", "Claude Code", f"{areas_phrase('claude_code')}, and commands"),
+    ("codex", "Codex", areas_phrase("codex")),
+    ("opencode", "OpenCode", f"{areas_phrase('opencode')}, and commands"),
+    ("cursor", "Cursor", areas_phrase("cursor")),
+    ("copilot", "GitHub Copilot", areas_phrase("copilot")),
+    ("devin", "Devin", areas_phrase("devin")),
 )
 
 
@@ -2444,7 +2458,7 @@ def restart_hint_lines(target_platforms: set[str] | frozenset[str] | None) -> li
         lines.append("  💡 In the activated project, ask /nw-buddy what to do first.")
     if "omp" in hosts:
         lines.append(
-            "  ⚠️  Quit and reopen OMP to load agents, skills, commands and the tool_call guard extension."
+            f"  ⚠️  Quit and reopen OMP to load {areas_phrase('omp')} (the tool_call guard extension), and commands."
         )
         lines.append(
             "  💡 In OMP, dispatch nw-* task agents via Task, or invoke /skill:nw-<name>."
@@ -2518,15 +2532,19 @@ _HOST_PLATFORMS: tuple[tuple[str, str, str], ...] = (
     (
         "claude-code",
         "claude_code",
-        "agents, /nw-* commands, skills, templates and hooks",
+        f"{areas_phrase('claude_code')}, and /nw-* commands",
     ),
-    ("opencode", "opencode", "agents, /nw-* commands and skills"),
-    ("codex", "codex", "skills, TOML agents and hooks"),
-    ("cursor", "cursor", "hooks only"),
-    ("copilot", "copilot", "hooks only"),
-    ("omp", "omp", "agents, skills, /nw-* commands and the tool_call guard extension"),
-    ("devin", "devin", "skills only"),
-    ("pi", "pi", "nWave tool_call guard extension only (pi.dev)"),
+    ("opencode", "opencode", f"{areas_phrase('opencode')}, and /nw-* commands"),
+    ("codex", "codex", f"{areas_phrase('codex')} (TOML agents)"),
+    ("cursor", "cursor", areas_phrase("cursor")),
+    ("copilot", "copilot", areas_phrase("copilot")),
+    (
+        "omp",
+        "omp",
+        f"{areas_phrase('omp')} (the tool_call guard extension), and /nw-* commands",
+    ),
+    ("devin", "devin", areas_phrase("devin")),
+    ("pi", "pi", f"{areas_phrase('pi')} (the nWave tool_call guard extension, pi.dev)"),
 )
 _PLATFORM_CHOICES: tuple[tuple[str, frozenset[str] | None, str], ...] = (
     ("auto", None, "detect installed hosts; refuses when none is found"),
@@ -2618,8 +2636,8 @@ def show_help():
     ~/.omp/agent/extensions/nwave-hooks.ts  # OMP: nWave tool_call guard
     PI_CODING_AGENT_DIR relocates OMP skills, commands and extensions.
     {OMP_GUARD_CEILING}
-    # OMP installs no hooks: OMP extension events differ from Claude Code
-    # hooks, so nWave guard enforcement is not projected onto OMP.
+    # OMP's hooks are the tool_call guard extension above; its extension events differ
+    # from Claude Code hooks, so nWave guard enforcement is not projected onto OMP.
     ~/.codex/hooks.json      # Codex PreToolUse hook configuration (if codex enabled)
     ~/.agents/skills/        # Codex SKILL.md registry (if codex enabled)
     ~/.codex/agents/         # Codex TOML agents (if codex enabled)

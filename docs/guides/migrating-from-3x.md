@@ -17,7 +17,7 @@ Use this guide if you installed the public `nwave-ai` 3.x package. **v3.22.2 is 
 
 Upgrade the **`nwave-ai`** package with the same Python package manager and environment that installed it. Select a published release that includes nwdes. A local candidate wheel or source tag is not proof that the release is public. Do not switch a source checkout to a package-managed upgrade without a deliberate installation change.
 
-Then run `nwave-ai install` for your selected host, using its supported platform option. Preview it with `--dry-run` first if you need to inspect the installation; the dry run also surfaces Codex ownership-collision refusals safely before a real install. Restart that host and confirm that `nwdes --help` is available — the one `nwdes` command you run at setup. On native-skill hosts, also confirm that the installed `nw-nwdes` skill teaches the new route. On hook-only hosts such as Cursor and Copilot, use `nwdes --help` and that host's installation validation instead; no native skill is installed. The [installation guide](installation-guide/) covers host setup and recovery.
+Then run `nwave-ai install` for your selected host, using its supported platform option. Preview it with `--dry-run` first if you need to inspect the installation; the dry run also surfaces Codex ownership-collision refusals safely before a real install. Restart that host and confirm that `nwdes --help` is available — the one `nwdes` command you run at setup. On native-skill hosts, also confirm that the installed `nw-nwdes` skill teaches the new route. On hook-only hosts such as Cursor, use `nwdes --help` and that host's installation validation instead; no native skill is installed. The [installation guide](installation-guide/) covers host setup and recovery.
 
 ### What the v4 install puts on your host
 
@@ -101,4 +101,4 @@ Back up before the first v4 install; the backup reflects the installation presen
 
 Follow [First feature](tutorial-nwdes-first-feature/) for isolated command practice. Use [Deliver a feature](nwdes/deliver-feature.md) or [Fix a bug](nwdes/fix-bug.md) for real work. To isolate a feature in its own worktree, see [Use lanes](nwdes/use-lanes.md) and the [lane reference](nwdes/reference/lane.md).
 
-**Done:** the selected host has the chosen package's assets and `nwdes --help` is available. Native-skill hosts also have the installed `nw-nwdes` skill; hook-only hosts instead pass their host-specific installation validation. Each old delivery has an explicit finish-on-3.x or restart-with-nwdes decision.
+**Done:** the selected host has the chosen package's assets and `nwdes --help` is available. Native-skill hosts also have the installed `nw-nwdes` skill; hook-only hosts such as Cursor instead pass their host-specific installation validation. Each old delivery has an explicit finish-on-3.x or restart-with-nwdes decision.

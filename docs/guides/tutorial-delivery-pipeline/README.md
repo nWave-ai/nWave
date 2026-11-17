@@ -1,6 +1,6 @@
 # Tutorial: Understanding the Delivery Pipeline
 
-**Time**: ~16 minutes hands-on (12 steps)
+**Time**: ~16 minutes hands-on (11 steps)
 **Platform**: macOS, Linux, or Windows
 **Prerequisites**: [Tutorial 1](../tutorial-first-delivery/) completed (or Tutorial 2). You should have seen `/nw-deliver` run at least once.
 **What this is**: A conceptual walkthrough, not a hands-on coding tutorial. You will explore artifacts that already exist in your completed project.
@@ -20,7 +20,6 @@
 This tutorial reads artifacts produced by `/nw-deliver` in Tutorial 1 (or 2). Before starting, `cd` into the project from that tutorial and confirm the following exist (replace `<feature-id>` with your feature ID, e.g. `image-to-ascii-art`):
 
 - `docs/feature/<feature-id>/roadmap.json`
-- `docs/feature/<feature-id>/mutation/mutation-report.md`
 - The `docs/feature/<feature-id>/` directory with completed wave outputs
 
 If any are missing, complete [Tutorial 1](../tutorial-first-delivery/) first — `/nw-deliver` must have run end-to-end.
@@ -37,7 +36,7 @@ After Tutorial 1, you watched `/nw-deliver` produce working code from failing te
 
 ---
 
-## Step 1 of 12: Open Your Project (~1 minute)
+## Step 1 of 11: Open Your Project (~1 minute)
 
 Open your completed Tutorial 1 project (or Tutorial 2):
 
@@ -65,9 +64,9 @@ The delivery pipeline takes your feature description and turns it into tested, r
 
 ---
 
-## Step 2 of 12: The Pipeline at a Glance (~1 minute)
+## Step 2 of 11: The Pipeline at a Glance (~1 minute)
 
-Every `/nw-deliver` run follows a seven-phase pipeline. You do not need to memorize each phase -- just know the flow goes from planning to code to quality checks:
+Every `/nw-deliver` run follows a six-phase pipeline. You do not need to memorize each phase -- just know the flow goes from planning to code to quality checks:
 
 ```
 /nw-deliver "your feature"
@@ -76,12 +75,11 @@ Every `/nw-deliver` run follows a seven-phase pipeline. You do not need to memor
     2. EXECUTE         Writes code via TDD
     3. REFACTOR        Cleans up code
     4. REVIEW          Adversarial critique
-    5. MUTATION TEST   Validates test quality
-    6. VERIFY          Integrity check
-    7. FINALIZE        Archives artifacts
+    5. VERIFY          Integrity check
+    6. FINALIZE        Archives artifacts
 ```
 
-You will explore the important phases (roadmap, execute, review, mutation test) in the steps that follow. For now, just note where the pipeline stores its work:
+You will explore the important phases (roadmap, execute, review) in the steps that follow. For now, just note where the pipeline stores its work:
 
 - **`docs/feature/`** -- in-progress artifacts (roadmap, reports)
 - **`docs/evolution/`** -- permanent record after finalization
@@ -90,7 +88,7 @@ You will explore the important phases (roadmap, execute, review, mutation test) 
 
 ---
 
-## Step 3 of 12: Finding the Roadmap (~1 minute)
+## Step 3 of 11: Finding the Roadmap (~1 minute)
 
 The solution architect reads your tests and creates a step-by-step plan. Find it:
 
@@ -135,7 +133,7 @@ The next step explains what these fields mean.
 
 ---
 
-## Step 4 of 12: Reading the Roadmap (~1 minute)
+## Step 4 of 11: Reading the Roadmap (~1 minute)
 
 Here is what the top-level fields mean:
 
@@ -167,7 +165,7 @@ The roadmap is reviewed by an independent reviewer before execution begins. If t
 
 ---
 
-## Step 5 of 12: Roadmap Step Rules (~1 minute)
+## Step 5 of 11: Roadmap Step Rules (~1 minute)
 
 Look at the step entry from the previous example:
 
@@ -190,7 +188,7 @@ Three rules govern every step:
 
 ---
 
-## Step 6 of 12: The TDD Cycle (~2 minutes)
+## Step 6 of 11: The TDD Cycle (~2 minutes)
 
 For each roadmap step, the software crafter runs a strict TDD cycle:
 
@@ -223,7 +221,7 @@ Each commit represents a completed TDD cycle.
 
 ---
 
-## Step 7 of 12: Inside a TDD Commit (~1 minute)
+## Step 7 of 11: Inside a TDD Commit (~1 minute)
 
 Pick any commit and inspect it:
 
@@ -256,7 +254,7 @@ Two things to notice:
 
 ---
 
-## Step 8 of 12: The Adversarial Review (~2 minutes)
+## Step 8 of 11: The Adversarial Review (~2 minutes)
 
 After all steps execute and refactoring completes, an independent reviewer agent inspects the entire feature. This reviewer runs on a separate model -- it has no knowledge of the crafter's reasoning.
 
@@ -270,29 +268,11 @@ The reviewer checks three key dimensions:
 
 If the reviewer finds issues, the crafter fixes them automatically. Maximum two rounds -- after that, the workflow stops for your manual intervention.
 
-*Next: you will see how mutation testing validates your tests catch real bugs.*
-
----
-
-## Step 9 of 12: Mutation Testing (~2 minutes)
-
-Code coverage tells you which lines ran. Mutation testing tells you whether your tests would **catch a bug** on those lines.
-
-Here is how it works:
-
-1. The tool makes a small change (**mutation**) to your production code -- for example, changing `>` to `>=`
-2. It runs your tests against the mutated code
-3. If your tests **catch** the mutation (fail), the mutant is "killed" -- good. If your tests **miss** the mutation (still pass), the mutant "survived" -- your tests have a gap
-
-The **kill rate** is the percentage of mutants killed. The quality gate requires 80% or higher. Below that, the pipeline asks for more tests before proceeding.
-
-> **If mutation testing reports surviving mutants**: The report in `docs/feature/*/mutation/mutation-report.md` shows exactly which mutations survived and in which files.
-
 *Next: you will trace the full story through the git log.*
 
 ---
 
-## Step 10 of 12: Tracing the Git Log (~1 minute)
+## Step 9 of 11: Tracing the Git Log (~1 minute)
 
 Everything the pipeline did is traceable through commits. View them:
 
@@ -316,7 +296,7 @@ Each message follows the pattern `feat({feature}): {description} - step {step-id
 
 ---
 
-## Step 11 of 12: The Evolution Document (~1 minute)
+## Step 10 of 11: The Evolution Document (~1 minute)
 
 The finalize phase creates a permanent record. Find it:
 
@@ -330,20 +310,20 @@ You should see:
 image-to-ascii-art.md
 ```
 
-This evolution document contains a summary of the feature, the steps taken, quality gates passed, and mutation testing results. It is the single source of truth for what was delivered and why.
+This evolution document contains a summary of the feature, the steps taken, quality gates passed, and review results. It is the single source of truth for what was delivered and why.
 
 *Next: a summary of what you now know.*
 
 ---
 
-## Step 12 of 12: What You Now Know (~1 minute)
+## Step 11 of 11: What You Now Know (~1 minute)
 
 | Question | Answer |
 |----------|--------|
 | Who planned the work? | The solution architect, reviewed before execution |
 | Who wrote the code? | The software crafter, through strict TDD |
 | Who reviewed the code? | An independent reviewer on a separate model |
-| How do I know the tests are real? | Mutation testing -- 80%+ kill rate required |
+| How do I know the tests are real? | The declared RED and GREEN runs and the independent review; for an on-demand check, run `/nw-mutation-test` |
 | How do I trace a decision? | Git log + roadmap step IDs |
 | Can the crafter skip steps? | The host must check the declared sequence and its execution evidence; the builder does not enforce phases |
 
@@ -353,7 +333,7 @@ This evolution document contains a summary of the feature, the steps taken, qual
 
 - **Try it yourself**: Run `/nw-deliver` on a new feature in your Tutorial 1 or 2 project. This time, watch the output with the pipeline phases in mind.
 - **[Tutorial 4: From Idea to Validated Problem](../tutorial-discovery/)** -- Start from the very beginning of the nWave workflow with `/nw-discover`
-- **[Tutorial 13: Validating Your Test Suite](../tutorial-mutation-testing/)** -- Deep dive into mutation testing as a standalone tool
+- **[Tutorial 13: Validating Your Test Suite](../tutorial-mutation-testing/)** -- Deep dive into mutation testing as a standalone tool. Run `/nw-mutation-test` on demand for a feature-scoped check. A project may schedule the same run in its own CI; the delivery pipeline does not run it.
 
 ---
 
@@ -380,7 +360,6 @@ The adversarial reviewer (Step 8) checks these seven dimensions:
 | No `docs/feature/` directory | The finalize phase archives and may clean up. Check `docs/evolution/` instead. |
 | Roadmap has more steps than expected | The architect breaks work into small, testable increments. More steps = more granularity, not more complexity. |
 | Git log shows extra commits | Refactoring and review fixes produce additional commits beyond the TDD steps. |
-| Mutation report shows surviving mutants | Not a failure unless kill rate drops below 80%. Some mutations are semantically equivalent (e.g., changing an unreachable branch). |
 
 ---
 

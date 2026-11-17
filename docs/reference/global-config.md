@@ -42,7 +42,7 @@ never use the retired paths as runtime fallbacks.
   "review": { "max_rounds": 2 },
   "documentation": { "density": "...", "expansion_prompt": "..." },
   "attribution": { "enabled": true, "trailer": "..." },
-  "updates": { "check": false, "install": false, "controlled_launch": false },
+  "updates": { "check": false, "install": false, "controlled_launch": false, "notice": true },
   "model_runtime": { "default": { "provider": "...", "model": "..." }, "roles": {} }
 }
 ```
@@ -71,6 +71,14 @@ below), not global ones.
 ## Configuration keys
 
 ### `updates` (object, optional, global only)
+
+`notice` is on unless it is `false`. `nwave-ai doctor` and the session-start hook print one line when the installed
+release is older than the newest public release recorded in `.nwave/latest-release.json`. That file holds a
+version string and a date, for example `{"version": "4.7.1", "checked": "2026-11-16"}`, and nothing else. Only
+`nwave-ai update` and `nwave-ai update --check` write it, because they already contact the public package index;
+the notice reads the file and sends no request. A record older than 30 days says nothing, and a record that is not
+valid says nothing at session start while `nwave-ai doctor` reports it. If you never run `nwave-ai update`, no notice
+ever appears. Turn it off with `"updates": { "notice": false }`.
 
 `check` and `install` are independent boolean permissions, both off when
 absent. Only explicit `true` grants a permission. The retired `update_check`
@@ -148,7 +156,8 @@ the evidence only after all stages succeed. If the pinned package is missing or
 wrong, follow the reported package-owner restoration command first. Do not
 delete the marker to bypass recovery.
 
-`nwave-ai update --check` remains an explicit read-only check.
+`nwave-ai update --check` remains an explicit check that changes no installation. Like `nwave-ai update`, it
+records the newest public release it saw in `.nwave/latest-release.json` (see the notice below).
 `nwave-ai update --yes --root PATH` remains an explicit installation request;
 it is not a command to grant persistent automatic-update consent. It takes the
 replacement lock but does not establish global idle: close active work before

@@ -245,6 +245,7 @@ def _handle_update(
         )
         return 1
 
+    _remember_latest_release(latest_version)
     if is_check:
         state = (
             "update-available"
@@ -280,6 +281,24 @@ def _handle_update(
     finally:
         lease.close()
     return _report_update_outcome(outcome)
+
+
+def _remember_latest_release(latest_version) -> None:
+    """Record what this network command just learned, for the notice; a failure to write never fails the command."""
+    from datetime import date
+
+    from nwave_ai.update.permissions import nwave_home
+    from nwave_ai.update.release_notice import record_latest_release
+
+    try:
+        home = nwave_home()
+        if home is not None:
+            record_latest_release(home, latest_version, date.today())
+    except OSError as error:
+        print(
+            f"nwave-ai: the update notice cache was not written: {error}",
+            file=sys.stderr,
+        )
 
 
 def _report_update_outcome(outcome) -> int:
@@ -1318,10 +1337,40 @@ def _handle_doctor(args: list[str]) -> int:
     native_failed = not json_output and _report_native_platform_status(
         native_hosts, context.claude_dir
     )
+    if not json_output:
+        _report_update_notice()
 
     if any(not r.passed for r in results) or native_failed:
         return 1
     return 0
+
+
+def _report_update_notice() -> None:
+    """Print the one-line update notice from the local cache; a corrupt cache is reported loudly here only."""
+    from datetime import date
+
+    from nwave_ai.update.permissions import nwave_home, update_notice_enabled
+    from nwave_ai.update.release_notice import (
+        Corrupt,
+        corrupt_report,
+        notice_line,
+        read_cache,
+    )
+
+    home = nwave_home()
+    if home is None or not update_notice_enabled():
+        return
+    state = read_cache(home, date.today())
+    if isinstance(state, Corrupt):
+        print(corrupt_report(state), file=sys.stderr)
+        return
+    try:
+        installed = nwave_ai.__version__
+    except VersionResolutionError:
+        return
+    line = notice_line(installed, state)
+    if line:
+        print(line)
 
 
 # ---------------------------------------------------------------------------
@@ -2448,6 +2497,11 @@ def _handle_project(args: list[str]) -> int:
     is rejected with usage + nonzero -- both checked BEFORE any write, so a
     malformed or informational invocation can never mutate the project.
     """
+    if args[:1] == ["copilot"]:
+        from scripts.install.copilot_project import command as copilot_project_command
+
+        return copilot_project_command(args[1:], Path.cwd(), _get_project_root())
+
     if any(a in ("--help", "-h") for a in args):
         print(_PROJECT_USAGE)
         return 0

@@ -125,11 +125,27 @@ Apply `design:simplest-design-that-delivers` in `nw-cross-cutting-invariants` th
    --reason TEXT` (or `--shared`), never both. Any level L1 to L6 may be
    requested; `--move` names the follow-up change it makes easier. When the
    slice changes a file that holds several types, declare a prefactoring move
-   for it: bring the touched types to the File layout section of
-   `nw-code-craftsmanship` as a whole, behaviour unchanged, as a separate
-   commit before the behaviour change. Files the slice does not touch are
-   neither moved nor planned; a slice with no design step leaves its files as
-   they are. Use code-fact signals when the provider answers; else say it is unavailable
+   for it, as the per-file template below directs; the move brings the touched
+   types to the File layout section of `nw-code-craftsmanship` as a whole,
+   behaviour unchanged, as a separate commit before the behaviour change. Files
+   the slice does not touch are neither moved nor planned; a slice with no
+   design step leaves its files as they are. Per-file template: list every file
+   the slice touches and the top-level types each holds (read the file), then
+   answer for each file, one decision per file, never one answer for the slice:
+   does this file hold several types that are not variants of one sum type?
+   Yes: record `split-now` for this file only, and name in its move text each
+   type that moves and the new file it goes to, in a separate commit before the
+   change; a new file the move creates is never an entry of its own. Variants
+   of one sum type: record `sum-type`; they stay together. Produced by a
+   generator: record `generated`
+   and name the generator. No, because it holds one type or is new: record
+   `not-applicable` and name this file and why nothing moves. The lazy answer is
+   a single not-applicable for the whole slice; it is wrong whenever a touched
+   file answers yes, and the design is incomplete until each touched file has
+   its own decision. The honest no for a yes file is also per file: record
+   `not-applicable` for that file, name it and give the reason no move is
+   possible in this slice; the owner reads that reason, not a slice-level line.
+   Use code-fact signals when the provider answers; else say it is unavailable
    and name platform install commands. The host relays the offer; never ask
    the human or install. Read smells for the declared paradigm:
    `nw-code-design-fp`, `nw-code-design-oo`; procedural has none.

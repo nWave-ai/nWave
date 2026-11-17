@@ -22,7 +22,7 @@ If either is missing, complete [Tutorial 9: Delivering the Feature](../tutorial-
 
 A complete production readiness package -- CI/CD workflow, deployment strategy, infrastructure recommendations, and a go-live checklist -- all designed by Apex, nWave's platform architect agent.
 
-**Before**: You have a fully implemented bookmark CLI from Tutorial 8. All acceptance tests pass. The code is mutation-tested and reviewed. But you have no CI/CD pipeline, no deployment plan, no monitoring strategy, and no checklist to know when it is safe to release.
+**Before**: You have a fully implemented bookmark CLI from Tutorial 8. All acceptance tests pass. The code is reviewed. But you have no CI/CD pipeline, no deployment plan, no monitoring strategy, and no checklist to know when it is safe to release.
 
 **After**: You have a GitHub Actions workflow with quality gates at every stage. You have a deployment strategy matched to your project's risk profile. You have infrastructure recommendations for packaging and distribution. You have a production readiness checklist that tells you exactly what remains before go-live. Everything is documented and peer-reviewed.
 
@@ -254,7 +254,6 @@ The checklist covers items like:
 ### Code Quality
 - [x] All acceptance tests pass
 - [x] Unit test coverage above 80%
-- [x] Mutation testing kill rate above 80%
 - [x] Adversarial code review passed
 
 ### Packaging
@@ -388,8 +387,8 @@ DISCOVER         DISCUSS          DESIGN           DISTILL          DELIVER     
  real?"           we build?"       build it?"       look like?"      quality gates"   production"
 
 Evidence-based   User stories +   Hexagonal arch   Acceptance       Domain-first     CI/CD pipeline
-validation       acceptance       + ADRs +         tests + walking  TDD + review +   + deployment +
-                 criteria         diagrams         skeleton         mutation test    readiness
+validation       acceptance       + ADRs +         tests + walking  TDD + review     + deployment +
+                 criteria         diagrams         skeleton                          readiness
 
 Tutorial 4       Tutorial 5       Tutorial 6       Tutorial 7       Tutorial 8       This tutorial
 ```

@@ -37,6 +37,7 @@ class PublicExamination:
     workspace: "ExaminationWorkspace | None" = None
     charter: model.Record | None = None
     scope: tuple[str, str | None] = ("Project", None)
+    retired: tuple[model.Record, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -368,6 +369,9 @@ def _public_examination(handoff, workspace):
         workspace,
         _resolved(model.CHARTER, handoff.charter, handoff.facts),
         (handoff.scope.kind, getattr(handoff.scope, "id", None)),
+        retired=_resolved(
+            model.PRODUCT.index["retired"], product.get("retired", ()), handoff.facts
+        ),
     )
 
 
@@ -467,7 +471,7 @@ def _public_oracle(oracle):
     )
 
 
-def _promise(promise):
+def _promise(promise, retired=False):
     body = (
         documents.fenced(promise["text"], language="")
         if promise["kind"] == "Outcome"
@@ -481,7 +485,21 @@ def _promise(promise):
             )
         )
     )
-    return "### " + documents.escaped(promise["id"]) + "\n" + body
+    amendment = promise.get("amendment")
+    heading = documents.escaped(promise["id"]) + (" (retired)" if retired else "")
+    authority_label = "Retired by" if retired else "Authorised by"
+    return (
+        "### "
+        + heading
+        + "\n"
+        + body
+        + (
+            _labelled(authority_label, amendment["authority"])
+            + _labelled("Reason", amendment["reason"])
+            if amendment is not None
+            else ""
+        )
+    )
 
 
 def _charter(charter):
@@ -526,6 +544,7 @@ def render_examination(packet: PublicExamination):
         + ("Id: " + packet.scope[1] + "\n" if packet.scope[1] is not None else "")
         + "## Promises\n"
         + ("".join(_promise(promise) for promise in packet.promises) or "None.\n")
+        + "".join(_promise(row, retired=True) for row in packet.retired)
         + "".join(
             "## Slice "
             + documents.escaped(slice["id"])
@@ -1329,9 +1348,12 @@ WINDOWS_GUARANTEE = (
     "The examiner checks each name of a declared command's path for a reparse point and refuses one, requires the "
     "declared file to be a regular file ending in .exe, keeps that file held open for the run, and compares its identity "
     "with the path just before it starts the program by its path. The file is not pinned: the window between that "
-    "comparison and the process creation remains, in which a process with write access may rewrite the file and a "
-    "directory on the path may be renamed. The examiner sets no share mode that denies other processes write or "
-    "delete access during the run; that behaviour of Windows is not verified here."
+    "comparison and the process creation is not closed. The following was observed on a real Windows runner "
+    "(windows-latest): a real junction and a real symbolic link on the declared path were refused; a real .exe was "
+    "admitted and started; a rename and a delete of the held file were refused by Windows (PermissionError, winerror 32) "
+    "when the same process attempted them; an open for writing of the held file by that process was allowed. The "
+    "examiner sets no share mode of its own. Not observed: other Windows versions, other file systems, antivirus "
+    "software, long paths, a directory on the path being renamed, and another process opening or writing the held file."
 )
 
 
@@ -1398,20 +1420,60 @@ def windows_name_key(name):
     return "".join(_one_for_one(character) for character in name)
 
 
+# Observed on a real Windows runner (t-0463): NTFS names these lower-case characters different files from the upper-case
+# form the simple mapping gives them (dotless i from I, final sigma from sigma and capital sigma, the Georgian lower form
+# from Mtavruli). They keep themselves in the key. Other characters keep the simple mapping, which is not observed to
+# disagree with NTFS.
+_KEPT_AS_WRITTEN = frozenset(("\u0131", "\u03c2", "\u10d0"))
+
+
 def _one_for_one(character):
+    if character in _KEPT_AS_WRITTEN:
+        return character
     upper = character.upper()
     return upper if len(upper) == 1 else character
 
 
 def contained(path, root, flavour):
     """Whether path is root or lies under it. The spelling of the host decides: on Windows both separators are
-    separators and names are compared by windows_name_key, which folds letter case one character for one character;
-    on POSIX the paths are compared as written, exactly as they always were. Lexical: the adapters pass the resolved
-    paths, so no short name is expanded here, and a spelling that does not place the path under the root is refused."""
+    separators and names are compared by _windows_key, which folds letter case one character for one character and
+    drops the trailing run of dots and spaces from the LAST component only (Win32 names the final `name..` the folder
+    `name`); an intermediate component keeps its spelling, since `name../x` is not the file `name/x`. On POSIX the paths are
+    compared as written, exactly as they always were. Lexical: the adapters pass the
+    resolved paths, so no short name is expanded here, and a spelling that does not place the path under the root is
+    refused."""
     if flavour is PathFlavour.WINDOWS:
-        path = windows_name_key(path.replace("\\", "/"))
-        root = windows_name_key(root.replace("\\", "/"))
+        path = _windows_key(path)
+        root = _windows_key(root)
     return path == root or path.startswith(root.rstrip("/") + "/")
+
+
+def _windows_key(spelling):
+    """The key of a Windows path. The LAST component loses its whole trailing run of dots and spaces: Win32 names the
+    final `a..`, `a. `, `a .` and `a  ` the folder `a` (runs 43998589385, 44001327589, 44005927430). An INTERMEDIATE
+    component loses exactly one trailing dot and nothing else: `a./x` is the file `a/x`, while `a../x`, `a. /x`, `a  /x`,
+    `a .../x` and `a ./x` are not (runs 44007562795, 44009206170). The case key applies to every component. Leading and
+    inner dots and spaces are not changed; they were not observed to be."""
+    *intermediate, final = spelling.replace("\\", "/").split("/")
+    return "/".join(
+        [windows_name_key(_without_one_trailing_dot(part)) for part in intermediate]
+        + [windows_name_key(_without_trailing_dots_and_spaces(final))]
+    )
+
+
+def _without_one_trailing_dot(folder):
+    """An intermediate component without exactly one trailing dot, when a name remains before it. `.` and `..` keep
+    their meaning: a component with no name character before the dot keeps itself."""
+    if folder.endswith(".") and folder[:-1].strip(". "):
+        return folder[:-1]
+    return folder
+
+
+def _without_trailing_dots_and_spaces(folder):
+    """A folder name without its trailing run of dots and spaces. A name that is only dots and spaces keeps itself,
+    so the components `.` and `..` keep their meaning and an empty component stays empty."""
+    stripped = folder.rstrip(". ")
+    return stripped if stripped else folder
 
 
 def inspect_workspace(projection, workspace, checkout_roots, entries):

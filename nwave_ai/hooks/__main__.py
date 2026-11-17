@@ -663,6 +663,40 @@ def _route(command: str, host: str) -> None:
     sys.exit(exit_code)
 
 
+def copilot_pre_tool_use(event: str, payload: str) -> int:
+    """Copilot preToolUse: the git-stash guard for a bash call, answered in Copilot's decision shape (card t-0515).
+
+    Copilot sends toolName (lower case "bash") and toolArgs (an object) where the handlers read Claude's tool_name and
+    tool_input, so no handler saw a Copilot bash call. This adapter translates that one call, runs the stash decision
+    authority, and answers a block as permissionDecision deny with exit 0. It is the only handler that acts for Copilot;
+    every other kept handler still reads the Claude envelope and does nothing for Copilot. Anything it cannot read allows.
+    """
+    if event != "PreToolUse":
+        return 0
+    try:
+        envelope = json.loads(payload)
+    except json.JSONDecodeError:
+        return 0
+    if not isinstance(envelope, dict) or envelope.get("toolName") != "bash":
+        return 0
+    tool_args = envelope.get("toolArgs")
+    if not isinstance(tool_args, dict):
+        return 0
+    hook_input = {"tool_name": "Bash", "tool_input": tool_args}
+    block = evaluate_bash_safety_guards(hook_input, tool_args)
+    if block is None:
+        return 0
+    print(
+        json.dumps(
+            {
+                "permissionDecision": "deny",
+                "permissionDecisionReason": block.get("reason", ""),
+            }
+        )
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> None:
     """Hook entry point: parse the kept registration's event and host, resolve
     the handler action, and run it in-process."""
@@ -671,6 +705,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--host", required=True, choices=HOSTS)
     args = parser.parse_args(argv)
     payload = sys.stdin.read()
+    if args.host == "copilot":
+        sys.exit(copilot_pre_tool_use(args.event, payload))
     sys.stdin = io.StringIO(payload)
     host = "codex" if args.host == "codex" else "claude-code"
     _route(action_for(args.event, payload), host)

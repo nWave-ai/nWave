@@ -56,10 +56,11 @@ configuration; that mechanism is documented by OpenCode, not by nWave.
 
 ## Cursor, Copilot, Devin
 
-These hosts install no role agents (Cursor and Copilot are wired through
-hooks; Devin through skills only), so per-role model choice does not apply
-there. See [Vendor support](vendor-support.md) for what each host
-receives.
+Cursor installs no role agents and is wired through hooks; Devin installs
+skills only, so per-role model choice does not apply to them. Copilot installs
+its public roles as custom agents; its per-role model field is listed in the
+[CLI reference](../reference/cli.md) as documented, not verified. See
+[Vendor support](vendor-support.md) for what each host receives.
 
 ## Recording a model preference nWave can keep
 

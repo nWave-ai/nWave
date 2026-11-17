@@ -9,7 +9,7 @@ machine. This privacy policy explains what data nWave handles and how.
 
 ## No User Data Collection
 
-nWave collects no analytics, telemetry, tracking or usage reports. Workflow artifacts are stored locally. The one external service, described below, sends only the permitted request data and can be refused.
+nWave collects no analytics, telemetry, tracking or usage reports. Workflow artifacts are stored locally. The update notice stores one local file, `.nwave/latest-release.json`, holding a public version string and a date; it is written only when you run `nwave-ai update`, and the notice sends nothing. The one external service, described below, sends only the permitted request data and can be refused.
 
 ## Local-Only Storage
 

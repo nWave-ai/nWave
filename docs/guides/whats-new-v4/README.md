@@ -48,8 +48,8 @@ writes no runtime copy. Two consequences:
   There is no converter for the old roadmap and execution log.
 - Upgrading the package and rerunning `nwave-ai install` for your host
   removes the predecessor's footprint, including any legacy runtime copy a
-  3.x install left at `~/.nwave/runtime/`. Hook and plugin wiring (a hooks
-  file for Cursor and Copilot, a plugin for OpenCode, an extension for OMP)
+  3.x install left at `~/.nwave/runtime/`. Hook wiring (a hooks
+  file for Codex, Cursor and Copilot, an extension for OMP)
   remains part of what the installer deploys on those hosts.
 
 ## Other changes that touch daily use

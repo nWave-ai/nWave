@@ -43,12 +43,26 @@ _PLATFORM_AREAS: dict[str, frozenset[InstallArea]] = {
     ),
     "codex": frozenset({InstallArea.AGENTS, InstallArea.SKILLS, InstallArea.HOOKS}),
     "cursor": frozenset({InstallArea.HOOKS}),
-    "copilot": frozenset({InstallArea.HOOKS}),
+    "copilot": frozenset({InstallArea.AGENTS, InstallArea.SKILLS, InstallArea.HOOKS}),
     "opencode": frozenset({InstallArea.AGENTS, InstallArea.SKILLS}),
     "omp": frozenset({InstallArea.AGENTS, InstallArea.SKILLS, InstallArea.HOOKS}),
     "devin": frozenset({InstallArea.SKILLS}),
     "pi": frozenset({InstallArea.HOOKS}),
 }
+
+
+def platform_areas(platform: str) -> tuple[InstallArea, ...]:
+    """Pure: the areas one host receives, in the order the enum declares them."""
+    members = _PLATFORM_AREAS.get(platform, frozenset())
+    return tuple(area for area in InstallArea if area in members)
+
+
+def areas_phrase(platform: str) -> str:
+    """Pure: a host's area names read as a list, e.g. "agents, skills and hooks"."""
+    names = [area.value for area in platform_areas(platform)]
+    if len(names) < 2:
+        return "".join(names)
+    return f"{', '.join(names[:-1])} and {names[-1]}"
 
 
 def planned_areas(

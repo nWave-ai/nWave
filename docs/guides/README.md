@@ -36,9 +36,10 @@ its own on the hosts that receive nWave's skills and agents:
 | Hosts | A fresh session finds nwdes by itself? |
 |---|---|
 | Claude Code, OpenCode, OMP | Yes — skills, agents and `/nw-*` commands are installed on the host |
-| Codex | Yes — skills and agents are installed; Codex has no `/nw-*` commands |
+| Codex | Yes — skills, agents and hooks are installed; Codex has no `/nw-*` commands |
 | Devin | Partly — skills only; ask your assistant about the installed `nw-` skills |
-| Cursor, Copilot | No — hooks only; point your assistant at the guide each session |
+| Cursor | No — hooks only; point your assistant at the guide each session |
+| Copilot | No — agents, skills and hooks are installed; point your assistant at the guide each session |
 
 A person runs an `nwdes` command on purpose in three places: the `nwdes --help`
 check after install, the [First feature with nwdes](./tutorial-nwdes-first-feature/)

@@ -275,6 +275,23 @@ DEVIN_PATH_REWRITES: tuple[tuple[str, str], ...] = (
 
 DEVIN_PATH_REWRITE_EXCEPTIONS: tuple[str, ...] = ("~/.claude/lib/python",)
 
+# -- Copilot Path Rewrites (t-0467) --------------------------------------------
+#
+# GitHub Copilot CLI reads personal skills from ~/.copilot/skills/<name>/SKILL.md
+# and custom agents from ~/.copilot/agents/*.agent.md (COPILOT_HOME relocates both).
+# A role or skill body names Claude's folders; these rules point the installed text
+# at the folders the Copilot install writes. The DES runtime lib path is excepted, as
+# for Devin: skills reach it through the host-neutral pointer scheme.
+
+COPILOT_PATH_REWRITES: tuple[tuple[str, str], ...] = (
+    ("~/.claude/skills/", "~/.copilot/skills/"),
+    ("~/.claude/agents/", "~/.copilot/agents/"),
+    ("~/.claude/nWave/skills/", "~/.copilot/skills/"),
+    ("~/.claude/nWave/", "~/.copilot/"),
+)
+
+COPILOT_PATH_REWRITE_EXCEPTIONS: tuple[str, ...] = ("~/.claude/lib/python",)
+
 
 # -- OMP Agent Frontmatter Contract -------------------------------------------
 #

@@ -17,6 +17,16 @@ Product close also requires a scope-out line: record it with `nwdes product scop
 
 Check the split before closing: does every slice contribute to this one value, or did you bundle unrelated outcomes? Do not answer yes by default. Split unrelated outcomes into a separate nwdes feature new.
 
+## Human-authorised amendment of a promise
+
+A published promise changes or retires only with a declared amendment. `nwdes product promise set --id P<n>` on a promise the published record already holds must carry `--amendment-authority TEXT` and `--amendment-reason TEXT` with its new text (or the other fields of a Scenario). `nwdes product promise remove` on a published promise must carry the same two flags, whether it selects the row by `--id P<n>` or by its one-based position `--at N` in the draft; the position is resolved to the row before the rule is applied. Without both, the verb is refused with `MissingFact: product.promises.P<n>.amendment`, names the two flags, and writes nothing. A promise added in the draft has no identity until close and takes no authority. This refusal is a change to existing commands: before it, a published promise could be changed or removed without a record. The owner decision to make the flags mandatory is recorded for confirmation.
+
+A retirement stays visible. The examiner packet prints each retired promise under the promises, with its last text and its `Retired by` authority and reason, labelled as recorded. A slice cannot cite a retired promise afterwards. The replacement a human adds in the same draft (`promise add`, then a slice that cites its predicted id) needs no authority beyond the retirement's own.
+
+What the rule does and does not establish: it makes a silent change or retirement of a published promise impossible through these verbs, and the examiner sees each one with the authority and the reason as recorded. It does not make an unauthorised change impossible: nwdes records the authority exactly as the person typed it and cannot verify who that person is, so the examiner sees a declared authority, not a verified one. Each later change states its own amendment; an earlier authority is never shown for a text it did not declare.
+
+Not covered by this rule (open owner questions): slice observations, scope and decisions are not changed by this rule; the observation of a slice is shown to the examiner and may change without an amendment. Expectation rows are fixed once published; a row that cites a retired promise is withdrawn by the close and its withdrawal is reported on stdout, not in the examiner packet. Charter and public oracles are not guarded by this rule.
+
 
 ## Replacement and withdrawal
 
