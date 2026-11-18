@@ -39,6 +39,8 @@ nwdes review close --feature search --subject candidate --outcome rejected --dia
 
 Finding fields are `location`, `obligation`, `observation`, `owner`, and `remediation`. Owners are `oracle`, `design`, `implementation`, or `product`. Existing finding set/remove and open/abort verbs retain their normal semantics.
 
+`obligation` names the approved obligation or applicable rule the finding is measured against. A point that cites none is a note in the reviewer's summary, not a finding; do not record it as an obligation. nwdes does not check this.
+
 A published review carries its commit, observations and their stamps, findings, outcome and diagnostic. Close refuses `ReviewUnobserved` if no observation exists. It refuses `StaleObservation` for every observation whose commit differs from HEAD, whose recording stamp was dirty, whose close is on a dirty candidate, or, in an oracle review, whose oracle content differs from the close's. The feature directory is not dirty evidence. The oracle and its supports are judged by content, so they need not be committed. The diagnostic names all affected R IDs together. Rerun selection and tests at the reviewed commit and record them before closing again. Nothing is published on refusal.
 
 A candidate close on clean HEAD also refuses `OracleChanged: S<n>` for each slice whose oracle review was published with content, when the committed oracle or support bytes at HEAD differ from the approved bytes. Identical bytes, or a slice with no oracle review record, are not checked. The refusal publishes no candidate record; rerun the oracle review on the bytes to commit, then commit them.

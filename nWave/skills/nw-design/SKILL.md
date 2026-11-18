@@ -399,6 +399,7 @@ Self-falsification may also use native property tests or finite checks, but they
 do not replace a required formal checker. Preserve useful existing models and
 actual host limits. Missing tooling stops the affected proof; state an
 indeterminate judgment and relay the human's installation or explicit waiver choice.
+A checker timeout is not missing tooling: repair it first under `nw-solution-architect-formal-verification` item 12, and state INDETERMINATE only after the recorded repair attempts.
 Unrelated analysis may continue, but missing tools alone do not authorize an
 accepted design without the required proof. Record any human waiver
 with `decision add`, naming the affected claims and reason; the proof stays `INDETERMINATE`

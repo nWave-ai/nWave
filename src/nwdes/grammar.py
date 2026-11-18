@@ -815,6 +815,8 @@ def _role_commands(kind, policy=None):
             verb.name,
             "Close the design draft. Retain accepted ADRs through design adr add --key KEY with unchanged body; replace explicitly with --supersedes KEY and an Accepted successor."
             if kind == "design" and verb.name == "close"
+            else "Revise a published review record with open --from-current, never as the first call of a first recording. The draft starts with no observations: each observation is bound to the commit that recorded it. Record the observations again for the reviewed bytes with review observation add. The published record keeps its findings; its earlier observations stay in git history."
+            if kind == "review" and verb.name == "open"
             else "Revise authority that is already published with open --from-current, never as the first call of a first recording; the first add/set/remove creates the draft."
             if verb.name == "open"
             else "Link this slice to existing Request promises; --promise is required and repeatable. Add a justified promise with nwdes product promise add, or split unrelated outcomes into a separate nwdes feature new."

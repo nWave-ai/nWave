@@ -67,6 +67,7 @@ A review converges only against a CLOSED criterion set. Four rules, all binding.
 - **Precise instruction repair is allowed.** Change the smallest instruction bytes
   that remove a proven contradiction. State measurable claims in executable checks
   where one exists; prose may state role boundaries, ownership, or remediation.
+- **Cite the obligation.** A finding cites the approved obligation or applicable rule it is measured against. Any other point, however true, is a note or a proposal in the summary, never a blocking finding. This applies the closed criteria above; it adds no criterion.
 
 ## Design-review question set
 

@@ -158,6 +158,9 @@ wall time.
 - **Cycle targets stay targets.** The owner's 5 ± 2 minute rework target
   remains a target: it is never reported as met without an observed
   measurement, and no rule above lowers required assurance.
+- **Proposals are not obligations.** A finding that proposes new scope (a new outcome, a constraint, a completion condition or extra assurance work) and cites no approved obligation or applicable rule is a proposal. Record no obligation and dispatch no work for it. Report it to the user in your next report, then continue the agreed scope; do not stop to wait for an answer.
+- **Cite the real source of authority.** Name the source of each added obligation: the user's decision, the approved scope of the Request, or an applicable rule. An earlier agent record (a design note, a finding, a severity, a rejection, a passing check) is not a source. This is guidance, not a control: no tool checks the source.
+- **Narrowing stops added work.** When the user narrows the task or rejects added work, stop that work and have the owning role correct its records with its own verbs. Do not replace it with other assurance work.
 
 ## Bounded observed correction context
 
