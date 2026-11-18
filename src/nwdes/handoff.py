@@ -1710,48 +1710,6 @@ def _stored_requirements(raw, facts):
         *_design_requirements(raw.get("design")),
         *_acceptance_requirements(raw.get("acceptance"), facts),
         *_disposition_requirements(raw, facts),
-        *_retired_citation_defects(raw.get("acceptance")),
-    )
-
-
-def _retired_citation_defects(acceptance):
-    """A Tested row still in the retired path::name form. No verb opens a published record in that form,
-    so the refusal names the one manual edit that makes the row current; nwdes cannot make it."""
-    if not isinstance(acceptance, Mapping):
-        return ()
-    return tuple(
-        Defect(
-            f"RetiredCitation: acceptance.{identity}[{index}].disposition.test",
-            "The Tested row names its test in the retired path::name form, which this version does not read. "
-            "nwdes cannot open or repair a published record in that form, so the edit is made by hand.",
-            f"Edit the published handoff file: in acceptance.{identity}[{index}].disposition replace the test "
-            'value with test_path (the text before "::") and test (the text after "::"), keep still_passes_if, '
-            "then run nwdes acceptance open --from-current again.",
-        )
-        for identity, rows in acceptance.items()
-        if isinstance(rows, (tuple, list))
-        for index, row in enumerate(rows)
-        if _is_retired_citation(row)
-    )
-
-
-def _is_retired_citation(row):
-    disposition = row.get("disposition") if isinstance(row, Mapping) else None
-    return (
-        isinstance(disposition, Mapping)
-        and disposition.get("kind") == "Tested"
-        and "test_path" not in disposition
-        and isinstance(disposition.get("test"), str)
-        and "::" in disposition["test"]
-    )
-
-
-def _retired_row_gaps(acceptance):
-    """The generic MissingFact of each retired row's own test_path. The RetiredCitation of that row states
-    the repair, so only this gap is left out; an unrelated row's gap is reported as before."""
-    return frozenset(
-        "MissingFact: " + defect.what.removeprefix("RetiredCitation: ") + "_path"
-        for defect in _retired_citation_defects(acceptance)
     )
 
 
@@ -5057,6 +5015,48 @@ def lift_version_3(raw: Record) -> Record:
     return freeze({**current, "version": 4})
 
 
+def lift_stored_citations(raw):
+    """Read the Tested rows stored in the nwdes 4.5.0 form as their two fields.
+
+    4.5.0 kept a row's citation as one string, `path::name`, and read it by a cut at its first `::`: the
+    text before is the file, and the rest, separators included, is the name. The same cut is made here in
+    memory, so the published bytes stay as they are and the verbs write the row in the current form. A row
+    that already holds test_path, or holds no separator, is left as it is.
+    """
+    if not isinstance(raw, Mapping) or raw.get("version") != 4:
+        return raw
+    acceptance = raw.get("acceptance")
+    if not isinstance(acceptance, Mapping):
+        return raw
+    return freeze(
+        {
+            **raw,
+            "acceptance": {
+                identity: tuple(map(_lift_citation, rows))
+                if isinstance(rows, (tuple, list))
+                else rows
+                for identity, rows in acceptance.items()
+            },
+        }
+    )
+
+
+def _lift_citation(row):
+    disposition = row.get("disposition") if isinstance(row, Mapping) else None
+    if not (
+        isinstance(disposition, Mapping)
+        and disposition.get("kind") == "Tested"
+        and "test_path" not in disposition
+        and isinstance(disposition.get("test"), str)
+        and "::" in disposition["test"]
+    ):
+        return row
+    test_path, _, test = disposition["test"].partition("::")
+    return freeze(
+        {**row, "disposition": {**disposition, "test_path": test_path, "test": test}}
+    )
+
+
 def inspect_handoff(data: bytes):
     parsed = parse_json(data, "handoff", "HandoffInvalid")
     if isinstance(parsed, Refused):
@@ -5089,6 +5089,7 @@ def inspect_handoff(data: bytes):
         else NormalizedInput(raw)
     )
     raw = normalized.value
+    raw = lift_stored_citations(raw)
     if (
         not isinstance(raw, Record)
         or raw.get("schema") != "nwdes.handoff"
@@ -5197,7 +5198,6 @@ def inspect_handoff(data: bytes):
             )
         )
     )
-    retired_gaps = _retired_row_gaps(raw.get("acceptance"))
     part_problems = (
         *tuple(
             defect
@@ -5210,7 +5210,6 @@ def inspect_handoff(data: bytes):
                 True,
                 facts._index if isinstance(raw.get("facts"), Record) else None,
             )
-            if defect.what not in retired_gaps
         ),
         *_stored_requirements(raw, facts),
     )
