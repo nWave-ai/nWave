@@ -3,7 +3,7 @@
 import shlex
 from dataclasses import dataclass
 
-from nwdes import drafts
+from nwdes import commit_types, drafts
 from nwdes.contracts import Built, Refused, refuse
 
 
@@ -53,6 +53,8 @@ SINGLE_OPTIONS = (
     "observation",
     "paradigm",
     "oracle",
+    "report",
+    "mutants",
     "stimulus",
     "expected",
     "falsifier",
@@ -120,6 +122,7 @@ class Command:
     arguments: tuple[Argument, ...]
     refusals: tuple[tuple[str, str], ...]
     example: str
+    earlier_examples: tuple[str, ...] = ()
 
     @property
     def name(self) -> str:
@@ -325,6 +328,14 @@ COMMANDS = (
             Argument(
                 "--command",
                 "whole ordered single-line verification command list; the first shlex word must resolve at write time on the invoking PATH, or name an existing root-relative or absolute file; required when creating unless every target is a prose asset, then forbidden; omitted keeps the current value on --slice S",
+            ),
+            Argument(
+                "--report",
+                "root-relative path of the XML test report, one testcase per identity, that the verification command writes; optional, forbidden when every target is a prose asset. When given, the oracle approval runs the command in a copy of the checkout and records each identity the report names with its outcome; every accepted or indeterminate candidate close runs the command on the candidate and each identity must report pass. The declared command runs with your permissions; a copy is not a sandbox (no filesystem, network or child-process isolation), and the slice writes the command, so an agent can write it. Use forward slashes in the command on Windows: it is split with POSIX shell-word rules. Omitted: nothing new runs and today's whole-file rule applies unchanged",
+            ),
+            Argument(
+                "--mutants",
+                "root-relative path of a JSON list of declared mutants, each {path, old, new, targets}: a text replacement in the product (old must occur exactly once) and the identities it must make fail. Read only with --report; forbidden when every target is a prose asset. The file is an oracle file, so its bytes are approved with the rest. Every approved identity needs at least one mutant that targets it, or the approval refuses. Each mutant runs on a copy of the candidate with your permissions, under the same no-sandbox limit as --report",
             ),
             Argument(
                 "--support",
@@ -724,7 +735,7 @@ COMMANDS = (
             ),
             Argument(
                 "--type",
-                "required conventional type: feat, fix, docs, style, refactor, perf, test, build, ci, chore or revert",
+                f"conventional type, one of: {', '.join(kind.value for kind in commit_types.CommitType)}. Required for a commit that stages product code or tests. Omitted for a commit of run records or rendered documents, which takes {commit_types.RECORD_TYPE.value} (rendered documents alone take {commit_types.DOCUMENT_TYPE.value}); a release type (feat, fix, perf, refactor) on such a commit is corrected to that type, with a notice on stderr",
             ),
             Argument("--description", "required commit subject description"),
             Argument("--scope", "optional conventional commit message scope"),
@@ -745,11 +756,18 @@ COMMANDS = (
             ("UnownedFile", "an explicit path has no delivery owner"),
             ("NothingToCommit", "no owned file is selected"),
             (
+                "MissingFact",
+                "--type is omitted for a commit that stages product code or tests",
+            ),
+            (
                 "CommitRejected",
                 "Git or a hook rejected the commit; only this invocation's staged paths are unstaged",
             ),
         ),
-        "nwdes commit --feature search --role nw-software-crafter --slice S1 --type feat --scope search --description 'add search'",
+        "nwdes commit --feature search --role nw-user-examiner --description 'record the review'",
+        earlier_examples=(
+            "nwdes commit --feature search --role nw-software-crafter --slice S1 --type fix --scope search --description 'add search'",
+        ),
     ),
 )
 
@@ -957,6 +975,7 @@ def help_text(
                 *(f"{a.flag}  {a.meaning}" for a in record.arguments),
                 "Refusals:",
                 *(f"{name}  {condition}" for name, condition in record.refusals),
+                *(f"Example: {example}" for example in record.earlier_examples),
                 f"Example: {record.example}",
             )
         )
@@ -983,10 +1002,7 @@ def _inspection_signature(command):
 
 
 def commit_example(scope, role):
-    """The registry's commit form, addressed to a bundle's scope and owning role."""
-    record = next(command for command in COMMANDS if command.verb == "commit")
-    tokens = shlex.split(record.example)[2:]
-    flags = dict(zip(tokens[::2], tokens[1::2], strict=True))
+    """The bundle's commit form for a recording role: a record takes the type the shared table picks for run records."""
     return " ".join(
         (
             "nwdes commit",
@@ -995,7 +1011,7 @@ def commit_example(scope, role):
             "--role",
             shlex.quote(role),
             "--type",
-            shlex.quote(flags["--type"]),
+            commit_types.RECORD_TYPE.value,
             "--description",
             "Value",
         )

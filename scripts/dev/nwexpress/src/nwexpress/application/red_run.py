@@ -5,7 +5,10 @@ pre-feature tree exported at init, with the declared test files copied over it. 
 and read after it. A RED is accepted when every mapped test is reported failed; each other reading is refused with
 what, why and how: no report (a compile error, a missing tool or a setup stop), an unreadable report, a mapped test
 absent from the report, a mapped name that selects more than one case, a mapped test that errored, or a mapped test
-that did not fail.
+that did not fail. The RED run writes its report on the pre-feature tree, not in the repository, so once the RED is
+accepted the report is kept under the workspace and the repository results file must hold a report in which the mapped
+tests failed; a missing, empty, unreadable or failure-free results file is refused, and its how line says to copy the kept
+report over it and record again.
 """
 
 from __future__ import annotations
@@ -14,6 +17,7 @@ from pathlib import Path
 
 from nwexpress.application.red_tree import RedTree
 from nwexpress.domain.baseline import Baseline
+from nwexpress.domain.declared_path import DeclaredPath
 from nwexpress.domain.fault import Fault
 from nwexpress.domain.field import Field
 from nwexpress.domain.red_kind import RedKind
@@ -21,6 +25,9 @@ from nwexpress.domain.red_verdict import Refused, judge
 from nwexpress.domain.refusal import Refusal
 from nwexpress.domain.report_outcome import ReadReport
 from nwexpress.domain.report_status import ReportStatus
+from nwexpress.domain.results_file import judge_results
+from nwexpress.domain.results_kind import ResultsKind
+from nwexpress.domain.results_problem import ResultsProblem
 from nwexpress.domain.test_name import TestName
 from nwexpress.domain.test_run import TestRun
 from nwexpress.infrastructure.command_runner import CommandRunner
@@ -64,13 +71,14 @@ class RedRun:
         with RedTree(self._baseline, self._workspace.directory).built(
             root, declared
         ) as tree:
-            return self._run_in(field, argv, tree, report, expected, timeout_s)
+            return self._run_in(field, argv, tree, root, report, expected, timeout_s)
 
     def _run_in(  # noqa: PLR0913, PLR0917
         self,
         field: Field,
         argv: list[str],
         tree: Path,
+        root: Path,
         report: str,
         expected: list[str],
         timeout_s: int,
@@ -79,13 +87,21 @@ class RedRun:
         outcome = self._runner.run(argv, tree, timeout_s=timeout_s)
         field.check_outcome(outcome)
         written = ReportFile.read(tree, report)
+        mapped = tuple(TestName.of(item) for item in expected)
         verdict = judge(
             written,
-            tuple(TestName.of(item) for item in expected),
+            mapped,
             command_failed=outcome.exit_code not in (0, None),
         )
         if isinstance(verdict, Refused):
             raise self._refusal(field, report, verdict, outcome.exit_code, tree)
+        kept = ReportFile.keep(
+            tree,
+            report,
+            self._workspace.directory / "output",
+            f"{field.name}.report.xml",
+        )
+        self._check_results(field, root, report, kept, mapped)
         cases = written.cases if isinstance(written, ReadReport) else ()
         value: dict[str, object] = dict(outcome.as_value())
         value["tests"] = TestRun.of(cases).as_value()
@@ -105,6 +121,56 @@ class RedRun:
         ]
         value["pre_feature_sha"] = self._baseline.sha
         return value
+
+    def _check_results(
+        self,
+        field: Field,
+        root: Path,
+        report: str,
+        kept: Path,
+        mapped: tuple[TestName, ...],
+    ) -> None:
+        """The repository results file, read after the RED run, must hold a report in which every mapped test failed."""
+        try:
+            data = ReportFile.bytes_of(root, report)
+        except OSError as error:
+            problem = ResultsProblem(
+                ResultsKind.UNREADABLE, f"the file cannot be read: {error}"
+            )
+        else:
+            problem = judge_results(data, mapped)
+        if problem is not None:
+            raise self._results_refusal(field, report, problem, kept, root)
+
+    @staticmethod
+    def _results_refusal(
+        field: Field,
+        report: str,
+        problem: ResultsProblem,
+        kept: Path,
+        root: Path,
+    ) -> Refusal:
+        target = root / DeclaredPath.parse(report).text
+        how = (
+            f"copy the report the RED run kept over the results file: mkdir -p '{target.parent}' && "
+            f"cp '{kept}' '{target}'; then record the oracle again with the same command. Keep a feature's evidence "
+            "under docs/feature/<feature>/evidence/, never in the repository's root evidence/ folder, which other deliveries own"
+        )
+        if problem.kind == ResultsKind.MISSING:
+            what = f"'{field.name}' names the results file '{report}', which is not in the repository"
+        elif problem.kind == ResultsKind.EMPTY:
+            what = f"'{field.name}' names the results file '{report}', which holds {problem.cause}"
+        elif problem.kind == ResultsKind.UNREADABLE:
+            what = f"'{field.name}' names the results file '{report}', which is not a readable report: {problem.cause}"
+        else:
+            what = f"'{field.name}' names the results file '{report}', which holds no failing mapped test: {problem.cause}"
+        if problem.kind == ResultsKind.NO_FAILURE:
+            why = "a RED report with no failing mapped test is not a RED, and the commit must carry the report that shows each mapped test failed"
+        else:
+            why = "the RED run wrote its report on the pre-feature tree, not in the repository, so the results file is the only copy the commit carries of the proof that the mapped tests failed; a file that is not that report proves nothing"
+        return Refusal(
+            what=what, why=why, how=how, field=field.name, fault=Fault.COMMAND
+        )
 
     def _changed(self, field: Field) -> frozenset[str]:
         try:

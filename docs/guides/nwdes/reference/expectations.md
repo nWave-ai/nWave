@@ -6,6 +6,8 @@ The examiner records with the `nwdes expectations` CLI verbs and closes. See [ro
 |---|---|---|
 | `expectations close` | Fix or replace the expectation set | UncoveredPromise if a promise has no expectation |
 | `expectations close --revise` | Replace a fixed set | UncoveredPromise if a promise has no expectation |
+| `expectations waiver add --row E<n> --by TEXT --reason TEXT --coverage TEXT` | Waive an unmet capture gap of a fixed row in the draft; the row stays as published | DanglingReference if the row is not in the draft; PartInvalid if one is already waived or a field is blank |
+| `expectations waiver remove --row E<n>` | Withdraw a waiver in the draft | DanglingReference if no waiver is recorded for the row |
 
 Every public promise must be cited. The expectations prompt automatically includes the current fixed public rows in order, with their assigned IDs, complete text and promise mappings, or `None.` before first fixation. It includes no private implementation evidence.
 
@@ -26,4 +28,10 @@ Expectation rows cite product P IDs, not design L/B/C/Y IDs. Product replacement
 Withdrawal of a row also withdraws exactly its E-keyed examination verdict. The cascading notice names the original expectation row in WHY, for example `expectations.rows[1] (E2) was withdrawn.` If all rows disappear, the existing expectation-set container remains with zero rows. Repair uses `expectations close --revise`.
 
 Fixed rows are append-only. A revision keeps every published row with its content unchanged; a row that a revision changes or omits is refused as `RowRewritten`. A row leaves the set only when its current verdict is `unmet` with class `expectation_defect`, and then only that row's verdict is withdrawn. Each new or changed row states its lacuna with `--lacuna TEXT`, what the oracle of its promise does not see; a row without one is refused as `EmptyLacuna`. Legacy rows published before this rule keep working without a lacuna. A row may also set `--blocking yes|no` (absent means yes), `--isolated yes|no` (absent means no) and `--needs TEXT`. The root can give a fresh expectations prompt to the examiner against the current product, then choose examination. No role is invoked automatically; surviving IDs alone do not prove semantic freshness.
+
+## Waiving a capture gap
+
+An owner waives a fixed row whose unmet verdict is `observation_gap`, a capture the examiner could not show, with `nwdes expectations waiver add --row E2 --by TEXT --reason TEXT --coverage TEXT`. Open the set first with `expectations open --from-current`, record the waiver, then close with `--revise`. The row, its id and its text stay exactly as published. The waiver is a separate record in the expectations part: `by` names the decider, `waived_at` is the UTC second nwdes stamps when the waiver is added (the owner does not type it), `reason` says why the row is waived, and `coverage` says where else the promise is covered or why it is no longer wanted. `expectations waiver remove --row E2` withdraws a waiver in the same way.
+
+A waiver changes no published examination. The examination that closed before the waiver keeps its verdicts and its outcome until the examiner closes again; the next examination copies the waiver into its record and reads it. A waived capture gap is neither met nor unmet: it does not make the examination indeterminate, and every other verdict decides as before. A waiver on any other verdict (`product_violation`, `oracle_gap`, `expectation_defect`, `unstable` or `not_examined`) is inert: the close prints a notice that names the row and the outcome does not move. A waiver follows its row when the promise retires, with the same notice as the row.
 

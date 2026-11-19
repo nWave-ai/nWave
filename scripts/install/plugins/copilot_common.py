@@ -21,8 +21,11 @@ from scripts.shared.skill_path_rewrite import rewrite_host_paths
 
 _SOURCE = re.compile(r"\A---\n(?P<head>.*?)\n---\n(?P<body>.*)\Z", re.DOTALL)
 
-# What the summary says the Copilot install did not check: the CLI reads the files, and only a session shows that.
-NOT_CHECKED = "not checked by this install: the Copilot CLI's loading of them"
+# What the summary says the Copilot install did not check: the terminal and VS Code read the files, and only a session
+# shows that (card t-0559).
+NOT_CHECKED = (
+    "not checked by this install: whether Copilot (terminal and VS Code) loads them"
+)
 
 
 def copilot_agents_dir() -> Path:

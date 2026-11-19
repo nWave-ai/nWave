@@ -41,6 +41,7 @@ class FileLeaf:
     size: int
     mtime_ns: int
     md5: str | None = None
+    lf_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -449,6 +450,18 @@ def _bin_context(
     )
 
 
+def _recorded_digest_owns(
+    node: FileLeaf, recorded: str | None, *, lf_form_allowed: bool
+) -> bool:
+    """Return True when a receipt's recorded digest is the file's own bytes.
+
+    The LF rendering of a CRLF translation counts only where the receipt allows that form (the OMP guard receipt).
+    """
+    if recorded is None:
+        return False
+    return recorded == node.sha256 or (lf_form_allowed and recorded == node.lf_sha256)
+
+
 # Published DESIGN boundary: keep immutable snapshots and selected roots explicit.
 def partition(  # noqa: PLR0913, PLR0917
     home: str,
@@ -568,11 +581,13 @@ def partition(  # noqa: PLR0913, PLR0917
                 )
     # Receipt witnesses may replace a failed release witness, never a symlink.
     receipt_paths: dict[str, str] = {}
+    crlf_form_paths: set[str] = set()
     for receipt in receipts:
         if isinstance(receipt, OpencodeReceipt):
             receipt_paths[receipt.shim_file] = receipt.sha256
         elif isinstance(receipt, OmpReceipt):
             receipt_paths.update(receipt.files)
+            crlf_form_paths.update(path for path, _ in receipt.files)
         elif isinstance(receipt, CodexReceipt):
             node = by_path.get(receipt.launcher_path)
             if isinstance(node, FileLeaf) and node.sha256 in {
@@ -592,7 +607,11 @@ def partition(  # noqa: PLR0913, PLR0917
         Owned(v.candidate, Witness.W4)
         if (
             isinstance(v.candidate, FileLeaf)
-            and receipt_paths.get(v.candidate.path) == v.candidate.sha256
+            and _recorded_digest_owns(
+                v.candidate,
+                receipt_paths.get(v.candidate.path),
+                lf_form_allowed=v.candidate.path in crlf_form_paths,
+            )
         )
         else Kept(
             v.candidate,

@@ -1,8 +1,9 @@
-# Installing nWave for GitHub Copilot CLI
+# Installing nWave for GitHub Copilot (terminal and VS Code)
 
 ## Goal
 
-After this guide, you can use nWave from the terminal in the GitHub Copilot CLI (`copilot`). The personal install
+After this guide, you can use nWave from the terminal in the GitHub Copilot CLI (`copilot`), and the same files are
+read by the Copilot harness of VS Code chat. The personal install
 puts nWave's public roles, skills and hooks under `~/.copilot` (or `$COPILOT_HOME`). The project install puts the
 same roles and skills, and one prompt file per wave, under the project's `.github` folders, when you choose it.
 
@@ -116,8 +117,20 @@ and named `AGENTS.md`. The same section is in `CLAUDE.md`.
 
 ### Hooks
 
-The hook file `~/.copilot/hooks/nwave-hooks.json` declares one event, `preToolUse`, with the matcher `.*`. It runs
+The hook file `~/.copilot/hooks/nwave-hooks.json` declares `"version": 1` (the hook format version every documented
+Copilot hook file carries) and one event, `preToolUse`, with the matcher `.*`. It runs
 `python -m nwave_ai.hooks PreToolUse --host copilot`. No other event is declared for Copilot.
+
+**One-time change (card t-0559).** Earlier installs wrote this file without `"version"`. The install that carries this
+change adds `"version": 1` to that file, once. It repairs the file in place: another tool's entries are kept, a reinstall
+writes the same bytes, and a file that declares a version other than 1 is refused with what, why and how, and its bytes
+are left unchanged. Nothing else the CLI install writes changes bytes.
+
+The guard acts on the two shell tool names the GitHub hooks reference lists under "Tool names for hook matching":
+`bash` (Unix) and `powershell` (Windows). It reads the command text from `command`, then `cmd`, and reads arguments that
+arrive as JSON text. A call whose command it cannot read is allowed. The argument shape of a `powershell` call is not
+documented in the reference, so the `cmd` key and the rule that an unreadable call is allowed are the tested behaviour;
+the live shape is the P5 observation the root runs (see the VS Code section).
 
 Recorded results:
 
@@ -169,8 +182,37 @@ Receipt proj-r8: in a fresh Copilot home with no nWave files, a project with the
 - Receipt prompt-slash: `/nw-discuss` was sent as the prompt. The session listed the project folder, loaded the skill
   `nw-discuss` through the skill tool, and did not open a prompt file.
 
-The files are still written for the hosts that read them. The request reports that Visual Studio and the older VS Code
-harness read these files. That is reported, not tested here.
+The project install still writes these files, for the hosts that read them. They are **Local-harness only**: the Copilot
+harness (the terminal and VS Code chat) does not load `*.prompt.md` files, and the vendor says so. The Local harness is
+deprecated and is removed in February 2027. Use the wave's skill (`nw-<wave>`) in Copilot; the prompt file is kept for
+the Local harness until then. Visual Studio reading these files is reported by the request, not tested here.
+
+## VS Code chat (Copilot harness): documented, not observed in VS Code
+
+Status: **documented, not observed in VS Code.** Nothing in this section has been run in a VS Code chat session. The
+observation protocol is `docs/feature/copilot-chat-in-vscode/runbook.md`; the owner runs it with a live GitHub sign-in.
+Until its results are recorded, read this section as documentation.
+
+The same install serves VS Code chat. VS Code has no separate install step: the Copilot harness that VS Code runs reads
+the personal folders this guide already names. Status of each claim is stated separately.
+
+**Documented (the vendor pages and the GitHub Copilot hooks reference, read 18 November 2026):**
+
+- Personal custom agents in `~/.copilot/agents` and skills in `~/.copilot/skills`; personal hooks in `~/.copilot/hooks/`
+  (or `$COPILOT_HOME/hooks/`). Project customizations in `.github/agents`, `.github/skills`, `.github/hooks`.
+- Hook files use `"version": 1`; `preToolUse` receives `toolName` and `toolArgs`; the shell tool names are `bash` and
+  `powershell`; a `preToolUse` command that returns `permissionDecision: deny` refuses the call.
+- Prompt files are not loaded by the Copilot harness.
+
+**Observed on this machine:** the install writes these folders (the install report and the files, read back). No VS Code
+chat session has been run by this repository.
+
+**Unobserved until a person runs the protocol:** that VS Code discovers the agents, skills and hooks above; that a skill
+loads in a chat; that the guard denies a `git stash` call sent by VS Code chat, with the `bash` and the `powershell` tool
+names; and the payload shape of a `powershell` call. The check that observes them is the runbook
+`docs/feature/copilot-chat-in-vscode/runbook.md` (P0 to P7), which the owner runs with a live sign-in.
+
+Until those results are recorded, read this section as documentation, not as an observed result.
 
 ## Update and uninstall
 
@@ -188,8 +230,12 @@ Receipt local-commands (isolated home, no model call):
 
 ## Not tested
 
-- **VS Code and Visual Studio are not tested.** Nothing in this guide was run in either. Visual Studio and the older
-  VS Code harness are named above only as the hosts the request reports to read the prompt files.
+- **VS Code chat is documented, not observed.** The VS Code pages and the GitHub Copilot hooks reference name the same
+  personal folders the terminal install writes. Nothing in a VS Code chat session has been run by this repository. The
+  observation is the runbook `docs/feature/copilot-chat-in-vscode/runbook.md`; until a person records its results, the
+  claim stays "documented, not observed in VS Code".
+- **Visual Studio is not tested and out of scope.** Its hooks are not supported (per the GitHub cheat sheet), so no guard
+  applies there.
 - Interactive mode and `/agent` were not tried.
 - Role adoption is not a rate: 3 of 4 is the recorded result of one command.
 - The project-level session receipt covers one fresh home. Other project layouts were not run.

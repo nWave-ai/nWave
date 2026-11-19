@@ -11,7 +11,8 @@ from types import MappingProxyType
 
 from nwdes import documents, drafts, prompts
 from nwdes import handoff as model
-from nwdes.contracts import Built, Defect, Refused, checked, local_path
+from nwdes.commit_types import RELEASE_TYPES, CommitType, PathKind, picked_type
+from nwdes.contracts import Built, Defect, Refusal, Refused, checked, local_path
 from nwdes.destinations import Destinations, DocumentKind
 
 
@@ -27,18 +28,7 @@ class Role(str, Enum):
     ArchitectReviewer = "nw-solution-architect-reviewer"
 
 
-class CommitType(str, Enum):
-    Feature = "feat"
-    Fix = "fix"
-    Docs = "docs"
-    Style = "style"
-    Refactor = "refactor"
-    Performance = "perf"
-    Test = "test"
-    Build = "build"
-    CI = "ci"
-    Chore = "chore"
-    Revert = "revert"
+CORRECTION = "ReleaseTypeCorrected"
 
 
 _AUTHORITY_DOCUMENTS = MappingProxyType(
@@ -205,6 +195,43 @@ def path_owners(handoff, destinations, paths) -> Mapping[str, frozenset[Role]]:
     )
 
 
+_TEST_DIRECTORIES = frozenset(("test", "tests"))
+
+
+def _is_test_file(path):
+    """A test by its place or its name: a test directory on the path, or a file named test_<x> or <x>_test."""
+    *directories, name = path.split("/")
+    stem = name.rsplit(".", 1)[0]
+    return (
+        any(directory in _TEST_DIRECTORIES for directory in directories)
+        or stem.startswith("test_")
+        or stem.endswith("_test")
+    )
+
+
+def path_kinds(handoff, destinations, paths):
+    """Classify each selected path: a record, a rendered document, a test (designed, or named as one), or product code."""
+    directory = destinations.handoff.rpartition("/")[0]
+    documents = frozenset(
+        path
+        for _, brief in destinations.briefs
+        for path in (brief, brief.removesuffix(".md") + ".html")
+    )
+    designed = _designed_paths(_selected_slices(handoff, None))
+    adr_prefix = destinations.adr_directory.rstrip("/") + "/"
+
+    def kind(path):
+        if path == destinations.handoff or path.startswith(directory + "/runs/"):
+            return PathKind.Record
+        if path in documents or path.startswith(adr_prefix):
+            return PathKind.Document
+        if path in designed or _is_test_file(path):
+            return PathKind.Test
+        return PathKind.Code
+
+    return MappingProxyType({path: kind(path) for path in paths})
+
+
 @dataclass(frozen=True)
 class _SelectionRefused(Refused):
     """Retain unadmitted names for independent receipt diagnostics, never effects."""
@@ -305,6 +332,51 @@ def message(
         kind.value + (f"({scope})" if scope is not None else "") + ": " + description
     )
     return subject + ("\n\n" + body if body is not None else "")
+
+
+@dataclass(frozen=True)
+class TypeChoice:
+    """The type a commit lands with, and the release type the caller named that nwdes corrected."""
+
+    kind: CommitType
+    corrected_from: CommitType | None = None
+
+
+def _type_missing() -> Defect:
+    return Defect(
+        "MissingFact: --type",
+        "A commit that stages product code or tests names no default type: nwdes picks a type only for a commit of run records or rendered documents.",
+        "Rerun the same nwdes commit with --type set to one of: "
+        + ", ".join(kind.value for kind in CommitType)
+        + ".",
+    )
+
+
+def choose_type(
+    kinds: frozenset[PathKind], requested: CommitType | None
+) -> Built[TypeChoice] | Refused:
+    """The type a commit lands with, decided from its path kinds and the requested type alone."""
+    picked = picked_type(kinds)
+    if picked is None:
+        return (
+            Built(TypeChoice(requested))
+            if requested is not None
+            else Refused(Refusal(_type_missing()))
+        )
+    if requested is None:
+        return Built(TypeChoice(picked))
+    if requested in RELEASE_TYPES:
+        return Built(TypeChoice(picked, requested))
+    return Built(TypeChoice(requested))
+
+
+def correction_notice(asked: CommitType, used: CommitType, command: str) -> str:
+    """The stderr notice of a corrected release type: WHAT names both types, WHY and HOW carry the complete next command."""
+    return (
+        f"WHAT: {CORRECTION}: {asked.value} to {used.value}. The commit landed as {used.value}.\n"
+        f"WHY: a commit of only run records or rendered documents is not a {asked.value} change; with {asked.value} a repository that derives its version from conventional commits would cut a release for bookkeeping and list it as a change.\n"
+        f"HOW: omit --type for such a commit, or pass --type {used.value}; the complete command: {command}\n"
+    )
 
 
 @dataclass(frozen=True)

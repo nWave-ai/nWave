@@ -12,6 +12,8 @@
 | `--expected` | Expected public result; same rule as `--stimulus` |
 | `--falsifier` | Observation that disproves success; same rule as `--stimulus` |
 | `--command` | Whole ordered single-line verification command list; required on creation unless every target is a prose asset, then forbidden; omission keeps it on update; the first shlex word must resolve at write time |
+| `--report` | Optional root-relative JUnit XML report the verification command writes; forbidden when every target is a prose asset; omission keeps it on update. Given, the oracle approval runs the command in a copy of the checkout and records each identity the report names with its outcome; every accepted or indeterminate candidate close reruns it (see the review reference). The command runs with your permissions and a copy is not a sandbox. Omitted, nothing new runs |
+| `--mutants` | Optional root-relative JSON list of declared mutants, each `{path, old, new, targets}`; read only with `--report`; forbidden when every target is a prose asset; omission keeps it on update. The file is an oracle file, so it is approved with the rest. Every approved identity needs a mutant that targets it |
 | `--support` | Whole ordered support list; omission keeps it on update, or uses none on creation; forbidden when every target is a prose asset |
 | `--create` | Whole ordered Create-target list; omission preserves that change-kind list on update |
 | `--extend` | Whole ordered Extend-target list; omission preserves that change-kind list on update |
@@ -20,7 +22,7 @@
 | `--decision` | Whole list of governing shared D IDs; repeatable; omission preserves membership |
 | `--constraint` | Whole list of governing shared K IDs; repeatable; omission preserves membership |
 
-Returns written output paths. Own promises precede other citations. Refusals: MissingFact, OracleOnProse, PartInvalid, ConfigurationMalformed, HandoffInvalid, DanglingReference. Verification commands are stored, not run.
+Returns written output paths. Own promises precede other citations. Refusals: MissingFact, OracleOnProse, PartInvalid, ConfigurationMalformed, HandoffInvalid, DanglingReference. `slice set` stores verification commands and never runs them; the only commands nwdes runs are the declared commands of a slice that declares `--report`, during its oracle approval and its accepted or indeterminate candidate close.
 
 The product slice's `promises` are the same owned-then-cited IDs as its resulting public oracle. A new slice requires at least one owned promise (`--promise TEXT`) or existing citation (`--cites P<n>`); neither is inferred. Missing coverage refuses before publication: cite a Request promise, add a justified promise, or move an unrelated outcome to a separate `nwdes feature new`. Updates synchronize product links when oracle promises are available. Updating a historical slice without oracle promises does not retrofit its links or impose a global product-close coverage check; explicit `nwdes product close` remains strict.
 
@@ -33,7 +35,7 @@ Program resolution uses the invoking PATH for bare words. A path word must be an
 
 A slice is prose-only when every `--create` and `--extend` target is a prose asset: a file under `docs/guides`, `nWave/skills`, `nWave/templates` or `nWave/agents` whose suffix is `.md` or `.tmpl`. Classification reads the normalised target path, never a flag. Absolute paths, paths that escape their root and other casings of a suffix are not prose. A slice with no target, or with any non-prose target, is not prose-only and keeps its oracle fields required.
 
-A prose-only slice forbids `--oracle`, `--stimulus`, `--expected`, `--falsifier`, `--command` and `--support`. Supplying any of them refuses with `OracleOnProse`, naming each supplied field, and writes nothing. Keep its targets and `--promise` or `--cites` references. nwdes records one acceptance row for it: disposition `NotTested`, reason `prose, verified by EXAMINE`, owner `EXAMINE`, covering the slice's promises. EXAMINE and the whole-candidate review verify the prose; no test pins its wording.
+A prose-only slice forbids `--oracle`, `--stimulus`, `--expected`, `--falsifier`, `--command`, `--support`, `--report` and `--mutants`. Supplying any of them refuses with `OracleOnProse`, naming each supplied field, and writes nothing. Keep its targets and `--promise` or `--cites` references. nwdes records one acceptance row for it: disposition `NotTested`, reason `prose, verified by EXAMINE`, owner `EXAMINE`, covering the slice's promises. EXAMINE and the whole-candidate review verify the prose; no test pins its wording.
 
 Updating an oracle-bearing slice so that its targets are all prose withdraws its retained oracle fields with a `WITHDRAWN` notice and replaces its acceptance row with the `NotTested` row. A slice whose targets stop being all prose loses that row.
 

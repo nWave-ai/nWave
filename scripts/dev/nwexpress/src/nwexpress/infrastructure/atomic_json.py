@@ -1,7 +1,6 @@
 """Writes a JSON document so that a reader sees the old file or the new one, never a part of the new one.
 
-The document is written to a temporary file beside the target and then renamed over it. A crash before the rename
-leaves the target as it was and a temporary file that the next write replaces.
+The document is written by the shared atomic text write, so a crash leaves the target as it was.
 """
 
 from __future__ import annotations
@@ -9,6 +8,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+
+from nwexpress.infrastructure.atomic_text import write_text
 
 
 def read_json(path: Path) -> Any:
@@ -19,8 +20,4 @@ def read_json(path: Path) -> Any:
 
 
 def write_json(path: Path, document: Any) -> None:
-    temporary = path.with_name(f".{path.name}.tmp")
-    temporary.write_text(
-        json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    temporary.replace(path)
+    write_text(path, json.dumps(document, indent=2, sort_keys=True) + "\n")

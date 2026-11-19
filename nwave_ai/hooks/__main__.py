@@ -663,13 +663,44 @@ def _route(command: str, host: str) -> None:
     sys.exit(exit_code)
 
 
-def copilot_pre_tool_use(event: str, payload: str) -> int:
-    """Copilot preToolUse: the git-stash guard for a bash call, answered in Copilot's decision shape (card t-0515).
+#: The shell tool names Copilot sends for a shell call: bash (Unix) and powershell (Windows), as the GitHub hooks
+#: reference lists them under "Tool names for hook matching" (card t-0559).
+COPILOT_SHELL_TOOL_NAMES: tuple[str, ...] = ("bash", "powershell")
 
-    Copilot sends toolName (lower case "bash") and toolArgs (an object) where the handlers read Claude's tool_name and
-    tool_input, so no handler saw a Copilot bash call. This adapter translates that one call, runs the stash decision
-    authority, and answers a block as permissionDecision deny with exit 0. It is the only handler that acts for Copilot;
-    every other kept handler still reads the Claude envelope and does nothing for Copilot. Anything it cannot read allows.
+#: The argument keys that carry a shell call's command text, read in this order.
+COPILOT_COMMAND_KEYS: tuple[str, ...] = ("command", "cmd")
+
+
+def _copilot_tool_args(raw: object) -> dict[str, object] | None:
+    """A Copilot call's arguments as an object: an object as sent, or JSON text that holds one; None otherwise."""
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+    return raw if isinstance(raw, dict) else None
+
+
+def _copilot_shell_command(raw: object) -> str | None:
+    """The command text of a Copilot shell call, or None when no readable command key holds text."""
+    tool_args = _copilot_tool_args(raw)
+    if tool_args is None:
+        return None
+    for key in COPILOT_COMMAND_KEYS:
+        command = tool_args.get(key)
+        if isinstance(command, str) and command:
+            return command
+    return None
+
+
+def copilot_pre_tool_use(event: str, payload: str) -> int:
+    """Copilot preToolUse: the git-stash guard for a shell call, answered in Copilot's decision shape (card t-0515).
+
+    Copilot sends toolName (bash or powershell) and toolArgs (an object, or JSON text holding one) where the handlers
+    read Claude's tool_name and tool_input. This adapter reads the command text of a shell call, runs the stash decision
+    authority on it, and answers a block as permissionDecision deny with exit 0. It is the only handler that acts for
+    Copilot; every other kept handler still reads the Claude envelope and does nothing for Copilot. Anything it cannot
+    read allows.
     """
     if event != "PreToolUse":
         return 0
@@ -677,13 +708,18 @@ def copilot_pre_tool_use(event: str, payload: str) -> int:
         envelope = json.loads(payload)
     except json.JSONDecodeError:
         return 0
-    if not isinstance(envelope, dict) or envelope.get("toolName") != "bash":
+    if (
+        not isinstance(envelope, dict)
+        or envelope.get("toolName") not in COPILOT_SHELL_TOOL_NAMES
+    ):
         return 0
-    tool_args = envelope.get("toolArgs")
-    if not isinstance(tool_args, dict):
+    command = _copilot_shell_command(envelope.get("toolArgs"))
+    if command is None:
         return 0
-    hook_input = {"tool_name": "Bash", "tool_input": tool_args}
-    block = evaluate_bash_safety_guards(hook_input, tool_args)
+    tool_input: dict[str, object] = {"command": command}
+    block = evaluate_bash_safety_guards(
+        {"tool_name": "Bash", "tool_input": tool_input}, tool_input
+    )
     if block is None:
         return 0
     print(

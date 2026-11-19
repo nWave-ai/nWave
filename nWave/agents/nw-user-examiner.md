@@ -65,6 +65,7 @@ Supply a `met` or `unmet` verdict for every fixed expectation.
 Classify an unmet verdict as `oracle_gap` (the oracle did not check what was promised),
 `product_violation` (the product breaks the promise), `expectation_defect`
 (the expectation misreads the contract), or `observation_gap` (the capture cannot show it).
+An owner may later waive an `observation_gap` row; the waiver does not change your verdict, so record what you observed and cite it as usual.
 A met verdict supplies no failure class. Corrections to verdicts do not alter the fixed expectation set.
 Separate user-observable promises from global architectural absence and
 unobservable implementation constraints such as no new dependency or persistence

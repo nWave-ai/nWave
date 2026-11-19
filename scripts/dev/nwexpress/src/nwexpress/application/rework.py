@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from nwexpress.application import release_commit_check
 from nwexpress.application.progress import Progress
 from nwexpress.domain import review
 from nwexpress.domain.candidate import Unreadable
@@ -22,7 +23,9 @@ from nwexpress.domain.review import (
     ReviewLog,
 )
 from nwexpress.infrastructure import review_store
+from nwexpress.infrastructure.baseline_store import BaselineStore
 from nwexpress.infrastructure.candidate_reader import read_candidate
+from nwexpress.infrastructure.git_diff import GitDiffError
 from nwexpress.infrastructure.jsonl_journal import JsonlJournal
 from nwexpress.infrastructure.toml_schema_reader import TomlSchemaReader
 
@@ -33,7 +36,7 @@ if TYPE_CHECKING:
     from nwexpress.application.how_line import HowLine
     from nwexpress.domain.candidate import Observed
     from nwexpress.domain.journal import Journal
-    from nwexpress.domain.review import Finding, Packet, Verdict
+    from nwexpress.domain.review import Finding, Packet, Verdict, Withdrawal
     from nwexpress.domain.schema import Schema
     from nwexpress.domain.step import Step
     from nwexpress.infrastructure.command_runner import CommandRunner
@@ -53,7 +56,7 @@ class Desk:
         """The options that place a command on this workspace and this project."""
         return ("--workspace", str(self.workspace.directory), "--root", str(self.root))
 
-    def line(self, remedy: Remedy) -> str:
+    def line(self, remedy: Remedy, finding: Finding | None = None) -> str:
         if remedy is Remedy.STATUS:
             return self.how.command("status", *self.located[:2])
         if remedy is Remedy.FINDING:
@@ -66,6 +69,19 @@ class Desk:
                 "<what the finding says>",
                 "--red",
                 "<one command that fails on the candidate now>",
+            )
+        if remedy is Remedy.WITHDRAW:
+            return self.how.command(
+                "withdraw",
+                *self.located,
+                "--finding",
+                "<the finding id, as status prints it>"
+                if finding is None
+                else finding.identifier,
+                "--author",
+                "<who wrote the finding>" if finding is None else finding.author,
+                "--reason",
+                "<why the case was wrong>",
             )
         return self.how.command(remedy.value, *self.located)
 
@@ -82,7 +98,9 @@ class Desk:
         )
 
     def refusal(self, refused: Refused) -> Refusal:
-        return Refusal(refused.what, refused.why, self.line(refused.remedy))
+        return Refusal(
+            refused.what, refused.why, self.line(refused.remedy, refused.finding)
+        )
 
 
 @dataclass(frozen=True)
@@ -108,6 +126,14 @@ class VerdictReport:
     verdict: Verdict
     repeated: bool
     notes: tuple[str, ...]
+    withdrawn: tuple[Withdrawal, ...]
+
+
+@dataclass(frozen=True)
+class WithdrawalReport:
+    withdrawal: Withdrawal
+    stale: tuple[str, ...]
+    waiting: tuple[Finding, ...]
 
 
 def green_id(schema: Schema) -> str | None:
@@ -164,7 +190,32 @@ def report_finding(
         return replace(report, corrects=gate.corrects)
 
 
-def _kept(desk: Desk, log: ReviewLog, event: Finding | Packet | Verdict) -> ReviewLog:
+def report_withdrawal(
+    desk: Desk, identifier: str, author: str, reason: str | None
+) -> WithdrawalReport:
+    """Withdraw an open finding with its author's reason; every refusal is decided before anything is written."""
+    draft = review.withdrawal_draft(identifier, author, reason)
+    if isinstance(draft, Refused):
+        raise desk.refusal(draft)
+    schema = TomlSchemaReader().read(desk.workspace.schema_path)
+    green = green_id(schema)
+    with JsonlJournal(desk.workspace).exclusive() as session:
+        journal = session.snapshot()
+        log = review_store.read(desk.workspace)
+        decision = review.withdrawal_gate(log, journal, green, draft, _now())
+        if isinstance(decision, Refused):
+            raise desk.refusal(decision)
+        after = _kept(desk, log, decision)
+        return WithdrawalReport(
+            withdrawal=decision,
+            stale=stale_steps(schema, journal, after),
+            waiting=review.open_findings(after, journal, green),
+        )
+
+
+def _kept(
+    desk: Desk, log: ReviewLog, event: Finding | Packet | Verdict | Withdrawal
+) -> ReviewLog:
     """Append the event to the review file and return the log that holds it."""
     review_store.append(desk.workspace, event)
     return ReviewLog((*log.events, event))
@@ -184,12 +235,16 @@ def _finding_report(
 
 
 def freeze_candidate(desk: Desk) -> PacketReport:
-    """Freeze the identity of the candidate for the reviewer; the same candidate frozen again writes nothing."""
+    """Freeze the identity of the candidate for the reviewer; the same candidate frozen again writes nothing.
+
+    A release-typed commit that changes only documents refuses the freeze before anything is written.
+    """
     schema = TomlSchemaReader().read(desk.workspace.schema_path)
     with JsonlJournal(desk.workspace).exclusive() as session:
         journal = session.snapshot()
         log = review_store.read(desk.workspace)
         observed = _candidate(desk)
+        notes = (*observed.notes, *_release_commit_notes(desk))
         decision = review.freeze(
             log, journal, green_id(schema), observed.identity, _now()
         )
@@ -199,9 +254,29 @@ def freeze_candidate(desk: Desk) -> PacketReport:
             packet, after = decision.event, log
         else:
             packet, after = decision, _kept(desk, log, decision)
-        return PacketReport(
-            packet, after, stale_steps(schema, journal, after), observed.notes
+        return PacketReport(packet, after, stale_steps(schema, journal, after), notes)
+
+
+def _release_commit_notes(desk: Desk) -> tuple[str, ...]:
+    """Refuses a release-typed commit that changes only documents; warns when the commits cannot be checked."""
+    baseline = BaselineStore(desk.workspace).read()
+    if not baseline.is_available or baseline.sha is None:
+        return (
+            "the commit types from the recorded base to HEAD were not checked: "
+            f"no base is recorded ({baseline.reason}); run init in a clone that has a commit to record one",
         )
+    try:
+        commits = release_commit_check.read_commits(desk.root, baseline.sha)
+    except GitDiffError as error:
+        raise Refusal(
+            what=f"the commits from the recorded base to HEAD cannot be read: {error}",
+            why="a release-typed commit that changes only documents is found by reading these commits, and a candidate is not frozen while they are unread",
+            how=desk.how.command("packet", *desk.located),
+        ) from None
+    refused = release_commit_check.refusal(commits, desk.root)
+    if refused is not None:
+        raise refused
+    return ()
 
 
 def record_verdict(
@@ -219,9 +294,9 @@ def record_verdict(
         if isinstance(decision, Refused):
             raise desk.refusal(decision)
         if isinstance(decision, Repeated):
-            return VerdictReport(decision.event, True, observed.notes)
+            return VerdictReport(decision.event, True, observed.notes, log.withdrawals)
         review_store.append(desk.workspace, decision)
-        return VerdictReport(decision, False, observed.notes)
+        return VerdictReport(decision, False, observed.notes, log.withdrawals)
 
 
 def close_findings(  # noqa: PLR0913 - called inside the record of a step, with the state that record already holds

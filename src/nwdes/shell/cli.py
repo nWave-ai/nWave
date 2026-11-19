@@ -9,6 +9,7 @@ import re
 import shlex
 import shutil
 import sys
+import tarfile
 import tempfile
 import time
 from collections.abc import Mapping
@@ -18,6 +19,7 @@ from functools import partial
 from pathlib import Path, PurePosixPath
 
 from nwdes import (
+    commit_types,
     commits,
     documents,
     drafts,
@@ -28,6 +30,7 @@ from nwdes import (
     measurement,
     packets,
     prompts,
+    reported_identities,
 )
 from nwdes.citation.judge import judge
 from nwdes.citation.observation import Absent, FolderAt, NotText, OutsideRoot, TextFile
@@ -49,7 +52,7 @@ from nwdes.destinations import (
     readable_setting,
     resolve,
 )
-from nwdes.shell import host_sessions, machine_config, probe
+from nwdes.shell import host_sessions, machine_config, probe, verification
 from nwdes.shell.asset_tree import decode_utf8, read_asset
 from nwdes.shell.filesystem import (
     check_paths,
@@ -253,8 +256,7 @@ def _parser(*, replay=False):
             )
             entry.add_argument(
                 "--type",
-                required=True,
-                choices=tuple(kind.value for kind in commits.CommitType),
+                choices=tuple(kind.value for kind in commit_types.CommitType),
             )
             entry.add_argument("--description", required=True)
             entry.add_argument("--scope", dest="message_scope")
@@ -966,8 +968,26 @@ def _document(args, ports: DocumentPorts, initial=(), raw=None, existing=None):
         for notice in current.withdrawals:
             print(notice)
     if result == 0 and args.verb == "examine":
+        for notice in handoff.waiver_notices(
+            current.examination,
+            (current.expectations or handoff.EMPTY).get("waivers", handoff.EMPTY),
+        ):
+            print(notice)
         print(handoff.examination_outcome(current.examination))
+        for line in handoff.observation_gap_guidance(
+            current.examination or {}, _scope_flag(args)
+        ):
+            print(line)
     return result
+
+
+def _scope_flag(args):
+    """The feature or epic flag the command ran with, as the owner types it again."""
+    return (
+        shlex.join(("--feature", args.feature))
+        if args.feature
+        else shlex.join(("--epic", args.epic))
+    )
 
 
 def _work_set(args, defects):
@@ -1135,12 +1155,69 @@ def _approval_record(root, directory, slice_id):
     return Built(record.value)
 
 
-def _approval_refusal(root, directory, slice_id, read_current, then):
+def _feature_of(inspected):
+    """The feature identity the handoff declares, or a placeholder when it cannot be read."""
+    if inspected is None or isinstance(inspected.result, Refused):
+        return "<feature>"
+    return inspected.result.value.scope.id
+
+
+def _approval_facts(root, approval, current, slice_id, inspected):
+    """What the refusal names. An approval records one digest of all declared files, and an
+    oracle approval may cover uncommitted bytes, so the approval commit is trusted only when the
+    declared files it holds digest to the recorded digest. Then the changed paths are those that
+    differ from it, and git show can restore them. Otherwise nothing is named as changed and no
+    restore is offered: the changed paths are unknown.
+    """
+    commit = approval.get("commit")
+    recorded = approval.get("content")
+    paths = [path for path, _ in current]
+    held = _head_blobs(root, commit, paths) if commit else None
+    verified = (
+        held is not None
+        and not isinstance(held, Refused)
+        and drafts.content_digest(held.value) == recorded
+    )
+    held = dict(held.value) if verified else {}
+    changed = (
+        tuple(path for path, data in current if held.get(path) != data)
+        if verified
+        else ()
+    )
+    design = (
+        {}
+        if inspected is None or isinstance(inspected.result, Refused)
+        else (inspected.result.value.design or {})
+    )
+    sharing = {}
+    for other in sorted(design.get("slices") or {}):
+        if other == slice_id:
+            continue
+        declared = _oracle_paths(inspected, other)
+        if isinstance(declared, Refused):
+            continue
+        shared = [path for path in changed if path in declared.value]
+        if shared:
+            sharing[other] = tuple(shared)
+    return {
+        "changed": changed,
+        "commit": commit if verified else None,
+        "verified": verified,
+        "feature": _feature_of(inspected),
+        "present": tuple(path for path in changed if held.get(path) is not None),
+        "sharing": tuple(sorted(sharing.items())),
+    }
+
+
+def _approval_refusal(root, directory, slice_id, read_current, remedy):
     """Refuse once a slice's current oracle or support bytes differ from the approved ones.
 
     ``read_current`` returns the (path, bytes or None) pairs to compare; None when no review
-    approved the slice, so nothing is checked.
+    approved the slice, so nothing is checked. ``remedy`` is the pair (then, inspected): the step
+    the caller takes after the restore, and the handoff that declares the slices, read the same
+    way the oracle files are.
     """
+    then, inspected = remedy
     record = _approval_record(root, directory, slice_id)
     if isinstance(record, Unreadable):
         return _inspection_failure((), (record,))
@@ -1151,33 +1228,41 @@ def _approval_refusal(root, directory, slice_id, read_current, then):
     current = read_current()
     if isinstance(current, Refused):
         return _refusal(current.defects)
-    verdict = prompts.oracle_approval(
-        slice_id,
-        record.value.get("content"),
-        drafts.content_digest(current.value),
-        then,
+    digest = drafts.content_digest(current.value)
+    if drafts.prefix_holds(record.value.get("prefix"), current.value):
+        return None
+    recorded = record.value.get("content")
+    facts = (
+        _approval_facts(root, record.value, current.value, slice_id, inspected)
+        if recorded != digest
+        else None
     )
+    verdict = prompts.oracle_approval(slice_id, recorded, digest, then, facts)
     return _refusal(verdict.defects) if isinstance(verdict, Refused) else None
 
 
 def _approved_slice_paths(root, directory, slice_id, read_current):
     """The slice's oracle and support paths whose current bytes its oracle review approved.
 
-    Nothing counts as approved without a recorded review, readable bytes, and bytes equal to
-    the approved ones: the comparison _approval_refusal makes.
+    Nothing counts as approved without a recorded review and readable bytes. The bytes then count
+    when they equal the approved ones, or when the record carries approved prefixes that still hold:
+    the same comparison _approval_refusal makes.
     """
     record = _approval_record(root, directory, slice_id)
     if not isinstance(record, Built) or record.value is None:
         return frozenset()
     recorded = record.value.get("content")
     current = read_current()
-    if recorded is None or isinstance(current, Refused):
+    if isinstance(current, Refused):
         return frozenset()
-    verdict = prompts.oracle_approval(
-        slice_id, recorded, drafts.content_digest(current.value), "commit them"
-    )
-    if isinstance(verdict, Refused):
-        return frozenset()
+    if not drafts.prefix_holds(record.value.get("prefix"), current.value):
+        if recorded is None:
+            return frozenset()
+        verdict = prompts.oracle_approval(
+            slice_id, recorded, drafts.content_digest(current.value), "commit them"
+        )
+        if isinstance(verdict, Refused):
+            return frozenset()
     return frozenset(path for path, _ in current.value)
 
 
@@ -1198,19 +1283,52 @@ def _approved_oracle_paths(root, directory, ports, inspected):
 
 
 def _refuse_changed_oracle(args, previous):
-    """Refuse a crafter prompt whose oracle bytes differ from the approved oracle review."""
+    """Refuse a crafter prompt whose oracle bytes differ from the approved oracle review, or whose
+    working tree fails an identity the slice approved."""
     directory = repository_path(
         Path(os.path.relpath(Path(args.handoff).absolute().parent, args.repo_root))
     )
-    return _approval_refusal(
+    refusal = _approval_refusal(
         args.repo_root,
         directory,
         args.slice,
         lambda: _oracle_files(
             _document_ports(args), args.repo_root, previous, args.slice
         ),
-        "rebuild this prompt",
+        ("rebuild this prompt", previous),
     )
+    if refusal is not None:
+        return refusal
+    return _refuse_working_identities(args, directory, previous)
+
+
+def _refuse_working_identities(args, directory, previous):
+    """Refuse a crafter prompt whose working tree fails an identity the slice approved. The declared
+    command and each declared mutant run on a copy of the working tree, as a candidate close runs
+    them on the committed candidate, so the uncommitted bytes the prompt would render are judged."""
+    if isinstance(previous.result, Refused):
+        return None
+    declared = ((previous.result.value.design or {}).get("slices") or {}).get(
+        args.slice
+    )
+    if not declared:
+        return None
+    record = _approval_record(args.repo_root, directory, args.slice)
+    if isinstance(record, Unreadable):
+        return _inspection_failure((), (record,))
+    if isinstance(record, Refused):
+        return _refusal(record.defects)
+    if record.value is None or record.value.get("identities") is None:
+        return None
+    if not declared.get("report"):
+        return _refusal((prompts.report_undeclared(args.slice, _feature_of(previous)),))
+    with tempfile.TemporaryDirectory(prefix="nwdes-working-") as scratch:
+        tree = Path(scratch) / "working"
+        shutil.copytree(args.repo_root, tree, ignore=shutil.ignore_patterns(".git"))
+        defects = _candidate_defects(
+            tree, Path(scratch), args.slice, record.value, declared
+        )
+    return _refusal(defects) if defects else None
 
 
 def _jev_access_notice(consent: prompts.JevAuthorization) -> str | None:
@@ -2302,6 +2420,18 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
             _refusal(observed.defects)
             return 1
         evidence = observed.value
+        approved_slice = drafts.oracle_slice(scope.key.scope)
+        if (
+            name == "close"
+            and values["outcome"] == "accepted"
+            and approved_slice is not None
+        ):
+            approval = _approval_identities(args, scope, approved_slice, files)
+            if isinstance(approval, Refused):
+                _refusal(approval.defects)
+                return 1
+            if approval.value is not None:
+                evidence = replace(evidence, approval=approval.value)
     if name == "open" and kind in ("craft", "review"):
         record_path = scope.run_record_path()
         confined = ports.confinement((record_path,))
@@ -2335,8 +2465,14 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
             inspected.result.value, kind, args.slice, adr_bodies=adr_bodies
         )
     elif name == "close":
-        if kind == "review" and drafts.candidate_scope(scope.key.scope):
+        if (
+            kind == "review"
+            and drafts.candidate_scope(scope.key.scope)
+            and values["outcome"] != "rejected"
+        ):
             refused = _refuse_committed_oracles(args, ports, scope)
+            if refused is None:
+                refused = _refuse_live_identities(args, scope)
             if refused is not None:
                 return refused
         reviewed = (
@@ -2359,7 +2495,10 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
             return _refusal(
                 (
                     handoff.examination_close_refusal(
-                        draft, values["outcome"], values["diagnostic"]
+                        draft,
+                        values["outcome"],
+                        values["diagnostic"],
+                        _scope_flag(args),
                     ),
                 )
             )
@@ -2437,6 +2576,10 @@ def _record_draft(name, values, args, ports, scope: _DraftScope):
             return _refusal(edit.defects)
         if evidence is not None:
             edit = drafts.stamp_review(edit, evidence)
+        if kind == "expectations":
+            edit = drafts.stamp_waiver(
+                edit, documents.RatifiedAt(int(time.time())).text
+            )
         draft = drafts.apply_edit(draft, edit, previous=previous)
         if isinstance(draft, Refused):
             return _refusal(draft.defects)
@@ -2474,7 +2617,11 @@ def _oracle_paths(inspected, slice_id):
     return Built(
         tuple(
             path
-            for path in (declared.get("oracle"), *(declared.get("supports") or ()))
+            for path in (
+                declared.get("oracle"),
+                *(declared.get("supports") or ()),
+                declared.get("mutants"),
+            )
             if path
         )
     )
@@ -2529,11 +2676,213 @@ def _refuse_committed_oracles(args, ports, scope):
             scope.directory,
             slice_id,
             partial(_head_oracle_files, ports, args.repo_root, inspected, slice_id),
-            "commit them",
+            ("commit them, then rerun the candidate close", inspected),
         )
         if refusal is not None:
             return refusal
     return None
+
+
+def _inside(tree, declared):
+    """The path of a root-relative declared file inside tree, or None when it escapes tree."""
+    root = Path(tree).resolve()
+    path = (root / declared).resolve()
+    return path if path.is_relative_to(root) and path != root else None
+
+
+def _run_declared(tree, declared):
+    """The bytes of the declared JUnit report after the declared commands ran in tree, or None when
+    none was written. Only ever called with a copy of the checkout or of the candidate. The report
+    is removed before the run as well: a report already present (a user's file, or one left by an
+    earlier run) must not answer for a command that writes none. The command runs with the user's
+    permissions; a copy is not a sandbox."""
+    path = _inside(tree, declared["report"])
+    if path is None:
+        return None
+    path.unlink(missing_ok=True)
+    if not verification.run_declared(declared.get("verification") or (), tree):
+        return None
+    data = path.read_bytes() if path.is_file() else None
+    path.unlink(missing_ok=True)
+    return data
+
+
+def _observed(data):
+    """The identities a report names with their outcomes; None when no report was read."""
+    return None if data is None else reported_identities.read_report(data)
+
+
+def _approval_identities(args, scope, slice_id, files):
+    """The approval fields of an accepted oracle review of a slice that declares --report: the
+    identities its report names with their observed outcomes. The declared commands run in a copy
+    of the checkout, so the checkout and its uncommitted bytes are never written. Built(None) when
+    the slice declares no report, so nothing new runs for it."""
+    inspected = handoff.inspect_handoff(scope.handoff_bytes)
+    if isinstance(inspected.result, Refused):
+        return inspected.result
+    declared = ((inspected.result.value.design or {}).get("slices") or {}).get(
+        slice_id
+    ) or {}
+    if not declared.get("report"):
+        return Built(None)
+    if declared.get("mutants"):
+        read = reported_identities.read_mutants(dict(files).get(declared["mutants"]))
+        if read is None:
+            return checked(
+                None, (prompts.mutants_malformed(slice_id, declared["mutants"]),)
+            )
+    with tempfile.TemporaryDirectory(prefix="nwdes-approval-") as scratch:
+        checkout = Path(scratch) / "checkout"
+        shutil.copytree(args.repo_root, checkout, ignore=shutil.ignore_patterns(".git"))
+        outcomes = _observed(_run_declared(checkout, declared))
+        mutants = (
+            reported_identities.read_mutants(
+                _inside_bytes(checkout, declared.get("mutants"))
+            )
+            or ()
+            if declared.get("mutants")
+            else ()
+        )
+    if outcomes is None:
+        return checked(None, (prompts.report_missing(slice_id, declared["report"]),))
+    if not outcomes:
+        return checked(None, (prompts.report_empty(slice_id, declared["report"]),))
+    where = declared.get("mutants") or "the slice (no --mutants declared)"
+    defects = (
+        *(
+            prompts.identity_untargeted(slice_id, identity, where)
+            for identity in reported_identities.untargeted(outcomes, mutants)
+        ),
+        *(
+            prompts.mutant_target_unknown(slice_id, target, where)
+            for target in reported_identities.unknown_targets(outcomes, mutants)
+        ),
+    )
+    if defects:
+        return checked(None, defects)
+    approval = {"identities": dict(outcomes)}
+    prefix = drafts.prefix_record(files)
+    if prefix is not None:
+        approval["prefix"] = prefix
+    return Built(approval)
+
+
+def _inside_bytes(tree, declared):
+    """The bytes of a root-relative declared file inside tree, or None when absent or outside it."""
+    path = _inside(tree, declared)
+    return path.read_bytes() if path is not None and path.is_file() else None
+
+
+def _extract_head(root, tree):
+    """The committed candidate (HEAD) extracted into tree: the bytes a candidate close judges."""
+    archive = _commit_git(root, ("archive", "--format=tar", "HEAD"))
+    if isinstance(archive, Refused):
+        return archive
+    try:
+        with tarfile.open(fileobj=io.BytesIO(archive.value)) as opened:
+            opened.extractall(tree, filter="data")
+    except (tarfile.TarError, OSError) as error:
+        return checked(
+            None,
+            (
+                Defect(
+                    "InputUnreadable: candidate archive",
+                    str(error),
+                    "Commit the candidate and run the close from its Git checkout again.",
+                ),
+            ),
+        )
+    return Built(None)
+
+
+def _candidate_defects(candidate, scratch, slice_id, approval, declared):
+    """The defects one approved slice raises on the candidate: its live identities first; then, when
+    those all pass, each declared mutant run on a copy of the candidate, which must make each
+    identity it targets fail. A mutant whose old text does not occur exactly once is refused."""
+    identities = approval["identities"]
+    report = declared["report"]
+    live = _observed(_run_declared(candidate, declared))
+    defects = [
+        prompts.identity_outcome(slice_id, identity, outcome, report)
+        for identity, outcome in reported_identities.not_passing(identities, live)
+    ]
+    if defects:
+        return tuple(defects)
+    mutants_path = declared.get("mutants")
+    mutants = (
+        reported_identities.read_mutants(_inside_bytes(candidate, mutants_path))
+        if mutants_path
+        else ()
+    )
+    if mutants is None:
+        return (prompts.mutants_malformed(slice_id, mutants_path),)
+    defects = []
+    for number, mutant in enumerate(mutants):
+        description = repr(mutant["old"]) + " in " + mutant["path"]
+        run = scratch / (slice_id + "-mutant-" + str(number))
+        shutil.copytree(candidate, run)
+        target = _inside(run, mutant["path"])
+        try:
+            text = (
+                target.read_text(encoding="utf-8")
+                if target is not None and target.is_file()
+                else ""
+            )
+        except (OSError, UnicodeDecodeError):
+            text = ""
+        count = text.count(mutant["old"])
+        if count != 1:
+            defects.append(prompts.mutant_not_applied(slice_id, description, count))
+            continue
+        target.write_text(text.replace(mutant["old"], mutant["new"]), encoding="utf-8")
+        observed = _observed(_run_declared(run, declared))
+        defects.extend(
+            prompts.mutant_survives(slice_id, identity, description, outcome)
+            for identity, outcome in reported_identities.survivors(mutant, observed)
+        )
+    return tuple(defects)
+
+
+def _refuse_live_identities(args, scope):
+    """Refuse a candidate close unless, for each slice whose approval recorded identities, the
+    declared commands on the committed candidate report every identity pass, and each declared
+    mutant, run on a copy of the candidate, fails each identity it targets. An approval without
+    identities keeps the whole-file rule alone."""
+    inspected = handoff.inspect_handoff(scope.handoff_bytes)
+    if isinstance(inspected.result, Refused):
+        return _refusal(inspected.result.defects)
+    slices = (inspected.result.value.design or {}).get("slices") or {}
+    checks = []
+    for slice_id in sorted(slices):
+        record = _approval_record(args.repo_root, scope.directory, slice_id)
+        if isinstance(record, Unreadable):
+            return _inspection_failure((), (record,))
+        if isinstance(record, Refused):
+            return _refusal(record.defects)
+        if record.value is None or record.value.get("identities") is None:
+            continue
+        declared = slices[slice_id] or {}
+        if not declared.get("report"):
+            return _refusal(
+                (prompts.report_undeclared(slice_id, _feature_of(inspected)),)
+            )
+        checks.append((slice_id, record.value, declared))
+    if not checks:
+        return None
+    with tempfile.TemporaryDirectory(prefix="nwdes-candidate-") as scratch:
+        candidate = Path(scratch) / "candidate"
+        candidate.mkdir()
+        extracted = _extract_head(args.repo_root, candidate)
+        if isinstance(extracted, Refused):
+            return _refusal(extracted.defects)
+        defects = []
+        for slice_id, approval, declared in checks:
+            defects.extend(
+                _candidate_defects(
+                    candidate, Path(scratch), slice_id, approval, declared
+                )
+            )
+    return _refusal(tuple(defects)) if defects else None
 
 
 def _judged_paths(root, scope):
@@ -3291,6 +3640,22 @@ def _commit_rejected(root, paths, rejected):
     return _commit_failure(checked(None, problems))
 
 
+def _commit_command(args, kind):
+    """The complete nwdes commit command this call made, with the type the commit lands with."""
+    words = ["nwdes", "commit", "--repo-root", args.repo_root]
+    words += ["--project-root", args.project_root] if args.project_root else []
+    words += ["--global-config", args.global_config] if args.global_config else []
+    words += ["--feature", args.feature] if args.feature else []
+    words += ["--epic", args.epic] if args.epic else []
+    words += ["--slice", args.slice] if args.slice else []
+    words += ["--role", args.role]
+    words += [word for path in args.path for word in ("--path", path)]
+    words += ["--type", kind.value, "--description", args.description]
+    words += ["--scope", args.message_scope] if args.message_scope else []
+    words += ["--body", args.body] if args.body else []
+    return " ".join(shlex.quote(word) for word in words)
+
+
 def _commit(args):
     located = _commit_locations(args.repo_root)
     if isinstance(located, Refused):
@@ -3336,6 +3701,12 @@ def _commit(args):
                 )
             print("NOOP", observed.value.head)
             return 0
+        choice = commits.choose_type(
+            frozenset(commits.path_kinds(document, destinations, paths).values()),
+            None if args.type is None else commit_types.CommitType(args.type),
+        )
+        if isinstance(choice, Refused):
+            return _commit_failure(choice)
         present, deleted = [], []
         for path in paths:
             (
@@ -3353,7 +3724,7 @@ def _commit(args):
             if isinstance(staged, Unreadable) or staged.code:
                 return _commit_rejected(args.repo_root, paths, staged)
         message = commits.message(
-            commits.CommitType(args.type),
+            choice.value.kind,
             args.description,
             args.message_scope,
             args.body,
@@ -3376,6 +3747,16 @@ def _commit(args):
         )
         if isinstance(revision, Refused):
             return _commit_failure(revision)
+        if choice.value.corrected_from is not None:
+            print(
+                commits.correction_notice(
+                    choice.value.corrected_from,
+                    choice.value.kind,
+                    _commit_command(args, choice.value.kind),
+                ),
+                file=sys.stderr,
+                end="",
+            )
         try:
             Path(located.value.receipt(args.role)).unlink()
         except OSError as error:

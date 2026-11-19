@@ -24,7 +24,7 @@ Lanes are optional for one slice in an isolated checkout. Parallel slices in one
 - Order: compose, then the final whole-candidate review is accepted, then source-blind EXAMINE, then integrate. Independent implementation and verification may run in parallel; the final review and EXAMINE never run speculatively.
 - The independent approval of each oracle before craft stays; the final whole-candidate review still covers the oracle.
 - Use one slice by default when one behaviour suffices; each slice delivers one observable behaviour a reviewer judges in one short pass.
-- The route's guidance is to keep a feature to at most 5 slices; the CLI enforces no ceiling.
+- The route's guidance is to keep a feature to at most 5 slices; the CLI refuses a sixth product slice of one feature (`PartInvalid: product.slices`), and its HOW returns the request as separate features of one epic, after the human decides.
 - The first slice is the one walking skeleton and every later slice extends it with explicit dependencies.
 - The Request keeps its whole value and shared design.
 - A technical layer or mocked interaction is not a slice.
@@ -168,7 +168,7 @@ Run every nwdes command from the top level of the checkout. Roots default to cwd
    nwdes prompt --role nw-user-examiner --task examine --handoff "$H"
    ```
 
-   Resolve each unmet expectation as an oracle gap, product violation, expectation defect or observation gap; do not change expectations to fit the implementation.
+   Resolve each unmet expectation as an oracle gap, product violation, expectation defect or observation gap; do not change expectations to fit the implementation. An owner may waive an observation gap with `nwdes expectations waiver add` (open the set first, then close with `--revise`); the row stays as published, and the examiner must examine again before the waiver counts.
 
 10. Integrate the accepted candidate.
 

@@ -9,7 +9,7 @@ Run from the checkout top level. Root and destination options are the [common wr
 ```text
 nwdes commit --role ROLE [--feature ID | --epic ID] [--slice S<n>]
   [--repo-root ROOT] [--project-root ROOT] [--global-config FILE]
-  [--path FILE ...] --type TYPE --description TEXT [--scope SCOPE] [--body TEXT]
+  [--path FILE ...] [--type TYPE] --description TEXT [--scope SCOPE] [--body TEXT]
 ```
 
 | Option | Meaning |
@@ -17,7 +17,7 @@ nwdes commit --role ROLE [--feature ID | --epic ID] [--slice S<n>]
 | `--role` | Required recording role from the ownership table below |
 | `--slice` | Narrow slice targets, oracles, supports and slice run records; omission selects all designed slices |
 | `--path` | Repeatable explicit leaf path; replaces the default selection, never adds a directory or sweeps unrelated files |
-| `--type` | Required: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore` or `revert` |
+| `--type` | Required for product code or tests: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore` or `revert`. Omitted for run records (`chore`) and rendered documents (`docs`); see [Conventional type](#conventional-type) |
 | `--description` | Required subject description |
 | `--scope` | Optional conventional-commit message scope, not the delivery's feature or slice scope |
 | `--body` | Optional message body |
@@ -31,6 +31,26 @@ nwdes commit --feature search --role nw-functional-software-crafter --slice S1 -
 ```
 
 Success prints `COMMITTED <sha>` followed by every committed repository-relative path.
+
+## Conventional type
+
+The type is chosen from what the commit stages, after the selection is admitted and before any path is staged:
+
+- A commit that stages product code or tests requires `--type`, and accepts all eleven types. Without it nwdes refuses `MissingFact: --type`, naming the types it accepts.
+- A commit whose selected paths are only run records (the handoff and the feature's `runs/` records) takes `chore` when `--type` is omitted.
+- A commit whose selected paths are only rendered documents (the brief and architecture pages and the ADR files) takes `docs` when `--type` is omitted. A mix of records and documents takes `chore`.
+- A release type (`feat`, `fix`, `perf`, `refactor`) named on a commit of only records or documents is corrected, not refused: the commit lands with the picked type, exits 0, and a notice goes to stderr. The notice's `WHAT` names both types, and its `HOW` is the complete command with the type that landed. stdout is unchanged. Scripts that read stdout see nothing new.
+- Any other type named on such a commit is committed as named.
+
+This is not a breaking change: no command that was accepted fails. Record-only commits no longer need `--type`, and a release type on them no longer reaches the history.
+
+A commit of records with no type, a worked example:
+
+```sh
+nwdes commit --feature search --role nw-user-examiner --description 'record the review'
+```
+
+It lands as `chore: record the review`.
 
 ## Ownership and selection
 
@@ -76,6 +96,7 @@ When Git cannot start or the root is not a Git checkout, authority closes keep t
 | `UnownedFile` | Explicit paths have no owner or are directories; name owned leaf files instead. |
 | `ProtectedFile` | A crafter named an unapproved oracle or support file, or a feature record; approve the oracle first. |
 | `NothingToCommit` | No owned file was selected. |
+| `MissingFact: --type` | The selection stages product code or tests and names no `--type`; rerun with one of the eleven types. |
 | `CommitRejected` | Git or a hook refused the native commit; correct the printed reason and rerun with hooks enabled. |
 | `InputUnreadable` | Git or required files cannot be read; correct the reported condition. |
 

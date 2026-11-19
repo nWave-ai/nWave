@@ -22,6 +22,7 @@ from nwexpress.application.next_block import NextKind, next_block, next_state
 from nwexpress.application.progress import Progress
 from nwexpress.application.prompt import Prompt
 from nwexpress.application.reclaim import reclaim_delivery
+from nwexpress.application.request_writer import RequestWriter
 from nwexpress.application.recorded import Recorded
 from nwexpress.application.recorder import Recorder
 from nwexpress.application.step_status import StepStatus
@@ -39,6 +40,7 @@ from nwexpress.domain.request_sentences import RequestSentences
 from nwexpress.domain.retired_schema import is_retired_name, retired_refusal
 from nwexpress.domain.run_mode import CHOICES
 from nwexpress.domain.schema import Schema
+from nwexpress.domain.request_sections import RequestSections
 from nwexpress.domain.size import Size
 from nwexpress.domain.size_declaration import SizeDeclaration
 from nwexpress.domain.step import Step
@@ -48,8 +50,10 @@ from nwexpress.infrastructure.checkout_commit import CheckoutCommit
 from nwexpress.infrastructure.command_runner import CommandRunner
 from nwexpress.infrastructure.configuration_files import read_tiers
 from nwexpress.infrastructure.current_schema_reader import shipped_current_schema
+from nwexpress.infrastructure.request_files import RequestFiles
 from nwexpress.infrastructure.examine_level_binding import ExamineLevelBinding
 from nwexpress.infrastructure.feature_publisher import FeaturePublisher
+from nwexpress.infrastructure.section_reader import SectionReader
 from nwexpress.infrastructure.feature_store import DeclaredFeature, FeatureStore
 from nwexpress.infrastructure.git_refs import GitRefs
 from nwexpress.infrastructure.invocation_line import InvocationLine
@@ -139,6 +143,8 @@ class Cli:
                 arguments.skills,
             )
         # fmt: on
+        if arguments.command == "request":
+            return self._request(arguments, directory)
         workspace = self._initialized(directory)
         schema = TomlSchemaReader().read(workspace.schema_path)
         journal = JsonlJournal(workspace).snapshot()
@@ -146,7 +152,7 @@ class Cli:
             return self._replay(workspace, arguments.root, schema, journal)
         if arguments.command == "prompt":
             return self._prompt(arguments, workspace, schema)
-        if arguments.command in ("finding", "packet", "verdict"):
+        if arguments.command in ("finding", "packet", "verdict", "withdraw"):
             return self._review(arguments, workspace)
         if arguments.command == "size":
             return self._size(arguments, workspace, schema)
@@ -336,6 +342,51 @@ class Cli:
             "sentences", help="print the numbered sentences of a request file"
         )
         sentences.add_argument("--file", required=True)
+        request = commands.add_parser(
+            "request",
+            help="write REQUEST.md in the workspace from the standing-block template and the sections given; refuses when a part is missing",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=(
+                "Writes REQUEST.md in the workspace. The standing rules come from the one template file of the checkout;\n"
+                "the sections come from the options. The first line is the card line the board reads.\n"
+                "It checks that every card id is in board form, that the card, title, problem, acceptance and scratch folder\n"
+                "are given, that each section file is readable text, that stdin is read by one section at most, and that an\n"
+                "existing REQUEST.md is replaced only with --force.\n"
+                "The verb cannot judge the quality of the sections; it checks that they are present and readable."
+            ),
+        )
+        request.add_argument(
+            "--workspace",
+            help="the workspace folder the request is written into; created when missing (default: NWEXPRESS_HOME)",
+        )
+        request.add_argument(
+            "--card",
+            help="the card id or ids of the delivery, for example t-0556 or t-0554, t-0555; the first line of the request",
+        )
+        request.add_argument("--title", help="the title of the request, one line")
+        request.add_argument(
+            "--problem", help="file with the problem; - reads it from stdin"
+        )
+        request.add_argument(
+            "--deliver",
+            help="file with what to deliver, optional; - reads it from stdin",
+        )
+        request.add_argument(
+            "--decisions",
+            help="file with the owner's decisions, optional; - reads it from stdin",
+        )
+        request.add_argument(
+            "--acceptance", help="file with the acceptance; - reads it from stdin"
+        )
+        request.add_argument(
+            "--scratch",
+            help="the scratch folder the executor may write under, for example /tmp/lane-7/scratch",
+        )
+        request.add_argument(
+            "--force",
+            action="store_true",
+            help="replace a REQUEST.md that already exists in the workspace",
+        )
         clone = commands.add_parser(
             "clone",
             help="make a delivery worktree: a git linked worktree on a new branch at the base commit, with the commit-msg and pre-commit hooks active and the trunk guard installed; refuses a RAM-backed or nearly full target",
@@ -527,6 +578,26 @@ class Cli:
         )
         verdict.add_argument(
             "--outcome", required=True, help="the verdict: accepted or rejected"
+        )
+        withdraw = commands.add_parser(
+            "withdraw",
+            help="withdraw a recorded finding whose case was wrong, with its reason on record: its case is no longer run and it no longer holds the packet; only its author may withdraw it",
+        )
+        withdraw.add_argument("--workspace")
+        withdraw.add_argument(
+            "--root", help="the project the withdrawal is made in (default: cwd)"
+        )
+        withdraw.add_argument(
+            "--finding",
+            required=True,
+            help="the finding to withdraw, by the identifier the status prints, such as F1",
+        )
+        withdraw.add_argument(
+            "--author", required=True, help="who wrote the finding, as an id"
+        )
+        withdraw.add_argument(
+            "--reason",
+            help="why the case was wrong: a withdrawal needs a reason that is not blank",
         )
         next_step.add_argument(
             "--request",
@@ -727,6 +798,43 @@ class Cli:
     def _sentences(self, file: str) -> int:
         for line in self._read_sentences(file).to_values():
             print(line)
+        return 0
+
+    def _request(self, arguments, directory: Path) -> int:
+        how = self._how
+        read = SectionReader(how, str(directory)).read(
+            {
+                "problem": arguments.problem,
+                "deliver": arguments.deliver,
+                "decisions": arguments.decisions,
+                "acceptance": arguments.acceptance,
+            }
+        )
+        sections = RequestSections(
+            title=arguments.title,
+            problem=read["problem"],
+            deliver=read["deliver"],
+            decisions=read["decisions"],
+            acceptance=read["acceptance"],
+            scratch=arguments.scratch,
+        )
+        files = RequestFiles()
+        path = RequestFiles.path_of(directory)
+        text = RequestWriter(how).plan(
+            card=arguments.card,
+            sections=sections,
+            template=files.read_template(),
+            request_path=str(path),
+            request_exists=path.is_file(),
+            force=arguments.force,
+        )
+        written = RequestFiles.write(directory, text)
+        sentences = len(RequestSentences.from_text(text).sentences)
+        print(f"wrote {written} with {sentences} numbered sentences")
+        print(
+            f"RED evidence: the oracle step keeps its RED values in {directory / 'journal.jsonl'}; "
+            "the raw report is removed when the step is recorded, so the committed record names the base and candidate commits"
+        )
         return 0
 
     def _kit_status(self) -> int:
@@ -989,7 +1097,24 @@ class Cli:
             return self._finding(desk, arguments)
         if arguments.command == "packet":
             return self._packet(desk)
+        if arguments.command == "withdraw":
+            return self._withdraw(desk, arguments)
         return self._verdict(desk, arguments)
+
+    @staticmethod
+    def _withdraw(desk: rework.Desk, arguments) -> int:
+        report = rework.report_withdrawal(
+            desk, arguments.finding, arguments.author, arguments.reason
+        )
+        withdrawal = report.withdrawal
+        print(
+            f"withdrew finding {withdrawal.identifier} by {withdrawal.author}: "
+            "its case is no longer run and it no longer holds the packet"
+        )
+        line = review_lines.stale_line(report.stale, report.waiting)
+        if line is not None:
+            print(line)
+        return 0
 
     @staticmethod
     def _finding(desk: rework.Desk, arguments) -> int:
@@ -1056,6 +1181,8 @@ class Cli:
             )
         else:
             print(f"recorded verdict {report.verdict.describe()}")
+        for withdrawal in report.withdrawn:
+            print(review_lines.withdrawal_line(withdrawal))
         return 0
 
     @staticmethod

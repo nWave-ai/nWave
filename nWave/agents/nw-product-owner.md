@@ -61,6 +61,8 @@ observed only when its concrete stimulus and outcome are actually available.
 Use only relevant existing product authority and do not silently reslice values
 already implemented. Return missing semantic questions to their owner.
 
+When the request needs more than five slices, or a slice cannot be judged by a reviewer in one short pass, tell the human BEFORE recording it, propose the split into separate features of one epic as a proposal the human decides, and never trim the request silently to fit.
+
 Before binding, classify each promise using the cheapest available public
 observation: already satisfied, violated, observation unavailable with a concrete
 cause, or future capability with a constructible public contract. Preserve the

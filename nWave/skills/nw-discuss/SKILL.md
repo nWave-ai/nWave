@@ -42,6 +42,7 @@ A value with only a settled happy path may skip exploration; write that judgment
 1. Each slice is one behaviour a user observes alone through the real driving port. A technical layer ("the API contract", "the database table") or a mocked interaction is not a slice; fold groundwork into the thinnest slice that delivers observable value.
 2. Slice 1 is the walking skeleton: the thinnest end-to-end path, through the real port and real I/O. Order the rest by dependency; each extends that path and none adds a second skeleton.
 3. Per slice, state the observable result, dependencies and size.
+4. Split duty: when the request needs more than five slices, or a slice cannot be judged by a reviewer in one short pass, tell the human BEFORE recording it, propose the split into separate features of one epic as a proposal the human decides, and never trim the request silently to fit. The product record refuses a sixth product slice of one feature (`PartInvalid: product.slices`); its HOW names the way out: separate features of one epic, after the human decides, through `nwdes feature new`.
 
 ## 5. Decisions and shared view
 

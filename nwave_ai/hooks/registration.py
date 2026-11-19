@@ -99,6 +99,25 @@ HOOK_FILE: dict[str, str] = {
     "copilot": "hooks/nwave-hooks.json",
 }
 
+#: The version Copilot's hook format declares. Every documented Copilot hook file carries "version": 1 (card t-0559).
+COPILOT_HOOK_VERSION: int = 1
+
+
+def _with_copilot_version(document: dict[str, Any]) -> dict[str, Any]:
+    """The Copilot document with "version": 1 first. A document that declares another version is refused, never rewritten.
+
+    A file another tool wrote with a different version is not nWave's to rewrite, so it is refused before any write,
+    with the version it holds and the one Copilot reads.
+    """
+    version = document.get("version", COPILOT_HOOK_VERSION)
+    if type(version) is not int or version != COPILOT_HOOK_VERSION:
+        raise ValueError(
+            f'"version" in the copilot hook file is {version!r}, not {COPILOT_HOOK_VERSION}: Copilot reads version '
+            f"{COPILOT_HOOK_VERSION} hook files and nWave never rewrites another schema"
+        )
+    rest = {key: value for key, value in document.items() if key != "version"}
+    return {"version": COPILOT_HOOK_VERSION, **rest}
+
 
 def interpreter_for_shell(path: str, *, windows: bool) -> str:
     """Spell an absolute interpreter path for the POSIX shell that runs hook commands.
@@ -434,7 +453,7 @@ def merge(document: dict[str, Any], host: str, interpreter: str) -> dict[str, An
     """The host document with the kept entries replaced; every other entry is kept."""
     result: dict[str, Any] = deepcopy(document)
     if host == "copilot":
-        result = _wrapped_copilot(result)
+        result = _with_copilot_version(_wrapped_copilot(result))
     if host == "cursor":
         result.setdefault("version", 1)
     container = result.setdefault("hooks", {})

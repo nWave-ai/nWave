@@ -11,7 +11,7 @@ from nwexpress.domain import review
 
 if TYPE_CHECKING:
     from nwexpress.domain.journal import Journal
-    from nwexpress.domain.review import Finding, Packet, ReviewLog
+    from nwexpress.domain.review import Finding, Packet, ReviewLog, Withdrawal
 
 UPSTREAM_CAUSE = "an earlier step was recorded again after them; record them again or say why they still hold"
 VERDICT_STEP_NOTE = "a verdict holds only for the candidate it judged: record it again for this candidate"
@@ -30,7 +30,19 @@ def stale_line(stale: tuple[str, ...], waiting: tuple[Finding, ...]) -> str | No
     return f"stale ({cause}): {', '.join(stale)}"
 
 
-def finding_state(finding: Finding, journal: Journal, green_step: str | None) -> str:
+def withdrawal_line(withdrawal: Withdrawal) -> str:
+    """A withdrawn finding with its author and its reason, as the packet, the verdict and the summary print it."""
+    return (
+        f"withdrawn finding {withdrawal.identifier} by {withdrawal.author}: "
+        f"{withdrawal.reason} (recorded {withdrawal.recorded_at})"
+    )
+
+
+def finding_state(
+    finding: Finding, log: ReviewLog, journal: Journal, green_step: str | None
+) -> str:
+    if log.withdrawal_of(finding.identifier) is not None:
+        return "withdrawn"
     position = review.closing_position(finding, journal, green_step)
     if position is None:
         return "open"
@@ -65,7 +77,7 @@ def status_lines(
     if log.verdicts:
         lines.append(verdict_line(log, journal, green_step))
     lines += [
-        f"finding {finding.identifier} by {finding.author}: {finding_state(finding, journal, green_step)}"
+        f"finding {finding.identifier} by {finding.author}: {finding_state(finding, log, journal, green_step)}"
         for finding in log.findings
     ]
     return tuple(lines)
@@ -103,6 +115,7 @@ def packet_lines(  # noqa: PLR0913 - one line per fact the reviewer needs; each 
         lines.append(
             f"earlier verdict: {earlier[-1].describe()}; it does not hold for this candidate"
         )
+    lines += [withdrawal_line(withdrawal) for withdrawal in log.withdrawals]
     lines += [
         "A verdict holds only for this candidate identity. If the candidate changes, run packet again and review the new candidate.",
         f"record the verdict with: {verdict_command}",
@@ -129,6 +142,9 @@ def summary_lines(
         lines += [
             f"- finding {finding.identifier} by {finding.author}: {finding.text}",
             f"  - case seen failing by the tool: `{finding.command}` exited {finding.red.get('exit_code')}",
-            f"  - state: {finding_state(finding, journal, green_step)}",
+            f"  - state: {finding_state(finding, log, journal, green_step)}",
         ]
+        withdrawal = log.withdrawal_of(finding.identifier)
+        if withdrawal is not None:
+            lines.append(f"  - {withdrawal_line(withdrawal)}")
     return [*lines, ""]

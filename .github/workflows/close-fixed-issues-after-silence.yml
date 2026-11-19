@@ -1,0 +1,66 @@
+# =============================================================================
+# Close fixed issues after silence (runs on nWave-ai/nWave)
+# =============================================================================
+#
+# Purpose: an issue we fixed and answered is closed as completed, with a thank-you message,
+# when the reporter has not replied within 36 hours of our last reply. It reopens when the
+# reporter writes again. The decision is the pure rule in scripts/public_issues/decide.py;
+# this file only schedules one pass of it and names the settings it reads.
+#
+# SECURITY — the same spirit as dispatch-pr.yml:
+#   - no pull request head is checked out; the script is read from the repository's own
+#     default branch, and no text a reporter wrote is executed;
+#   - permissions are issues write (labels, state, comments) and contents read (the checkout);
+#   - no secret is used: the run's own token only; the one action is pinned by commit hash.
+#
+# DRY BY DEFAULT — only the repository variable ISSUE_CLOSE_LIVE with the exact value true
+# makes a run live. Any other value, or no value, prints the decisions and changes nothing.
+# A manual run with dry_run left ticked is always a dry run.
+#
+# Managed from: nWave/public-workflows/close-fixed-issues-after-silence.yml in the private
+#               source of this project.
+# Synced to:    .github/workflows/close-fixed-issues-after-silence.yml by the allow-list map
+#               in scripts/release/public_allowlist.yaml on each stable release.
+# =============================================================================
+
+name: Close fixed issues after silence
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print the decisions and change nothing. Clear this only to run live, and only when the repository variable ISSUE_CLOSE_LIVE is true."
+        type: boolean
+        default: true
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: close-fixed-issues-after-silence
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: "One pass over fixed issues"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the default branch (never a pull request head)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Run one pass
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ISSUE_CLOSE_LIVE: ${{ vars.ISSUE_CLOSE_LIVE }}
+          FORCE_DRY_RUN: ${{ inputs.dry_run }}
+        run: python3 -m scripts.public_issues.run

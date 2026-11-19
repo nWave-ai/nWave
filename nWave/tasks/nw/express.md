@@ -21,11 +21,14 @@ before code. You are the host: you prepare the run and relay; you do not do the 
    installed for this machine; WHY, the nWave installation does not provide it on
    the PATH; HOW, reinstall nWave with pip, open a new shell and check again.
 2. Workspace: pick a new directory under `$HOME/.cache/nwave/nwexpress-runs/`. Never
-   create it inside the project. A request given as text goes to a file there.
+   create it inside the project. The request file goes there too, written in step 4.
 3. From the project root (git on the PATH; the pre-feature baseline is the commit
    at `HEAD`), run `nwexpress init --workspace <dir> --mode <mode>`. It uses the shipped
    current schema, so it needs no schema name or path.
-4. Run `nwexpress prompt --workspace <dir> --root <project root> --request <file> --mode <mode>`.
+4. Write the request file with `nwexpress request --workspace <dir> --card <id> --title <title> --problem <file> --acceptance <file> --scratch <folder>`.
+   Add `--deliver <file>` and `--decisions <file>` when the request has them; `-` reads one section from stdin.
+   Put the specifics in it, never retype the standing block: the verb writes it from its one template.
+   `nwexpress request --help` lists its checks. Then run `nwexpress prompt --workspace <dir> --root <project root> --request <file> --mode <mode>`.
    It prints the executor prompt. Keep specifics in the request file, not in the prompt.
 5. Give the printed text, unchanged, to ONE executor agent: the nWave crafter
    agent, or the functional crafter when the project paradigm is functional.
@@ -93,6 +96,7 @@ Give the packet to the reviewer.
 - A verdict holds for that identity only. If the candidate changes afterwards, the tool
   refuses a verdict that names the old identity, and status shows the earlier verdict as
   not holding for the new candidate. Run `packet` again and ask for a new verdict.
+- `packet` refuses to freeze when a commit from the base to HEAD names `feat`, `fix`, `perf` or `refactor` and changes only documents (files under `docs/`, or Markdown files). The refusal names each such commit by its short hash and subject and the type to use, `docs`; its HOW line rewrites those messages in one rebase. Run it as written, then run `packet` again. Commits that change source, that change no file, that change only tests, or that have no conventional release type are not refused.
 
 ## Rework: how a review finding is corrected
 
@@ -123,6 +127,7 @@ finding of a review before the replay that closes them.
 
 ## Limits
 
+- `nwexpress request` does not judge the quality of the sections. It checks that the card, title, problem, acceptance and scratch folder are given, that each section file is readable text, and that an existing REQUEST.md is replaced only with `--force`.
 - `nwexpress` does not check who wrote an independent review, who records a verdict or who
   reports a finding: the ids are kept as given. The selfreview step has an optional field
   for an independent review. The examine step (after `handoff`) records an examiner's id

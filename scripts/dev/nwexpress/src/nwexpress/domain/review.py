@@ -1,8 +1,9 @@
-"""The review of a delivery, kept beside its journal: frozen candidates, verdicts and findings.
+"""The review of a delivery, kept beside its journal: frozen candidates, verdicts, findings and withdrawals.
 
 Pure decisions over values. A packet freezes the identity of a candidate; a verdict holds for the identity frozen
 last while the candidate still has it; a finding stays open until the step that must pass is recorded again, and
-that one record closes every open finding, so the corrections after a verdict form one delta.
+that one record closes every open finding, so the corrections after a verdict form one delta. A withdrawal says a
+finding's case was wrong: a withdrawn finding is not open, runs no case and holds no packet, and the log keeps it.
 
 Every decision returns its outcome: the event to append, `Repeated` when the same thing is already recorded, or
 `Refused` with what and why and the remedy the shell turns into a command line. Nothing here reads a file, a
@@ -17,7 +18,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from nwexpress.domain import candidate
+from nwexpress.domain.author import Author
 from nwexpress.domain.command_line import CommandLine, UnquotedOperator
+from nwexpress.domain.finding_id import FindingId
+from nwexpress.domain.reason import Reason
 
 
 if TYPE_CHECKING:
@@ -40,6 +44,7 @@ class Remedy(Enum):
     STATUS = "status"
     FINDING = "finding"
     VERDICT = "verdict"
+    WITHDRAW = "withdraw"
 
 
 @dataclass(frozen=True)
@@ -47,6 +52,7 @@ class Refused:
     what: str
     why: str
     remedy: Remedy
+    finding: Finding | None = None
 
 
 @dataclass(frozen=True)
@@ -89,11 +95,24 @@ class Finding:
         return shlex.join(self.argv)
 
 
-Event = Packet | Verdict | Finding
-KINDS: dict[str, type[Packet] | type[Verdict] | type[Finding]] = {
+@dataclass(frozen=True)
+class Withdrawal:
+    """The end of a finding whose case was wrong: the finding stays in the log, with this record beside it."""
+
+    seq: int
+    recorded_at: str
+    identifier: str
+    author: str
+    reason: str
+    journal_records: int
+
+
+Event = Packet | Verdict | Finding | Withdrawal
+KINDS: dict[str, type[Packet] | type[Verdict] | type[Finding] | type[Withdrawal]] = {
     "packet": Packet,
     "verdict": Verdict,
     "finding": Finding,
+    "withdrawal": Withdrawal,
 }
 
 
@@ -129,6 +148,21 @@ class ReviewLog:
         return tuple(latest.values())
 
     @property
+    def withdrawals(self) -> tuple[Withdrawal, ...]:
+        return tuple(event for event in self.events if isinstance(event, Withdrawal))
+
+    def withdrawal_of(self, identifier: str) -> Withdrawal | None:
+        """The withdrawal of the finding with this identifier, when one is recorded."""
+        return next(
+            (
+                withdrawal
+                for withdrawal in self.withdrawals
+                if withdrawal.identifier == identifier
+            ),
+            None,
+        )
+
+    @property
     def latest_packet(self) -> Packet | None:
         return self.packets[-1] if self.packets else None
 
@@ -147,7 +181,7 @@ def to_value(event: Event) -> dict[str, Any]:
 
 
 def from_value(value: Mapping[str, Any]) -> Event | None:
-    """The event a stored line holds, or None when the line is not one of the three kinds with all its parts."""
+    """The event a stored line holds, or None when the line is not one of the four kinds with all its parts."""
     shape = KINDS.get(str(value.get("kind")))
     if shape is None:
         return None
@@ -179,7 +213,7 @@ class FindingDraft:
 
 def finding_draft(author: str, text: str, red: str) -> FindingDraft | Refused:
     problems = [
-        *_short("--author", author, MIN_NAME_CHARS),
+        *Author.problems(author),
         *_short("--text", text, MIN_TEXT_CHARS),
     ]
     argv: tuple[str, ...] = ()
@@ -228,10 +262,12 @@ def closing_position(
 def open_findings(
     log: ReviewLog, journal: Journal, green_step: str | None
 ) -> tuple[Finding, ...]:
+    """The findings that wait for a passing case: neither closed by a record nor withdrawn by their author."""
     return tuple(
         finding
         for finding in log.findings
-        if closing_position(finding, journal, green_step) is None
+        if log.withdrawal_of(finding.identifier) is None
+        and closing_position(finding, journal, green_step) is None
     )
 
 
@@ -342,6 +378,16 @@ def finding_observed(
             why="a finding is proven by a case the tool itself saw fail; a case that cannot start proves nothing",
             remedy=Remedy.FINDING,
         )
+    if seen.passed and admitted.corrects is not None:
+        return Refused(
+            what=f"the case of the finding exited 0 on the candidate: `{admitted.draft.command}`",
+            why=(
+                "a case that passes on the candidate proves no finding; the open finding "
+                f"{admitted.corrects.identifier} it corrects stays open until its case passes or it is withdrawn with a reason"
+            ),
+            remedy=Remedy.WITHDRAW,
+            finding=admitted.corrects,
+        )
     if seen.passed:
         return Refused(
             what=f"the case of the finding exited 0 on the candidate: `{admitted.draft.command}`",
@@ -355,6 +401,88 @@ def finding_observed(
         author=admitted.draft.author,
         text=admitted.draft.text,
         red=dict(seen.run),
+        journal_records=len(journal.records),
+    )
+
+
+# --- withdrawals ------------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class WithdrawalDraft:
+    """A withdrawal as its author gave it, already well formed: the finding, who withdraws it, and why."""
+
+    identifier: FindingId
+    author: Author
+    reason: Reason
+
+
+def withdrawal_draft(
+    identifier: str, author: str, reason: str | None
+) -> WithdrawalDraft | Refused:
+    problems = [
+        *FindingId.problems(identifier),
+        *Author.problems(author),
+        *Reason.problems(reason),
+    ]
+    if problems or reason is None:
+        return Refused(
+            what="; ".join(problems),
+            why="a withdrawal names the finding, says who withdraws it and why its case was wrong",
+            remedy=Remedy.WITHDRAW,
+        )
+    return WithdrawalDraft(
+        FindingId(identifier.strip()), Author(author.strip()), Reason(reason.strip())
+    )
+
+
+def withdrawal_gate(
+    log: ReviewLog,
+    journal: Journal,
+    green_step: str | None,
+    draft: WithdrawalDraft,
+    recorded_at: str,
+) -> Withdrawal | Refused:
+    """Whether the state admits the withdrawal: an existing, open finding, withdrawn by the author who wrote it."""
+    identifier = draft.identifier.value
+    finding = next(
+        (finding for finding in log.findings if finding.identifier == identifier),
+        None,
+    )
+    if finding is None:
+        return Refused(
+            what=f"no finding {identifier} is recorded in this workspace",
+            why="a withdrawal names a finding the review log holds, by the identifier the status prints",
+            remedy=Remedy.STATUS,
+        )
+    withdrawn = log.withdrawal_of(identifier)
+    if withdrawn is not None:
+        return Refused(
+            what=f"finding {identifier} is already withdrawn by {withdrawn.author}",
+            why="a finding is withdrawn once; the first withdrawal stays on record",
+            remedy=Remedy.STATUS,
+        )
+    position = closing_position(finding, journal, green_step)
+    if position is not None:
+        closing = journal.records[position]
+        return Refused(
+            what=f"finding {identifier} is already closed by '{closing.step}' revision {closing.revision}",
+            why="a closed finding was resolved by a passing case; it has no case left to withdraw",
+            remedy=Remedy.STATUS,
+        )
+    if finding.author != draft.author.value:
+        return Refused(
+            what=f"finding {identifier} was written by {finding.author}, not by {draft.author.value}",
+            why="only the author of a finding may withdraw it; the root cannot withdraw a reviewer's finding through this verb",
+            remedy=Remedy.WITHDRAW,
+            finding=finding,
+        )
+    return Withdrawal(
+        seq=log.next_seq,
+        recorded_at=recorded_at,
+        identifier=identifier,
+        author=draft.author.value,
+        reason=draft.reason.value,
         journal_records=len(journal.records),
     )
 

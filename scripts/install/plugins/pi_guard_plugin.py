@@ -13,12 +13,12 @@ so a crash between the two leaves a state the next install accepts (the extensio
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import subprocess
 from pathlib import Path
 
+from nwave_ai.rendered_bytes import owns_digest
 from scripts.install.plugins.base import (
     InstallationPlugin,
     InstallContext,
@@ -27,6 +27,7 @@ from scripts.install.plugins.base import (
 from scripts.install.plugins.guard_extension import (
     EXTENSION_NAME,
     MANIFEST_NAME,
+    extension_bytes,
     manifest_text,
     render_guard_extension,
 )
@@ -86,7 +87,7 @@ class PiGuardExtensionPlugin(InstallationPlugin):
         if not context.dry_run:
             directory.mkdir(parents=True, exist_ok=True)
             manifest.write_text(manifest_text(rendered), encoding="utf-8")
-            shim.write_text(rendered, encoding="utf-8")
+            shim.write_bytes(extension_bytes(rendered))
         verb = "Would install" if context.dry_run else "Installed"
         message = f"{verb} pi nWave guard extension at {shim}; Python: {python}; runtime: {runtime}."
         context.logger.info(message)
@@ -115,8 +116,9 @@ class PiGuardExtensionPlugin(InstallationPlugin):
                 "WHY: nWave cannot tell its extension from a foreign one without a readable manifest. "
                 "HOW: delete the manifest and rerun the installer with --platform pi."
             )
-        actual = hashlib.sha256(shim.read_bytes()).hexdigest()
-        if recorded != actual:
+        if not owns_digest(
+            shim.read_bytes(), recorded if isinstance(recorded, str) else None
+        ):
             return self._refuse(
                 f"WHAT: {shim} does not match the digest its manifest records. "
                 "WHY: the extension was edited or replaced after nWave wrote it. "

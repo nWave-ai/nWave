@@ -734,6 +734,8 @@ SLICE_DESIGN = record(
     oracle=LINE,
     verification=array(COMMAND, 1),
     supports=array(LINE),
+    report=LINE,
+    mutants=LINE,
     public_oracle=PUBLIC_ORACLE,
     prefactoring=PREFACTORING,
     records=RECORDS,
@@ -812,6 +814,21 @@ ACCEPTANCE_SHAPE = replace(
     ACCEPTANCE_ROW, required=("expected", "user_result", "disposition")
 )
 
+# A typed waiver of a published row: who decided, when nwdes stamped it, why, and where the promise is
+# covered instead. The verb takes the first three; nwdes stamps waived_at from the clock at add.
+EXPECTATION_WAIVER_INPUT = record(
+    ("by", "reason", "coverage"),
+    by=TEXT,
+    reason=TEXT,
+    coverage=TEXT,
+)
+EXPECTATION_WAIVER = record(
+    ("by", "waived_at", "reason", "coverage"),
+    by=TEXT,
+    waived_at=TEXT,
+    reason=TEXT,
+    coverage=TEXT,
+)
 EXPECTATIONS = record(
     rows=array(
         record(
@@ -824,8 +841,10 @@ EXPECTATIONS = record(
             isolated=enum("yes", "no"),
             needs=TEXT,
         )
-    )
+    ),
+    waivers=table(EXPECTATION_WAIVER, key="E"),
 )
+
 CHARTER = record(
     ("intent", "exploration", "positive", "negative"),
     required_error=RequiredError.PartInvalid,
@@ -885,10 +904,30 @@ EXAMINATION_VERDICT = replace(
         for name, spec in VERDICT.members
     ),
 )
+# The examiner's input has no waiver: only the owner's expectations record one, so an examiner
+# cannot set it by its own output.
 EXAMINATION_INPUT = record(
     ("observations", "verdicts"),
     observations=array(EXAMINATION_OBSERVATION),
     verdicts=table(EXAMINATION_VERDICT, key="E", total=True),
+)
+# The published examination verdict: the record's text fields plus the copy of the waiver an unmet
+# verdict closed with. A copy is taken when the examination closes (see snapshot_waivers).
+EXAMINATION_PUBLISHED_VERDICT = replace(
+    VERDICT,
+    members=tuple(
+        (
+            name,
+            replace(
+                spec,
+                members=(
+                    *spec.members,
+                    *((("waiver", EXPECTATION_WAIVER),) if name == "unmet" else ()),
+                ),
+            ),
+        )
+        for name, spec in VERDICT.members
+    ),
 )
 ROLE_SCHEMAS = {
     "product": PRODUCT,
@@ -917,7 +956,7 @@ CANONICAL_PARTS = (
     ("acceptance", table(array(ACCEPTANCE_ROW))),
     ("expectations", EXPECTATIONS),
     ("charter", CHARTER_PART),
-    ("examination", table(VERDICT, key="E")),
+    ("examination", table(EXAMINATION_PUBLISHED_VERDICT, key="E")),
 )
 
 # Shape checks of stored and produced parts. They read the same schemas with each slice's
@@ -1106,7 +1145,14 @@ def _absent(value):
 PROSE_REASON = "prose, verified by EXAMINE"
 PROSE_OWNER = "EXAMINE"
 # Design fields that only an oracle can use: a prose-only slice must not carry them.
-_PROSE_FORBIDDEN = ("oracle", "verification", "supports", "prefactoring")
+_PROSE_FORBIDDEN = (
+    "oracle",
+    "verification",
+    "supports",
+    "report",
+    "mutants",
+    "prefactoring",
+)
 _PROSE_PUBLIC_FORBIDDEN = ("stimulus", "expected", "falsifier")
 # The command-line flag that supplies each forbidden field, where one exists.
 _PROSE_FLAGS = MappingProxyType(
@@ -1114,6 +1160,8 @@ _PROSE_FLAGS = MappingProxyType(
         "oracle": "--oracle",
         "verification": "--command",
         "supports": "--support",
+        "report": "--report",
+        "mutants": "--mutants",
         "public_oracle.stimulus": "--stimulus",
         "public_oracle.expected": "--expected",
         "public_oracle.falsifier": "--falsifier",
@@ -2402,6 +2450,8 @@ FLAG_SPECS = (
     ("observation", TEXT, "--observation"),
     ("oracle", LINE, "oracle"),
     ("command", array(COMMAND), "verification"),
+    ("report", LINE, "report"),
+    ("mutants", LINE, "mutants"),
     ("stimulus", TEXT, "stimulus"),
     ("expected", TEXT, "expected"),
     ("falsifier", TEXT, "falsifier"),
@@ -2955,6 +3005,32 @@ def unauthorised_promise_retirement(previous, identity, amendment):
             "Repeat the remove with --amendment-authority TEXT and --amendment-reason TEXT, naming who authorised "
             "the retirement; nwdes records the authority as typed and does not verify it.",
         ),
+    )
+
+
+# A feature holds at most five product slices: the owner decision of 18 Nov 2026 (t-0565), which
+# counts slices and never lines. Change the limit here and nowhere else.
+PRODUCT_SLICE_LIMIT = 5
+
+
+def slice_ceiling_defect(slices):
+    """The refusal for one more product slice, or None while the feature holds fewer than the limit.
+
+    Existing handoffs keep every slice they hold: only an addition is judged here, never a read,
+    print or close.
+    """
+    held = len(slices)
+    if held < PRODUCT_SLICE_LIMIT:
+        return None
+    return Defect(
+        "PartInvalid: product.slices",
+        f"The feature already holds {held} product slices and a feature holds at most "
+        f"{PRODUCT_SLICE_LIMIT}; a feature needing more is returned as separate features of one "
+        "epic, never as more slices, because a slice must be judged by a reviewer in one short pass.",
+        "Tell the human that this request needs a split and propose the split into separate "
+        "features of one epic as a proposal the human decides; record nothing until they answer. "
+        "Then run this once for each new feature: nwdes feature new --feature <new-feature> "
+        "--epic <epic> --request '<outcome>' --size S --value '<value>'",
     )
 
 
@@ -4225,26 +4301,160 @@ def _examination_problems(previous, decoded):
 
 
 def examination_outcome(verdicts):
-    """Derive the outcome of a constructed verdict set, never judge its evidence.
+    """Derive the outcome of a constructed verdict set, never judge its evidence, and store nothing.
 
-    The most serious state decides: an unmet row (FAIL or UNSTABLE) rejects, a row that was
-    not examined (declared by the examiner with a reason) is indeterminate, and only an all-met set is accepted.
+    The most serious state decides. An unmet row whose class is not observation_gap (a product
+    violation, an oracle gap, an expectation defect or an unstable verdict) rejects. An unmet row
+    of class observation_gap says the capture cannot show the behaviour: a limit of the probe, not
+    a product failure, so it is indeterminate, like a row that was not examined, unless the owner
+    waived it: a waived capture gap is neither met nor unmet and contributes nothing. Only an
+    all-met or all-waived set is accepted. The outcome is derived at read time and never stored, so
+    a published record is read by the same rule every time.
     """
-    states = {verdict["verdict"] for verdict in verdicts.values()}
-    if "unmet" in states:
+    rows = tuple(verdicts.values())
+    if any(
+        row["verdict"] == "unmet" and row.get("class") != "observation_gap"
+        for row in rows
+    ):
         return "rejected"
-    if "not_examined" in states:
+    if any(
+        row["verdict"] == "not_examined"
+        or (row["verdict"] == "unmet" and "waiver" not in row)
+        for row in rows
+    ):
         return "indeterminate"
     return "accepted"
 
 
-def examination_close_refusal(draft, outcome, diagnostic):
+def observation_gap_rows(verdicts):
+    """The unmet, not yet waived rows that make an indeterminate examination indeterminate through observation gaps.
+
+    Empty unless the derived outcome is indeterminate, at least one row is unmet and not waived, and every such
+    unmet row is observation_gap. Rows that are not_examined do not change this: they still make the outcome
+    indeterminate, and their own text stays as it is. Pure: it reads the verdicts and derives nothing new.
+    """
+    if examination_outcome(verdicts) != "indeterminate":
+        return ()
+    unmet = tuple(
+        identity
+        for identity in sorted(verdicts)
+        if verdicts[identity]["verdict"] == "unmet"
+        and "waiver" not in verdicts[identity]
+    )
+    if not unmet or any(
+        verdicts[identity].get("class") != "observation_gap" for identity in unmet
+    ):
+        return ()
+    return unmet
+
+
+def observation_gap_guidance(verdicts, scope):
+    """The lines that tell the owner what an observation gap means and the two honest ways forward.
+
+    The observation could not be made, so nothing shows the product failed. The owner observes each row
+    again or records a waiver; only the owner decides a waiver, and the record keeps who and why. The
+    printed commands carry scope, the feature or epic flag the examination was run with. Empty unless
+    observation_gap_rows names rows. Pure.
+    """
+    rows = observation_gap_rows(verdicts)
+    if not rows:
+        return ()
+    named = ", ".join(rows)
+    lines = [
+        f"OBSERVATION GAP {named}: the observation could not be made; nothing shows that the product failed. "
+        "WHY: an examination that cannot observe a row cannot judge it, so it stays indeterminate; it is not a rejection."
+    ]
+    for row in rows:
+        lines.append(
+            f"HOW observe {row}: nwdes prompt --role nw-user-examiner --task examine, then record its verdict "
+            f"with nwdes examine verdict set --expectation {row} --verdict met or unmet."
+        )
+    lines.append("HOW waive as the owner, run these commands in order:")
+    lines.append(f"  nwdes expectations open {scope} --from-current")
+    lines.extend(
+        f"  nwdes expectations waiver add {scope} --row {row} --by OWNER --reason TEXT --coverage TEXT"
+        for row in rows
+    )
+    lines.append(
+        f"  nwdes expectations close {scope} --outcome accepted --diagnostic TEXT --revise"
+    )
+    lines.append("then examine again.")
+    lines.append(
+        "ONLY THE OWNER decides a waiver; the record keeps who (--by) and why (--reason). "
+        "Do not waive it yourself, and do not waive it from the examiner role."
+    )
+    return tuple(lines)
+
+
+def waiver_problems(payload):
+    """A waiver names a row of the revised set: a waiver for any other row has nothing to waive.
+
+    The waivers are keyed by row id, so one waiver per row holds by construction. Pure over the payload.
+    """
+    if not isinstance(payload, Mapping):
+        return ()
+    waivers = payload.get("waivers", EMPTY)
+    if not isinstance(waivers, Mapping) or not waivers:
+        return ()
+    known = frozenset(
+        row.get("id") for row in payload.get("rows", ()) if isinstance(row, Mapping)
+    )
+    return tuple(
+        Defect(
+            "DanglingReference: expectations.waivers." + identity,
+            f"The waiver names {identity}, which is not an expectation row of this set. WHY: a waiver waives a row the examiner judged; a row outside the set has nothing to waive.",
+            f"Remove the waiver with nwdes expectations waiver remove --row {identity}, or waive a row that is in the set.",
+        )
+        for identity in waivers
+        if identity not in known
+    )
+
+
+def snapshot_waivers(verdicts, waivers):
+    """Each verdict carries the waiver it closed with; only an unmet observation_gap can carry one.
+
+    The copy comes from the expectations part when the examination closes. A copy seeded into a
+    reopened draft is replaced, and a waiver added or removed later changes no closed verdict. Pure.
+    """
+    return Record(
+        (identity, _with_snapshot(row, waivers.get(identity)))
+        for identity, row in verdicts.items()
+    )
+
+
+def _with_snapshot(row, waiver):
+    kept = tuple((name, value) for name, value in row.items() if name != "waiver")
+    waivable = row.get("verdict") == "unmet" and row.get("class") == "observation_gap"
+    if waiver is None or not waivable:
+        return Record(kept)
+    return Record((*kept, ("waiver", waiver)))
+
+
+def waiver_notices(examination, waivers):
+    """A waiver the closed verdict cannot take is said at close: it changes nothing and says so."""
+    if not isinstance(examination, Mapping):
+        return ()
+    return tuple(
+        f"The waiver of {identity} is inert: only an unmet observation_gap verdict can be waived, and {identity} is {_verdict_words(examination[identity])}. HOW: remove it with nwdes expectations waiver remove --row {identity}, or leave it: it changes nothing."
+        for identity in waivers
+        if identity in examination and "waiver" not in examination[identity]
+    )
+
+
+def _verdict_words(row):
+    return row["verdict"] + (" " + row["class"] if row.get("class") else "")
+
+
+def examination_close_refusal(draft, outcome, diagnostic, scope):
     """The refusal of an examine close that asks for an outcome nwdes does not publish.
 
     An examination publishes whatever its verdicts derive: a close with --outcome accepted
     publishes that derived outcome and prints it. A close asking for another outcome is refused
     here, naming the outcome the verdicts derive and the one close that publishes it. The
-    author's supplied diagnostic is carried in the refusal, never dropped.
+    author's supplied diagnostic is carried in the refusal, never dropped. When the derived
+    outcome is indeterminate only through observation gaps, the HOW also carries the owner's
+    observe and waiver path from observation_gap_guidance; the examiner must not change those
+    rows to met on its own. The scope flag is the feature or epic the examination ran with.
     """
     derived = examination_outcome(draft.get("verdicts") or {})
     why = (
@@ -4255,13 +4465,15 @@ def examination_close_refusal(draft, outcome, diagnostic):
         why += " The author's diagnostic, verbatim, one quoted line per row:" + "".join(
             f"\n  | {line}" for line in diagnostic.splitlines()
         )
-    return Defect(
-        "RoleNotAccepted: examine",
-        why,
+    how = (
         "Close with --outcome accepted. nwdes publishes the outcome the verdicts derive, "
         f"which is {derived}, and prints it as the last line of the close output. To change that outcome, "
-        "change a verdict first: met, unmet or not_examined.",
+        "change a verdict first: met, unmet or not_examined."
     )
+    guidance = observation_gap_guidance(draft.get("verdicts") or {}, scope)
+    if guidance:
+        how += "\n" + "\n".join(guidance)
+    return Defect("RoleNotAccepted: examine", why, how)
 
 
 def _acceptance_statement_problems(payload, slice):
@@ -4631,6 +4843,11 @@ def _prepare_decoded(
             else ()
         ),
         *(
+            waiver_problems(decoded.payload)
+            if kind == "expectations" and decoded.outcome == "accepted"
+            else ()
+        ),
+        *(
             _program_problems(_design_commands(payload), programs)
             if kind == "design" and decoded.outcome == "accepted"
             else ()
@@ -4643,9 +4860,26 @@ def _prepare_decoded(
     )
 
 
+def _fixed_waivers(previous):
+    """The waivers of the fixed set, each text field as its author stated it, for the examination snapshot."""
+    resolve = _fact_text(previous.facts)
+    waivers = (previous.expectations or EMPTY).get("waivers", EMPTY)
+    return Record(
+        (
+            identity,
+            Record((name, resolve(value)) for name, value in waiver.items()),
+        )
+        for identity, waiver in waivers.items()
+    )
+
+
 def _candidate_part(previous, kind, payload, slice):
     spec = CANONICAL_SCHEMAS["examination"] if kind == "examine" else ROLE_SCHEMAS[kind]
-    payload = examination_verdicts(payload) if kind == "examine" else payload
+    payload = (
+        snapshot_waivers(examination_verdicts(payload), _fixed_waivers(previous))
+        if kind == "examine"
+        else payload
+    )
     built, facts, counters = _build(
         spec,
         {name: child for name, child in payload.items() if name != "adrs"}
@@ -4898,6 +5132,17 @@ def _withdraw_references(previous, candidate, operation):
                     row
                     for row in expectations.get("rows", ())
                     if row["id"] not in withdrawn_expectations
+                ),
+                **(
+                    {
+                        "waivers": Record(
+                            (identity, waiver)
+                            for identity, waiver in expectations["waivers"].items()
+                            if identity not in withdrawn_expectations
+                        )
+                    }
+                    if "waivers" in expectations
+                    else {}
                 ),
             }
         )
@@ -6039,6 +6284,10 @@ def prepare_slice(
     missing = _unavailable(product)
     if missing is not None:
         return checked(None, (missing.defect,))
+    if slice is None:
+        ceiling = slice_ceiling_defect(product.get("slices", ()))
+        if ceiling is not None:
+            return checked(None, (ceiling,))
     intent = values.intent
     observations = {
         row["id"]: observation if row["id"] == slice else row["observation"]
@@ -6243,6 +6492,8 @@ _SCALAR_FLAGS = (
     "observation",
     "paradigm",
     "oracle",
+    "report",
+    "mutants",
     "stimulus",
     "expected",
     "falsifier",
@@ -6300,6 +6551,8 @@ _ACTIVE_FLAGS = MappingProxyType(
                 "expected",
                 "falsifier",
                 "command",
+                "report",
+                "mutants",
                 "support",
                 "create",
                 "extend",
@@ -6445,6 +6698,12 @@ def _invocation_slice(values):
                 ("oracle", values["oracle"]),
                 ("verification", values["command"]),
                 ("supports", values["support"]),
+                *(() if values["report"] is None else (("report", values["report"]),)),
+                *(
+                    ()
+                    if values["mutants"] is None
+                    else (("mutants", values["mutants"]),)
+                ),
                 (
                     "targets",
                     tuple(

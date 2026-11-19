@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any, TextIO
 
 from nwave_ai import upgrade as core
 from nwave_ai.platform.locations import Failure
+from nwave_ai.rendered_bytes import lf_of_crlf_translation
 
 
 if TYPE_CHECKING:
@@ -146,12 +147,16 @@ def _list_tree(path: str) -> tuple[core.Node, ...]:
                     hashlib.md5(data).hexdigest(),
                 )
             else:
+                line_ending_source = lf_of_crlf_translation(data)
                 built[name] = core.FileLeaf(
                     name,
                     hashlib.sha256(data).hexdigest(),
                     info.st_size,
                     info.st_mtime_ns,
                     hashlib.md5(data).hexdigest(),
+                    None
+                    if line_ending_source is None
+                    else hashlib.sha256(line_ending_source).hexdigest(),
                 )
         else:
             # A socket/device/FIFO is never read or removed as a regular artifact.

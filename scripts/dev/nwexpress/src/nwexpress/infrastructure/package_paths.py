@@ -14,6 +14,7 @@ class PackagePaths:
     TEMPLATES = CHECKOUT / "templates"
     SCHEMAS = CHECKOUT / "schemas"
     MANIFEST = TEMPLATES / "versions.toml"
+    REQUEST_TEMPLATE = TEMPLATES / "request.md"
 
     @classmethod
     def jev_skill(cls) -> Path:

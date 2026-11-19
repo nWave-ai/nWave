@@ -1104,28 +1104,274 @@ def touched_files(diff):
     )
 
 
-def oracle_approval(slice_id, recorded_content, current_content, then):
+def oracle_approval(slice_id, recorded_content, current_content, then, facts=None):
     """Refuse once the oracle or support bytes differ from those the oracle review approved.
 
-    ``then`` completes the remedy: the step the caller takes after rerunning the review.
+    ``then`` completes the remedy after the host's own repair. ``facts`` (a mapping, optional)
+    comes from the caller after it verified the approval commit. When ``verified`` is true it
+    names ``changed`` paths, the ``commit`` that holds them, the ``present`` ones git show can
+    restore, the ``feature`` and ``sharing`` pairs (other slice, its changed paths). When it is
+    false the approval commit does not hold the approved bytes: the changed paths are unknown,
+    nothing is named, and no restore is offered. Without facts the text names nothing.
     """
     if recorded_content is None or recorded_content == current_content:
         return Built(None)
+    facts = facts or {}
+    if facts.get("verified") is False:
+        return checked(
+            None,
+            (
+                Defect(
+                    "OracleChanged: "
+                    + slice_id
+                    + ": the declared files changed after the approval of "
+                    + slice_id
+                    + ", and no approval commit verifiably holds the approved bytes, so the changed paths are unknown.",
+                    "The approval of "
+                    + slice_id
+                    + " covers the declared files as they were approved; the current bytes differ, and the commit recorded with the approval does not hold those bytes.",
+                    "rerun the oracle review for "
+                    + slice_id
+                    + " with nwdes review observation add and close --subject oracle --slice "
+                    + slice_id
+                    + " on the bytes to commit; then "
+                    + then
+                    + ".",
+                ),
+            ),
+        )
+    changed = facts.get("changed", ())
+    commit = facts.get("commit")
+    feature = facts.get("feature")
+    present = facts.get("present", ())
+    sharing = facts.get("sharing", ())
+    names = ", ".join(changed) if changed else "the declared files"
+    what = (
+        "OracleChanged: "
+        + slice_id
+        + ": "
+        + names
+        + " changed after the approval of "
+        + slice_id
+        + " (approval commit "
+        + str(commit)
+        + ")."
+    )
+    for other, paths in sharing:
+        what += " " + other + " also declares " + ", ".join(paths) + "."
+    why = (
+        "The approval of "
+        + slice_id
+        + " covers its declared files as they were approved; the current bytes of "
+        + names
+        + " differ from the approved bytes."
+    )
+    steps = [
+        "restore the approved bytes with git show " + commit + ":" + path + " > " + path
+        for path in present
+    ]
+    steps += [
+        "keep "
+        + other
+        + "'s new scenarios in their own file and declare it for "
+        + other
+        + " with nwdes slice set --feature "
+        + str(feature)
+        + " --slice "
+        + other
+        + " --oracle <new path>, then rerun the oracle review for "
+        + other
+        + " with nwdes review observation add and close --subject oracle --slice "
+        + other
+        for other, _ in sharing
+    ]
+    steps.append(then)
     return checked(
         None,
-        (
-            Defect(
-                "OracleChanged: " + slice_id,
-                "The oracle or support bytes differ from the approved ones; the approval covered other bytes.",
-                "Rerun the oracle review for "
-                + slice_id
-                + " with nwdes review observation add and close --subject oracle --slice "
-                + slice_id
-                + ", then "
-                + then
-                + ".",
-            ),
-        ),
+        (Defect(what, why, "; ".join(steps) + "."),),
+    )
+
+
+def report_missing(slice_id, report):
+    """The declared report is absent or unreadable after the declared command ran."""
+    return Defect(
+        "ReportMissing: "
+        + slice_id
+        + ": "
+        + report
+        + " is not a readable JUnit XML report after the declared verification command ran.",
+        "The approval records each identity the report names; without a readable report it would hold no identity to check the candidate against.",
+        "make the verification command write a JUnit XML report at "
+        + report
+        + " (pytest: --junitxml="
+        + report
+        + "), then rerun the oracle review for "
+        + slice_id
+        + " with nwdes review observation add and close --subject oracle --slice "
+        + slice_id
+        + ".",
+    )
+
+
+def report_empty(slice_id, report):
+    """The declared report names no identity, so an approval could hold nothing."""
+    return Defect(
+        "ReportEmpty: " + slice_id + ": " + report + " names no test identity.",
+        "An approval with no identity holds the candidate to nothing; the declared command must run the approved checks.",
+        "make the verification command run the approved checks so that "
+        + report
+        + " names them, then rerun the oracle review for "
+        + slice_id
+        + " with nwdes review observation add and close --subject oracle --slice "
+        + slice_id
+        + ".",
+    )
+
+
+def report_undeclared(slice_id, feature):
+    """The approval recorded identities, but the slice no longer declares the report to rerun them."""
+    return Defect(
+        "ReportUndeclared: "
+        + slice_id
+        + ": the oracle approval records identities, but the slice no longer declares --report.",
+        "The recorded identities cannot be rerun without the declared report, so the live check would silently stop.",
+        "declare the report again with nwdes slice set --feature "
+        + str(feature)
+        + " --slice "
+        + slice_id
+        + " --report <JUnit XML path>, then rerun the oracle review for "
+        + slice_id
+        + " and commit.",
+    )
+
+
+def identity_outcome(slice_id, identity, outcome, report):
+    """One approved identity the candidate does not report pass."""
+    state = (
+        "is not reported by the declared command"
+        if outcome is None
+        else "reports " + outcome
+    )
+    return Defect(
+        "OracleIdentityChanged: "
+        + slice_id
+        + ": "
+        + identity
+        + " "
+        + state
+        + " on the candidate.",
+        "The approval of "
+        + slice_id
+        + " names this identity, and each candidate must report it pass; the candidate does not, so what "
+        + slice_id
+        + " approved no longer holds on the candidate.",
+        "make "
+        + identity
+        + " pass on the candidate and commit it; if its expectation must change, rerun the oracle review for "
+        + slice_id
+        + " with nwdes review observation add and close --subject oracle --slice "
+        + slice_id
+        + " on the bytes to commit, then commit them. The declared report is "
+        + report
+        + ".",
+    )
+
+
+def identity_untargeted(slice_id, identity, mutants):
+    """An approved identity that no declared mutant targets."""
+    return Defect(
+        "MutantUntargeted: "
+        + slice_id
+        + ": "
+        + identity
+        + " is targeted by no declared mutant.",
+        "A mutant is the declared change that the identity must fail under; an identity no mutant targets can be weakened and no declared change shows it.",
+        "declare one mutant that targets "
+        + identity
+        + " in "
+        + mutants
+        + ", each as {path, old, new, targets}, then rerun the oracle review for "
+        + slice_id
+        + " with nwdes review observation add and close --subject oracle --slice "
+        + slice_id
+        + " and commit.",
+    )
+
+
+def mutants_malformed(slice_id, mutants):
+    """The declared mutants file is not a JSON list of mutant objects."""
+    return Defect(
+        "MutantsMalformed: "
+        + slice_id
+        + ": "
+        + mutants
+        + " is not a JSON list of {path, old, new, targets} mutants.",
+        "A mutant set that cannot be read declares no change, so no identity is shown to check behaviour.",
+        "write "
+        + mutants
+        + " as a JSON list whose objects have exactly the keys path, old, new and targets (targets a non-empty list of identities), then rerun the oracle review for "
+        + slice_id
+        + ".",
+    )
+
+
+def mutant_target_unknown(slice_id, target, mutants):
+    """A mutant targets an identity the approval did not report."""
+    return Defect(
+        "MutantTargetUnknown: "
+        + slice_id
+        + ": "
+        + mutants
+        + " targets "
+        + target
+        + ", which the oracle approval does not report.",
+        "A mutant can only be checked against an identity the approved report names.",
+        "target an identity the report names, or make the report name "
+        + target
+        + ", then rerun the oracle review for "
+        + slice_id
+        + ".",
+    )
+
+
+def mutant_survives(slice_id, identity, mutant, outcome):
+    """An approved identity does not fail under one of its declared mutants."""
+    state = "is not reported" if outcome is None else "reports " + outcome
+    return Defect(
+        "MutantSurvives: "
+        + slice_id
+        + ": under the mutant of "
+        + mutant
+        + ", "
+        + identity
+        + " "
+        + state
+        + ".",
+        "The approved identity must fail under this declared change to the product; it does not, so it no longer checks the behaviour the mutant breaks.",
+        "restore the assertion that fails under this mutant and commit it; if the approved behaviour itself must change, rerun the oracle review for "
+        + slice_id
+        + " with nwdes review observation add and close --subject oracle --slice "
+        + slice_id
+        + " and commit.",
+    )
+
+
+def mutant_not_applied(slice_id, mutant, count):
+    """A mutant's old text does not occur exactly once in the candidate."""
+    return Defect(
+        "MutantNotApplied: "
+        + slice_id
+        + ": the mutant of "
+        + mutant
+        + " occurs "
+        + str(count)
+        + " times, not once.",
+        "A mutant applies to exactly one place, so that its kill shows the declared change; any other count proves nothing.",
+        "make the declared old text occur exactly once in "
+        + mutant
+        + " or declare a new mutant for the approved behaviour, then rerun the oracle review for "
+        + slice_id
+        + " and commit.",
     )
 
 

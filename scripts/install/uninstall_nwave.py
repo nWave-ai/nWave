@@ -166,6 +166,24 @@ def _opencode_shim_sha256_drift(shim_path: Path, manifest_path: Path) -> str | N
     return None if recorded == fresh else f"manifest {recorded} != disk {fresh}"
 
 
+def _omp_shim_is_nwave_own(shim_path: Path, manifest_path: Path) -> bool:
+    """Return True when the OMP guard shim is nWave's own by its manifest digest.
+
+    No digest drift keeps the unchanged rule. Drift is still nWave's own when the shim holds one of the two rendering byte
+    forms the manifest records: the LF rendering or its full CRLF translation.
+    """
+    if _opencode_shim_sha256_drift(shim_path, manifest_path) is None:
+        return True
+    from nwave_ai.rendered_bytes import owns_digest
+
+    try:
+        recorded = json.loads(manifest_path.read_text(encoding="utf-8")).get("sha256")
+        data = shim_path.read_bytes()
+    except (OSError, json.JSONDecodeError):
+        return False
+    return owns_digest(data, recorded if isinstance(recorded, str) else None)
+
+
 # ANSI color codes for --help output (only consumer)
 _ANSI_BLUE = "\033[0;34m"
 _ANSI_NC = "\033[0m"  # No Color
@@ -1702,10 +1720,7 @@ class NWaveUninstaller:
         omp_dir = omp_extensions_dir()
         omp_shim = omp_dir / "nwave-hooks.ts"
         omp_manifest = omp_dir / ".nwave-des-manifest.json"
-        if (
-            omp_shim.exists()
-            and _opencode_shim_sha256_drift(omp_shim, omp_manifest) is None
-        ):
+        if omp_shim.exists() and _omp_shim_is_nwave_own(omp_shim, omp_manifest):
             try:
                 omp_shim.unlink()
                 omp_manifest.unlink()

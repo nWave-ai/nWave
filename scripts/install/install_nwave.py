@@ -215,7 +215,9 @@ try:
     from scripts.install.plugins.guard_extension import (
         EXTENSION_NAME,
         MANIFEST_NAME,
+        extension_bytes,
         manifest_text,
+        owned_by_manifest,
         render_guard_extension,
     )
     from scripts.install.plugins.nwave_hooks_plugin import HooksPlugin
@@ -284,7 +286,9 @@ except ImportError:
     from plugins.guard_extension import (
         EXTENSION_NAME,
         MANIFEST_NAME,
+        extension_bytes,
         manifest_text,
+        owned_by_manifest,
         render_guard_extension,
     )
     from plugins.nwave_hooks_plugin import HooksPlugin
@@ -545,6 +549,16 @@ def _install_omp_hooks_extension(context) -> "PluginResult":
             "before reinstalling."
         )
         return PluginResult(False, name, message, errors=[message])
+    if shim.exists() and not owned_by_manifest(
+        shim.read_bytes(), manifest_path.read_bytes()
+    ):
+        message = (
+            f"PRESERVED {shim} W4: the file holds bytes its manifest does not own "
+            "(edited after nWave wrote it); kept for its owner and not overwritten. "
+            "Move it aside and rerun the installer to replace it with nWave's copy."
+        )
+        context.logger.info(message)
+        return PluginResult(True, name, message, installed_files=[])
     if not context.dry_run:
         if runtime and Path(runtime) not in sys.path:
             probe = subprocess.run(
@@ -564,7 +578,7 @@ def _install_omp_hooks_extension(context) -> "PluginResult":
                 )
                 return PluginResult(False, name, message, errors=[message])
         directory.mkdir(parents=True, exist_ok=True)
-        shim.write_text(rendered, encoding="utf-8")
+        shim.write_bytes(extension_bytes(rendered))
         manifest_path.write_text(manifest_text(rendered), encoding="utf-8")
     message = (
         f"{'Would install' if context.dry_run else 'Installed'} OMP nWave hooks "
@@ -2427,7 +2441,7 @@ _RELOAD_HOSTS: tuple[tuple[str, str, str], ...] = (
     ("codex", "Codex", areas_phrase("codex")),
     ("opencode", "OpenCode", f"{areas_phrase('opencode')}, and commands"),
     ("cursor", "Cursor", areas_phrase("cursor")),
-    ("copilot", "GitHub Copilot", areas_phrase("copilot")),
+    ("copilot", "Copilot (terminal and VS Code)", areas_phrase("copilot")),
     ("devin", "Devin", areas_phrase("devin")),
 )
 
@@ -2537,7 +2551,11 @@ _HOST_PLATFORMS: tuple[tuple[str, str, str], ...] = (
     ("opencode", "opencode", f"{areas_phrase('opencode')}, and /nw-* commands"),
     ("codex", "codex", f"{areas_phrase('codex')} (TOML agents)"),
     ("cursor", "cursor", areas_phrase("cursor")),
-    ("copilot", "copilot", areas_phrase("copilot")),
+    (
+        "copilot",
+        "copilot",
+        f"Copilot (terminal and VS Code): {areas_phrase('copilot')}",
+    ),
     (
         "omp",
         "omp",

@@ -38,6 +38,10 @@ class GitRefs:
     def subject(self, commit: str) -> str:
         return self._text("log", "-1", "--format=%s", commit).strip()
 
+    def short(self, commit: str) -> str:
+        """The abbreviated hash git prints for a commit, the one an interactive rebase lists it by."""
+        return self._text("rev-parse", "--short", commit).strip()
+
     def parent(self, commit: str) -> str | None:
         """The first parent, or None for a root commit."""
         return self.resolve(f"{commit}^")

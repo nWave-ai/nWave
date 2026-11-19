@@ -24,7 +24,7 @@ anything.
 | `codex` | Skills under `~/.agents/skills/` (outside `~/.codex/`), TOML agents, hook integration | Container end-to-end install tests | [Installing for Codex](installing-codex.md) |
 | `omp` | Skills, agents, `/nw-*` commands, and the `nwave-hooks.ts` extension, which carries OMP's hooks | Installer self-validation | [Installing for OMP](installing-omp.md) |
 | `cursor` | A global user hooks file (`~/.cursor/hooks.json`) only | Installer self-validation | [Installing for Cursor](installing-cursor.md) |
-| `copilot` | Hooks, public roles as custom agents (`~/.copilot/agents/`), public skills (`~/.copilot/skills/`); project-level agents, skills and prompt files (`.github/`) only when the user runs `nwave-ai project copilot enable --yes` | Installer self-validation, plus observations on the real CLI (below) | [Installing for Copilot](installing-copilot.md) |
+| `copilot` | Hooks, public roles as custom agents (`~/.copilot/agents/`), public skills (`~/.copilot/skills/`); project-level agents, skills and prompt files (`.github/`) only when the user runs `nwave-ai project copilot enable --yes` | Installer self-validation, plus observations on the real CLI (below). VS Code chat: documented, not observed in VS Code | [Installing for Copilot](installing-copilot.md) |
 | `devin` | Public skills under `~/.config/devin/skills/` plus a manifest | Installer self-validation | [Installing for Devin](installing-devin.md) |
 | `all` | The union of all seven hosts | Combination of the above | — |
 
@@ -41,6 +41,10 @@ Two tiers, deliberately separated:
   and final validation report. No dedicated end-to-end install test covers
   them, so install-time evidence on those hosts is the installer's report
   rather than an independent test run.
+- **Copilot in VS Code chat: documented, not observed in VS Code.** The VS Code chat surface (the Copilot harness) reads
+  the same personal folders as the CLI, per the vendor pages; no VS Code chat session has been run. The observation
+  runbook is `docs/feature/copilot-chat-in-vscode/runbook.md`, and it is unobserved until a person records its results.
+  The observations below are the terminal Copilot CLI only.
 - **Copilot** has observations beyond the installer's report, all on the real
   Copilot CLI 1.0.103 with an isolated `COPILOT_HOME` and a scratch `HOME`.
   Each result names its receipt. The records behind those receipts are not published, so this guide states each

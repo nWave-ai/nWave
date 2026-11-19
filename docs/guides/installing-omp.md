@@ -79,6 +79,16 @@ tool-call events differ from Claude Code hooks. Installation and file
 presence do not prove delivery correctness: the host must run the slice's
 declared verification commands and retain the results.
 
+The installer owns `nwave-hooks.ts` and its manifest `.nwave-des-manifest.json`
+when the extension holds its LF rendering or the full CRLF translation of it,
+which is the form a Windows text write produces. Every install writes the LF
+bytes and records their sha256, so the next install recognises the file and
+does not report it as preserved. A copy written with CRLF by an earlier
+version is updated to the LF bytes by the next install, and
+`nwave-ai uninstall` removes it. An extension with any other edit is not
+owned: the install reports it as `PRESERVED ... W4`, leaves its bytes as they
+are on disk, and does not rewrite its manifest.
+
 ## Uninstall
 
 ```bash

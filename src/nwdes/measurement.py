@@ -820,16 +820,17 @@ def _seed_snapshot(files, path, kind, scope):
 
 
 def _equal(actual, replay):
+    # A waiver's date is a clock reading no replay can reproduce, so the comparison ignores it.
     if isinstance(actual, Mapping) and isinstance(replay, Mapping):
         actual = {
             key: value
             for key, value in actual.items()
-            if value not in (None, (), handoff.EMPTY)
+            if key != "waived_at" and value not in (None, (), handoff.EMPTY)
         }
         replay = {
             key: value
             for key, value in replay.items()
-            if value not in (None, (), handoff.EMPTY)
+            if key != "waived_at" and value not in (None, (), handoff.EMPTY)
         }
         keys = set(actual) - ({"id"} if "id" not in replay else set())
         return keys == set(replay) and all(
@@ -1075,6 +1076,14 @@ def _replay(close, events, records, history, path):
     return Unbound(f"not replayable {close.path}:{close.line}")
 
 
+def _waivers_of(part):
+    """The waivers of an expectation set as published (expanded), or none when it holds none."""
+    if not isinstance(part, Mapping):
+        return handoff.EMPTY
+    waivers = part.get("waivers", handoff.EMPTY)
+    return waivers if isinstance(waivers, Mapping) else handoff.EMPTY
+
+
 def _bind(close, replay, records, delivery):
     closes, history, path = delivery.closes, delivery.history, delivery.path
     if isinstance(replay, Unbound):
@@ -1098,6 +1107,10 @@ def _bind(close, replay, records, delivery):
         ),
         None,
     )
+    # An examination closes with the waivers its bound expectation set holds (the live close copies
+    # them into its record), so the replay must copy the same ones before the comparison.
+    if close.part == "examine" and expectation is not None:
+        replay = handoff.snapshot_waivers(replay, _waivers_of(expectation.postimage))
 
     def matches(files):
         actual = _file_part(files, path, close.part, close.scope)
@@ -1112,7 +1125,7 @@ def _bind(close, replay, records, delivery):
             if (
                 expectation is None
                 or isinstance(rows, Unbound)
-                or rows != expectation.postimage
+                or not _equal(rows, expectation.postimage)
             ):
                 return Unbound(
                     "expectations not equal to latest bound expectations "
@@ -1122,9 +1135,14 @@ def _bind(close, replay, records, delivery):
                 )
         return actual
 
-    commits = (
-        history.chain if close.part in ("review", "examine") else history.ancestors
-    )
+    if close.part in ("review", "examine"):
+        commits = history.chain
+    elif close.part == "expectations":
+        # A revision may follow the candidate (a waiver added after its examination): its record
+        # commits are the chain, and a commit before the close can never bind it.
+        commits = (*history.ancestors, *history.chain)
+    else:
+        commits = history.ancestors
     cause = "no bound postimage equal to replay " + path + " " + close.identity
     for commit in commits:
         if commit.committer_s < close.end_ms // 1000:
@@ -1173,6 +1191,11 @@ def _prompt_for(root, role, task, before, events):
 def _record_only(commit, path):
     directory = path.rsplit("/", 1)[0] + "/"
     return all(changed.startswith(directory) for changed in commit.changed)
+
+
+def _unsettled(verdict):
+    """A verdict the endpoint does not accept: anything but met, except a capture gap its owner waived."""
+    return verdict.get("verdict") != "met" and "waiver" not in verdict
 
 
 def _endpoint(records, delivery):
@@ -1233,11 +1256,11 @@ def _endpoint(records, delivery):
             causes.append("duplicate expectation ids " + path)
         if not isinstance(verdicts, Mapping) or set(verdicts) != set(ids):
             causes.append("examination keys differ from expectation ids " + path)
-        elif any(verdict.get("verdict") != "met" for verdict in verdicts.values()):
+        elif any(_unsettled(verdict) for verdict in verdicts.values()):
             causes.extend(
                 "unmet expectation " + identity
                 for identity, verdict in verdicts.items()
-                if verdict.get("verdict") != "met"
+                if _unsettled(verdict)
             )
     return (NotMeasured(tuple(causes)) if causes else Accepted(close.end_ms)), latest
 

@@ -64,6 +64,7 @@ class ReviewEvidence:
     commit: str
     dirty: tuple[str, ...]
     content: str | None = None
+    approval: Mapping | None = None
 
 
 def evidence_dirty(status_entries, destinations):
@@ -89,6 +90,40 @@ def content_digest(files):
     return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
 
 
+def prefix_record(files):
+    """The approved length and digest of each declared file's bytes, or None when any is absent.
+
+    An oracle approval records this beside its whole-file digest, so that a later change which only
+    appends to the declared files can be accepted: the approved bytes must remain a prefix of the
+    current ones, which is digest(current[:length]) == recorded digest.
+    """
+    if any(data is None for _, data in files):
+        return None
+    return {
+        path: {"length": len(data), "digest": hashlib.sha256(data).hexdigest()}
+        for path, data in files
+    }
+
+
+def prefix_holds(prefix, files):
+    """True when the record carries prefixes and every declared file's approved prefix still holds
+    in the current bytes, over the same set of declared files. A record without prefixes never
+    holds: it keeps the whole-file rule."""
+    if not isinstance(prefix, Mapping):
+        return False
+    current = dict(files)
+    if set(current) != set(prefix):
+        return False
+    for path, info in prefix.items():
+        data = current[path]
+        length = info.get("length") if isinstance(info, Mapping) else None
+        if data is None or not isinstance(length, int) or not 0 <= length <= len(data):
+            return False
+        if hashlib.sha256(data[:length]).hexdigest() != info.get("digest"):
+            return False
+    return True
+
+
 def candidate_scope(scope):
     """True for a candidate review, which names the whole feature rather than one slice."""
     return isinstance(scope, _CandidateScope)
@@ -101,7 +136,11 @@ def declared_paths(own):
     supports = own.get("supports") or ()
     targets = own.get("targets") or ()
     return (
-        *(path for path in (own.get("oracle"), *supports) if isinstance(path, str)),
+        *(
+            path
+            for path in (own.get("oracle"), *supports, own.get("mutants"))
+            if isinstance(path, str)
+        ),
         *(
             row["path"]
             for row in targets
@@ -249,8 +288,21 @@ def stamp_review(edit, evidence):
     return edit
 
 
+def stamp_waiver(edit, waived_at: str):
+    """The date of a waiver is the UTC second nwdes records at the add, passed in by the shell; the owner never types it."""
+    if isinstance(edit, Set) and edit.path[:1] == ("waivers",):
+        return replace(edit, value=h.freeze({**edit.value, "waived_at": waived_at}))
+    return edit
+
+
 def _content_field(evidence):
     return {} if evidence.content is None else {"content": evidence.content}
+
+
+def _approval_field(evidence):
+    """The approval fields of an oracle review: the identities its report named with their outcomes,
+    and the approved bytes of its declared files. Absent when the slice declares no report."""
+    return {} if evidence.approval is None else dict(evidence.approval)
 
 
 def _stale_why(evidence):
@@ -322,6 +374,7 @@ def review_record(draft, evidence, outcome, diagnostic):
                 "outcome": outcome,
                 "diagnostic": diagnostic,
                 **_content_field(evidence),
+                **_approval_field(evidence),
             }
         ),
         problems,
@@ -574,6 +627,10 @@ class Row:
     counter: str = ""
     key: RoleField | None = None
     requirement: FieldRequirement | None = None
+    # A keyed row that is only added or removed: no `set` verb is declared for it.
+    revisable: bool = True
+    # Fields whose text must not be blank.
+    filled: tuple[str, ...] = ()
 
     @property
     def edit_spec(self):
@@ -595,6 +652,17 @@ class Row:
             requirement.missing(values)
             if requirement is not None and not values.get(requirement.name)
             else ()
+        )
+
+    def blank_problems(self, values):
+        return tuple(
+            Defect(
+                "PartInvalid: --" + name,
+                f"The waiver's --{name} is blank; a waiver without it records no decision.",
+                f"Pass --{name} with the text of the decider, reason or coverage, then rerun the same nwdes expectations waiver add command.",
+            )
+            for name in self.filled
+            if isinstance(values.get(name), str) and not values[name].strip()
         )
 
     def role_field(self, group):
@@ -767,7 +835,17 @@ def _rows(kind):
     if kind == "acceptance":
         return (Row("row", (), h.ACCEPTANCE_ROW),)
     if kind == "expectations":
-        return (Row("row", ("rows",), h.EXPECTATIONS.index["rows"].members[0]),)
+        return (
+            Row("row", ("rows",), h.EXPECTATIONS.index["rows"].members[0]),
+            Row(
+                "waiver",
+                ("waivers",),
+                h.EXPECTATION_WAIVER_INPUT,
+                key=RoleField("row", h.REFERENCE, True),
+                revisable=False,
+                filled=("by", "reason", "coverage"),
+            ),
+        )
     if kind == "charter":
         return (
             Row(
@@ -1025,7 +1103,7 @@ def _role_verbs(kind, policy=None):
                         ),
                     ),
                 )
-                if row.action == "add"
+                if row.action == "add" and row.revisable
                 else ()
             ),
             RoleVerb(
@@ -1176,6 +1254,9 @@ def prepare_edit(kind, verb, values, previous=None, policy=None):
     required = row.required_problems(values)
     if required:
         return checked(None, required)
+    blank = row.blank_problems(values)
+    if blank:
+        return checked(None, blank)
     value = _value(spec, values)
     if kind == "product" and row.name == "slice":
         defects = h.slice_promise_problems(
@@ -1219,7 +1300,7 @@ def prepare_edit(kind, verb, values, previous=None, policy=None):
         )
     return (
         Add(path, value, row.issued_prefix, row.counter)
-        if row.action == "add"
+        if row.action == "add" and row.key is None
         else Set(path, value, row.name in ("slice", "boundaries") or kind == "charter")
     )
 
@@ -1300,7 +1381,47 @@ def _with_retirement(draft, row, amendment):
     )
 
 
+def _apply_waiver(draft, edit):
+    """A waiver is added to, or removed from, the keyed table of the draft; its row must be in the draft."""
+    identity = edit.path[1]
+    rows = draft.get("rows", ())
+    if not any(isinstance(row, Mapping) and row.get("id") == identity for row in rows):
+        return refuse(
+            "DanglingReference: waiver " + identity,
+            "The draft holds no expectation row with this id, so there is nothing to waive.",
+            "Name a row of the fixed set with --row, or open the set with nwdes expectations open --from-current first.",
+        )
+    waivers = draft.get("waivers", h.EMPTY)
+    if isinstance(edit, Remove):
+        if identity not in waivers:
+            return refuse(
+                "DanglingReference: waiver " + identity,
+                "No waiver is recorded for this row in the draft, so there is nothing to remove.",
+                "Remove only a waiver that was recorded; nwdes expectations open --from-current shows the fixed rows.",
+            )
+        kept = h.Record(
+            (name, value) for name, value in waivers.items() if name != identity
+        )
+        return h.Record(
+            (*((k, v) for k, v in draft.items() if k != "waivers"), ("waivers", kept))
+        )
+    if identity in waivers:
+        return refuse(
+            "PartInvalid: waiver " + identity,
+            "A waiver is already recorded for this row; one waiver per row keeps the decider record unambiguous.",
+            "Remove the recorded waiver with nwdes expectations waiver remove --row "
+            + identity
+            + " before adding a new one.",
+        )
+    added = h.Record((*waivers.items(), (identity, edit.value)))
+    return h.Record(
+        (*((k, v) for k, v in draft.items() if k != "waivers"), ("waivers", added))
+    )
+
+
 def apply_edit(draft, edit, previous=None):
+    if edit.path[:1] == ("waivers",) and len(edit.path) == 2:
+        return _apply_waiver(draft, edit)
     if isinstance(edit, Replace) and edit.path == ("promises",):
         selected = _selected_promise(draft, edit)
         identity = selected.get("id") if selected is not None else None
@@ -1323,6 +1444,10 @@ def apply_edit(draft, edit, previous=None):
                 (edit.path[0], (*draft.get(edit.path[0], ()), row)),
             )
         )
+    if edit.path == ("slices",) and isinstance(edit, Add):
+        ceiling = h.slice_ceiling_defect(draft.get("slices", ()))
+        if ceiling is not None:
+            return checked(None, (ceiling,))
     if edit.path == ("slices",) and isinstance(edit, (Add, Replace)):
         if _problems(
             h.PRODUCT.index["promises"], draft.get("promises", ()), "product.promises"

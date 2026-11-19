@@ -11,7 +11,7 @@ This reference is checked against actual help output. Each linked page covers on
 | [product](product.md) | Record product facts |
 | [design](design.md) | Record design facts |
 | [acceptance](acceptance.md) | Record acceptance rows |
-| [expectations](expectations.md) | Fix or revise expectations |
+| [expectations](expectations.md) | Fix, revise or waive expectations |
 | [charter](charter.md) | Record the complete Feature's charter |
 | [examine](examine.md) | Record examiner verdicts |
 | [document](document.md) | Render briefs |
@@ -82,7 +82,7 @@ nwdes measure --requests FILE [--objective-minutes N]
 
 Choose exactly one source; each flag may appear once. `--requests` accepts a nonempty JSON array with `role`, nullable `task` and `slice`, UTC `start` and `end`, and boolean `continuation` and `rework`. Its report is explicitly supplied, not host-recorded. The objective is a positive integer printed without a success verdict.
 
-Host mode uses OMP version-3 native request and tool-result clocks. Feature elapsed starts at the earliest linked architect request; a no-architect bugfix starts at the root's first user request. The endpoint is the latest successful examination close, bound by native value-verb replay to a committed postimage or a qualifying current handoff, with exactly the nonempty fixed expectations and every verdict met. The candidate must be a full lowercase commit ID committed before the examination prompt; equality of those seconds is ambiguous. Record-only commits may follow the candidate on the committed path. Current-handoff fallback requires HEAD exactly at the candidate and no changed or untracked path outside the handoff directory.
+Host mode uses OMP version-3 native request and tool-result clocks. Feature elapsed starts at the earliest linked architect request; a no-architect bugfix starts at the root's first user request. The endpoint is the latest successful examination close, bound by native value-verb replay to a committed postimage or a qualifying current handoff, with exactly the nonempty fixed expectations and every verdict met or waived: a capture gap waived by its owner settles the endpoint, and any other unmet verdict does not. The candidate must be a full lowercase commit ID committed before the examination prompt; equality of those seconds is ambiguous. Record-only commits may follow the candidate on the committed path. Current-handoff fallback requires HEAD exactly at the candidate and no changed or untracked path outside the handoff directory.
 
 Roots use the role-verb destination configuration; omitted feature/epic scope must be unambiguous in the native delivery commands. Each role close is reported separately. Recorded command exits are claims, printed apart from native command success/failure. A numeric native exit is reported only from an explicit integer in the harness-owned tool result's `message.details.exitCode`; program output, footer text and recorded exits never supply that number. Missing or malformed exit metadata supplies no numeric exit, not a default zero. Lifecycle qualification is separate from elapsed; integration tail is separate from both role effort and design/intake-to-examination elapsed. Lane-free delivery has no fabricated integration receipt.
 
