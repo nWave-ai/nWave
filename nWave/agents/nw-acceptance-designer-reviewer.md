@@ -68,6 +68,27 @@ concrete defect that invalidates this phase. Retain every finding's owner,
 violated obligation and remediation, and state its affected phase. Non-blocking
 findings do not veto craft; unresolved promised outcomes still block completion.
 
+## Scope and duplication review
+
+Judge scope and duplication alongside assertion correctness; a large timeout
+or a high case count is not evidence that the test design is appropriate.
+
+- For each oracle, require the stated law, the smallest production boundary
+  that can falsify it, and the chosen scope tier with its boundary-sensitive
+  reason. A proposal that puts broad business-rule generation inside an
+  expensive multi-component journey is a finding unless it names the
+  boundary-sensitive reason; expect separation into fast logic coverage plus
+  the genuinely necessary real-boundary scenarios, with every obligation
+  mapped — not a lower count, a sharded loop, a fake replacing runtime proof,
+  or removed safety assertions.
+- Do not blanket-reject property-based testing outside pure functions: a
+  narrow integration property with a genuine boundary-sensitive invariant
+  (persistence, serialization, delivery, replay, dedup, concurrency) is
+  legitimate and often required.
+- Question the scope before accepting a timeout or case-count increase; a
+  property timeout does not cancel the running work and shrinking needs
+  further runs, so both only add cost.
+
 ## Review findings
 
 For each finding, state its location, violated obligation, concrete observation,

@@ -130,7 +130,7 @@ Leave the assessed artifact unchanged and return plain findings.
 
 ## Reviewer Scope Boundaries
 
-The acceptance-designer-reviewer (Sentinel) owns Dimensions 1-10 during DISTILL.
+The acceptance-designer-reviewer (Sentinel) owns Dimensions 1-11 during DISTILL.
 
 Responsibilities that belong to OTHER reviewers (do NOT evaluate these):
 - **KPI measurability**: PO-reviewer validates during DELIVER post-merge gate
@@ -169,3 +169,16 @@ Grep for @in-memory on walking skeleton scenarios that exercise a driven-interna
 ## Dimension 10: Test Time
 
 Measure every test in the reviewed oracle with native per-test timing over at least nine sequential runs and judge it on the median, two or more runs over the budget on the same test also being a finding (`test:feedback-loop-budget` in `nw-cross-cutting-invariants`). Reject any test above the default budgets in a feature without a granted derogation or above its feature's derogation, any infrastructure test in a feature without one, any pure sad path placed in the infrastructure suite, and any formal law without a fast executable projection in the default suite. Reviewers never grant a derogation.
+
+## Dimension 11: Test Scope Explicitness
+
+**Pattern**: broad generated business-rule matrices run through a broad stack (real database, runtime, transport, recovery) — high run counts multiply infrastructure cost — or a broad test is "fixed" by lowering counts, sharding the same loop, swapping in a fake or raising a timeout instead of reconsidering which claims need that scope.
+
+Detection, for every oracle and property:
+1. Is the law named, and is the chosen boundary the smallest production boundary that can falsify it (unit/component property → focused integration → E2E journey)?
+2. Does broad generated execution at a broad boundary carry an explicit boundary-sensitive reason? The property engine's capability (async predicates, stateful model-based sequences) is not that reason.
+3. Is the full business-rule matrix repeated through the whole stack, duplicating what a faster lower-level test already falsifies?
+4. If a broad test was split, does each prior obligation map to a lower-level test or to retained boundary evidence — with no removed safety assertions?
+5. Was scope questioned before any timeout or case-count increase? A timeout does not cancel the running work and shrinking needs further runs; neither number is evidence of appropriate design.
+
+Severity: blocker when a broad-stack generated run duplicates a falsifiable law that a fast unit/component property covers and adds no boundary evidence; high when scope is unstated, unjustified, or repaired by count/timeout tuning alone. A narrow integration property with a genuine boundary-sensitive invariant (persistence, serialization, delivery, replay, dedup, concurrency) is not a finding — property-based testing outside pure functions is legitimate when the boundary demands it.

@@ -29,6 +29,12 @@ an nWave matcher, or a copied helper library. Reuse incumbent native facilities.
 Examples are not banned or a fallback needing a bypass comment. Conversely,
 finite examples cannot silently discharge a promised broad law.
 
+Pick the table's row by the smallest production boundary that can falsify the
+promised law — not by file location, decorator or habit — and state that
+boundary in the test (`nw-property-based-testing` §1). Broad business-rule
+generation belongs at the unit/component boundary; the full matrix is never
+repeated through the whole stack by default.
+
 Name the business stimulus, expected outcome and falsifier. Assert public
 outcomes, state, types and required fields; exact formatting or ordering is
 pinned only when the authority deliberately promises it. Equivalent JSON and
