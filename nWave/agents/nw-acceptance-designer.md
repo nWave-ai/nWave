@@ -77,6 +77,30 @@ lifecycle subprocess; where a lifecycle observation is genuinely required it
 is an integration concern that REUSES an existing prepared setup — never
 reinstalls per case.
 
+## Test scope selection (explicit, per criterion)
+
+Scope is chosen before generators, case counts or timeouts, and it is stated
+in the handoff — not implied by the test's location:
+
+1. For each criterion, name the law it protects and the smallest production
+   boundary that can falsify it. Broad business-rule generation goes to fast
+   unit/component properties that exercise production behavior, never inside
+   an expensive multi-component journey; that placement needs an explicit
+   boundary-sensitive reason, and the generator's support for broad execution
+   is not one.
+2. Focused real integration tests carry only the claims smaller tests cannot
+   prove: persistence, serialization, delivery, runtime replay,
+   deduplication, concurrency. Broad-stack/E2E journeys stay on critical
+   journeys and important failure classes — never the full business-rule
+   matrix through the whole stack by default.
+3. When splitting a broad test, map every existing obligation to a
+   lower-level test or to retained boundary evidence first. Do not merely
+   lower the case count, shard the same expensive loop, replace runtime proof
+   with a fake, or drop safety assertions.
+4. A large timeout or high case count is not evidence the scope is right —
+   question the scope before proposing either. A property timeout does not
+   even cancel the running work, and shrinking needs further runs.
+
 ## Reasoning Mandate (Caveman)
 
 Verdict-first, tables over prose, evidence-dense, zero narrative. Depth comes from rigor, not padding. State the conclusion, then the supporting evidence; never bury the verdict under exposition.

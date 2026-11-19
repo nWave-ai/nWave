@@ -21,6 +21,15 @@ disable-model-invocation: true
 
 ## Falsifier-gate before adopting PBT
 
+**Boundary before paradigm**: the smallest production boundary that can falsify
+the law is chosen first (`nw-property-based-testing` §1); only then is the
+paradigm matched to the shape at that boundary. Lowering `numRuns`, sharding
+the same expensive loop or raising a timeout is cost tuning, not a scope or
+paradigm change — a property timeout does not cancel the running work, and
+shrinking needs further runs. Broad generated execution at a broad boundary
+needs an explicit boundary-sensitive reason; the engine's capability is not
+one.
+
 Closed-world finite input is NOT PBT territory. A property engine's startup and per-example bookkeeping is **slower** than the language's native finite-case/table facility when the input set is finite + enumerable. The facility is whatever the project already uses (illustrations only: Python `pytest.mark.parametrize`, Go table-driven subtests, Rust `rstest`/macro-generated cases, JUnit `@ParameterizedTest`, .NET xUnit `[Theory]`, TS `test.each`, C/C++ data-driven/parameterized test macros); the property engine likewise (Hypothesis, `testing/quick`/rapid, proptest/quickcheck, jqwik, FsCheck, fast-check, RapidCheck, ...). If neither exists natively, record an EVIDENCE_GAP with cause; never change the stack. Apply the gate:
 
 1. **Enumerate the input domain**. Is it finite + listable (`SKILL_NAMES_149`, `EVENT_TYPES_5`, `SUPPORTED_RUNTIMES_3`)? → finite-case collapse, NOT PBT.

@@ -27,6 +27,12 @@ decorator density or an assumed language adapter. In-memory compositions make
 broad exploration inexpensive; a real driven dependency requires real-boundary
 observations. Neither fact alone decides whether a broad law exists.
 
+- State the law and choose the smallest production boundary that can falsify
+  it BEFORE choosing generators, case counts or timeouts
+  (`nw-property-based-testing` §1). When splitting a broad test, map every
+  obligation to a lower-level test or retained boundary evidence; never merely
+  lower the count, shard the same loop, fake the runtime proof or drop safety
+  assertions.
 - Broad input/state/failure laws receive native generative properties, ordinarily
   one per independent law. Combine only when one generated observation honestly
   falsifies every combined law. Closed finite domains use native examples or
