@@ -9,13 +9,15 @@ import type { PluginAPI } from "@ampcode/plugin";
 //
 // Decisions this template records:
 // - Amp's shell tool is sent as Bash; every file an edit, create or patch call modifies is sent once as
-//   Write or Edit; the Task tool is sent as Agent. Amp's own helpers name the shell command and the files.
+//   Write or Edit. Amp's own helpers name the shell command and the files.
+// - Subagent (Task) calls are not checked: Amp does not send them to plugins' tool.call handlers
+//   (observed in a live Amp thread, 2026-11-23).
 // - Exit 0 allows. A non-zero exit or an unreadable reply blocks, so the guard fails closed, as on pi.
 // - A refusal is returned as reject-and-continue, so the agent reads the kept module's reason and goes on.
 // - When the kept module returns updatedInput with a command for Bash (an attribution rewrite), the shell
 //   call's command is replaced through a modify result.
 
-export const description = "nWave guard: runs the nWave kept hooks before shell, file and Task tool calls.";
+export const description = "nWave guard: runs the nWave kept hooks before shell and file tool calls.";
 
 const PYTHON = {{PYTHON_PATH_JSON}};
 const RUNTIME = {{PYTHONPATH_JSON}};
@@ -41,9 +43,6 @@ export default function (amp: PluginAPI) {
   function translate(tool: string, input: Record<string, unknown>): Call[] {
     const shell = amp.helpers.shellCommandFromToolCall({ toolUseID: "", tool, input });
     if (shell) return [{ toolName: "Bash", input: { command: shell.command }, cwd: shell.dir }];
-    if (tool === "Task") {
-      return [{ toolName: "Agent", input: { prompt: input.prompt ?? "", subagent_type: input.description ?? "" } }];
-    }
     const files = amp.helpers.filesModifiedByToolCall({ toolUseID: "", tool, input }) ?? [];
     const toolName = CREATE_TOOLS.has(tool) ? "Write" : "Edit";
     return files.map(uri => ({ toolName, input: { file_path: amp.helpers.filePathFromURI(uri) } }));

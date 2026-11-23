@@ -3,8 +3,8 @@
 ## Goal
 
 After this guide, nWave's public skills are installed where Amp reads user
-skills (`~/.config/amp/skills/`), the nWave guard runs before Amp's shell, file
-and Task tool calls, and you can confirm both with a short checklist.
+skills (`~/.config/amp/skills/`), the nWave guard runs before Amp's shell and file
+tool calls, and you can confirm both with a short checklist.
 
 **What Amp gets:** the public nWave skill files and a guard plugin. Amp has no
 file-based role agents and no custom slash commands, so a role is reached by
@@ -36,12 +36,17 @@ The installer writes:
 | `~/.config/amp/plugins/.nwave-des-manifest.json` | sha256 of the guard plugin nWave wrote |
 
 The guard plugin answers Amp's `tool.call` event. For a shell call it sends the
-command as `Bash`, for an edit, create or patch call each modified file as
-`Write` or `Edit`, and for `Task` the prompt as `Agent`, to
+command as `Bash`, and for an edit, create or patch call each modified file as
+`Write` or `Edit`, to
 `python -m nwave_ai.hooks PreToolUse --host amp`. A refusal comes back to the
 agent as `reject-and-continue` with the guard's reason. If the guard cannot run
 (for example the Python runtime moved), checked calls are refused with a message
 telling you to rerun the installer.
+
+The call that starts a subagent (`Task`) is not checked: Amp does not send it
+to plugins' `tool.call` handlers. On other hosts nWave only logs that call and
+never blocks it, so what Amp loses is that log entry. The subagent's own shell
+and file calls are checked like any others.
 
 **Skill precedence:** Amp uses the first skill it finds for a name, and
 `~/.agents/skills/` (where the Codex install writes) comes before
