@@ -576,6 +576,16 @@ class NWaveUninstaller:
                     f"    📄 Found OMP skills manifest: {omp_skills_manifest}"
                 )
 
+        from scripts.shared.install_paths import amp_plugins_dir, amp_skills_dir
+
+        for amp_manifest in (
+            amp_skills_dir() / ".nwave-manifest.json",
+            amp_plugins_dir() / ".nwave-des-manifest.json",
+        ):
+            if amp_manifest.exists():
+                installation_found = True
+                self.logger.info(f"    📄 Found Amp manifest: {amp_manifest}")
+
         native_runtime_dir = host_neutral_runtime_dir() / "des"
         if native_runtime_dir.exists():
             installation_found = True
@@ -1760,6 +1770,55 @@ class NWaveUninstaller:
         else:
             self.logger.warn(f"  ⚠️ Devin skills removal: {result.message}")
 
+    def remove_amp_assets(self) -> None:
+        """Remove manifest-owned nWave skills and the nWave guard plugin from Amp.
+
+        Only skill names the AmpSkillsPlugin manifest records are removed, and the
+        guard plugin only while it still matches the digest its manifest records.
+        """
+        if self.dry_run:
+            self.logger.info("  🚨 [DRY RUN] Would remove Amp skills and guard plugin")
+            return
+
+        try:
+            from scripts.install.plugins.amp_skills_plugin import AmpSkillsPlugin
+            from scripts.install.plugins.base import InstallContext
+        except ImportError:
+            from plugins.amp_skills_plugin import AmpSkillsPlugin
+            from plugins.base import InstallContext
+        from scripts.install.plugins.guard_extension import (
+            EXTENSION_NAME,
+            MANIFEST_NAME,
+            owned_by_manifest,
+        )
+        from scripts.shared.install_paths import amp_plugins_dir
+
+        context = InstallContext(
+            claude_dir=self.claude_config_dir,
+            scripts_dir=self.claude_config_dir / "scripts",
+            templates_dir=self.claude_config_dir / "templates",
+            logger=self.logger,
+        )
+        result = AmpSkillsPlugin().uninstall(context)
+        if result.success:
+            self.logger.info("  🗑️ Removed Amp skills")
+        else:
+            self.logger.warn(f"  ⚠️ Amp skills removal: {result.message}")
+
+        shim = amp_plugins_dir() / EXTENSION_NAME
+        manifest = amp_plugins_dir() / MANIFEST_NAME
+        try:
+            if (
+                shim.is_file()
+                and manifest.is_file()
+                and owned_by_manifest(shim.read_bytes(), manifest.read_bytes())
+            ):
+                shim.unlink()
+                manifest.unlink()
+                self.logger.info(f"  🗑️ Removed Amp nWave guard plugin: {shim}")
+        except OSError as error:
+            self.logger.warn(f"  ⚠️ Amp nWave guard plugin removal failed: {error}")
+
     def remove_omp_assets(self) -> None:
         """Remove manifest-owned OMP skills, agents, commands and extension.
 
@@ -2256,6 +2315,7 @@ def main():
     uninstaller.remove_cursor_des_hooks()
     uninstaller.remove_kept_hook_registrations()
     uninstaller.remove_devin_skills()
+    uninstaller.remove_amp_assets()
     uninstaller.remove_omp_assets()
     uninstaller.remove_des_hook_scripts()
     uninstaller.remove_attribution()

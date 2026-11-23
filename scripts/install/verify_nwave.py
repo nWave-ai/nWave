@@ -64,6 +64,8 @@ try:
         InstallationVerifier,
         VerificationResult,
     )
+    from scripts.install.plugins.amp_guard_plugin import AmpGuardPlugin
+    from scripts.install.plugins.amp_skills_plugin import AmpSkillsPlugin
     from scripts.install.plugins.base import InstallContext, PluginResult
     from scripts.install.plugins.codex_agents_plugin import CodexAgentsPlugin
     from scripts.install.plugins.codex_skills_plugin import CodexSkillsPlugin
@@ -78,6 +80,8 @@ except ImportError:
         InstallationVerifier,
         VerificationResult,
     )
+    from plugins.amp_guard_plugin import AmpGuardPlugin
+    from plugins.amp_skills_plugin import AmpSkillsPlugin
     from plugins.base import InstallContext, PluginResult
     from plugins.codex_agents_plugin import CodexAgentsPlugin
     from plugins.codex_skills_plugin import CodexSkillsPlugin
@@ -86,7 +90,7 @@ except ImportError:
     from rich_console import RichLogger
 
 
-_NATIVE_PLATFORMS = ("codex", "cursor", "devin")
+_NATIVE_PLATFORMS = ("codex", "cursor", "devin", "amp")
 
 
 def _project_root() -> Path:
@@ -135,6 +139,9 @@ def verify_native_platform(
         results.append(HooksPlugin().verify(ctx))
     elif platform == "devin":
         results.append(DevinSkillsPlugin().verify(ctx))
+    elif platform == "amp":
+        results.append(AmpSkillsPlugin().verify(ctx))
+        results.append(AmpGuardPlugin().verify(ctx))
     return results
 
 
@@ -182,7 +189,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--platform",
-        choices=["claude-code", "codex", "cursor", "devin", "all"],
+        choices=["claude-code", "codex", "cursor", "devin", "amp", "all"],
         default="claude-code",
         help=(
             "Platform to verify (default: claude-code). "

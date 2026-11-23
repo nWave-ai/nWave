@@ -217,6 +217,8 @@ class TargetPlatform(Enum):
     CURSOR: Cursor IDE / agent (hooks under ~/.cursor/)
     COPILOT_CLI: GitHub Copilot CLI (@github/copilot, ~/.copilot/)
     OMP: oh-my-pi (omp, ~/.omp/)
+    DEVIN: Devin CLI (~/.config/devin/)
+    AMP: Amp (amp, ~/.config/amp/)
     """
 
     CLAUDE_CODE = "claude_code"
@@ -226,6 +228,7 @@ class TargetPlatform(Enum):
     COPILOT_CLI = "copilot"
     OMP = "omp"
     DEVIN = "devin"
+    AMP = "amp"
 
 
 def _detect_claude_code() -> bool:
@@ -386,6 +389,21 @@ def _detect_devin() -> bool:
     return devin_binary or devin_config_exists
 
 
+def _detect_amp() -> bool:
+    """Detect if Amp is available for installation.
+
+    Checks two signals:
+    - `amp` binary in PATH (via shutil.which)
+    - ~/.config/amp/ directory exists (Amp's settings and skills root)
+
+    Returns:
+        True if any Amp signal is detected.
+    """
+    amp_binary = shutil.which("amp") is not None
+    amp_config_exists = (Path.home() / ".config" / "amp").is_dir()
+    return amp_binary or amp_config_exists
+
+
 def detect_target_platforms() -> set[TargetPlatform]:
     """Auto-detect which AI coding platforms are available for installation.
 
@@ -398,6 +416,7 @@ def detect_target_platforms() -> set[TargetPlatform]:
       `copilot` binary in PATH
     - OMP: `omp` binary in PATH OR the OMP native agent directory exists
     - Devin CLI: `devin` binary in PATH OR ~/.config/devin/ directory exists
+    - Amp: `amp` binary in PATH OR ~/.config/amp/ directory exists
 
     Returns:
         Set of detected platforms, which is empty when no supported host is
@@ -426,5 +445,8 @@ def detect_target_platforms() -> set[TargetPlatform]:
 
     if _detect_devin():
         platforms.add(TargetPlatform.DEVIN)
+
+    if _detect_amp():
+        platforms.add(TargetPlatform.AMP)
 
     return platforms

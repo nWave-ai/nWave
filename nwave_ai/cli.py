@@ -824,7 +824,7 @@ def _handle_install(args: list[str]) -> int:
     Flags handled here:
         --platform <tool>  target agentic tool to provision for
                            (claude-code / opencode / codex / cursor / copilot / omp /
-                           devin, or auto / all). Forwarded
+                           devin / pi / amp, or auto / all). Forwarded
                            unchanged to install_nwave.py; this is the
                            entry point the cross-OS RC smoke matrix depends
                            on (ADR-PLAT-007).
@@ -1197,6 +1197,7 @@ def _selected_native_hosts() -> list[_NativeHost]:
         from nwave_ai.upgrade_shell import copilot_config_dir, cursor_config_dir
         from scripts.install.plugins.opencode_common import opencode_config_dir
         from scripts.shared.install_paths import (
+            amp_skills_dir,
             codex_config_dir,
             devin_config_dir,
             omp_agent_dir,
@@ -1209,6 +1210,7 @@ def _selected_native_hosts() -> list[_NativeHost]:
         _NativeHost("codex", codex_config_dir()),
         _NativeHost("cursor", cursor_config_dir(Path.home())),
         _NativeHost("devin", devin_config_dir()),
+        _NativeHost("amp", amp_skills_dir().parent),
         _NativeHost("omp", omp_agent_dir()),
         _NativeHost("opencode", opencode_config_dir()),
         _NativeHost("copilot", copilot_config_dir(Path.home())),

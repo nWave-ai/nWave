@@ -353,6 +353,31 @@ def pi_extensions_dir(home_dir: Path | None = None) -> Path:
     return pi_agent_dir(home_dir) / "extensions"
 
 
+def amp_skills_dir(home_dir: Path | None = None) -> Path:
+    """Return the Amp user skills directory, ``~/.config/amp/skills``.
+
+    Amp reads it under the home directory whether or not ``XDG_CONFIG_HOME`` is
+    set (Amp CLI, ``amp skill list``, observed 2026-11-23). It is one of the user
+    skill roots in Amp's documented precedence list, and it is the root only Amp reads.
+    """
+    base = home_dir if home_dir is not None else agents_home()
+    return base / ".config" / "amp" / "skills"
+
+
+def amp_plugins_dir(home_dir: Path | None = None) -> Path:
+    """Return the directory Amp loads machine-local (system) plugins from.
+
+    ``$XDG_CONFIG_HOME/amp/plugins`` when ``XDG_CONFIG_HOME`` is set, otherwise
+    ``~/.config/amp/plugins`` (Amp plugin docs; ``amp plugins list`` observed
+    both on 2026-11-23). Amp loads every ``.ts`` or ``.js`` file placed directly in it.
+    """
+    xdg = env_or_none("XDG_CONFIG_HOME")
+    if xdg:
+        return Path(xdg) / "amp" / "plugins"
+    base = home_dir if home_dir is not None else agents_home()
+    return base / ".config" / "amp" / "plugins"
+
+
 def nwave_config_dir() -> Path:
     """Return the global nWave state root for this install destination."""
     return agents_home() / ".nwave"
