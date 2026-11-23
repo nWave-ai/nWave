@@ -81,7 +81,7 @@ def _kept_event(event: str) -> str:
     return event
 
 
-#: Hosts that receive kept registrations (fact F419). pi and omp are not listed: their installers write TypeScript guard
+#: Hosts that receive kept registrations (fact F419). amp, pi and omp are not listed: their installers write TypeScript guard
 #: extensions that are fully rewritten from a template on each install, so they hold no stale nWave entry (checked by
 #: reading their code only, not by running them).
 HOSTS: tuple[str, ...] = ("claude", "codex", "cursor", "copilot")

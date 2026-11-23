@@ -48,6 +48,7 @@ _PLATFORM_AREAS: dict[str, frozenset[InstallArea]] = {
     "omp": frozenset({InstallArea.AGENTS, InstallArea.SKILLS, InstallArea.HOOKS}),
     "devin": frozenset({InstallArea.SKILLS}),
     "pi": frozenset({InstallArea.HOOKS}),
+    "amp": frozenset({InstallArea.SKILLS, InstallArea.HOOKS}),
 }
 
 

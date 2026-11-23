@@ -4,7 +4,7 @@ Defines canonical path rewrite mappings, forbidden fields, and exceptions
 used by all installer plugins. Every plugin that handles platform differences
 MUST import from this module rather than hardcoding rules locally (ADR-003).
 
-Supported platforms: claude_code, opencode, codex, omp, devin.
+Supported platforms: claude_code, opencode, codex, omp, devin, amp.
 """
 
 from __future__ import annotations
@@ -291,6 +291,22 @@ COPILOT_PATH_REWRITES: tuple[tuple[str, str], ...] = (
 )
 
 COPILOT_PATH_REWRITE_EXCEPTIONS: tuple[str, ...] = ("~/.claude/lib/python",)
+
+# -- Amp Path Rewrites ---------------------------------------------------------
+#
+# Amp reads user skills from ~/.config/amp/skills/<name>/SKILL.md. It has no
+# file-based role agents, so role paths point at the skills folder, as for Devin.
+# The DES runtime lib path is excepted, as for Devin and Copilot.
+
+AMP_PATH_REWRITES: tuple[tuple[str, str], ...] = (
+    ("~/.claude/skills/", "~/.config/amp/skills/"),
+    ("~/.claude/agents/nw/", "~/.config/amp/skills/"),
+    ("~/.claude/agents/", "~/.config/amp/skills/"),
+    ("~/.claude/nWave/skills/", "~/.config/amp/skills/"),
+    ("~/.claude/nWave/", "~/.config/amp/"),
+)
+
+AMP_PATH_REWRITE_EXCEPTIONS: tuple[str, ...] = ("~/.claude/lib/python",)
 
 
 # -- OMP Agent Frontmatter Contract -------------------------------------------

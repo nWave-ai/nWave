@@ -197,6 +197,8 @@ try:
     from scripts.install.installation_verifier import InstallationVerifier
     from scripts.install.output_formatter import format_error
     from scripts.install.plugins.agents_plugin import AgentsPlugin
+    from scripts.install.plugins.amp_guard_plugin import AmpGuardPlugin
+    from scripts.install.plugins.amp_skills_plugin import AmpSkillsPlugin
     from scripts.install.plugins.attribution_plugin import AttributionPlugin
     from scripts.install.plugins.base import InstallContext, PluginResult
     from scripts.install.plugins.codex_agents_plugin import (
@@ -269,6 +271,8 @@ except ImportError:
     from installation_verifier import InstallationVerifier
     from output_formatter import format_error
     from plugins.agents_plugin import AgentsPlugin
+    from plugins.amp_guard_plugin import AmpGuardPlugin
+    from plugins.amp_skills_plugin import AmpSkillsPlugin
     from plugins.base import InstallContext, PluginResult
     from plugins.codex_agents_plugin import (
         _CODEX_LEGACY_WITNESS_KEY,
@@ -1721,6 +1725,11 @@ class NWaveInstaller:
         # `des` shim on PATH. Probe confirmed on 2026-10-11.
         if target_platforms and "devin" in target_platforms:
             registry.register(DevinSkillsPlugin())
+        # Amp reads the public skills from ~/.config/amp/skills/ and loads the guard plugin
+        # (tool.call event) from its system plugins directory. It has no file-based role agents.
+        if target_platforms and "amp" in target_platforms:
+            registry.register(AmpSkillsPlugin())
+            registry.register(AmpGuardPlugin())
         registry.register(NwdesPlugin())
         # The nwexpress launcher is private development tooling, so only a development
         # install names it in the registry. Its priority (99 < 100) runs it before the
@@ -1970,6 +1979,28 @@ class NWaveInstaller:
                     f"  🚨 [DRY RUN] Would install {devin_skill_count} Devin skills to "
                     f"{devin_skills_dir()}"
                 )
+
+            if "amp" in target_platforms:
+                from scripts.shared.install_paths import amp_skills_dir
+
+                amp_context = InstallContext(
+                    claude_dir=self.claude_config_dir,
+                    scripts_dir=self.project_root / "scripts" / "install",
+                    templates_dir=self.framework_source / "templates",
+                    logger=self.logger,
+                    project_root=self.project_root,
+                    framework_source=self.framework_source,
+                    dev_mode=self.dev_mode,
+                    dry_run=True,
+                    target_platforms=set(target_platforms),
+                )
+                self.logger.info(
+                    f"  🚨 [DRY RUN] Would install the public Amp skills to {amp_skills_dir()}"
+                )
+                guard_plan = AmpGuardPlugin().install(amp_context)
+                if not guard_plan.success:
+                    self.logger.error(guard_plan.message)
+                    return False
 
             return True
 
@@ -2443,6 +2474,7 @@ _RELOAD_HOSTS: tuple[tuple[str, str, str], ...] = (
     ("cursor", "Cursor", areas_phrase("cursor")),
     ("copilot", "Copilot (terminal and VS Code)", areas_phrase("copilot")),
     ("devin", "Devin", areas_phrase("devin")),
+    ("amp", "Amp", f"{areas_phrase('amp')} (the tool.call guard plugin)"),
 )
 
 
@@ -2478,6 +2510,8 @@ def restart_hint_lines(target_platforms: set[str] | frozenset[str] | None) -> li
             "  💡 In OMP, dispatch nw-* task agents via Task, or invoke /skill:nw-<name>."
         )
         lines.append(f"  ⚠️  {OMP_GUARD_CEILING}")
+    if "amp" in hosts:
+        lines.append("  💡 In Amp, ask for an nw-* skill by name, such as nw-buddy.")
     if "pi" in hosts:
         lines.append("  ⚠️  Restart pi to load the nWave tool_call guard extension.")
         lines.append(
@@ -2563,6 +2597,11 @@ _HOST_PLATFORMS: tuple[tuple[str, str, str], ...] = (
     ),
     ("devin", "devin", areas_phrase("devin")),
     ("pi", "pi", f"{areas_phrase('pi')} (the nWave tool_call guard extension, pi.dev)"),
+    (
+        "amp",
+        "amp",
+        f"{areas_phrase('amp')} (the nWave tool.call guard plugin, ampcode.com)",
+    ),
 )
 _PLATFORM_CHOICES: tuple[tuple[str, frozenset[str] | None, str], ...] = (
     ("auto", None, "detect installed hosts; refuses when none is found"),

@@ -22,6 +22,8 @@ a host base that has already been substituted.
 from __future__ import annotations
 
 from scripts.shared.platform_contracts import (
+    AMP_PATH_REWRITE_EXCEPTIONS,
+    AMP_PATH_REWRITES,
     CODEX_PATH_REWRITES,
     COPILOT_PATH_REWRITE_EXCEPTIONS,
     COPILOT_PATH_REWRITES,
@@ -50,6 +52,7 @@ HOST_PATH_REWRITES: dict[str, tuple[tuple[str, str], ...]] = {
     "omp": OMP_PATH_REWRITES,
     "devin": DEVIN_PATH_REWRITES,
     "copilot": COPILOT_PATH_REWRITES,
+    "amp": AMP_PATH_REWRITES,
 }
 
 HOST_PATH_REWRITE_EXCEPTIONS: dict[str, tuple[str, ...]] = {
@@ -59,6 +62,7 @@ HOST_PATH_REWRITE_EXCEPTIONS: dict[str, tuple[str, ...]] = {
     "omp": OMP_PATH_REWRITE_EXCEPTIONS,
     "devin": DEVIN_PATH_REWRITE_EXCEPTIONS,
     "copilot": COPILOT_PATH_REWRITE_EXCEPTIONS,
+    "amp": AMP_PATH_REWRITE_EXCEPTIONS,
 }
 
 _EXCEPTION_CONTEXT_WINDOW = 100

@@ -2,7 +2,7 @@
 
 Install the published **`nwave-ai` package**, then run its installer for
 your host. Choose the host explicitly (`claude-code`, `opencode`, `codex`,
-`cursor`, `copilot`, `omp`, `devin`), then enable nWave in the project where
+`cursor`, `copilot`, `omp`, `devin`, `amp`), then enable nWave in the project where
 you intend to work. Installation writes host-wide files (for example
 `~/.claude/` for Claude Code, `~/.codex/` for Codex, `~/.cursor/` for
 Cursor); it does **not** opt every project in.
@@ -46,7 +46,7 @@ nwave-ai install --platform codex
 ```
 
 `--platform` accepts exactly `auto`, `claude-code`, `opencode`, `codex`,
-`cursor`, `copilot`, `omp`, `devin`, `all`. Omitting `--platform` asks the
+`cursor`, `copilot`, `omp`, `devin`, `pi`, `amp`, `all`. Omitting `--platform` asks the
 installer to auto-detect hosts; if none are detected, it refuses rather than
 guessing. For scripted installation, `--yes` does not enable any project.
 Installation does not ask for or write a density preference.
@@ -146,7 +146,7 @@ do not diagnose a Codex-only install.
 For **Cursor-only**, **Copilot**, **OMP**, and **Devin** installs, use each
 installer's final validation and the per-host guides:
 [Cursor](../installing-cursor.md), [OMP](../installing-omp.md),
-[Devin](../installing-devin.md), and the
+[Devin](../installing-devin.md), [Amp](../installing-amp.md), and the
 [vendor support matrix](../vendor-support.md) for what each host receives.
 On hosts other than Claude Code, doctor may report missing Claude assets on a
 host-only install; that is not a defect of that install.

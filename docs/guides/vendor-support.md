@@ -13,7 +13,7 @@ DES module, and the installer writes no runtime copy. Delivery runs through
 ## What each platform receives
 
 The `--platform` flag accepts exactly: `auto`, `claude-code`, `opencode`,
-`codex`, `cursor`, `copilot`, `omp`, `devin`, `all`. Auto-detection never
+`codex`, `cursor`, `copilot`, `omp`, `devin`, `pi`, `amp`, `all`. Auto-detection never
 guesses a host: with no detected host the installer refuses before writing
 anything.
 
@@ -26,7 +26,8 @@ anything.
 | `cursor` | A global user hooks file (`~/.cursor/hooks.json`) only | Installer self-validation | [Installing for Cursor](installing-cursor.md) |
 | `copilot` | Hooks, public roles as custom agents (`~/.copilot/agents/`), public skills (`~/.copilot/skills/`); project-level agents, skills and prompt files (`.github/`) only when the user runs `nwave-ai project copilot enable --yes` | Installer self-validation, plus observations on the real CLI (below). VS Code chat: documented, not observed in VS Code | [Installing for Copilot](installing-copilot.md) |
 | `devin` | Public skills under `~/.config/devin/skills/` plus a manifest | Installer self-validation | [Installing for Devin](installing-devin.md) |
-| `all` | The union of all seven hosts | Combination of the above | — |
+| `amp` | Public skills under `~/.config/amp/skills/` plus a manifest, and the `nwave-hooks.ts` guard plugin in Amp's plugins directory | Installer self-validation | [Installing for Amp](installing-amp.md) |
+| `all` | The union of all hosts | Combination of the above | — |
 
 ## How deeply each host is verified
 
@@ -91,6 +92,9 @@ use that host's installer validation instead.
 - **Devin (skills-only):** the skills install as methodology guidance for
   Devin's sessions. There is no hook API on Devin and no agent surface, so
   nothing enforces or drives delivery automatically.
+- **Amp:** skills and a tool-call guard plugin (Amp's `tool.call` event).
+  Amp has no file-based role agents or custom slash commands, so a role is
+  reached by asking for its `nw-*` skill by name.
 - **OMP:** close to the full surface — skills, agents, `/nw-*` commands and
   a tool-call guard extension, which carries OMP's hooks; OMP's extension events
   differ from Claude Code hooks.
@@ -117,5 +121,6 @@ upgrade goes wrong.
 - [Installing for Devin](installing-devin.md)
 - [Installing for Codex](installing-codex.md)
 - [Installing for OMP](installing-omp.md)
+- [Installing for Amp](installing-amp.md)
 - [Migrating from 3.x](migrating-from-3x.md)
 - [Troubleshooting guide](troubleshooting-guide/)
